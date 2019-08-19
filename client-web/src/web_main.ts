@@ -595,6 +595,10 @@ namespace clr {
                 return txt("creep", "red");
             }
 
+            case Unit_Supertype.minion: {
+                return txt(enum_to_string(unit.type), player_color(unit.owner.id, 0.8))
+            }
+
             case Unit_Supertype.hero: {
                 return hero_type_by_name(unit.type, unit.owner.id);
             }

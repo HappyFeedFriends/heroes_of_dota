@@ -71,7 +71,7 @@ type Unit_Base = Unit_Stats & {
     modifiers: Modifier[]
 }
 
-type Unit = Hero | Creep
+type Unit = Hero | Creep | Minion
 
 type Hero =  Unit_Base & {
     type: Hero_Type;
@@ -83,6 +83,12 @@ type Hero =  Unit_Base & {
 
 type Creep = Unit_Base & {
     supertype: Unit_Supertype.creep
+}
+
+type Minion = Unit_Base & {
+    type: Minion_Type
+    supertype: Unit_Supertype.minion
+    owner: Battle_Player
 }
 
 type Rune = {

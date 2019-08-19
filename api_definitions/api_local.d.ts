@@ -15,7 +15,11 @@ type Visualizer_Creep_Data = Visualizer_Unit_Data_Base & {
     supertype: Unit_Supertype.creep
 }
 
-type Visualizer_Unit_Data = Visualizer_Hero_Data | Visualizer_Creep_Data
+type Visualizer_Minion_Data = Visualizer_Unit_Data_Base & {
+    supertype: Unit_Supertype.minion
+}
+
+type Visualizer_Unit_Data = Visualizer_Hero_Data | Visualizer_Creep_Data | Visualizer_Minion_Data
 
 type Visualizer_Player_Data = {
     id: number
@@ -135,7 +139,13 @@ type Creep_Snapshot = Unit_Snapshot_Base & {
     supertype: Unit_Supertype.creep
 }
 
-type Unit_Snapshot = Hero_Snapshot | Creep_Snapshot
+type Minion_Snapshot = Unit_Snapshot_Base & {
+    supertype: Unit_Supertype.minion
+    type: Minion_Type
+    owner_id: number
+}
+
+type Unit_Snapshot = Hero_Snapshot | Creep_Snapshot | Minion_Snapshot
 
 type Rune_Snapshot = {
     id: number

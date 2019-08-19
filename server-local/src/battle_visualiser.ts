@@ -51,7 +51,13 @@ type Battle_Creep = Battle_Unit_Base & {
     supertype: Unit_Supertype.creep
 }
 
-type Battle_Unit = Battle_Hero | Battle_Creep
+type Battle_Minion = Battle_Unit_Base & {
+    supertype: Unit_Supertype.minion
+    owner_remote_id: number
+    type: Minion_Type
+}
+
+type Battle_Unit = Battle_Hero | Battle_Creep | Battle_Minion
 
 type Tree = {
     id: number
@@ -174,8 +180,14 @@ function hero_type_to_dota_unit_name(hero_type: Hero_Type): string {
     return `npc_dota_hero_${get_hero_dota_name(hero_type)}`;
 }
 
-function creep_to_dota_unit_name(): string {
+function creep_type_to_dota_unit_name(): string {
     return "hod_creep";
+}
+
+function minion_type_to_dota_unit_name(minion_type: Minion_Type): string {
+    switch (minion_type) {
+        case Minion_Type.pocket_tower: return "hod_pocket_tower";
+    }
 }
 
 function create_world_handle_for_battle_unit(dota_unit_name: string, at: XY, facing: XY): CDOTA_BaseNPC_Hero {
@@ -289,7 +301,7 @@ function unit_base(unit_id: number, dota_unit_name: string, definition: Unit_Def
 }
 
 function spawn_creep_for_battle(unit_id: number, definition: Unit_Definition, at: XY, facing: XY): Battle_Creep {
-    const base = unit_base(unit_id, creep_to_dota_unit_name(), definition, at, facing);
+    const base = unit_base(unit_id, creep_type_to_dota_unit_name(), definition, at, facing);
 
     return assign<Battle_Unit_Base, Battle_Creep>(base, {
         supertype: Unit_Supertype.creep
@@ -2777,7 +2789,8 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
     function unit_snapshot_to_dota_unit_name(snapshot: Unit_Snapshot): string {
         switch (snapshot.supertype) {
             case Unit_Supertype.hero: return hero_type_to_dota_unit_name(snapshot.type);
-            case Unit_Supertype.creep: return creep_to_dota_unit_name();
+            case Unit_Supertype.creep: return creep_type_to_dota_unit_name();
+            case Unit_Supertype.minion: return minion_type_to_dota_unit_name(snapshot.type);
         }
     }
 
@@ -2814,6 +2827,14 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
             case Unit_Supertype.creep: {
                 return assign<Battle_Unit_Base, Battle_Creep>(base, {
                     supertype: Unit_Supertype.creep
+                });
+            }
+
+            case Unit_Supertype.minion: {
+                return assign<Battle_Unit_Base, Battle_Minion>(base, {
+                    supertype: Unit_Supertype.minion,
+                    type: unit.type,
+                    owner_remote_id: unit.owner_id
                 });
             }
         }

@@ -109,6 +109,12 @@ function unit_to_visualizer_unit_data(unit: Battle_Unit): Visualizer_Unit_Data {
                 supertype: Unit_Supertype.creep
             })
         }
+
+        case Unit_Supertype.minion: {
+            return assign<Visualizer_Unit_Data_Base, Visualizer_Minion_Data>(base, {
+                supertype: Unit_Supertype.minion
+            })
+        }
     }
 }
 

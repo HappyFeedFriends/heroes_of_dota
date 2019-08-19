@@ -1302,6 +1302,10 @@ function get_gold_for_killing(target: Unit): number {
             return 4 * target.level;
         }
 
+        case Unit_Supertype.minion: {
+            return 4;
+        }
+
         case Unit_Supertype.creep: {
             return random_int_range(4, 6);
         }
@@ -1396,15 +1400,17 @@ function server_change_health(battle: Battle_Record, source: Source, target: Uni
                     change: bounty
                 }));
 
-                defer_delta(battle, () => {
-                    if (attacker.level < max_unit_level) {
-                        return {
-                            type: Delta_Type.level_change,
-                            unit_id: attacker.id,
-                            new_level: attacker.level + 1
-                        };
-                    }
-                });
+                if (attacker.supertype == Unit_Supertype.hero) {
+                    defer_delta(battle, () => {
+                        if (attacker.level < max_unit_level) {
+                            return {
+                                type: Delta_Type.level_change,
+                                unit_id: attacker.id,
+                                new_level: attacker.level + 1
+                            };
+                        }
+                    });
+                }
             }
         } else {
             if (target.supertype == Unit_Supertype.creep) {

@@ -70,9 +70,14 @@ declare const enum Hero_Type {
     dark_seer = 10
 }
 
+declare const enum Minion_Type {
+    pocket_tower = 0
+}
+
 declare const enum Unit_Supertype {
     hero = 0,
-    creep = 1
+    creep = 1,
+    minion = 2
 }
 
 declare const enum Modifier_Field {

@@ -96,7 +96,11 @@ type UI_Creep_Data = UI_Unit_Data_Base & {
     supertype: Unit_Supertype.creep
 }
 
-type UI_Unit_Data = UI_Hero_Data | UI_Creep_Data;
+type UI_Minion_Data = UI_Unit_Data_Base & {
+    supertype: Unit_Supertype.minion
+}
+
+type UI_Unit_Data = UI_Hero_Data | UI_Creep_Data | UI_Minion_Data;
 
 type UI_Battle = Battle & {
     id: number
@@ -1375,6 +1379,7 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
             }
         }
 
+        case Unit_Supertype.minion:
         case Unit_Supertype.creep: {
             const [ health, max_health ] = create_health_indicator();
             const [ move_points, max_move_points ] = create_move_points_indicator();
@@ -1591,6 +1596,17 @@ function make_battle_snapshot(): Battle_Snapshot {
                         };
 
                         return creep;
+                    }
+
+                    case Unit_Supertype.minion: {
+                        const minion: Minion_Snapshot = {
+                            ...snapshot_base,
+                            supertype: Unit_Supertype.minion,
+                            type: unit.type,
+                            owner_id: unit.owner.id
+                        };
+
+                        return minion;
                     }
                 }
             }),
