@@ -3,7 +3,8 @@ declare const enum Spell_Id {
     town_portal_scroll = 1,
     euls_scepter = 2,
     mekansm = 3,
-    buckler = 4
+    buckler = 4,
+    drums_of_endurance = 5
 }
 
 declare const enum Spell_Type {
@@ -30,7 +31,8 @@ type Card_Spell_Unit_Target =
 
 type Card_Spell_No_Target =
     Spell_Mekansm |
-    Spell_Buckler
+    Spell_Buckler |
+    Spell_Drums_Of_Endurance
 
 type Card_Spell_Unit_Target_Base = {
     type: Card_Type.spell
@@ -68,6 +70,11 @@ type Spell_Buckler = Card_Spell_No_Target_Base & {
     duration: number
 }
 
+type Spell_Drums_Of_Endurance = Card_Spell_No_Target_Base & {
+    spell_id: Spell_Id.drums_of_endurance
+    move_points_bonus: number
+}
+
 type Delta_Use_Unit_Target_Spell =
     Delta_Spell_Buyback |
     Delta_Spell_Town_Portal_Scroll |
@@ -75,7 +82,8 @@ type Delta_Use_Unit_Target_Spell =
 
 type Delta_Use_No_Target_Spell =
     Delta_Spell_Mekansm |
-    Delta_Spell_Buckler
+    Delta_Spell_Buckler |
+    Delta_Spell_Drums_Of_Endurance
 
 type Delta_Use_Unit_Target_Spell_Base = {
     type: Delta_Type.use_unit_target_spell
@@ -115,5 +123,10 @@ type Delta_Spell_Mekansm = Delta_Use_No_Target_Spell_Base & {
 
 type Delta_Spell_Buckler = Delta_Use_No_Target_Spell_Base & {
     spell_id: Spell_Id.buckler
+    targets: Unit_Modifier_Application[]
+}
+
+type Delta_Spell_Drums_Of_Endurance = Delta_Use_No_Target_Spell_Base & {
+    spell_id: Spell_Id.drums_of_endurance
     targets: Unit_Modifier_Application[]
 }

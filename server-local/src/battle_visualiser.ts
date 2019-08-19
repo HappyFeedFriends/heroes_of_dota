@@ -1271,6 +1271,7 @@ function modifier_id_to_visuals(id: Modifier_Id): Modifier_Visuals_Complex | Mod
         case Modifier_Id.item_armlet: return follow("particles/items_fx/armlet.vpcf");
         case Modifier_Id.spell_euls_scepter: return complex("Modifier_Euls_Scepter");
         case Modifier_Id.spell_buckler: return follow("particles/items_fx/buckler.vpcf");
+        case Modifier_Id.spell_drums_of_endurance: return follow("particles/items_fx/drum_of_endurance_buff.vpcf");
     }
 }
 
@@ -1748,6 +1749,16 @@ function play_no_target_spell_delta(main_player: Main_Player, cast: Delta_Use_No
         
         case Spell_Id.buckler: {
             battle_emit_sound("DOTA_Item.Buckler.Activate");
+
+            for (const target of filter_and_map_existing_units(from_client_array(cast.targets))) {
+                apply_modifier(main_player, target.unit, target.modifier);
+            }
+
+            break;
+        }
+
+        case Spell_Id.drums_of_endurance: {
+            battle_emit_sound("DOTA_Item.DoE.Activate");
 
             for (const target of filter_and_map_existing_units(from_client_array(cast.targets))) {
                 apply_modifier(main_player, target.unit, target.modifier);

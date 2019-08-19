@@ -44,5 +44,11 @@ function spell_definition_by_id(spell_id: Spell_Id): Card_Spell_Definition {
                 duration: 3
             })
         }
+
+        case Spell_Id.drums_of_endurance: {
+            return spell<Spell_Drums_Of_Endurance>({
+                move_points_bonus: 2
+            })
+        }
     }
 }

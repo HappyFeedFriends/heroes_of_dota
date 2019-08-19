@@ -235,6 +235,19 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
                 }))
             }
         }
+
+        case Spell_Id.drums_of_endurance: {
+            const owned_units = battle.units.filter(unit => authorize_act_on_known_unit(battle, unit).ok && player_owns_unit(player, unit));
+
+            return {
+                ...base,
+                spell_id: spell.spell_id,
+                targets: owned_units.map(target => ({
+                    target_unit_id: target.id,
+                    modifier: new_timed_modifier(battle, Modifier_Id.spell_drums_of_endurance, 1, [Modifier_Field.move_points_bonus, spell.move_points_bonus])
+                }))
+            }
+        }
     }
 }
 

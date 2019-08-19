@@ -1639,6 +1639,7 @@ function get_spell_card_art(spell_id: Spell_Id): string {
         case Spell_Id.euls_scepter: return "profile_badges/level_71.png";
         case Spell_Id.mekansm: return "profile_badges/level_45.png";
         case Spell_Id.buckler: return "profile_badges/level_21.png";
+        case Spell_Id.drums_of_endurance: return "profile_badges/level_42.png";
         case Spell_Id.town_portal_scroll: return "custom_game/spells/teleport_scroll.png";
     }
 }
@@ -1649,6 +1650,7 @@ function get_spell_name(spell_id: Spell_Id): string {
         case Spell_Id.euls_scepter: return "Eul's Scepter";
         case Spell_Id.mekansm: return "Mekansm";
         case Spell_Id.buckler: return "Buckler";
+        case Spell_Id.drums_of_endurance: return "Drums of Endurance";
         case Spell_Id.town_portal_scroll: return "Town Portal Scroll";
     }
 }
@@ -1658,7 +1660,8 @@ function get_spell_text(spell: Card_Spell): string {
         case Spell_Id.buyback: return `Spend gold to return a dead ally hero to your hand`;
         case Spell_Id.euls_scepter: return `Make target untargetable until next turn`;
         case Spell_Id.mekansm: return `Restore ${spell.heal} health to all allies`;
-        case Spell_Id.buckler: return `Give all allies ${spell.armor} armor for ${spell.duration} turns`;
+        case Spell_Id.buckler: return `Give allies ${spell.armor} armor for ${spell.duration} turns`;
+        case Spell_Id.drums_of_endurance: return `Give allies ${spell.move_points_bonus} move points this turn`;
         case Spell_Id.town_portal_scroll: return `Restore hero's health and return them to your hand`;
     }
 }
@@ -1781,6 +1784,7 @@ function get_modifier_icon(modifier_id: Modifier_Id): string {
 
         case Modifier_Id.spell_euls_scepter: return "items/cyclone";
         case Modifier_Id.spell_buckler: return "items/buckler";
+        case Modifier_Id.spell_drums_of_endurance: return "items/ancient_janggo";
 
         case Modifier_Id.rune_double_damage: return "spellicons/rune_doubledamage";
         case Modifier_Id.rune_haste: return "spellicons/rune_haste";

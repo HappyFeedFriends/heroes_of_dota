@@ -61,6 +61,7 @@ declare const enum Modifier_Id {
 
     spell_euls_scepter = 200,
     spell_buckler = 201,
+    spell_drums_of_endurance = 202,
 
     returned_to_hand = 1000
 }
