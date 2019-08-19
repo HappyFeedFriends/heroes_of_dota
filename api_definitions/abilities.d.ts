@@ -60,7 +60,7 @@ declare const enum Modifier_Id {
     item_armlet = 106,
 
     spell_euls_scepter = 200,
-    spell_mekansm = 201,
+    spell_buckler = 201,
 
     returned_to_hand = 1000
 }

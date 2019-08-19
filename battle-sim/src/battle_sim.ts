@@ -1107,12 +1107,17 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
 
     switch (cast.spell_id) {
         case Spell_Id.mekansm: {
-            change_health_and_apply_modifier_multiple(battle, source, cast.targets);
+            change_health_multiple(battle, source, cast.targets);
 
             break;
         }
 
-        default: unreachable(cast.spell_id);
+        case Spell_Id.buckler: {
+            apply_modifier_multiple(battle, source, cast.targets);
+            break;
+        }
+
+        default: unreachable(cast);
     }
 }
 

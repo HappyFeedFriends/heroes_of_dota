@@ -1270,7 +1270,7 @@ function modifier_id_to_visuals(id: Modifier_Id): Modifier_Visuals_Complex | Mod
         case Modifier_Id.item_mask_of_madness: return follow("particles/items2_fx/mask_of_madness.vpcf");
         case Modifier_Id.item_armlet: return follow("particles/items_fx/armlet.vpcf");
         case Modifier_Id.spell_euls_scepter: return complex("Modifier_Euls_Scepter");
-        case Modifier_Id.spell_mekansm: return follow("particles/items_fx/buckler.vpcf");
+        case Modifier_Id.spell_buckler: return follow("particles/items_fx/buckler.vpcf");
     }
 }
 
@@ -1737,21 +1737,26 @@ function play_no_target_spell_delta(main_player: Main_Player, cast: Delta_Use_No
         case Spell_Id.mekansm: {
             battle_emit_sound("DOTA_Item.Mekansm.Activate");
 
-            for (const effect of from_client_array(cast.targets)) {
-                const target = find_unit_by_id(effect.target_unit_id);
+            for (const target of filter_and_map_existing_units(from_client_array(cast.targets))) {
+                fx_follow_unit("particles/items2_fx/mekanism.vpcf", target.unit).release();
+                unit_emit_sound(target.unit, "DOTA_Item.Mekansm.Target");
+                change_health(main_player, target.unit, target.unit, target.change);
+            }
 
-                if (target) {
-                    fx_follow_unit("particles/items2_fx/mekanism.vpcf", target).release();
-                    unit_emit_sound(target, "DOTA_Item.Mekansm.Target");
-                    apply_modifier(main_player, target, effect.modifier);
-                    change_health(main_player, target, target, effect.change);
-                }
+            break;
+        }
+        
+        case Spell_Id.buckler: {
+            battle_emit_sound("DOTA_Item.Buckler.Activate");
+
+            for (const target of filter_and_map_existing_units(from_client_array(cast.targets))) {
+                apply_modifier(main_player, target.unit, target.modifier);
             }
 
             break;
         }
 
-        default: unreachable(cast.spell_id);
+        default: unreachable(cast);
     }
 }
 

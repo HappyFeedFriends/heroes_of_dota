@@ -218,8 +218,20 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
                 spell_id: spell.spell_id,
                 targets: owned_units.map(target => ({
                     target_unit_id: target.id,
-                    change: health_change(target, spell.heal),
-                    modifier: new_timed_modifier(battle, Modifier_Id.spell_mekansm, spell.duration, [Modifier_Field.armor_bonus, spell.armor])
+                    change: health_change(target, spell.heal)
+                }))
+            }
+        }
+
+        case Spell_Id.buckler: {
+            const owned_units = battle.units.filter(unit => authorize_act_on_known_unit(battle, unit).ok && player_owns_unit(player, unit));
+
+            return {
+                ...base,
+                spell_id: spell.spell_id,
+                targets: owned_units.map(target => ({
+                    target_unit_id: target.id,
+                    modifier: new_timed_modifier(battle, Modifier_Id.spell_buckler, spell.duration, [Modifier_Field.armor_bonus, spell.armor])
                 }))
             }
         }

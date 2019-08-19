@@ -34,8 +34,13 @@ function spell_definition_by_id(spell_id: Spell_Id): Card_Spell_Definition {
 
         case Spell_Id.mekansm: {
             return spell<Spell_Mekansm>({
-                heal: 5,
-                armor: 1,
+                heal: 5
+            })
+        }
+
+        case Spell_Id.buckler: {
+            return spell<Spell_Buckler>({
+                armor: 2,
                 duration: 3
             })
         }
