@@ -4,7 +4,8 @@ declare const enum Spell_Id {
     euls_scepter = 2,
     mekansm = 3,
     buckler = 4,
-    drums_of_endurance = 5
+    drums_of_endurance = 5,
+    pocket_tower = 6
 }
 
 declare const enum Spell_Type {
@@ -19,7 +20,7 @@ declare const enum Spell_Unit_Targeting_Flag {
     allies = 2
 }
 
-type Card_Spell_Definition = Card_Spell_Unit_Target | Card_Spell_No_Target
+type Card_Spell_Definition = Card_Spell_Unit_Target | Card_Spell_No_Target | Card_Spell_Ground_Target
 type Card_Spell = Card_Spell_Definition & {
     id: number
 }
@@ -34,10 +35,18 @@ type Card_Spell_No_Target =
     Spell_Buckler |
     Spell_Drums_Of_Endurance
 
+type Card_Spell_Ground_Target =
+    Spell_Pocket_Tower
+
 type Card_Spell_Unit_Target_Base = {
     type: Card_Type.spell
     spell_type: Spell_Type.unit_target
     targeting_flags: Spell_Unit_Targeting_Flag[]
+}
+
+type Card_Spell_Ground_Target_Base = {
+    type: Card_Type.spell
+    spell_type: Spell_Type.ground_target
 }
 
 type Card_Spell_No_Target_Base = {
@@ -75,6 +84,10 @@ type Spell_Drums_Of_Endurance = Card_Spell_No_Target_Base & {
     move_points_bonus: number
 }
 
+type Spell_Pocket_Tower = Card_Spell_Ground_Target_Base & {
+    spell_id: Spell_Id.pocket_tower
+}
+
 type Delta_Use_Unit_Target_Spell =
     Delta_Spell_Buyback |
     Delta_Spell_Town_Portal_Scroll |
@@ -85,10 +98,19 @@ type Delta_Use_No_Target_Spell =
     Delta_Spell_Buckler |
     Delta_Spell_Drums_Of_Endurance
 
+type Delta_Use_Ground_Target_Spell =
+    Delta_Spell_Pocket_Tower
+
 type Delta_Use_Unit_Target_Spell_Base = {
     type: Delta_Type.use_unit_target_spell
     player_id: number
     target_id: number
+}
+
+type Delta_Use_Ground_Target_Spell_Base = {
+    type: Delta_Type.use_ground_target_spell
+    player_id: number
+    at: XY
 }
 
 type Delta_Use_No_Target_Spell_Base = {
@@ -129,4 +151,10 @@ type Delta_Spell_Buckler = Delta_Use_No_Target_Spell_Base & {
 type Delta_Spell_Drums_Of_Endurance = Delta_Use_No_Target_Spell_Base & {
     spell_id: Spell_Id.drums_of_endurance
     targets: Unit_Modifier_Application[]
+}
+
+type Delta_Spell_Pocket_Tower = Delta_Use_Ground_Target_Spell_Base & {
+    spell_id: Spell_Id.pocket_tower
+    new_unit_type: Minion_Type
+    new_unit_id: number
 }

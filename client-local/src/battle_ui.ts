@@ -548,8 +548,19 @@ function on_card_added(player: Battle_Player, card: Card) {
     }
 }
 
+function on_minion_spawned(battle: UI_Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY): Minion {
+    const minion = spawn_minion_default(battle, owner, unit_id, type, at);
+
+    battle.unit_id_to_facing[unit_id] = {
+        x: 0,
+        y: -1
+    };
+
+    return minion;
+}
+
 function process_state_transition(from: Player_State, new_state: Player_Net_Table) {
-    $.Msg(`Transition from ${from} to ${new_state.state}`);
+    $.Msg(`Transition from ${from} to2 ${new_state.state}`);
 
     if (from == Player_State.in_battle) {
         for (const cell of battle.cells) {
@@ -584,7 +595,8 @@ function process_state_transition(from: Player_State, new_state: Player_Net_Tabl
             outline_particles: [],
             shop_range_outline_particles: [],
             zone_highlight_particles: [],
-            add_card_to_hand: on_card_added
+            add_card_to_hand: on_card_added,
+            spawn_minion: on_minion_spawned
         };
 
         set_selection({
@@ -1357,44 +1369,53 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
         stat_bar_panel: top_level,
     };
 
+    function create_default_indicators() {
+        const [ health, max_health ] = create_health_indicator();
+        const [ move_points, max_move_points ] = create_move_points_indicator();
+        const attack = create_attack_indicator();
+        const modifiers = create_modifier_container();
+
+        return {
+            stat_health: health,
+            stat_attack: attack,
+            stat_move_points: move_points,
+            stat_max_move_points: max_move_points,
+            stat_max_health: max_health,
+            modifier_bar: modifiers
+        }
+    }
+
     switch (data.supertype) {
         case Unit_Supertype.hero: {
             const level_bar = create_level_bar(top_level, "level_bar");
-            const [ health, max_health ] = create_health_indicator();
-            const [ move_points, max_move_points ] = create_move_points_indicator();
-            const attack = create_attack_indicator();
-            const modifiers = create_modifier_container();
+            const default_indicators = create_default_indicators();
 
             return {
                 ...base,
-                supertype: Unit_Supertype.hero,
-                stat_health: health,
-                stat_attack: attack,
-                stat_move_points: move_points,
-                stat_max_move_points: max_move_points,
-                stat_max_health: max_health,
+                ...default_indicators,
+                supertype: data.supertype,
                 level: data.level,
                 level_bar: level_bar,
-                modifier_bar: modifiers
             }
         }
 
-        case Unit_Supertype.minion:
         case Unit_Supertype.creep: {
-            const [ health, max_health ] = create_health_indicator();
-            const [ move_points, max_move_points ] = create_move_points_indicator();
-            const attack = create_attack_indicator();
-            const modifiers = create_modifier_container();
+            const default_indicators = create_default_indicators();
 
             return {
                 ...base,
-                supertype: Unit_Supertype.creep,
-                stat_health: health,
-                stat_attack: attack,
-                stat_move_points: move_points,
-                stat_max_move_points: max_move_points,
-                stat_max_health: max_health,
-                modifier_bar: modifiers
+                ...default_indicators,
+                supertype: data.supertype,
+            }
+        }
+
+        case Unit_Supertype.minion: {
+            const default_indicators = create_default_indicators();
+
+            return {
+                ...base,
+                ...default_indicators,
+                supertype: data.supertype,
             }
         }
     }
@@ -1657,6 +1678,7 @@ function get_spell_card_art(spell_id: Spell_Id): string {
         case Spell_Id.buckler: return "profile_badges/level_21.png";
         case Spell_Id.drums_of_endurance: return "profile_badges/level_42.png";
         case Spell_Id.town_portal_scroll: return "custom_game/spells/teleport_scroll.png";
+        case Spell_Id.pocket_tower: return "custom_game/spells/pocket_tower.png";
     }
 }
 
@@ -1668,6 +1690,7 @@ function get_spell_name(spell_id: Spell_Id): string {
         case Spell_Id.buckler: return "Buckler";
         case Spell_Id.drums_of_endurance: return "Drums of Endurance";
         case Spell_Id.town_portal_scroll: return "Town Portal Scroll";
+        case Spell_Id.pocket_tower: return "Pocket Tower";
     }
 }
 
@@ -1679,6 +1702,7 @@ function get_spell_text(spell: Card_Spell): string {
         case Spell_Id.buckler: return `Give allies ${spell.armor} armor for ${spell.duration} turns`;
         case Spell_Id.drums_of_endurance: return `Give allies ${spell.move_points_bonus} move points this turn`;
         case Spell_Id.town_portal_scroll: return `Restore hero's health and return them to your hand`;
+        case Spell_Id.pocket_tower: return `Summon a tower to attack a random enemy each turn. Extends deployment zone`;
     }
 }
 
@@ -2156,12 +2180,12 @@ function select_shop(new_entity_id: EntityId) {
 function update_current_ability_based_on_cursor_state() {
     const click_behaviors = GameUI.GetClickBehaviors();
 
-    if (is_unit_selection(selection) && click_behaviors == CLICK_BEHAVIORS.DOTA_CLICK_BEHAVIOR_ATTACK) {
+    if (is_unit_selection(selection) && click_behaviors == CLICK_BEHAVIORS.DOTA_CLICK_BEHAVIOR_ATTACK && selection.unit.attack) {
         select_unit_ability(selection.unit, selection.unit.attack);
         return;
     }
 
-    if (selection.type == Selection_Type.ability && selection.ability.id == selection.unit.attack.id) {
+    if (selection.type == Selection_Type.ability && selection.unit.attack && selection.ability.id == selection.unit.attack.id) {
         deselect_ability(selection);
         return;
     }
@@ -2188,6 +2212,8 @@ function try_update_stat_bar_display(ui_data: UI_Unit_Data, force = false) {
     try_update_stat_indicator(ui_data.stat_max_health);
     try_update_stat_indicator(ui_data.stat_move_points);
     try_update_stat_indicator(ui_data.stat_max_move_points);
+
+    ui_data.stat_bar_panel.SetHasClass("dead", ui_data.stat_health.displayed_value == 0);
 }
 
 function position_panel_over_entity_in_the_world(panel: Panel, entity_id: EntityId, offset_x: number, offset_z: number) {
@@ -2494,7 +2520,7 @@ function create_card_ui(root: Panel, card: Card) {
         case Card_Type.hero: {
             container.AddClass("hero");
 
-            const definition = unit_definition_by_type(card.hero_type);
+            const definition = hero_definition_by_type(card.hero_type);
 
             create_hero_card_ui_base(container, card.hero_type, definition.health, definition.attack_damage, definition.move_points);
 

@@ -50,5 +50,10 @@ function spell_definition_by_id(spell_id: Spell_Id): Card_Spell_Definition {
                 move_points_bonus: 2
             })
         }
+
+        case Spell_Id.pocket_tower: {
+            return spell<Spell_Pocket_Tower>({
+            })
+        }
     }
 }

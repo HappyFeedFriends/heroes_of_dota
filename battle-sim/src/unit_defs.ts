@@ -68,7 +68,7 @@ function basic_attack(range: number): Ability_Basic_Attack {
     });
 }
 
-function unit_definition_by_type(type: Hero_Type): Unit_Definition {
+function hero_definition_by_type(type: Hero_Type): Unit_Definition {
     switch (type) {
         case Hero_Type.ursa: {
             return {
@@ -417,5 +417,19 @@ function creep_definition(): Unit_Definition {
         move_points: 3,
         abilities: [],
         ability_bench: []
+    }
+}
+
+function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
+    switch (minion_type) {
+        case Minion_Type.pocket_tower: {
+            return {
+                attack_damage: 5,
+                health: 8,
+                move_points: 0,
+                abilities: [],
+                ability_bench: []
+            }
+        }
     }
 }

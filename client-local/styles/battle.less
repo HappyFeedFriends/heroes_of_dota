@@ -423,10 +423,10 @@
     width: 34px;
     flow-children: down;
     opacity: 1;
-    transition-property: width, height, opacity;
-    transition-duration: 0.05s;
+    transition: width 0.05s linear 0s, height 0.05s linear 0s, opacity 0.5s linear 0s;
+    opacity: 1;
 
-    &.hidden {
+    &.hidden, &.dead {
       opacity: 0;
     }
 
@@ -777,6 +777,7 @@
 
 #compile_spell_images {
   background-image: url("file://{images}/custom_game/spells/teleport_scroll.png");
+  background-image: url("file://{images}/custom_game/spells/pocket_tower.png");
 }
 
 #compile_unit_images {

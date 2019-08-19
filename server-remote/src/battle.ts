@@ -290,6 +290,25 @@ function perform_spell_cast_unit_target(battle: Battle_Record, player: Battle_Pl
     }
 }
 
+function perform_spell_cast_ground_target(battle: Battle_Record, player: Battle_Player, at: XY, spell: Card_Spell_Ground_Target): Delta_Use_Ground_Target_Spell {
+    const base: Delta_Use_Ground_Target_Spell_Base = {
+        type: Delta_Type.use_ground_target_spell,
+        player_id: player.id,
+        at: at
+    };
+
+    switch (spell.spell_id) {
+        case Spell_Id.pocket_tower: {
+            return {
+                ...base,
+                spell_id: spell.spell_id,
+                new_unit_type: Minion_Type.pocket_tower,
+                new_unit_id: get_next_entity_id(battle)
+            }
+        }
+    }
+}
+
 function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: Ability_Ground_Target, target: XY): Delta_Ground_Target_Ability {
     const base: Delta_Ground_Target_Ability_Base = {
         type: Delta_Type.use_ground_target_ability,
@@ -1143,6 +1162,23 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
             ]
         }
 
+        case Action_Type.use_ground_target_spell_card: {
+            const card_use_permission = authorize_card_use(action_permission, action.card_id);
+            if (!card_use_permission.ok) return;
+
+            const spell_use_permission = authorize_ground_target_spell_use(card_use_permission);
+            if (!spell_use_permission.ok) return;
+
+            // TODO validate location
+
+            const { player, card, spell } = spell_use_permission;
+
+            return [
+                use_card(player, card),
+                perform_spell_cast_ground_target(battle, player, action.at, spell)
+            ]
+        }
+
         case Action_Type.use_no_target_spell_card: {
             const card_use_auth = authorize_card_use(action_permission, action.card_id);
             if (!card_use_auth.ok) return;
@@ -1323,6 +1359,8 @@ function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: 
         const act_on_target_permission = authorize_act_on_known_unit(battle, target);
         if (!act_on_target_permission.ok) return;
 
+        if (!creep.attack) return;
+
         const ability_use_permission = authorize_ability_use(order_unit_permission, creep.attack.id);
         if (!ability_use_permission.ok) return;
 
@@ -1386,7 +1424,7 @@ function server_change_health(battle: Battle_Record, source: Source, target: Uni
     if (source.type == Source_Type.unit) {
         const attacker = source.unit;
 
-        if (source.ability_id == attacker.attack.id) {
+        if (attacker.attack && source.ability_id == attacker.attack.id) {
             on_target_dealt_damage_by_attack(battle, attacker, target, -change.value_delta);
         }
 

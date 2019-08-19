@@ -11,7 +11,7 @@ for (let index = 0; index < translations.length; index++) {
 
 type Modifier_Activity_Translation_Params = {
     translation: Activity_Translation
-    duration: number
+    duration?: number
 }
 
 class Modifier_Activity_Translation extends CDOTA_Modifier_Lua {

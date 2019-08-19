@@ -309,6 +309,7 @@ function main() {
     link_modifier("Modifier_Lion_Hex", "modifiers/modifier_lion_hex");
     link_modifier("Modifier_Euls_Scepter", "modifiers/modifier_euls_scepter");
     link_modifier("Modifier_Activity_Translation", "modifiers/modifier_activity_translation");
+    link_modifier("Modifier_Activity_Override", "modifiers/modifier_activity_override");
 
     mode.SetContextThink("scheduler_think", () => {
         update_scheduler();

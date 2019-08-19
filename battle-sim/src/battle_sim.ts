@@ -42,6 +42,7 @@ type Battle = {
     change_health: (battle: Battle, source: Source, target: Unit, change: Health_Change) => boolean,
     apply_modifier: (source: Source, target: Unit, modifier: Modifier_Application) => void,
     add_card_to_hand: (player: Battle_Player, card: Card) => void,
+    spawn_minion: (battle: Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY) => Minion,
     end_turn: (battle: Battle) => void
 }
 
@@ -65,7 +66,7 @@ type Unit_Base = Unit_Stats & {
     dead: boolean;
     position: XY;
     has_taken_an_action_this_turn: boolean;
-    attack: Ability;
+    attack?: Ability;
     abilities: Ability[]
     ability_bench: Ability[]
     modifiers: Modifier[]
@@ -401,6 +402,7 @@ function make_battle(participants: Battle_Participant_Info[], grid_width: number
         change_health: change_health_default,
         apply_modifier: apply_modifier_default,
         add_card_to_hand: add_card_to_hand_default,
+        spawn_minion: spawn_minion_default,
         end_turn: end_turn_default
     }
 }
@@ -667,7 +669,7 @@ function catch_up_to_head(battle: Battle) {
 }
 
 function find_unit_ability(unit: Unit, ability_id: Ability_Id): Ability | undefined {
-    if (ability_id == unit.attack.id) return unit.attack;
+    if (unit.attack && ability_id == unit.attack.id) return unit.attack;
 
     return unit.abilities.find(ability => ability.id == ability_id);
 }
@@ -677,7 +679,7 @@ function replace_ability(unit: Unit, ability_id_to_bench: Ability_Id, currently_
 
     if (benched_ability_index == -1) return;
 
-    if (ability_id_to_bench == unit.attack.id) {
+    if (unit.attack && ability_id_to_bench == unit.attack.id) {
         const old_attack = unit.attack;
         unit.attack = unit.ability_bench[benched_ability_index];
         unit.ability_bench[benched_ability_index] = old_attack;
@@ -764,6 +766,61 @@ function free_cell(battle: Battle, at: XY) {
     if (cell) {
         cell.occupied = false;
     }
+}
+
+function unit_base(id: number, definition: Unit_Definition, at: XY): Unit_Base {
+    function ability_definition_to_ability(definition: Ability_Definition): Ability {
+        if (definition.type == Ability_Type.passive) {
+            return definition;
+        }
+
+        return {
+            ...definition,
+            charges_remaining: definition.charges
+        }
+    }
+
+    return {
+        id: id,
+        position: at,
+        attack: definition.attack ? ability_definition_to_ability(definition.attack) : undefined,
+        attack_damage: definition.attack_damage,
+        move_points: definition.move_points,
+        health: definition.health,
+        dead: false,
+        has_taken_an_action_this_turn: false,
+        abilities: definition.abilities.map(ability_definition_to_ability),
+        ability_bench: definition.ability_bench.map(ability_definition_to_ability),
+        modifiers: [],
+        attack_bonus: 0,
+        max_health: definition.health,
+        max_move_points: definition.move_points,
+        move_points_bonus: 0,
+        state_stunned_counter: 0,
+        state_silenced_counter: 0,
+        state_disarmed_counter: 0,
+        state_out_of_the_game_counter: 0,
+        armor: 0
+    }
+}
+
+function spawn_minion(battle: Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY): Minion {
+    return battle.spawn_minion(battle, owner, unit_id, type, at);
+}
+
+function spawn_minion_default(battle: Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY): Minion {
+    const minion: Minion = {
+        ...unit_base(unit_id, minion_definition_by_type(type), at),
+        supertype: Unit_Supertype.minion,
+        type: type,
+        owner: owner,
+    };
+
+    battle.units.push(minion);
+
+    occupy_cell(battle, at);
+
+    return minion;
 }
 
 function apply_modifier_changes(target: Unit, changes: Modifier_Change[], invert: boolean) {
@@ -1132,6 +1189,18 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
     }
 }
 
+function collapse_ground_target_spell_use(battle: Battle, caster: Battle_Player, at: XY, cast: Delta_Use_Ground_Target_Spell) {
+    switch (cast.spell_id) {
+        case Spell_Id.pocket_tower: {
+            spawn_minion(battle, caster, cast.new_unit_id, cast.new_unit_type, at);
+
+            break;
+        }
+
+        default: unreachable(cast.spell_id);
+    }
+}
+
 function collapse_unit_target_spell_use(battle: Battle, caster: Battle_Player, target: Unit, cast: Delta_Use_Unit_Target_Spell) {
     const source = player_source(caster);
 
@@ -1239,42 +1308,6 @@ function collapse_item_equip(battle: Battle, hero: Hero, delta: Delta_Equip_Item
 }
 
 function collapse_delta(battle: Battle, delta: Delta): void {
-    function ability_definition_to_ability(definition: Ability_Definition): Ability {
-        if (definition.type == Ability_Type.passive) {
-            return definition;
-        }
-
-        return {
-            ...definition,
-            charges_remaining: definition.charges
-        }
-    }
-
-    function unit_base(id: number, definition: Unit_Definition, at: XY): Unit_Base {
-        return {
-            id: id,
-            position: at,
-            attack: ability_definition_to_ability(definition.attack),
-            attack_damage: definition.attack_damage,
-            move_points: definition.move_points,
-            health: definition.health,
-            dead: false,
-            has_taken_an_action_this_turn: false,
-            abilities: definition.abilities.map(ability_definition_to_ability),
-            ability_bench: definition.ability_bench.map(ability_definition_to_ability),
-            modifiers: [],
-            attack_bonus: 0,
-            max_health: definition.health,
-            max_move_points: definition.move_points,
-            move_points_bonus: 0,
-            state_stunned_counter: 0,
-            state_silenced_counter: 0,
-            state_disarmed_counter: 0,
-            state_out_of_the_game_counter: 0,
-            armor: 0
-        }
-    }
-
     switch (delta.type) {
         case Delta_Type.game_start: {
             battle.has_started = true;
@@ -1342,7 +1375,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             if (!owner) break;
 
             battle.units.push({
-                ...unit_base(delta.unit_id, unit_definition_by_type(delta.hero_type), delta.at_position),
+                ...unit_base(delta.unit_id, hero_definition_by_type(delta.hero_type), delta.at_position),
                 supertype: Unit_Supertype.hero,
                 type: delta.hero_type,
                 owner: owner,
@@ -1488,9 +1521,19 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             break;
         }
 
+        case Delta_Type.use_ground_target_spell: {
+            const player = find_player_by_id(battle, delta.player_id);
+
+            if (!player) break;
+
+            collapse_ground_target_spell_use(battle, player, delta.at, delta);
+
+            break;
+        }
+
         case Delta_Type.start_turn: {
             for (const unit of battle.units) {
-                if (unit.attack.type != Ability_Type.passive) {
+                if (unit.attack && unit.attack.type != Ability_Type.passive) {
                     unit.attack.charges_remaining = unit.attack.charges;
                 }
 

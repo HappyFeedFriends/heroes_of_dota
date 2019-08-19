@@ -156,6 +156,12 @@ function unit_target_spell_use_error_reason(error: Action_Error<Unit_Target_Spel
     }
 }
 
+function ground_target_spell_use_error_reason(error: Action_Error<Ground_Target_Spell_Card_Use_Error>): Error_Reason {
+    switch (error.kind) {
+        case Ground_Target_Spell_Card_Use_Error.other: return custom_error("Error");
+    }
+}
+
 function no_target_spell_use_error_reason(error: Action_Error<No_Target_Spell_Card_Use_Error>): Error_Reason {
     switch (error.kind) {
         case No_Target_Spell_Card_Use_Error.other: return custom_error("Error");
@@ -260,6 +266,11 @@ function authorize_ability_use_with_error_ui(unit: Unit, ability: Ability): Abil
 
 
 function try_attack_target(source: Unit, target: XY, flash_ground_on_error: boolean) {
+    if (!source.attack) {
+        show_error_ui(custom_error("Can't attack"));
+        return;
+    }
+
     const ability_use_permission = authorize_ability_use_with_error_ui(source, source.attack);
 
     if (!ability_use_permission) return;
@@ -413,7 +424,7 @@ function try_order_unit_to_move(unit: Unit, move_where: XY) {
     });
 }
 
-type Use_Spell_Action = Action_Use_Unit_Target_Spell | Action_Use_No_Target_Spell;
+type Use_Spell_Action = Action_Use_Ground_Target_Spell | Action_Use_Unit_Target_Spell | Action_Use_No_Target_Spell;
 
 function try_use_card_spell(spell: Card_Spell, hover: Hover_State_Unit | Hover_State_Cell, action_permission: Player_Action_Permission, card_use_permission: Card_Use_Permission): Use_Spell_Action | undefined {
     switch (spell.spell_type) {
@@ -443,6 +454,22 @@ function try_use_card_spell(spell: Card_Spell, hover: Hover_State_Unit | Hover_S
                 type: Action_Type.use_unit_target_spell_card,
                 card_id: spell.id,
                 unit_id: target.id,
+            };
+        }
+
+        case Spell_Type.ground_target: {
+            if (hover.type != Hover_Type.cell) {
+                show_error_ui(custom_error("Select a target"));
+                return;
+            }
+
+            const spell_use_permission = authorize_ground_target_spell_use(card_use_permission);
+            if (!spell_use_permission.ok) return show_action_error_ui(spell_use_permission, ground_target_spell_use_error_reason);
+
+            return {
+                type: Action_Type.use_ground_target_spell_card,
+                card_id: spell.id,
+                at: hover.cell
             };
         }
 

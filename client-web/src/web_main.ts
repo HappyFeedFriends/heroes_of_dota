@@ -396,7 +396,7 @@ function on_cell_right_clicked(game: Game_In_Battle, player: Battle_Player, x: n
             }
 
             if (right_clicked_unit) {
-                if (selected_unit.attack.type == Ability_Type.target_ground) {
+                if (selected_unit.attack && selected_unit.attack.type == Ability_Type.target_ground) {
                     if (ability_targeting_fits(game.battle, selected_unit.attack.targeting, selected_unit.position, xy(x, y))) {
                         take_battle_action(game, {
                             type: Action_Type.ground_target_ability,

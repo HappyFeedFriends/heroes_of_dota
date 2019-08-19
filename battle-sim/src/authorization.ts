@@ -32,6 +32,10 @@ declare const enum Unit_Target_Spell_Card_Use_Error {
     other = 0
 }
 
+declare const enum Ground_Target_Spell_Card_Use_Error {
+    other = 0
+}
+
 declare const enum Spell_Target_Unit_Error {
     other = 0,
     out_of_the_game = 1,
@@ -134,6 +138,7 @@ type Act_On_Owned_Unit_Permission = Player_Action_Permission & Act_On_Unit_Permi
 
 type No_Target_Spell_Card_Use_Permission = Spell_Card_Use_Permission<Card_Spell_No_Target>
 type Unit_Target_Spell_Card_Use_Permission = Spell_Card_Use_Permission<Card_Spell_Unit_Target>
+type Ground_Target_Spell_Card_Use_Permission = Spell_Card_Use_Permission<Card_Spell_Ground_Target>
 
 type Spell_Target_Unit_Permission = {
     ok: true
@@ -194,6 +199,7 @@ type Hero_Card_Use_Auth = Auth<Hero_Card_Use_Permission, Hero_Card_Use_Error>
 type Existing_Hero_Card_Use_Auth = Auth<Existing_Hero_Card_Use_Permission, Hero_Card_Use_Error>
 type No_Target_Spell_Card_Use_Auth = Auth<No_Target_Spell_Card_Use_Permission, No_Target_Spell_Card_Use_Error>
 type Unit_Target_Spell_Card_Use_Auth = Auth<Unit_Target_Spell_Card_Use_Permission, Unit_Target_Spell_Card_Use_Error>
+type Ground_Target_Spell_Card_Use_Auth = Auth<Ground_Target_Spell_Card_Use_Permission, Ground_Target_Spell_Card_Use_Error>
 type Spell_Target_Unit_Auth = Auth<Spell_Target_Unit_Permission, Spell_Target_Unit_Error>
 type Act_On_Unit_Auth = Auth<Act_On_Unit_Permission, Act_On_Unit_Error>
 type Use_Shop_Auth = Auth<Use_Shop_Permission, Use_Shop_Error>
@@ -330,6 +336,23 @@ function authorize_unit_target_spell_use(use: Card_Use_Permission): Unit_Target_
 
     if (use.card.type != Card_Type.spell) return error(Unit_Target_Spell_Card_Use_Error.other);
     if (use.card.spell_type != Spell_Type.unit_target) return error(Unit_Target_Spell_Card_Use_Error.other);
+
+    return {
+        ok: true,
+        battle: use.battle,
+        player: use.player,
+        card: use.card,
+        spell: use.card,
+    }
+}
+
+function authorize_ground_target_spell_use(use: Card_Use_Permission): Ground_Target_Spell_Card_Use_Auth {
+    function error(error: Ground_Target_Spell_Card_Use_Error): Action_Error<Ground_Target_Spell_Card_Use_Error> {
+        return { ok: false, kind: error };
+    }
+
+    if (use.card.type != Card_Type.spell) return error(Ground_Target_Spell_Card_Use_Error.other);
+    if (use.card.spell_type != Spell_Type.ground_target) return error(Ground_Target_Spell_Card_Use_Error.other);
 
     return {
         ok: true,

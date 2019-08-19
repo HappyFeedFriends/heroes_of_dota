@@ -53,7 +53,8 @@ declare const enum Action_Type {
     pick_up_rune = 9,
     purchase_item = 10,
     use_no_target_spell_card = 11,
-    use_unit_target_spell_card = 12
+    use_unit_target_spell_card = 12,
+    use_ground_target_spell_card = 13
 }
 
 declare const enum Hero_Type {
@@ -150,7 +151,7 @@ type Unit_Definition = {
     health: number
     attack_damage: number
     move_points: number
-    attack: Ability_Definition_Active
+    attack?: Ability_Definition_Active
     abilities: Ability_Definition[]
     ability_bench: Ability_Definition[]
 }
@@ -276,6 +277,15 @@ type Action_Use_Unit_Target_Spell = {
     unit_id: number
 }
 
+type Action_Use_Ground_Target_Spell = {
+    type: Action_Type.use_ground_target_spell_card
+    card_id: number
+    at: {
+        x: number
+        y: number
+    }
+}
+
 type Action_Pick_Up_Rune = {
     type: Action_Type.pick_up_rune
     unit_id: number
@@ -293,6 +303,7 @@ type Turn_Action =
     Action_Move |
     Action_Use_Unit_Target_Spell |
     Action_Use_No_Target_Spell |
+    Action_Use_Ground_Target_Spell |
     Action_Ground_Target_Ability |
     Action_Unit_Target_Ability |
     Action_No_Target_Ability |
@@ -563,6 +574,7 @@ type Delta =
     Delta_Unit_Target_Ability |
     Delta_Use_No_Target_Ability |
     Delta_Use_Unit_Target_Spell |
+    Delta_Use_Ground_Target_Spell |
     Delta_Use_No_Target_Spell |
     Delta_Level_Change |
     Delta_Modifier_Removed |

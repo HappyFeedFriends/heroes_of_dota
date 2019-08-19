@@ -198,6 +198,10 @@ function create_world_handle_for_battle_unit(dota_unit_name: string, at: XY, fac
     handle.SetForwardVector(Vector(facing.x, facing.y));
     handle.SetUnitCanRespawn(true);
 
+    if (dota_unit_name == minion_type_to_dota_unit_name(Minion_Type.pocket_tower)) {
+        add_activity_override({ handle: handle }, GameActivity_t.ACT_DOTA_CUSTOM_TOWER_IDLE);
+    }
+
     return handle;
 }
 
@@ -309,7 +313,7 @@ function spawn_creep_for_battle(unit_id: number, definition: Unit_Definition, at
 }
 
 function spawn_hero_for_battle(hero_type: Hero_Type, unit_id: number, owner_id: number, at: XY, facing: XY): Battle_Hero {
-    const definition = unit_definition_by_type(hero_type);
+    const definition = hero_definition_by_type(hero_type);
     const base = unit_base(unit_id, hero_type_to_dota_unit_name(hero_type), definition, at, facing);
 
     return assign<Battle_Unit_Base, Battle_Hero>(base, {
@@ -317,6 +321,17 @@ function spawn_hero_for_battle(hero_type: Hero_Type, unit_id: number, owner_id: 
         type: hero_type,
         owner_remote_id: owner_id,
         level: 1
+    });
+}
+
+function spawn_minion_for_battle(type: Minion_Type, unit_id: number, owner_id: number, at: XY, facing: XY) {
+    const definition = minion_definition_by_type(type);
+    const base = unit_base(unit_id, minion_type_to_dota_unit_name(type), definition, at, facing);
+
+    return assign<Battle_Unit_Base, Battle_Minion>(base, {
+        supertype: Unit_Supertype.minion,
+        type: type,
+        owner_remote_id: owner_id,
     });
 }
 
@@ -1783,6 +1798,18 @@ function play_no_target_spell_delta(main_player: Main_Player, cast: Delta_Use_No
     }
 }
 
+function play_ground_target_spell_delta(main_player: Main_Player, cast: Delta_Use_Ground_Target_Spell) {
+    switch (cast.spell_id) {
+        case Spell_Id.pocket_tower: {
+            battle.units.push(spawn_minion_for_battle(cast.new_unit_type, cast.new_unit_id, cast.player_id, cast.at, { x: 0, y: -1 }));
+
+            break;
+        }
+
+        default: unreachable(cast.spell_id);
+    }
+}
+
 function play_unit_target_spell_delta(main_player: Main_Player, caster: Battle_Player, target: Battle_Unit, cast: Delta_Use_Unit_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.buyback: {
@@ -2133,8 +2160,17 @@ function change_health(main_player: Main_Player, source: Battle_Unit, target: Ba
 
         try_play_random_sound_for_hero(source, sounds => sounds.kill);
 
-        target.dead = true;
+        if (target.supertype == Unit_Supertype.minion && target.type == Minion_Type.pocket_tower) {
+            target.handle.AddNoDraw();
+
+            fx("particles/econ/world/towers/rock_golem/radiant_rock_golem_destruction.vpcf")
+                .with_vector_value(0, target.handle.GetAbsOrigin())
+                .with_forward_vector(1, target.handle.GetForwardVector())
+                .release();
+        }
+
         target.handle.ForceKill(false);
+        target.dead = true;
     }
 }
 
@@ -2238,6 +2274,17 @@ function add_activity_translation(target: Battle_Unit, translation: Activity_Tra
     };
 
     target.handle.AddNewModifier(target.handle, undefined, "Modifier_Activity_Translation", parameters);
+}
+
+function add_activity_override(target: Handle_Provider, activity: GameActivity_t, duration?: number) {
+    target.handle.RemoveModifierByName("Modifier_Activity_Override");
+
+    const parameters: Modifier_Activity_Override_Params = {
+        activity: activity,
+        duration: duration
+    };
+
+    target.handle.AddNewModifier(target.handle, undefined, "Modifier_Activity_Override", parameters);
 }
 
 function play_delta(main_player: Main_Player, delta: Delta, head: number) {
@@ -2518,6 +2565,12 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
 
         case Delta_Type.use_no_target_spell: {
             play_no_target_spell_delta(main_player, delta);
+
+            break;
+        }
+
+        case Delta_Type.use_ground_target_spell: {
+            play_ground_target_spell_delta(main_player, delta);
 
             break;
         }
