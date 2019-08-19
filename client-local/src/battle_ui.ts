@@ -2717,8 +2717,9 @@ function update_hand() {
             continue;
         }
 
-        const y = (selection.type != Selection_Type.card && card.hovered) ? hand_base_y - 175 : hand_base_y ;
-        card.panel.style.position = `${hand_base_x + index * 100}px ${y}px 0`;
+        const this_card_hovered = (selection.type != Selection_Type.card && card.hovered);
+        const y = this_card_hovered ? hand_base_y - 175 : hand_base_y ;
+        card.panel.style.position = `${hand_base_x + index * 100 - (this_card_hovered ? 50 : 0)}px ${y}px 0`;
 
         if (selection.type != Selection_Type.card && GameUI.IsMouseDown(0) && card.panel.BHasHoverStyle()) {
             (() => {
