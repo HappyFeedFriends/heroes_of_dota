@@ -29,9 +29,13 @@ declare const enum Ability_Id {
     dark_seer_surge = 29,
     dark_seer_vacuum = 30,
 
+    pocket_tower_attack = 1000,
+    deployment_zone = 1001,
+
     sniper_shrapnel = 99
 }
 
+// TODO all of these will need to be renumbered
 declare const enum Modifier_Id {
     rune_double_damage = -2,
     rune_haste = -1,
@@ -78,6 +82,7 @@ type Ability_Definition_Active_Base = {
 }
 
 type Ability_Definition_Passive_Base = {
+    type: Ability_Type.passive
     available_since_level: number
 }
 
@@ -134,7 +139,6 @@ type Ability_Luna_Lucent_Beam = Ability_Definition_Active_Base & {
 
 type Ability_Luna_Moon_Glaive = Ability_Definition_Passive_Base & {
     id: Ability_Id.luna_moon_glaive
-    type: Ability_Type.passive
 }
 
 type Ability_Luna_Eclipse = Ability_Definition_Active_Base & {
@@ -259,9 +263,14 @@ type Ability_Dark_Seer_Vacuum = Ability_Definition_Active_Base & {
     type: Ability_Type.target_ground
 }
 
-type Ability_Sniper_Shrapnel = Ability_Definition_Active_Base & {
-    id: Ability_Id.sniper_shrapnel
-    type: Ability_Type.target_ground
+type Ability_Pocket_Tower_Attack = Ability_Definition_Passive_Base & {
+    id: Ability_Id.pocket_tower_attack
+    targeting: Ability_Targeting
+}
+
+type Ability_Deployment_Zone = Ability_Definition_Passive_Base & {
+    id: Ability_Id.deployment_zone
+    radius: number
 }
 
 type Ability_Ground_Target =
@@ -301,14 +310,17 @@ type Ability_No_Target =
 type Ability_Definition_Active = Ability_Ground_Target | Ability_Unit_Target | Ability_No_Target
 
 type Ability_Definition_Passive =
-    Ability_Luna_Moon_Glaive
+    Ability_Luna_Moon_Glaive |
+    Ability_Pocket_Tower_Attack |
+    Ability_Deployment_Zone
 
 type Ability_Definition = Ability_Definition_Active | Ability_Definition_Passive
 
 type Ability_Effect =
     Ability_Effect_Luna_Moon_Glaive |
     Ability_Effect_Mirana_Starfall |
-    Ability_Effect_Dark_Seer_Ion_Shell
+    Ability_Effect_Dark_Seer_Ion_Shell |
+    Ability_Effect_Pocket_Tower_Attack
 
 type Delta_Ground_Target_Ability =
     Delta_Ability_Basic_Attack |
@@ -472,6 +484,13 @@ type Ability_Effect_Dark_Seer_Ion_Shell = {
     ability_id: Ability_Id.dark_seer_ion_shell
     source_unit_id: number
     targets: Unit_Health_Change[]
+}
+
+type Ability_Effect_Pocket_Tower_Attack = {
+    ability_id: Ability_Id.pocket_tower_attack
+    source_unit_id: number
+    target_unit_id: number
+    damage_dealt: Health_Change
 }
 
 type Delta_Ability_Luna_Eclipse = Delta_Use_No_Target_Ability_Base & {

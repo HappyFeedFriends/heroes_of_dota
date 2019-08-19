@@ -1106,7 +1106,7 @@ function update_grid_visuals_for_card_selection(selection: Grid_Selection_Card, 
         }
 
         if (selection.card.type == Card_Type.hero || selection.card.type == Card_Type.existing_hero) {
-            if (is_point_in_deployment_zone(cell.position, battle.this_player)) {
+            if (is_point_in_deployment_zone(battle, cell.position, battle.this_player)) {
                 cell_index_to_zone_highlight[index] = true;
             }
         }
@@ -1578,6 +1578,7 @@ function move_order_particle(world_position: XYZ) {
 
 function make_battle_snapshot(): Battle_Snapshot {
     return {
+        has_started: battle.has_started,
         players: battle.players.map(player => ({
             id: player.id,
             gold: player.gold
@@ -1751,6 +1752,10 @@ function get_ability_tooltip(a: Ability): string {
         case Ability_Id.dark_seer_ion_shell: return `Apply a shield which deals ${a.damage_per_turn} damage per turn to the targets around the carrier for ${a.duration} turns`;
         case Ability_Id.dark_seer_surge: return `Give target ${a.move_points_bonus} move points for their turn`;
         case Ability_Id.dark_seer_vacuum: return `Pull all targets in the area towards point`;
+
+        // TODO these are not visible right now, but might be later
+        case Ability_Id.pocket_tower_attack: return "";
+        case Ability_Id.deployment_zone: return "";
     }
 }
 
@@ -1786,6 +1791,10 @@ function get_ability_icon(ability_id: Ability_Id): string {
         case Ability_Id.dark_seer_ion_shell: return "dark_seer_ion_shell";
         case Ability_Id.dark_seer_surge: return "dark_seer_surge";
         case Ability_Id.dark_seer_vacuum: return "dark_seer_vacuum";
+
+        // TODO these are not visible right now, but might be later
+        case Ability_Id.pocket_tower_attack: return "";
+        case Ability_Id.deployment_zone: return "";
     }
 }
 

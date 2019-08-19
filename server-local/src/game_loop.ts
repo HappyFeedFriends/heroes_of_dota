@@ -14,6 +14,10 @@ function print_table(a: object, indent: string = "") {
     }
 }
 
+function from_client_bool(source: boolean): source is true {
+    return source as any as number == 1;
+}
+
 // Panorama arrays are passed as dictionaries with string indices
 function from_client_array<T>(array: Array<T>): Array<T> {
     let [index, value] = next(array, undefined);
@@ -377,6 +381,7 @@ function game_loop() {
 
     on_custom_event_async<Fast_Forward_Event>("fast_forward", event => {
         fast_forward_from_snapshot(main_player, {
+            has_started: from_client_bool(event.has_started),
             players: from_client_array(event.players),
             units: from_client_array(event.units),
             runes: from_client_array(event.runes),

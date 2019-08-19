@@ -424,10 +424,19 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
     switch (minion_type) {
         case Minion_Type.pocket_tower: {
             return {
-                attack_damage: 5,
+                attack_damage: 2,
                 health: 8,
                 move_points: 0,
-                abilities: [],
+                abilities: [
+                    passive_ability<Ability_Pocket_Tower_Attack>({
+                        available_since_level: 0,
+                        targeting: target_rect_area_around_caster(2)
+                    }),
+                    passive_ability<Ability_Deployment_Zone>({
+                        available_since_level: 0,
+                        radius: 1
+                    }),
+                ],
                 ability_bench: []
             }
         }

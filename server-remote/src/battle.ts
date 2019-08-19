@@ -309,6 +309,10 @@ function perform_spell_cast_ground_target(battle: Battle_Record, player: Battle_
     }
 }
 
+function calculate_basic_attack_damage_to_target(source: Unit, target: Unit) {
+    return Math.max(0, source.attack_damage + source.attack_bonus - target.armor);
+}
+
 function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: Ability_Ground_Target, target: XY): Delta_Ground_Target_Ability {
     const base: Delta_Ground_Target_Ability_Base = {
         type: Delta_Type.use_ground_target_ability,
@@ -316,16 +320,12 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
         target_position: target,
     };
 
-    function calculate_basic_attack_damage_to_target(target: Unit) {
-        return Math.max(0, unit.attack_damage + unit.attack_bonus - target.armor);
-    }
-
     switch (ability.id) {
         case Ability_Id.basic_attack: {
             const scan = scan_for_unit_in_direction(battle, unit.position, target, ability.targeting.line_length);
 
             if (scan.hit) {
-                const damage = calculate_basic_attack_damage_to_target(scan.unit);
+                const damage = calculate_basic_attack_damage_to_target(unit, scan.unit);
 
                 return {
                     ...base,
@@ -419,7 +419,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
 
         case Ability_Id.dragon_knight_elder_dragon_form_attack: {
             const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting)
-                .map(target => unit_health_change(target, -calculate_basic_attack_damage_to_target(target)));
+                .map(target => unit_health_change(target, -calculate_basic_attack_damage_to_target(unit, target)));
 
             return {
                 ...base,
@@ -1460,9 +1460,10 @@ function server_change_health(battle: Battle_Record, source: Source, target: Uni
     return killed;
 }
 
-function resolve_end_turn_items_and_modifiers(battle: Battle_Record) {
+function resolve_end_turn_effects(battle: Battle_Record) {
     const item_to_units = new Map<Item_Id, [Hero, Item][]>();
     const modifiers_to_units = new Map<Modifier_Id, [Unit, Modifier][]>();
+    const ability_to_units = new Map<Ability_Id, [Unit, Ability][]>();
 
     for (const unit of battle.units) {
         if (unit.supertype == Unit_Supertype.hero) {
@@ -1490,14 +1491,36 @@ function resolve_end_turn_items_and_modifiers(battle: Battle_Record) {
 
             modifier_units.push([unit, modifier]);
         }
+
+        for (const ability of unit.abilities) {
+            let ability_units = ability_to_units.get(ability.id);
+
+            if (!ability_units) {
+                ability_units = [];
+
+                ability_to_units.set(ability.id, ability_units);
+            }
+
+            ability_units.push([unit, ability]);
+        }
     }
 
-    function for_heroes_with_item(item_id: Item_Id, action: (hero: Hero, item: Item) => void) {
+    function for_heroes_with_item<T extends Item>(item_id: T["id"], action: (hero: Hero, item: T) => void) {
         const item_units = item_to_units.get(item_id);
 
         if (item_units) {
             for (const [hero, item] of item_units) {
-                action(hero, item);
+                action(hero, item as T);
+            }
+        }
+    }
+
+    function for_heroes_with_ability<T extends Ability>(ability_id: T["id"], action: (unit: Unit, ability: T) => void) {
+        const ability_units = ability_to_units.get(ability_id);
+
+        if (ability_units) {
+            for (const [unit, ability] of ability_units) {
+                action(unit, ability as T);
             }
         }
     }
@@ -1513,26 +1536,22 @@ function resolve_end_turn_items_and_modifiers(battle: Battle_Record) {
     }
 
     // I don't know how to get rid of the ifs
-    for_heroes_with_item(Item_Id.heart_of_tarrasque, (hero, item) => {
-        if (item.id == Item_Id.heart_of_tarrasque) {
-            defer_delta_by_unit(battle, hero, () => ({
-                type: Delta_Type.health_change,
-                source_unit_id: hero.id,
-                target_unit_id: hero.id,
-                ...health_change(hero, item.regeneration_per_turn)
-            }));
-        }
+    for_heroes_with_item<Item_Heart_Of_Tarrasque>(Item_Id.heart_of_tarrasque, (hero, item) => {
+        defer_delta_by_unit(battle, hero, () => ({
+            type: Delta_Type.health_change,
+            source_unit_id: hero.id,
+            target_unit_id: hero.id,
+            ...health_change(hero, item.regeneration_per_turn)
+        }));
     });
 
-    for_heroes_with_item(Item_Id.armlet, (hero, item) => {
-        if (item.id == Item_Id.armlet) {
-            defer_delta_by_unit(battle, hero, () => ({
-                type: Delta_Type.health_change,
-                source_unit_id: hero.id,
-                target_unit_id: hero.id,
-                ...health_change(hero, -Math.min(item.health_loss_per_turn, hero.health - 1))
-            }));
-        }
+    for_heroes_with_item<Item_Armlet>(Item_Id.armlet, (hero, item) => {
+        defer_delta_by_unit(battle, hero, () => ({
+            type: Delta_Type.health_change,
+            source_unit_id: hero.id,
+            target_unit_id: hero.id,
+            ...health_change(hero, -Math.min(item.health_loss_per_turn, hero.health - 1))
+        }));
     });
 
     for_units_with_modifier(Modifier_Id.dark_seer_ion_shell, (unit, modifier) => {
@@ -1557,6 +1576,27 @@ function resolve_end_turn_items_and_modifiers(battle: Battle_Record) {
             }
         });
     });
+
+    for_heroes_with_ability<Ability_Pocket_Tower_Attack>(Ability_Id.pocket_tower_attack, (unit, ability) => {
+        defer_delta_by_unit(battle, unit, () => {
+            if (is_unit_disarmed(unit)) return;
+
+            const target = random_in_array(
+                query_units_for_no_target_ability(battle, unit, ability.targeting).filter(target => !are_units_allies(unit, target))
+            );
+
+            if (!target) return;
+
+            const damage = calculate_basic_attack_damage_to_target(unit, target);
+
+            return apply_ability_effect_delta({
+                ability_id: Ability_Id.pocket_tower_attack,
+                source_unit_id: unit.id,
+                target_unit_id: target.id,
+                damage_dealt: health_change(target, -damage)
+            });
+        });
+    });
 }
 
 function server_end_turn(battle: Battle_Record) {
@@ -1573,7 +1613,7 @@ function server_end_turn(battle: Battle_Record) {
         }
     }
 
-    resolve_end_turn_items_and_modifiers(battle);
+    resolve_end_turn_effects(battle);
 
     defer_delta(battle, () => ({
         type: Delta_Type.start_turn,

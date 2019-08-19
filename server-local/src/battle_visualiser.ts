@@ -335,6 +335,21 @@ function spawn_minion_for_battle(type: Minion_Type, unit_id: number, owner_id: n
     });
 }
 
+function tracking_projectile_from_point_to_unit(world_point: Vector, target: Battle_Unit, particle_path: string, speed: number) {
+    const in_attach = "attach_hitloc";
+    const particle = fx(particle_path)
+        .with_vector_value(0, world_point)
+        .to_unit_attach_point(1, target, in_attach)
+        .with_point_value(2, speed)
+        .to_unit_attach_point(3, target, in_attach);
+
+    const world_distance = (world_point - attachment_world_origin(target.handle, in_attach) as Vector).Length();
+
+    wait(world_distance / speed);
+
+    particle.destroy_and_release(false);
+}
+
 function tracking_projectile_to_unit(source: Battle_Unit, target: Battle_Unit, particle_path: string, speed: number, out_attach: string = "attach_attack1") {
     const in_attach = "attach_hitloc";
     const particle = fx(particle_path)
@@ -489,7 +504,7 @@ function filter_and_map_existing_units<T extends { target_unit_id: number }>(arr
 
 function pudge_hook(main_player: Main_Player, pudge: Battle_Unit, cast: Delta_Ability_Pudge_Hook) {
     function is_hook_hit(cast: Pudge_Hook_Hit | Line_Ability_Miss): cast is Pudge_Hook_Hit {
-        return cast.hit as any as number == 1; // Panorama passes booleans this way, meh
+        return from_client_bool(cast.hit); // @PanoramaBool
     }
 
     const target = cast.target_position;
@@ -819,7 +834,7 @@ function perform_basic_attack(main_player: Main_Player, unit: Battle_Unit, cast:
     const ranged_attack_spec = get_ranged_attack_spec(unit);
 
     function is_attack_hit(cast: Basic_Attack_Hit | Line_Ability_Miss): cast is Basic_Attack_Hit {
-        return cast.hit as any as number == 1; // Panorama passes booleans this way, meh
+        return from_client_bool(cast.hit); // @PanoramaBool
     }
 
     if (ranged_attack_spec) {
@@ -1065,7 +1080,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Battle
 
         case Ability_Id.mirana_arrow: {
             function is_arrow_hit(cast: Mirana_Arrow_Hit | Line_Ability_Miss): cast is Mirana_Arrow_Hit {
-                return cast.hit as any as number == 1; // Panorama passes booleans this way, meh
+                return from_client_bool(cast.hit); // @PanoramaBool
             }
 
             unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_2);
@@ -1703,7 +1718,7 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Battle_Uni
 
         case Ability_Id.skywrath_concussive_shot: {
             function is_shot_hit(cast: Concussive_Shot_Hit | Concussive_Shot_Miss): cast is Concussive_Shot_Hit {
-                return cast.hit as any as number == 1; // Panorama passes booleans this way, meh
+                return from_client_bool(cast.hit); // @PanoramaBool
             }
 
             const projectile_fx = "particles/units/heroes/hero_skywrath_mage/skywrath_mage_concussive_shot.vpcf";
@@ -1801,7 +1816,21 @@ function play_no_target_spell_delta(main_player: Main_Player, cast: Delta_Use_No
 function play_ground_target_spell_delta(main_player: Main_Player, cast: Delta_Use_Ground_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.pocket_tower: {
-            battle.units.push(spawn_minion_for_battle(cast.new_unit_type, cast.new_unit_id, cast.player_id, cast.at, { x: 0, y: -1 }));
+            fx("particles/hero_spawn.vpcf")
+                .to_location(0, cast.at)
+                .release();
+
+            wait(0.25);
+
+            shake_screen(cast.at, Shake.medium);
+
+            const tower = spawn_minion_for_battle(cast.new_unit_type, cast.new_unit_id, cast.player_id, cast.at, { x: 0, y: -1 });
+
+            unit_emit_sound(tower, "hero_spawn");
+            show_damage_effect_on_target(tower);
+            fx_by_unit("particles/dev/library/base_dust_hit.vpcf", tower).release();
+
+            battle.units.push(tower);
 
             break;
         }
@@ -1905,6 +1934,29 @@ function play_ability_effect_delta(main_player: Main_Player, effect: Ability_Eff
                 }
 
                 wait(1);
+            }
+
+            break;
+        }
+
+        case Ability_Id.pocket_tower_attack: {
+            const source = find_unit_by_id(effect.source_unit_id);
+            const target = find_unit_by_id(effect.target_unit_id);
+
+            if (source && target) {
+                turn_unit_towards_target(source, target.position);
+                add_activity_override(source, GameActivity_t.ACT_DOTA_CUSTOM_TOWER_ATTACK);
+
+                wait(0.5);
+
+                const attack_particle = "particles/econ/world/towers/rock_golem/radiant_rock_golem_attack.vpcf";
+
+                unit_emit_sound(source, "pocket_tower_attack");
+                tracking_projectile_from_point_to_unit(source.handle.GetAbsOrigin() + Vector(0, 0, 200) as Vector, target, attack_particle, 1600);
+                shake_screen(target.position, Shake.medium);
+                add_activity_override(source, GameActivity_t.ACT_DOTA_CUSTOM_TOWER_IDLE);
+                change_health(main_player, source, target, effect.damage_dealt);
+                unit_emit_sound(target, "Tower.HeroImpact");
             }
 
             break;
@@ -2131,9 +2183,14 @@ function change_health(main_player: Main_Player, source: Battle_Unit, target: Ba
     if (value_delta > 0) {
         number_particle(value_delta,100, 255, 50);
     } else if (value_delta < 0) {
-        target.handle.AddNewModifier(target.handle, undefined, "Modifier_Damage_Effect", { duration: 0.2 });
+        show_damage_effect_on_target(target);
 
-        try_play_random_sound_for_hero(target, sounds => sounds.pain);
+        // TODO unify this into a singular sound system for all unit types
+        if (target.supertype == Unit_Supertype.minion && target.type == Minion_Type.pocket_tower) {
+            unit_emit_sound(target, "pocket_tower_pain");
+        } else {
+            try_play_random_sound_for_hero(target, sounds => sounds.pain);
+        }
 
         number_particle(-value_delta, 250, 70, 70);
     }
@@ -2162,6 +2219,8 @@ function change_health(main_player: Main_Player, source: Battle_Unit, target: Ba
 
         if (target.supertype == Unit_Supertype.minion && target.type == Minion_Type.pocket_tower) {
             target.handle.AddNoDraw();
+
+            unit_emit_sound(target, "Building_RadiantTower.Destruction");
 
             fx("particles/econ/world/towers/rock_golem/radiant_rock_golem_destruction.vpcf")
                 .with_vector_value(0, target.handle.GetAbsOrigin())
@@ -2277,7 +2336,11 @@ function add_activity_translation(target: Battle_Unit, translation: Activity_Tra
 }
 
 function add_activity_override(target: Handle_Provider, activity: GameActivity_t, duration?: number) {
-    target.handle.RemoveModifierByName("Modifier_Activity_Override");
+    if (target.handle.HasModifier("Modifier_Activity_Override")) {
+        target.handle.RemoveModifierByName("Modifier_Activity_Override");
+
+        wait_one_frame();
+    }
 
     const parameters: Modifier_Activity_Override_Params = {
         activity: activity,
@@ -2285,6 +2348,10 @@ function add_activity_override(target: Handle_Provider, activity: GameActivity_t
     };
 
     target.handle.AddNewModifier(target.handle, undefined, "Modifier_Activity_Override", parameters);
+}
+
+function show_damage_effect_on_target(target: Handle_Provider) {
+    target.handle.AddNewModifier(target.handle, undefined, "Modifier_Damage_Effect", { duration: 0.2 });
 }
 
 function play_delta(main_player: Main_Player, delta: Delta, head: number) {
@@ -2317,9 +2384,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             }
 
             unit_emit_sound(unit, "hero_spawn");
-
-            unit.handle.AddNewModifier(unit.handle, undefined, "Modifier_Damage_Effect", { duration: 0.2 });
-
+            show_damage_effect_on_target(unit);
             fx_by_unit("particles/dev/library/base_dust_hit.vpcf", unit).release();
 
             update_player_state_net_table(main_player);
@@ -2335,7 +2400,8 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
 
         case Delta_Type.creep_spawn: {
             const unit = spawn_creep_for_battle(delta.unit_id, creep_definition(), delta.at_position, delta.facing);
-            unit.handle.AddNewModifier(unit.handle, undefined, "Modifier_Damage_Effect", { duration: 0.2 });
+
+            show_damage_effect_on_target(unit);
 
             battle.units.push(unit);
 
@@ -2846,6 +2912,8 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
             case Unit_Supertype.minion: return minion_type_to_dota_unit_name(snapshot.type);
         }
     }
+
+    battle.has_started = snapshot.has_started;
 
     battle.players = snapshot.players.map(player => ({
         id: player.id,

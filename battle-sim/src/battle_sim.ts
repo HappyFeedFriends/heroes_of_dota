@@ -280,8 +280,29 @@ function is_point_in_shop_range(xy: XY, shop: Shop) {
     return rectangular(xy, shop.position) <= shop_range;
 }
 
-function is_point_in_deployment_zone(xy: XY, player: Battle_Player) {
+function is_point_in_deployment_zone(battle: Battle, xy: XY, player: Battle_Player) {
     const zone = player.deployment_zone;
+
+    for (const unit of battle.units) {
+        const unit_x = unit.position.x;
+        const unit_y = unit.position.y;
+
+        for (const ability of unit.abilities) {
+            if (ability.id == Ability_Id.deployment_zone) {
+                const radius = ability.radius;
+
+                const in_zone =
+                    xy.x >= unit_x - radius &&
+                    xy.y >= unit_y - radius &&
+                    xy.x <= unit_x + radius &&
+                    xy.y <= unit_y + radius;
+
+                if (in_zone) {
+                    return true;
+                }
+            }
+        }
+    }
 
     return (
         xy.x >= zone.min_x &&
@@ -903,6 +924,17 @@ function collapse_ability_effect(battle: Battle, effect: Ability_Effect) {
 
             if (source) {
                 change_health_multiple(battle, unit_source(source, effect.ability_id), effect.targets);
+            }
+
+            break;
+        }
+
+        case Ability_Id.pocket_tower_attack: {
+            const source = find_unit_by_id(battle, effect.source_unit_id);
+            const target = find_unit_by_id(battle, effect.target_unit_id);
+
+            if (source && target) {
+                change_health(battle, unit_source(source, effect.ability_id), target, effect.damage_dealt);
             }
 
             break;

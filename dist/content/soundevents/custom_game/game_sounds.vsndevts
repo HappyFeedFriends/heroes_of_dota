@@ -113,6 +113,32 @@
         event_type = 1
     }
 
+    pocket_tower_attack = {
+        type = "dota_update_default"
+        vsnd_files =
+        [
+            "sounds/weapons/towers/attack_golem.vsnd"
+        ]
+        pitch_rand_min = -0.05
+        pitch_rand_max = 0.05
+        soundlevel = 95
+        event_type = 1
+    }
+
+    pocket_tower_pain = {
+        type = "dota_update_default"
+        vsnd_files =
+        [
+            "sounds/weapons/towers/golem_layer01.vsnd",
+            "sounds/weapons/towers/golem_layer02.vsnd",
+            "sounds/weapons/towers/golem_layer03.vsnd"
+        ]
+        pitch_rand_min = -0.05
+        pitch_rand_max = 0.05
+        soundlevel = 95
+        event_type = 1
+    }
+
     vo_luna_eclipse = {
         type = "dota_update_vo_switch"
         vsnd_files =

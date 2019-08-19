@@ -177,6 +177,7 @@ type Tree_Snapshot = {
 }
 
 type Battle_Snapshot = {
+    has_started: boolean
     players: Player_Snapshot[]
     units: Unit_Snapshot[]
     runes: Rune_Snapshot[]
