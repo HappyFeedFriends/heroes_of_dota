@@ -866,6 +866,15 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
             }
         }
 
+        case Item_Id.blades_of_attack: {
+            return {
+                type: Delta_Type.equip_item,
+                unit_id: hero.id,
+                item_id: item.id,
+                modifier: new_modifier(battle, Modifier_Id.item_divine_rapier, [Modifier_Field.attack_bonus, item.damage_bonus])
+            }
+        }
+
         case Item_Id.divine_rapier: {
             return {
                 type: Delta_Type.equip_item,

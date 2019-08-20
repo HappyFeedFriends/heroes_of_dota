@@ -2066,6 +2066,11 @@ function play_item_equip_delta(main_player: Main_Player, hero: Hero, delta: Delt
             break;
         }
 
+        case Item_Id.blades_of_attack: {
+            apply_modifier(main_player, hero, delta.modifier);
+            break;
+        }
+
         case Item_Id.divine_rapier: {
             apply_modifier(main_player, hero, delta.modifier);
             break;

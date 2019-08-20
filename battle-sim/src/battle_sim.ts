@@ -1300,6 +1300,11 @@ function collapse_item_equip(battle: Battle, hero: Hero, delta: Delta_Equip_Item
             break;
         }
 
+        case Item_Id.blades_of_attack: {
+            apply_modifier(battle, source, hero, delta.modifier);
+            break;
+        }
+
         case Item_Id.assault_cuirass: {
             apply_modifier(battle, source, hero, delta.modifier);
             break;

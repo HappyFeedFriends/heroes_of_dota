@@ -58,5 +58,11 @@ function item_id_to_item(item_id: Item_Id): Item {
             move_points_bonus: 1,
             gold_cost: 2
         };
+
+        case Item_Id.blades_of_attack: return {
+            id: item_id,
+            damage_bonus: 2,
+            gold_cost: 2
+        };
     }
 }

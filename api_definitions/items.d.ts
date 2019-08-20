@@ -8,7 +8,8 @@ declare const enum Item_Id {
     refresher_shard = 6,
     mask_of_madness = 7,
     armlet = 8,
-    boots_of_speed = 9
+    boots_of_speed = 9,
+    blades_of_attack = 10
 }
 
 type Item =
@@ -21,7 +22,8 @@ type Item =
     Item_Refresher_Shard |
     Item_Mask_Of_Madness |
     Item_Armlet |
-    Item_Boots_Of_Speed
+    Item_Boots_Of_Speed |
+    Item_Blades_Of_Attack
 
 type Item_Base = {
     gold_cost: number
@@ -76,6 +78,11 @@ type Item_Boots_Of_Speed = Item_Base & {
     move_points_bonus: number
 }
 
+type Item_Blades_Of_Attack = Item_Base & {
+    id: Item_Id.blades_of_attack
+    damage_bonus: number
+}
+
 type Delta_Equip_Item_Base = {
     type: Delta_Type.equip_item
     unit_id: number
@@ -90,7 +97,8 @@ type Delta_Equip_Item_With_Modifier = Delta_Equip_Item_Base & {
         Item_Id.assault_cuirass |
         Item_Id.mask_of_madness |
         Item_Id.armlet |
-        Item_Id.boots_of_speed
+        Item_Id.boots_of_speed |
+        Item_Id.blades_of_attack
 
     modifier: Modifier_Application
 }
