@@ -102,9 +102,11 @@ type Modifier_Tied_Fx = {
 }
 
 type Started_Gesture = {
-    unit: Unit
-    activity: GameActivity_t
     fade(): void
+}
+
+type Started_Sound = {
+    stop(): void
 }
 
 declare let battle: Battle;
@@ -179,6 +181,20 @@ function shake_screen(at: XY, strength: Shake) {
         }
 
         default: unreachable(strength);
+    }
+}
+
+function unit_start_gesture(unit: Unit, gesture: GameActivity_t, playback_rate?: number): Started_Gesture {
+    if (playback_rate != undefined) {
+        unit.handle.StartGestureWithPlaybackRate(gesture, playback_rate);
+    } else {
+        unit.handle.StartGesture(gesture);
+    }
+
+    return {
+        fade(): void {
+            unit.handle.FadeGesture(gesture)
+        }
     }
 }
 
@@ -408,8 +424,7 @@ function do_each_frame_for(time: number, action: (progress: number) => void) {
 function toss_target_up(target: Unit) {
     const toss_time = 0.4;
     const start_origin = target.handle.GetAbsOrigin();
-
-    target.handle.StartGesture(GameActivity_t.ACT_DOTA_FLAIL);
+    const gesture = unit_start_gesture(target, GameActivity_t.ACT_DOTA_FLAIL);
 
     do_each_frame_for(toss_time, progress => {
         const current_height = Math.sin(progress * Math.PI) * 260;
@@ -417,7 +432,7 @@ function toss_target_up(target: Unit) {
         target.handle.SetAbsOrigin(start_origin + Vector(0, 0, current_height) as Vector);
     });
 
-    target.handle.FadeGesture(GameActivity_t.ACT_DOTA_FLAIL);
+    gesture.fade();
 }
 
 function linear_projectile_with_targets<T>(
@@ -536,11 +551,9 @@ function pudge_hook(main_player: Main_Player, pudge: Unit, cast: Delta_Ability_P
 
     turn_unit_towards_target(pudge, target);
 
-    const chain_sound = "Hero_Pudge.AttackHookExtend";
     const hook_wearable = pudge.handle.GetTogglableWearable(DOTASlotType_t.DOTA_LOADOUT_TYPE_WEAPON);
-
-    pudge.handle.StartGesture(GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_1);
-    pudge.handle.EmitSound(chain_sound);
+    const pudge_gesture = unit_start_gesture(pudge, GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_1);
+    const chain_sound = unit_emit_sound(pudge, "Hero_Pudge.AttackHookExtend");
 
     hook_wearable.AddEffects(Effects.EF_NODRAW);
 
@@ -569,12 +582,12 @@ function pudge_hook(main_player: Main_Player, pudge: Unit, cast: Delta_Ability_P
         wait(time_to_travel);
         change_health(main_player, pudge, target, cast.result.damage_dealt);
 
-        pudge.handle.StopSound(chain_sound);
+        chain_sound.stop();
 
         unit_emit_sound(target, "Hero_Pudge.AttackHookImpact");
-        unit_emit_sound(target, chain_sound);
 
-        target.handle.StartGesture(GameActivity_t.ACT_DOTA_FLAIL);
+        const target_chain_sound = unit_emit_sound(target, "Hero_Pudge.AttackHookExtend");
+        const target_flail = unit_start_gesture(target, GameActivity_t.ACT_DOTA_FLAIL);
 
         fx("particles/units/heroes/hero_pudge/pudge_meathook_impact.vpcf")
             .to_unit_attach_point(0, target, "attach_hitloc")
@@ -592,8 +605,8 @@ function pudge_hook(main_player: Main_Player, pudge: Unit, cast: Delta_Ability_P
             target.handle.SetAbsOrigin(travel_position);
         });
 
-        target.handle.StopSound(chain_sound);
-        target.handle.FadeGesture(GameActivity_t.ACT_DOTA_FLAIL);
+        target_chain_sound.stop();
+        target_flail.fade();
 
         target.position = cast.result.move_target_to;
     } else {
@@ -601,14 +614,15 @@ function pudge_hook(main_player: Main_Player, pudge: Unit, cast: Delta_Ability_P
 
         chain.with_vector_value(1, pudge_origin);
 
-        pudge.handle.StopSound(chain_sound);
+        chain_sound.stop();
+
         EmitSoundOnLocationWithCaster(battle_position_to_world_position_center(travel_target), "Hero_Pudge.AttackHookRetractStop", pudge.handle);
 
         wait(time_to_travel);
     }
 
     hook_wearable.RemoveEffects(Effects.EF_NODRAW);
-    pudge.handle.FadeGesture(GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_1);
+    pudge_gesture.fade();
 
     chain.release();
 }
@@ -625,7 +639,7 @@ function starfall_drop_star_on_unit(main_player: Main_Player, caster: Unit, targ
 }
 
 function tide_ravage(main_player: Main_Player, caster: Unit, cast: Delta_Ability_Tide_Ravage) {
-    caster.handle.StartGesture(GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
+    const caster_gesture = unit_start_gesture(caster, GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
 
     wait(0.1);
 
@@ -695,7 +709,7 @@ function tide_ravage(main_player: Main_Player, caster: Unit, cast: Delta_Ability
         wait(particle_delay);
     }
 
-    caster.handle.FadeGesture(GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
+    caster_gesture.fade();
 
     wait_for_all_forks(forks);
 }
@@ -913,7 +927,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
         }
 
         case Ability_Id.skywrath_mystic_flare: {
-            unit.handle.StartGesture(GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
+            const caster_gesture = unit_start_gesture(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
 
             unit_emit_sound(unit, "vo_skywrath_mage_mystic_flare");
             unit_emit_sound(unit, "Hero_SkywrathMage.MysticFlare.Cast");
@@ -970,8 +984,8 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
             }
 
             StopSoundOn("Hero_SkywrathMage.MysticFlare", unit.handle);
-            unit.handle.FadeGesture(GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
 
+            caster_gesture.fade();
             spell_fx.destroy_and_release(false);
 
             break;
@@ -1116,10 +1130,8 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
                 .with_vector_value(1, direction * travel_speed as Vector)
                 .with_forward_vector(0, unit.handle.GetForwardVector());
 
-            const loop_sound = "Hero_Mirana.Arrow";
-
             unit_emit_sound(unit, "Hero_Mirana.ArrowCast");
-            unit_emit_sound(unit, loop_sound);
+            const loop_sound = unit_emit_sound(unit, "Hero_Mirana.Arrow");
 
             wait(time_to_travel);
 
@@ -1134,8 +1146,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
             }
 
             // TODO :VoiceOver hit/miss voicelines
-
-            unit_stop_sound(unit, loop_sound);
+            loop_sound.stop();
 
             particle.destroy_and_release(false);
 
@@ -1158,7 +1169,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
 
             unit_emit_sound(unit, "Ability.Leap");
 
-            unit.handle.StartGestureWithPlaybackRate(GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_3, animation_speed);
+            const leap = unit_start_gesture(unit, GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_3, animation_speed);
 
             do_each_frame_for(time_to_travel, progress => {
                 const position_now = world_from + (direction * distance * progress) as Vector;
@@ -1167,10 +1178,11 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
                 unit.handle.SetAbsOrigin(position_now);
             });
 
-            unit.handle.FadeGesture(GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_3);
-            unit.handle.StartGesture(GameActivity_t.ACT_MIRANA_LEAP_END);
-            unit.handle.SetAbsOrigin(world_to);
+            leap.fade();
 
+            const leap_end = unit_start_gesture(unit, GameActivity_t.ACT_MIRANA_LEAP_END);
+
+            unit.handle.SetAbsOrigin(world_to);
             unit.position = cast.target_position;
 
             fx_by_unit("particles/dev/library/base_dust_hit.vpcf", unit).release();
@@ -1178,7 +1190,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
 
             wait(0.5);
 
-            unit.handle.FadeGesture(GameActivity_t.ACT_MIRANA_LEAP_END);
+            leap_end.fade();
 
             break;
         }
@@ -1358,8 +1370,14 @@ function apply_modifier(main_player: Main_Player, target: Unit, modifier: Modifi
     update_player_state_net_table(main_player);
 }
 
-function unit_emit_sound(unit: Unit, sound: string) {
+function unit_emit_sound(unit: Unit, sound: string): Started_Sound {
     unit.handle.EmitSound(sound);
+
+    return {
+        stop(): void {
+            unit.handle.StopSound(sound)
+        }
+    }
 }
 
 function unit_stop_sound(unit: Unit, sound: string) {
@@ -1395,14 +1413,14 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
                 }
             }
 
-            caster.handle.StartGesture(GameActivity_t.ACT_DOTA_CHANNEL_ABILITY_4);
+            const channel = unit_start_gesture(caster, GameActivity_t.ACT_DOTA_CHANNEL_ABILITY_4);
 
             wait_for_all_forks([
                 fork(() => loop_health_change(target, cast.damage_dealt)),
                 fork(() => loop_health_change(caster, cast.health_restored))
             ]);
 
-            caster.handle.FadeGesture(GameActivity_t.ACT_DOTA_CHANNEL_ABILITY_4);
+            channel.fade();
 
             break;
         }
@@ -1531,11 +1549,11 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
             target.handle.SetAbsOrigin(caster_world_position);
             caster.handle.SetAbsOrigin(target_world_position);
 
-            caster.handle.StartGesture(GameActivity_t.ACT_DOTA_CHANNEL_END_ABILITY_4);
+            const channel = unit_start_gesture(caster, GameActivity_t.ACT_DOTA_CHANNEL_END_ABILITY_4);
 
             wait(0.7);
 
-            caster.handle.FadeGesture(GameActivity_t.ACT_DOTA_CHANNEL_END_ABILITY_4);
+            channel.fade();
 
             break;
         }
@@ -1566,10 +1584,8 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
     switch (cast.ability_id) {
         case Ability_Id.pudge_rot: {
             const particle = fx_follow_unit("particles/units/heroes/hero_pudge/pudge_rot.vpcf", unit).with_point_value(1, 300, 1, 1);
-            const sound = "pudge_ability_rot";
-
-            unit.handle.StartGesture(GameActivity_t.ACT_DOTA_CAST_ABILITY_ROT);
-            unit.handle.EmitSound(sound);
+            const cast_gesture = unit_start_gesture(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_ROT);
+            const cast_sound = unit_emit_sound(unit, "pudge_ability_rot");
 
             wait(0.2);
 
@@ -1583,16 +1599,15 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
 
             wait(1.0);
 
-            unit.handle.StopSound(sound);
-            unit.handle.FadeGesture(GameActivity_t.ACT_DOTA_CAST_ABILITY_ROT);
-
+            cast_sound.stop();
+            cast_gesture.fade();
             particle.destroy_and_release(false);
 
             break;
         }
 
         case Ability_Id.tide_anchor_smash: {
-            unit.handle.StartGesture(GameActivity_t.ACT_DOTA_CAST_ABILITY_3);
+            const cast_gesture = unit_start_gesture(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_3);
 
             wait(0.2);
 
@@ -1613,7 +1628,7 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
 
             wait(1);
 
-            unit.handle.FadeGesture(GameActivity_t.ACT_DOTA_CAST_ABILITY_3);
+            cast_gesture.fade();
 
             break;
         }
@@ -1627,7 +1642,7 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
         case Ability_Id.luna_eclipse: {
             const day_time = GameRules.GetTimeOfDay();
 
-            unit.handle.StartGesture(GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
+            const cast_gesture = unit_start_gesture(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
 
             unit_emit_sound(unit, "vo_luna_eclipse");
             wait(0.6);
@@ -1713,7 +1728,7 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
                 }
             }
 
-            unit.handle.FadeGesture(GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
+            cast_gesture.fade();
 
             eclipse_fx.destroy_and_release(false);
 
@@ -1863,20 +1878,17 @@ function play_unit_target_spell_delta(main_player: Main_Player, caster: Battle_P
                 .with_vector_value(0, target.handle.GetAbsOrigin())
                 .with_point_value(2, 255, 255, 255);
 
-            target.handle.StartGesture(GameActivity_t.ACT_DOTA_TELEPORT);
-
-            unit_emit_sound(target, "Portal.Loop_Disappear");
+            const teleport_gesture = unit_start_gesture(target, GameActivity_t.ACT_DOTA_TELEPORT);
+            const loop_sound = unit_emit_sound(target, "Portal.Loop_Disappear");
 
             wait(3);
 
-            unit_stop_sound(target, "Portal.Loop_Disappear");
             unit_emit_sound(target, "Portal.Hero_Disappear");
-
-            target.handle.FadeGesture(GameActivity_t.ACT_DOTA_TELEPORT);
-
             change_health(main_player, target, target, cast.heal);
             apply_modifier(main_player, target, cast.modifier);
 
+            loop_sound.stop();
+            teleport_gesture.fade();
             particle.destroy_and_release(false);
 
             break;
