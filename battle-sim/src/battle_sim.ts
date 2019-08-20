@@ -1325,6 +1325,11 @@ function collapse_item_equip(battle: Battle, hero: Hero, delta: Delta_Equip_Item
             break
         }
 
+        case Item_Id.boots_of_speed: {
+            apply_modifier(battle, source, hero, delta.modifier);
+            break
+        }
+
         case Item_Id.mask_of_madness: {
             apply_modifier(battle, source, hero, delta.modifier);
             break

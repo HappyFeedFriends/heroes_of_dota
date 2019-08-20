@@ -52,5 +52,11 @@ function item_id_to_item(item_id: Item_Id): Item {
             health_loss_per_turn: 1,
             gold_cost: 8
         };
+
+        case Item_Id.boots_of_speed: return {
+            id: item_id,
+            move_points_bonus: 1,
+            gold_cost: 2
+        };
     }
 }

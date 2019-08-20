@@ -1225,6 +1225,7 @@ function get_item_icon_name(id: Item_Id): string {
         case Item_Id.refresher_shard: return "refresher_shard";
         case Item_Id.mask_of_madness: return "mask_of_madness";
         case Item_Id.armlet: return "armlet_active";
+        case Item_Id.boots_of_speed: return "boots";
     }
 }
 
@@ -1711,6 +1712,7 @@ function get_item_tooltip(i: Item): string {
     switch (i.id) {
         case Item_Id.assault_cuirass: return `+${i.armor_bonus} armor`;
         case Item_Id.boots_of_travel: return `+${i.move_points_bonus} move points`;
+        case Item_Id.boots_of_speed: return `+${i.move_points_bonus} move points`;
         case Item_Id.divine_rapier: return `+${i.damage_bonus} attack damage`;
         case Item_Id.heart_of_tarrasque: return `+${i.health_bonus} health, restores ${i.regeneration_per_turn} health at the end of each turn`;
         case Item_Id.refresher_shard: return `Restore charges of all abilities once`;
