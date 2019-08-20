@@ -12,7 +12,7 @@ type Battle = {
     delta_paths: Move_Delta_Paths
     delta_head: number
     world_origin: Vector
-    units: Battle_Unit[]
+    units: Unit[]
     runes: Rune[]
     shops: Shop[]
     trees: Tree[]
@@ -31,7 +31,7 @@ type Battle_Player = {
     gold: number
 }
 
-type Battle_Unit_Base = Unit_Stats & {
+type Unit_Base = Unit_Stats & {
     id: number
     handle: CDOTA_BaseNPC_Hero
     position: XY;
@@ -40,24 +40,24 @@ type Battle_Unit_Base = Unit_Stats & {
     hidden: boolean
 }
 
-type Battle_Hero = Battle_Unit_Base & {
+type Hero = Unit_Base & {
     supertype: Unit_Supertype.hero
     owner_remote_id: number
     level: number
     type: Hero_Type
 }
 
-type Battle_Creep = Battle_Unit_Base & {
+type Creep = Unit_Base & {
     supertype: Unit_Supertype.creep
 }
 
-type Battle_Minion = Battle_Unit_Base & {
+type Minion = Unit_Base & {
     supertype: Unit_Supertype.minion
     owner_remote_id: number
     type: Minion_Type
 }
 
-type Battle_Unit = Battle_Hero | Battle_Creep | Battle_Minion
+type Unit = Hero | Creep | Minion
 
 type Tree = {
     id: number
@@ -101,6 +101,12 @@ type Modifier_Tied_Fx = {
     modifier_id: Modifier_Id
 }
 
+type Started_Gesture = {
+    unit: Unit
+    activity: GameActivity_t
+    fade(): void
+}
+
 declare let battle: Battle;
 
 const battle_cell_size = 144;
@@ -114,11 +120,11 @@ function get_battle_remote_head(): number {
     return table.maxn(battle.deltas);
 }
 
-function find_unit_by_id(id: number): Battle_Unit | undefined {
+function find_unit_by_id(id: number): Unit | undefined {
     return array_find(battle.units, unit => unit.id == id);
 }
 
-function find_hero_by_id(id: number): Battle_Hero | undefined {
+function find_hero_by_id(id: number): Hero | undefined {
     const unit = find_unit_by_id(id);
 
     if (unit && unit.supertype == Unit_Supertype.hero) {
@@ -281,7 +287,7 @@ function destroy_rune(rune: Rune, destroy_effects_instantly: boolean) {
     rune.rune_fx.destroy_and_release(destroy_effects_instantly);
 }
 
-function unit_base(unit_id: number, dota_unit_name: string, definition: Unit_Definition, at: XY, facing: XY): Battle_Unit_Base {
+function unit_base(unit_id: number, dota_unit_name: string, definition: Unit_Definition, at: XY, facing: XY): Unit_Base {
     return {
         handle: create_world_handle_for_battle_unit(dota_unit_name, at, facing),
         id: unit_id,
@@ -304,19 +310,19 @@ function unit_base(unit_id: number, dota_unit_name: string, definition: Unit_Def
     };
 }
 
-function spawn_creep_for_battle(unit_id: number, definition: Unit_Definition, at: XY, facing: XY): Battle_Creep {
+function spawn_creep_for_battle(unit_id: number, definition: Unit_Definition, at: XY, facing: XY): Creep {
     const base = unit_base(unit_id, creep_type_to_dota_unit_name(), definition, at, facing);
 
-    return assign<Battle_Unit_Base, Battle_Creep>(base, {
+    return assign<Unit_Base, Creep>(base, {
         supertype: Unit_Supertype.creep
     })
 }
 
-function spawn_hero_for_battle(hero_type: Hero_Type, unit_id: number, owner_id: number, at: XY, facing: XY): Battle_Hero {
+function spawn_hero_for_battle(hero_type: Hero_Type, unit_id: number, owner_id: number, at: XY, facing: XY): Hero {
     const definition = hero_definition_by_type(hero_type);
     const base = unit_base(unit_id, hero_type_to_dota_unit_name(hero_type), definition, at, facing);
 
-    return assign<Battle_Unit_Base, Battle_Hero>(base, {
+    return assign<Unit_Base, Hero>(base, {
         supertype: Unit_Supertype.hero,
         type: hero_type,
         owner_remote_id: owner_id,
@@ -328,14 +334,14 @@ function spawn_minion_for_battle(type: Minion_Type, unit_id: number, owner_id: n
     const definition = minion_definition_by_type(type);
     const base = unit_base(unit_id, minion_type_to_dota_unit_name(type), definition, at, facing);
 
-    return assign<Battle_Unit_Base, Battle_Minion>(base, {
+    return assign<Unit_Base, Minion>(base, {
         supertype: Unit_Supertype.minion,
         type: type,
         owner_remote_id: owner_id,
     });
 }
 
-function tracking_projectile_from_point_to_unit(world_point: Vector, target: Battle_Unit, particle_path: string, speed: number) {
+function tracking_projectile_from_point_to_unit(world_point: Vector, target: Unit, particle_path: string, speed: number) {
     const in_attach = "attach_hitloc";
     const particle = fx(particle_path)
         .with_vector_value(0, world_point)
@@ -350,7 +356,7 @@ function tracking_projectile_from_point_to_unit(world_point: Vector, target: Bat
     particle.destroy_and_release(false);
 }
 
-function tracking_projectile_to_unit(source: Battle_Unit, target: Battle_Unit, particle_path: string, speed: number, out_attach: string = "attach_attack1") {
+function tracking_projectile_to_unit(source: Unit, target: Unit, particle_path: string, speed: number, out_attach: string = "attach_attack1") {
     const in_attach = "attach_hitloc";
     const particle = fx(particle_path)
         .to_unit_attach_point(0, source, out_attach)
@@ -365,7 +371,7 @@ function tracking_projectile_to_unit(source: Battle_Unit, target: Battle_Unit, p
     particle.destroy_and_release(false);
 }
 
-function tracking_projectile_to_point(source: Battle_Unit, target: XY, particle_path: string, speed: number) {
+function tracking_projectile_to_point(source: Unit, target: XY, particle_path: string, speed: number) {
     const out_attach = "attach_attack1";
     const world_location = battle_position_to_world_position_center(target) + Vector(0, 0, 128) as Vector;
 
@@ -399,7 +405,7 @@ function do_each_frame_for(time: number, action: (progress: number) => void) {
     }
 }
 
-function toss_target_up(target: Battle_Unit) {
+function toss_target_up(target: Unit) {
     const toss_time = 0.4;
     const start_origin = target.handle.GetAbsOrigin();
 
@@ -472,7 +478,7 @@ function linear_projectile_with_targets<T>(
     particle.destroy_and_release(false);
 }
 
-type Replace_Target_Unit_Id<T> = Pick<T, Exclude<keyof T, "target_unit_id">> & { unit: Battle_Unit };
+type Replace_Target_Unit_Id<T> = Pick<T, Exclude<keyof T, "target_unit_id">> & { unit: Unit };
 
 function filter_and_map_existing_units<T extends { target_unit_id: number }>(array: T[]): Replace_Target_Unit_Id<T>[] {
     const result: Replace_Target_Unit_Id<T>[] = [];
@@ -502,7 +508,7 @@ function filter_and_map_existing_units<T extends { target_unit_id: number }>(arr
     return result;
 }
 
-function pudge_hook(main_player: Main_Player, pudge: Battle_Unit, cast: Delta_Ability_Pudge_Hook) {
+function pudge_hook(main_player: Main_Player, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
     function is_hook_hit(cast: Pudge_Hook_Hit | Line_Ability_Miss): cast is Pudge_Hook_Hit {
         return from_client_bool(cast.hit); // @PanoramaBool
     }
@@ -607,7 +613,7 @@ function pudge_hook(main_player: Main_Player, pudge: Battle_Unit, cast: Delta_Ab
     chain.release();
 }
 
-function starfall_drop_star_on_unit(main_player: Main_Player, caster: Battle_Unit, target: Battle_Unit, change: Health_Change) {
+function starfall_drop_star_on_unit(main_player: Main_Player, caster: Unit, target: Unit, change: Health_Change) {
     const fx = fx_by_unit("particles/units/heroes/hero_mirana/mirana_starfall_attack.vpcf", target);
 
     wait(0.5);
@@ -618,7 +624,7 @@ function starfall_drop_star_on_unit(main_player: Main_Player, caster: Battle_Uni
     fx.destroy_and_release(false);
 }
 
-function tide_ravage(main_player: Main_Player, caster: Battle_Unit, cast: Delta_Ability_Tide_Ravage) {
+function tide_ravage(main_player: Main_Player, caster: Unit, cast: Delta_Ability_Tide_Ravage) {
     caster.handle.StartGesture(GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
 
     wait(0.1);
@@ -694,7 +700,7 @@ function tide_ravage(main_player: Main_Player, caster: Battle_Unit, cast: Delta_
     wait_for_all_forks(forks);
 }
 
-function get_ranged_attack_spec(unit: Battle_Unit): Ranged_Attack_Spec | undefined {
+function get_ranged_attack_spec(unit: Unit): Ranged_Attack_Spec | undefined {
     switch (unit.supertype) {
         case Unit_Supertype.hero: {
             switch (unit.type) {
@@ -745,7 +751,7 @@ function get_ranged_attack_spec(unit: Battle_Unit): Ranged_Attack_Spec | undefin
     }
 }
 
-function try_play_random_sound_for_hero(unit: Battle_Unit, supplier: (sounds: Hero_Sounds) => string[], target: Battle_Unit = unit) {
+function try_play_random_sound_for_hero(unit: Unit, supplier: (sounds: Hero_Sounds) => string[], target: Unit = unit) {
     if (unit.supertype != Unit_Supertype.hero) {
         return;
     }
@@ -757,7 +763,7 @@ function try_play_random_sound_for_hero(unit: Battle_Unit, supplier: (sounds: He
     unit_emit_sound(target, random_sound);
 }
 
-function try_play_sound_for_hero(unit: Battle_Unit, supplier: (type: Hero_Type) => string | undefined, target: Battle_Unit = unit) {
+function try_play_sound_for_hero(unit: Unit, supplier: (type: Hero_Type) => string | undefined, target: Unit = unit) {
     if (unit.supertype != Unit_Supertype.hero) {
         return;
     }
@@ -769,7 +775,7 @@ function try_play_sound_for_hero(unit: Battle_Unit, supplier: (type: Hero_Type) 
     }
 }
 
-function highlight_grid_for_targeted_ability(unit: Battle_Unit, ability: Ability_Id, to: XY) {
+function highlight_grid_for_targeted_ability(unit: Unit, ability: Ability_Id, to: XY) {
     const event: Grid_Highlight_Targeted_Ability_Event = {
         unit_id: unit.id,
         ability_id: ability,
@@ -780,7 +786,7 @@ function highlight_grid_for_targeted_ability(unit: Battle_Unit, ability: Ability
     CustomGameEventManager.Send_ServerToAllClients("grid_highlight_targeted_ability", event)
 }
 
-function highlight_grid_for_no_target_ability(unit: Battle_Unit, ability: Ability_Id) {
+function highlight_grid_for_no_target_ability(unit: Unit, ability: Ability_Id) {
     const event: Grid_Highlight_No_Target_Ability_Event = {
         unit_id: unit.id,
         ability_id: ability,
@@ -790,7 +796,7 @@ function highlight_grid_for_no_target_ability(unit: Battle_Unit, ability: Abilit
     CustomGameEventManager.Send_ServerToAllClients("grid_highlight_no_target_ability", event)
 }
 
-function perform_basic_attack(main_player: Main_Player, unit: Battle_Unit, cast: Delta_Ability_Basic_Attack) {
+function perform_basic_attack(main_player: Main_Player, unit: Unit, cast: Delta_Ability_Basic_Attack) {
     const target = cast.target_position;
 
     function get_unit_pre_attack_sound(type: Hero_Type): string | undefined {
@@ -885,7 +891,7 @@ function attachment_world_origin(unit: CDOTA_BaseNPC, attachment_name: string) {
     return unit.GetAttachmentOrigin(unit.ScriptLookupAttachment(attachment_name));
 }
 
-function play_ground_target_ability_delta(main_player: Main_Player, unit: Battle_Unit, cast: Delta_Ground_Target_Ability) {
+function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, cast: Delta_Ground_Target_Ability) {
     highlight_grid_for_targeted_ability(unit, cast.ability_id, cast.target_position);
 
     const world_from = battle_position_to_world_position_center(unit.position);
@@ -1243,7 +1249,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Battle
     }
 }
 
-function apply_modifier_changes(main_player: Main_Player, target: Battle_Unit, changes: Modifier_Change[], invert: boolean) {
+function apply_modifier_changes(main_player: Main_Player, target: Unit, changes: Modifier_Change[], invert: boolean) {
     for (const change of changes) {
         switch (change.type) {
             case Modifier_Change_Type.field_change: {
@@ -1267,7 +1273,7 @@ type Modifier_Visuals_Complex = {
 
 type Modifier_Visuals_Simple = {
     complex: false
-    fx_applier: (this: void, unit: Battle_Unit) => FX
+    fx_applier: (this: void, unit: Unit) => FX
 }
 
 function modifier_id_to_visuals(id: Modifier_Id): Modifier_Visuals_Complex | Modifier_Visuals_Simple | undefined {
@@ -1278,7 +1284,7 @@ function modifier_id_to_visuals(id: Modifier_Id): Modifier_Visuals_Complex | Mod
         }
     }
 
-    function simple(fx_applier: (this: void, unit: Battle_Unit) => FX): Modifier_Visuals_Simple {
+    function simple(fx_applier: (this: void, unit: Unit) => FX): Modifier_Visuals_Simple {
         return {
             complex: false,
             fx_applier: fx_applier
@@ -1317,7 +1323,7 @@ function modifier_id_to_visuals(id: Modifier_Id): Modifier_Visuals_Complex | Mod
     }
 }
 
-function try_apply_modifier_visuals(target: Battle_Unit, modifier_id: Modifier_Id) {
+function try_apply_modifier_visuals(target: Unit, modifier_id: Modifier_Id) {
     const visuals = modifier_id_to_visuals(modifier_id);
 
     if (!visuals) {
@@ -1335,7 +1341,7 @@ function try_apply_modifier_visuals(target: Battle_Unit, modifier_id: Modifier_I
     }
 }
 
-function apply_modifier(main_player: Main_Player, target: Battle_Unit, modifier: Modifier_Application) {
+function apply_modifier(main_player: Main_Player, target: Unit, modifier: Modifier_Application) {
     const modifier_changes = from_client_array(modifier.changes);
 
     print(`Apply and record ${modifier.modifier_handle_id} to ${target.handle.GetName()}`);
@@ -1352,11 +1358,11 @@ function apply_modifier(main_player: Main_Player, target: Battle_Unit, modifier:
     update_player_state_net_table(main_player);
 }
 
-function unit_emit_sound(unit: Battle_Unit, sound: string) {
+function unit_emit_sound(unit: Unit, sound: string) {
     unit.handle.EmitSound(sound);
 }
 
-function unit_stop_sound(unit: Battle_Unit, sound: string) {
+function unit_stop_sound(unit: Unit, sound: string) {
     unit.handle.StopSound(sound);
 }
 
@@ -1364,13 +1370,13 @@ function battle_emit_sound(sound: string) {
     EmitSoundOnLocationWithCaster(battle.camera_dummy.GetAbsOrigin(), sound, battle.camera_dummy);
 }
 
-function play_unit_target_ability_delta(main_player: Main_Player, caster: Battle_Unit, cast: Delta_Unit_Target_Ability, target: Battle_Unit) {
+function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, cast: Delta_Unit_Target_Ability, target: Unit) {
     turn_unit_towards_target(caster, target.position);
     highlight_grid_for_targeted_ability(caster, cast.ability_id, target.position);
 
     switch (cast.ability_id) {
         case Ability_Id.pudge_dismember: {
-            function loop_health_change(target: Battle_Unit, change: Health_Change) {
+            function loop_health_change(target: Unit, change: Health_Change) {
                 const loops = 4;
                 const length = Math.abs(change.new_value - target.health);
                 const direction = change.value_delta / length;
@@ -1554,7 +1560,7 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Battle
     }
 }
 
-function play_no_target_ability_delta(main_player: Main_Player, unit: Battle_Unit, cast: Delta_Use_No_Target_Ability) {
+function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast: Delta_Use_No_Target_Ability) {
     highlight_grid_for_no_target_ability(unit, cast.ability_id);
 
     switch (cast.ability_id) {
@@ -1839,7 +1845,7 @@ function play_ground_target_spell_delta(main_player: Main_Player, cast: Delta_Us
     }
 }
 
-function play_unit_target_spell_delta(main_player: Main_Player, caster: Battle_Player, target: Battle_Unit, cast: Delta_Use_Unit_Target_Spell) {
+function play_unit_target_spell_delta(main_player: Main_Player, caster: Battle_Player, target: Unit, cast: Delta_Use_Unit_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.buyback: {
             target.dead = false;
@@ -1966,7 +1972,7 @@ function play_ability_effect_delta(main_player: Main_Player, effect: Ability_Eff
     }
 }
 
-function play_rune_pickup_delta(main_player: Main_Player, unit: Battle_Hero, delta: Delta_Rune_Pick_Up) {
+function play_rune_pickup_delta(main_player: Main_Player, unit: Hero, delta: Delta_Rune_Pick_Up) {
     switch (delta.rune_type) {
         case Rune_Type.bounty: {
             fx("particles/generic_gameplay/rune_bounty_owner.vpcf")
@@ -2026,7 +2032,7 @@ function play_rune_pickup_delta(main_player: Main_Player, unit: Battle_Hero, del
     }
 }
 
-function play_item_equip_delta(main_player: Main_Player, hero: Battle_Hero, delta: Delta_Equip_Item) {
+function play_item_equip_delta(main_player: Main_Player, hero: Hero, delta: Delta_Equip_Item) {
     wait(0.3);
 
     unit_emit_sound(hero, "Item.PickUpShop");
@@ -2091,7 +2097,7 @@ function play_item_equip_delta(main_player: Main_Player, hero: Battle_Hero, delt
     wait(1.2);
 }
 
-function turn_unit_towards_target(unit: Battle_Unit, towards: XY) {
+function turn_unit_towards_target(unit: Unit, towards: XY) {
     const towards_world_position = battle_position_to_world_position_center(towards);
     const desired_forward = ((towards_world_position - unit.handle.GetAbsOrigin()) * Vector(1, 1, 0) as Vector).Normalized();
 
@@ -2110,7 +2116,7 @@ function turn_unit_towards_target(unit: Battle_Unit, towards: XY) {
     }
 }
 
-function update_specific_state_visuals(unit: Battle_Unit, counter: number, associated_modifier: string) {
+function update_specific_state_visuals(unit: Unit, counter: number, associated_modifier: string) {
     if (counter > 0) {
         if (!unit.handle.HasModifier(associated_modifier)) {
             unit.handle.AddNewModifier(unit.handle, undefined, associated_modifier, {});
@@ -2120,7 +2126,7 @@ function update_specific_state_visuals(unit: Battle_Unit, counter: number, assoc
     }
 }
 
-function update_state_visuals(unit: Battle_Unit) {
+function update_state_visuals(unit: Unit) {
     update_specific_state_visuals(unit, unit.state_stunned_counter, "modifier_stunned");
     update_specific_state_visuals(unit, unit.state_silenced_counter, "modifier_silence");
 
@@ -2146,7 +2152,7 @@ function update_state_visuals(unit: Battle_Unit) {
     }
 }
 
-function unit_play_activity(unit: Battle_Unit, activity: GameActivity_t, wait_up_to = 0.4): number {
+function unit_play_activity(unit: Unit, activity: GameActivity_t, wait_up_to = 0.4): number {
     unit.handle.StopFacing();
     unit.handle.Stop();
     unit.handle.ForcePlayActivityOnce(activity);
@@ -2168,7 +2174,7 @@ function unit_play_activity(unit: Battle_Unit, activity: GameActivity_t, wait_up
     return sequence_duration - time_passed;
 }
 
-function change_health(main_player: Main_Player, source: Battle_Unit, target: Battle_Unit, change: Health_Change) {
+function change_health(main_player: Main_Player, source: Unit, target: Unit, change: Health_Change) {
     function number_particle(amount: number, r: number, g: number, b: number) {
         fx("particles/msg_damage.vpcf")
             .to_unit_origin(0, target)
@@ -2233,7 +2239,7 @@ function change_health(main_player: Main_Player, source: Battle_Unit, target: Ba
     }
 }
 
-function move_unit(main_player: Main_Player, unit: Battle_Unit, path: XY[]) {
+function move_unit(main_player: Main_Player, unit: Unit, path: XY[]) {
     for (const cell of path) {
         const world_position = battle_position_to_world_position_center(cell);
 
@@ -2249,7 +2255,7 @@ function move_unit(main_player: Main_Player, unit: Battle_Unit, path: XY[]) {
     }
 }
 
-function change_hero_level(main_player: Main_Player, hero: Battle_Hero, new_level: number) {
+function change_hero_level(main_player: Main_Player, hero: Hero, new_level: number) {
     hero.level = new_level;
 
     unit_emit_sound(hero, "hero_level_up");
@@ -2269,7 +2275,7 @@ function change_gold(main_player: Main_Player, player: Battle_Player, change: nu
     update_player_state_net_table(main_player);
 }
 
-function on_modifier_removed(unit: Battle_Unit, modifier_id: Modifier_Id) {
+function on_modifier_removed(unit: Unit, modifier_id: Modifier_Id) {
     if (modifier_id == Modifier_Id.spell_euls_scepter) {
         const handle = unit.handle;
         const ground = battle_position_to_world_position_center(unit.position);
@@ -2295,7 +2301,7 @@ function on_modifier_removed(unit: Battle_Unit, modifier_id: Modifier_Id) {
     }
 }
 
-function remove_modifier(main_player: Main_Player, unit: Battle_Unit, modifier: Modifier_Data, array_index: number) {
+function remove_modifier(main_player: Main_Player, unit: Unit, modifier: Modifier_Data, array_index: number) {
     const modifier_visuals = modifier_id_to_visuals(modifier.modifier_id);
 
     if (modifier_visuals) {
@@ -2326,7 +2332,7 @@ function remove_modifier(main_player: Main_Player, unit: Battle_Unit, modifier: 
     apply_modifier_changes(main_player, unit, modifier.changes, true);
 }
 
-function add_activity_translation(target: Battle_Unit, translation: Activity_Translation, duration: number) {
+function add_activity_translation(target: Unit, translation: Activity_Translation, duration: number) {
     const parameters: Modifier_Activity_Translation_Params = {
         translation: translation,
         duration: duration
@@ -2689,7 +2695,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
                         const modifier = unit.modifiers[index];
 
                         if (modifier.modifier_handle_id == delta.modifier_handle_id) {
-                            remove_modifier(main_player, unit, modifier, index);;
+                            remove_modifier(main_player, unit, modifier, index);
 
                             // break modifier_search;
                         }
@@ -2922,7 +2928,7 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
 
     battle.units = snapshot.units.map(unit => {
         const stats = unit as Unit_Stats;
-        const base: Battle_Unit_Base = assign(stats, {
+        const base: Unit_Base = assign(stats, {
             id: unit.id,
             dead: unit.health <= 0,
             position: unit.position,
@@ -2937,7 +2943,7 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
 
         switch (unit.supertype) {
             case Unit_Supertype.hero: {
-                return assign<Battle_Unit_Base, Battle_Hero>(base, {
+                return assign<Unit_Base, Hero>(base, {
                     supertype: Unit_Supertype.hero,
                     level: unit.level,
                     type: unit.type,
@@ -2946,13 +2952,13 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
             }
 
             case Unit_Supertype.creep: {
-                return assign<Battle_Unit_Base, Battle_Creep>(base, {
+                return assign<Unit_Base, Creep>(base, {
                     supertype: Unit_Supertype.creep
                 });
             }
 
             case Unit_Supertype.minion: {
-                return assign<Battle_Unit_Base, Battle_Minion>(base, {
+                return assign<Unit_Base, Minion>(base, {
                     supertype: Unit_Supertype.minion,
                     type: unit.type,
                     owner_remote_id: unit.owner_id

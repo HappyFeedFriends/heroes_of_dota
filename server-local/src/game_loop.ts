@@ -91,7 +91,7 @@ function log_chat_debug_message(message: string) {
     CustomGameEventManager.Send_ServerToAllClients("log_chat_debug_message", event);
 }
 
-function unit_to_visualizer_unit_data(unit: Battle_Unit): Visualizer_Unit_Data {
+function unit_to_visualizer_unit_data(unit: Unit): Visualizer_Unit_Data {
     // TODO some of those properties are not actually needed
     const stats = unit as Unit_Stats;
     const base: Visualizer_Unit_Data_Base = assign(stats, {
