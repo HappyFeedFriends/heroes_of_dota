@@ -425,7 +425,7 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
         case Minion_Type.pocket_tower: {
             return {
                 attack_damage: 2,
-                health: 8,
+                health: 7,
                 move_points: 0,
                 abilities: [
                     passive_ability<Ability_Pocket_Tower_Attack>({
