@@ -24,6 +24,14 @@ function Precache(context: CScriptPrecacheContext) {
         print("Precaching", unit_name);
     }
 
+    const minion_types = enum_values<Minion_Type>();
+
+    for (const minion_type of minion_types) {
+        PrecacheUnitByNameSync(minion_type_to_dota_unit_name(minion_type), context);
+
+        print("Precaching", minion_type_to_dota_unit_name(minion_type));
+    }
+
     PrecacheUnitByNameSync(creep_type_to_dota_unit_name(), context);
 
     PrecacheResource("soundfile", "soundevents/custom_game/game_sounds.vsndevts", context);
