@@ -1776,7 +1776,12 @@ export function start_battle(players: Player[], battleground: Battleground): num
     for (const player of battle.players) {
         spawn_deltas.push(get_starting_gold(player));
 
-        for (const spell_id of enum_values<Spell_Id>()) {
+        const spell_collection = enum_values<Spell_Id>();
+
+        for (let index = 3; index > 0; index--) {
+            const index = random_int_up_to(spell_collection.length);
+            const spell_id = spell_collection.splice(index, 1)[0];
+
             spawn_deltas.push(draw_spell_card(battle, player, spell_id));
         }
 
