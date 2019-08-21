@@ -60,7 +60,7 @@ function item_id_to_item(item_id: Item_Id): Item {
 
         case Item_Id.basher: return {
             id: item_id,
-            gold_cost: 10
+            gold_cost: 14
         };
 
         case Item_Id.boots_of_speed: return {

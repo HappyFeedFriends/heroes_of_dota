@@ -2001,7 +2001,8 @@ export function start_battle(players: Player[], battleground: Battleground): num
                             Item_Id.refresher_shard,
                             Item_Id.mask_of_madness,
                             Item_Id.armlet,
-                            Item_Id.octarine_core
+                            Item_Id.octarine_core,
+                            Item_Id.basher
                         ]
                     }
                 })();
