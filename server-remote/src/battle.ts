@@ -15,6 +15,7 @@ export type Battle_Record = Battle & {
     random_seed: number
     deferred_actions: Deferred_Action[]
     creep_targets: Map<Creep, Unit>
+    end_turn_queued: boolean
 }
 
 const battles: Battle_Record[] = [];
@@ -862,7 +863,7 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_boots_of_travel, [Modifier_Field.move_points_bonus, item.move_points_bonus])
+                modifier: new_modifier(battle, Modifier_Id.item_boots_of_speed, [Modifier_Field.move_points_bonus, item.move_points_bonus])
             }
         }
 
@@ -871,7 +872,7 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_divine_rapier, [Modifier_Field.attack_bonus, item.damage_bonus])
+                modifier: new_modifier(battle, Modifier_Id.item_blades_of_attack, [Modifier_Field.attack_bonus, item.damage_bonus])
             }
         }
 
@@ -1258,9 +1259,11 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
         }
 
         case Action_Type.end_turn: {
-            return [{
-                type: Delta_Type.end_turn
-            }];
+            resolve_end_turn_effects(battle);
+
+            battle.end_turn_queued = true;
+
+            return [];
         }
 
         default: unreachable(action);
@@ -1367,20 +1370,38 @@ function get_gold_for_killing(target: Unit): number {
 }
 
 function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: Unit) {
-    const authorize_attack_intent = () => {
+    type Attack_Intent_Result = { ok: true, ability: Ability_Active } | { ok: false, error: Attack_Intent_Error };
+
+    const enum Attack_Intent_Error {
+        ok,
+        fail_and_cancel,
+        fail_and_continue_trying
+    }
+
+    const authorize_attack_intent = (): Attack_Intent_Result => {
+        function error(error: Attack_Intent_Error): { ok: false, error: Attack_Intent_Error } {
+            return { ok: false, error: error };
+        }
+
         const act_on_unit_permission = authorize_act_on_known_unit(battle, creep);
-        if (!act_on_unit_permission.ok) return;
+        if (!act_on_unit_permission.ok) return error(Attack_Intent_Error.fail_and_cancel);
 
         const order_unit_permission = authorize_order_unit(act_on_unit_permission);
-        if (!order_unit_permission.ok) return;
+        if (!order_unit_permission.ok) {
+            if (order_unit_permission.kind == Order_Unit_Error.unit_has_already_acted_this_turn) {
+                return error(Attack_Intent_Error.fail_and_continue_trying);
+            }
+
+            return error(Attack_Intent_Error.fail_and_cancel);
+        }
 
         const act_on_target_permission = authorize_act_on_known_unit(battle, target);
-        if (!act_on_target_permission.ok) return;
+        if (!act_on_target_permission.ok) return error(Attack_Intent_Error.fail_and_cancel);
 
-        if (!creep.attack) return;
+        if (!creep.attack) return error(Attack_Intent_Error.fail_and_cancel);
 
         const ability_use_permission = authorize_ability_use(order_unit_permission, creep.attack.id);
-        if (!ability_use_permission.ok) return;
+        if (!ability_use_permission.ok) return error(Attack_Intent_Error.fail_and_continue_trying);
 
         return ability_use_permission;
     };
@@ -1388,8 +1409,11 @@ function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: 
     const defer_attack = () => defer_delta(battle, () => {
         const attack_intent = authorize_attack_intent();
 
-        if (!attack_intent) {
-            battle.creep_targets.delete(creep);
+        if (!attack_intent.ok) {
+            if (attack_intent.error == Attack_Intent_Error.fail_and_cancel) {
+                battle.creep_targets.delete(creep);
+            }
+
             return;
         }
 
@@ -1405,8 +1429,11 @@ function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: 
     const defer_move = () => defer(battle, () => {
         const attack_intent = authorize_attack_intent();
 
-        if (!attack_intent) {
-            battle.creep_targets.delete(creep);
+        if (!attack_intent.ok) {
+            if (attack_intent.error == Attack_Intent_Error.fail_and_cancel) {
+                battle.creep_targets.delete(creep);
+            }
+
             return;
         }
 
@@ -1553,6 +1580,17 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }
     }
 
+    for (const unit of battle.units) {
+        for (const modifier of unit.modifiers) {
+            if (!modifier.permanent && modifier.duration_remaining == 0) {
+                defer_delta(battle, () => ({
+                    type: Delta_Type.modifier_removed,
+                    modifier_handle_id: modifier.handle_id
+                }));
+            }
+        }
+    }
+
     // I don't know how to get rid of the ifs
     for_heroes_with_item<Item_Heart_Of_Tarrasque>(Item_Id.heart_of_tarrasque, (hero, item) => {
         defer_delta_by_unit(battle, hero, () => ({
@@ -1615,28 +1653,6 @@ function resolve_end_turn_effects(battle: Battle_Record) {
             });
         });
     });
-}
-
-function server_end_turn(battle: Battle_Record) {
-    end_turn_default(battle);
-
-    for (const unit of battle.units) {
-        for (const modifier of unit.modifiers) {
-            if (!modifier.permanent && modifier.duration_remaining == 0) {
-                defer_delta(battle, () => ({
-                    type: Delta_Type.modifier_removed,
-                    modifier_handle_id: modifier.handle_id
-                }));
-            }
-        }
-    }
-
-    resolve_end_turn_effects(battle);
-
-    defer_delta(battle, () => ({
-        type: Delta_Type.start_turn,
-        of_player_id: battle.players[battle.turning_player_index].id
-    }));
 
     for (const creep of battle.units) {
         if (creep.supertype == Unit_Supertype.creep) {
@@ -1690,6 +1706,17 @@ export function try_take_turn_action(battle: Battle_Record, player: Battle_Playe
     }
 }
 
+function get_next_turning_player_id(battle: Battle_Record): number {
+    const current_index = battle.players.indexOf(battle.turning_player);
+    const next_index = current_index + 1;
+
+    if (next_index == battle.players.length) {
+        return battle.players[0].id;
+    }
+
+    return battle.players[next_index].id;
+}
+
 function submit_battle_deltas(battle: Battle_Record, battle_deltas: Delta[]) {
     battle.deltas.push(...battle_deltas);
 
@@ -1705,6 +1732,15 @@ function submit_battle_deltas(battle: Battle_Record, battle_deltas: Delta[]) {
         if (action) {
             action();
         }
+    }
+
+    if (battle.end_turn_queued) {
+        battle.end_turn_queued = false;
+
+        submit_battle_deltas(battle, [{
+            type: Delta_Type.end_turn,
+            start_turn_of_player_id: get_next_turning_player_id(battle)
+        }]);
     }
 }
 
@@ -1775,8 +1811,8 @@ export function start_battle(players: Player[], battleground: Battleground): num
         random_seed: random_int_range(0, 65536),
         finished: false,
         creep_targets: new Map(),
-        change_health: server_change_health,
-        end_turn: server_end_turn
+        end_turn_queued: false,
+        change_health: server_change_health
     };
 
     fill_grid(battle);
@@ -1933,7 +1969,7 @@ export function cheat(battle: Battle_Record, player: Player, cheat: string, sele
                 `Battle ${battle.id}`,
                 `Participants: ${battle.players[0].name} (id${battle.players[0].id}) and ${battle.players[1].name} (id${battle.players[1].id})`,
                 `Deltas: ${battle.deltas.length} total, head at ${battle.delta_head}`,
-                `Turning player: index ${battle.turning_player_index} (${battle.players[battle.turning_player_index].name})`,
+                `Turning player: ${battle.turning_player.name}`,
             ];
 
             for (const message of messages) {
@@ -1968,7 +2004,8 @@ export function cheat(battle: Battle_Record, player: Player, cheat: string, sele
         }
 
         case "skipturn": {
-            submit_battle_deltas(battle, [ { type: Delta_Type.end_turn } ]);
+            battle.end_turn_queued = true;
+            submit_battle_deltas(battle, []);
 
             break;
         }

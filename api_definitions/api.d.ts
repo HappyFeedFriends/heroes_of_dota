@@ -36,7 +36,6 @@ declare const enum Delta_Type {
     purchase_item = 23,
     equip_item = 24,
 
-    start_turn = 25,
     end_turn = 26,
     game_start = 27,
     game_over = 28,
@@ -429,13 +428,9 @@ type Delta_Use_No_Target_Ability_Base = {
     unit_id: number
 }
 
-type Delta_Start_Turn = {
-    type: Delta_Type.start_turn
-    of_player_id: number
-}
-
 type Delta_End_Turn = {
     type: Delta_Type.end_turn
+    start_turn_of_player_id: number
 }
 
 type Delta_Level_Change = {
@@ -587,7 +582,6 @@ type Delta =
     Delta_Purchase_Item |
     Delta_Equip_Item |
     Delta_Gold_Change |
-    Delta_Start_Turn |
     Delta_End_Turn |
     Delta_Game_Start |
     Delta_Game_Over

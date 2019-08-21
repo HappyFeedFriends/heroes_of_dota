@@ -36,14 +36,13 @@ type Battle = {
     trees: Tree[]
     players: Battle_Player[]
     deltas: Delta[]
-    turning_player_index: number
+    turning_player: Battle_Player
     cells: Cell[]
     grid_size: XY
     change_health: (battle: Battle, source: Source, target: Unit, change: Health_Change) => boolean,
     apply_modifier: (source: Source, target: Unit, modifier: Modifier_Application) => void,
     add_card_to_hand: (player: Battle_Player, card: Card) => void,
-    spawn_minion: (battle: Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY) => Minion,
-    end_turn: (battle: Battle) => void
+    spawn_minion: (battle: Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY) => Minion
 }
 
 type Battle_Player = {
@@ -401,30 +400,31 @@ function item_source(item_id: Item_Id): Source_Item {
 }
 
 function make_battle(participants: Battle_Participant_Info[], grid_width: number, grid_height: number): Battle {
+    const players = participants.map(participant => ({
+        id: participant.id,
+        name: participant.name,
+        deployment_zone: participant.deployment_zone,
+        gold: 0,
+        has_used_a_card_this_turn: false,
+        hand: []
+    }));
+
     return {
         has_started: false,
         delta_head: 0,
-        turning_player_index: 0,
         units: [],
         runes: [],
         shops: [],
         cells: [],
         trees: [],
-        players: participants.map(participant => ({
-            id: participant.id,
-            name: participant.name,
-            deployment_zone: participant.deployment_zone,
-            gold: 0,
-            has_used_a_card_this_turn: false,
-            hand: []
-        })),
+        players: players,
+        turning_player: players[0],
         deltas: [],
         grid_size: xy(grid_width, grid_height),
         change_health: change_health_default,
         apply_modifier: apply_modifier_default,
         add_card_to_hand: add_card_to_hand_default,
-        spawn_minion: spawn_minion_default,
-        end_turn: end_turn_default
+        spawn_minion: spawn_minion_default
     }
 }
 
@@ -656,10 +656,6 @@ function fill_grid(battle: Battle) {
     }
 }
 
-function get_turning_player(battle: Battle): Battle_Player {
-    return battle.players[battle.turning_player_index];
-}
-
 function move_unit(battle: Battle, unit: Unit, to: XY) {
     const cell_from = grid_cell_at_unchecked(battle, unit.position);
     const cell_to = grid_cell_at_unchecked(battle, to);
@@ -731,17 +727,9 @@ function change_health_default(battle: Battle, source: Source, target: Unit, cha
     return false;
 }
 
-function end_turn_default(battle: Battle) {
-    const turn_passed_from_player_id = battle.players[battle.turning_player_index].id;
-
-    battle.turning_player_index++;
-
-    if (battle.turning_player_index == battle.players.length) {
-        battle.turning_player_index = 0;
-    }
-
+function end_turn(battle: Battle, next_turning_player: Battle_Player) {
     for (const unit of battle.units) {
-        if (unit.supertype == Unit_Supertype.creep || unit.owner.id == turn_passed_from_player_id) {
+        if (unit.supertype == Unit_Supertype.creep || unit.owner == battle.turning_player) {
             for (const modifier of unit.modifiers) {
                 if (!modifier.permanent) {
                     if (modifier.duration_remaining > 0) {
@@ -755,6 +743,8 @@ function end_turn_default(battle: Battle) {
     for (const player of battle.players) {
         player.has_used_a_card_this_turn = false;
     }
+
+    battle.turning_player = next_turning_player;
 }
 
 function add_card_to_hand_default(player: Battle_Player, card: Card) {
@@ -1573,7 +1563,13 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             break;
         }
 
-        case Delta_Type.start_turn: {
+        case Delta_Type.end_turn: {
+            const next_player = find_player_by_id(battle, delta.start_turn_of_player_id);
+
+            if (!next_player) break;
+
+            end_turn(battle, next_player);
+
             for (const unit of battle.units) {
                 if (unit.attack && unit.attack.type != Ability_Type.passive) {
                     unit.attack.charges_remaining = unit.attack.charges;
@@ -1582,12 +1578,6 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                 unit.move_points = unit.max_move_points + unit.move_points_bonus;
                 unit.has_taken_an_action_this_turn = false;
             }
-
-            break;
-        }
-
-        case Delta_Type.end_turn: {
-            battle.end_turn(battle);
 
             break;
         }

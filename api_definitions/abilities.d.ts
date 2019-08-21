@@ -62,6 +62,8 @@ declare const enum Modifier_Id {
     item_divine_rapier = 104,
     item_mask_of_madness = 105,
     item_armlet = 106,
+    item_boots_of_speed = 107,
+    item_blades_of_attack = 108,
 
     spell_euls_scepter = 200,
     spell_buckler = 201,

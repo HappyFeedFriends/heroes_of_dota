@@ -37,7 +37,7 @@
 
             <Label id="current_turning_player_label"/>
 
-            <Button id="end_turn_button" onactivate="end_turn();">
+            <Button id="end_turn_button" onactivate="ui_end_turn();">
                 <Label text="End turn"/>
             </Button>
 

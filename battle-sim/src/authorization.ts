@@ -213,7 +213,7 @@ type Ground_Target_Ability_Use_Auth = Auth<Ground_Target_Ability_Use_Permission,
 type Act_On_Owned_Unit_Auth = Auth<Act_On_Owned_Unit_Permission, Act_On_Owned_Unit_Error>;
 
 function authorize_action_by_player(battle: Battle, player: Battle_Player): Player_Action_Auth {
-    if (get_turning_player(battle).id != player.id) return { ok: false, kind: Player_Action_Error.not_your_turn };
+    if (battle.turning_player != player) return { ok: false, kind: Player_Action_Error.not_your_turn };
 
     return {
         ok: true,

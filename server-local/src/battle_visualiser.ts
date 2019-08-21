@@ -2669,20 +2669,17 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             break;
         }
 
-        case Delta_Type.start_turn: {
+        case Delta_Type.end_turn: {
             for (const unit of battle.units) {
                 unit.move_points = unit.max_move_points + unit.move_points_bonus;
             }
 
-            if (delta.of_player_id == main_player.remote_id) {
+            update_player_state_net_table(main_player);
+
+            if (delta.start_turn_of_player_id == main_player.remote_id) {
                 CustomGameEventManager.Send_ServerToAllClients("show_start_turn_ui", {});
             }
 
-            update_player_state_net_table(main_player);
-            break;
-        }
-
-        case Delta_Type.end_turn: {
             break;
         }
 

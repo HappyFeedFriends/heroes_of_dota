@@ -1,5 +1,5 @@
 function take_battle_action(action: Turn_Action, success_callback?: () => void) {
-    // $.Msg("Take action ", action);
+    $.Msg("Take action ", action, new Error().stack);
 
     const request = {
         access_token: get_access_token(),

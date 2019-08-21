@@ -895,7 +895,7 @@ function color_cell(cell: UI_Cell, color: XYZ, alpha: number) {
 }
 
 function compute_unit_cell_color(unit_in_cell: Unit): [ XYZ, number ] {
-    const your_turn = battle.this_player.id == battle.players[battle.turning_player_index].id;
+    const your_turn = battle.this_player == battle.turning_player;
 
     let cell_color: XYZ;
 
@@ -1208,7 +1208,7 @@ function periodically_drop_selection_in_battle() {
 }
 
 // Used from XML
-function end_turn() {
+function ui_end_turn() {
     take_battle_action({
         type: Action_Type.end_turn
     });
@@ -1819,6 +1819,8 @@ function get_modifier_icon(modifier_id: Modifier_Id): string {
         case Modifier_Id.item_mask_of_madness: return from_item(Item_Id.mask_of_madness);
         case Modifier_Id.item_satanic: return from_item(Item_Id.satanic);
         case Modifier_Id.item_armlet: return from_item(Item_Id.armlet);
+        case Modifier_Id.item_boots_of_speed: return from_item(Item_Id.boots_of_speed);
+        case Modifier_Id.item_blades_of_attack: return from_item(Item_Id.blades_of_attack);
 
         case Modifier_Id.dragon_knight_dragon_tail: return from_ability(Ability_Id.dragon_knight_dragon_tail);
         case Modifier_Id.dragon_knight_elder_dragon_form: return from_ability(Ability_Id.dragon_knight_elder_dragon_form);
@@ -1982,7 +1984,7 @@ function add_spawned_hero_to_control_panel(hero: Hero) {
 function update_current_turning_player_indicator() {
     const label = $("#current_turning_player_label") as LabelPanel;
 
-    label.text = `${battle.players[battle.turning_player_index].name}'s turn`;
+    label.text = `${battle.turning_player.name}'s turn`;
 }
 
 function update_hero_control_panel_state(row: Hero_Row, hero: Hero) {

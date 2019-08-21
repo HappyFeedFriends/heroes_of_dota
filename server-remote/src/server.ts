@@ -529,7 +529,7 @@ handlers.set("/take_battle_action", body => {
         if (ai) {
             const battle_ai = battle.players.find(battle_player => battle_player.id == ai.id);
 
-            if (battle_ai && request.action.type == Action_Type.end_turn && battle.players[battle.turning_player_index].id == ai.id) {
+            if (battle_ai && request.action.type == Action_Type.end_turn && battle.turning_player == battle_ai) {
                 setTimeout(() => take_ai_action(battle, battle_ai), 1000);
             }
         }
