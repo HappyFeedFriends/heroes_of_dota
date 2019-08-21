@@ -959,6 +959,16 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 modifier: new_modifier(battle, Modifier_Id.item_morbid_mask)
             }
         }
+
+        case Item_Id.chainmail: {
+            return {
+                type: Delta_Type.equip_item,
+                unit_id: hero.id,
+                item_id: item.id,
+                modifier: new_modifier(battle, Modifier_Id.item_chainmail, [Modifier_Field.armor_bonus, item.armor_bonus])
+            }
+        }
+
     }
 }
 
@@ -1912,8 +1922,8 @@ export function start_battle(players: Player[], battleground: Battleground): num
                             Item_Id.blades_of_attack,
                             Item_Id.boots_of_speed,
                             Item_Id.morbid_mask,
+                            Item_Id.chainmail,
                             // TODO enchanted_mango,
-                            // TODO chainmail
                         ];
 
                         case Shop_Type.secret: return [

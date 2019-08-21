@@ -1229,6 +1229,7 @@ function get_item_icon_name(id: Item_Id): string {
         case Item_Id.blades_of_attack: return "blades_of_attack";
         case Item_Id.belt_of_strength: return "belt_of_strength";
         case Item_Id.morbid_mask: return "lifesteal";
+        case Item_Id.chainmail: return "chainmail";
     }
 }
 
@@ -1726,6 +1727,7 @@ function get_item_tooltip(i: Item): string {
         case Item_Id.armlet: return `+${i.health_bonus} health, lose ${i.health_loss_per_turn} health per turn`;
         case Item_Id.belt_of_strength: return `+${i.health_bonus} health`;
         case Item_Id.morbid_mask: return `Restore ${i.health_restored_per_attack} health when attacking`;
+        case Item_Id.chainmail: return `+${i.armor_bonus} armor`;
     }
 }
 
@@ -1827,6 +1829,7 @@ function get_modifier_icon(modifier_id: Modifier_Id): string {
         case Modifier_Id.item_blades_of_attack: return from_item(Item_Id.blades_of_attack);
         case Modifier_Id.item_belt_of_strength: return from_item(Item_Id.belt_of_strength);
         case Modifier_Id.item_morbid_mask: return from_item(Item_Id.morbid_mask);
+        case Modifier_Id.item_chainmail: return from_item(Item_Id.chainmail);
 
         case Modifier_Id.dragon_knight_dragon_tail: return from_ability(Ability_Id.dragon_knight_dragon_tail);
         case Modifier_Id.dragon_knight_elder_dragon_form: return from_ability(Ability_Id.dragon_knight_elder_dragon_form);

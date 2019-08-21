@@ -76,5 +76,11 @@ function item_id_to_item(item_id: Item_Id): Item {
             health_restored_per_attack: 1,
             gold_cost: 2
         };
+
+        case Item_Id.chainmail: return {
+            id: item_id,
+            armor_bonus: 1,
+            gold_cost: 2
+        };
     }
 }
