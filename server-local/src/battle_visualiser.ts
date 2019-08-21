@@ -2113,6 +2113,12 @@ function play_item_equip_delta(main_player: Main_Player, hero: Hero, delta: Delt
             break;
         }
 
+        case Item_Id.belt_of_strength: {
+            apply_modifier(main_player, hero, delta.modifier);
+
+            break;
+        }
+
         default: unreachable(delta);
     }
 

@@ -1335,6 +1335,11 @@ function collapse_item_equip(battle: Battle, hero: Hero, delta: Delta_Equip_Item
             break;
         }
 
+        case Item_Id.belt_of_strength: {
+            apply_modifier(battle, source, hero, delta.modifier);
+            break;
+        }
+
         default: unreachable(delta);
     }
 }

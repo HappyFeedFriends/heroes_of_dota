@@ -1227,6 +1227,7 @@ function get_item_icon_name(id: Item_Id): string {
         case Item_Id.armlet: return "armlet_active";
         case Item_Id.boots_of_speed: return "boots";
         case Item_Id.blades_of_attack: return "blades_of_attack";
+        case Item_Id.belt_of_strength: return "belt_of_strength";
     }
 }
 
@@ -1722,6 +1723,7 @@ function get_item_tooltip(i: Item): string {
         case Item_Id.tome_of_knowledge: return `Gain a level`;
         case Item_Id.mask_of_madness: return `+${i.damage_bonus} damage, but silence yourself`;
         case Item_Id.armlet: return `+${i.health_bonus} health, lose ${i.health_loss_per_turn} health per turn`;
+        case Item_Id.belt_of_strength: return `+${i.health_bonus} health`;
     }
 }
 
@@ -1821,6 +1823,7 @@ function get_modifier_icon(modifier_id: Modifier_Id): string {
         case Modifier_Id.item_armlet: return from_item(Item_Id.armlet);
         case Modifier_Id.item_boots_of_speed: return from_item(Item_Id.boots_of_speed);
         case Modifier_Id.item_blades_of_attack: return from_item(Item_Id.blades_of_attack);
+        case Modifier_Id.item_belt_of_strength: return from_item(Item_Id.belt_of_strength);
 
         case Modifier_Id.dragon_knight_dragon_tail: return from_ability(Ability_Id.dragon_knight_dragon_tail);
         case Modifier_Id.dragon_knight_elder_dragon_form: return from_ability(Ability_Id.dragon_knight_elder_dragon_form);

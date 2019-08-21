@@ -64,5 +64,11 @@ function item_id_to_item(item_id: Item_Id): Item {
             damage_bonus: 2,
             gold_cost: 2
         };
+
+        case Item_Id.belt_of_strength: return {
+            id: item_id,
+            health_bonus: 4,
+            gold_cost: 2
+        };
     }
 }
