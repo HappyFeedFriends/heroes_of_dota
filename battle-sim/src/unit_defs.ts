@@ -177,7 +177,8 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         damage: 4
                     }),
                     passive_ability<Ability_Luna_Moon_Glaive>({
-                        available_since_level: 2
+                        available_since_level: 2,
+                        secondary_targeting: target_rect_area_around_caster(2)
                     }),
                     active_ability<Ability_Luna_Eclipse>({
                         available_since_level: 3,
@@ -385,7 +386,8 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         flags: [ Ability_Flag.does_not_consume_action ],
                         charges: 1,
                         damage_per_turn: 1,
-                        duration: 5
+                        duration: 5,
+                        shield_targeting: target_rect_area_around_caster(1)
                     }),
                     active_ability<Ability_Dark_Seer_Surge>({
                         available_since_level: 2,

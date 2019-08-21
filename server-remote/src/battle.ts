@@ -107,23 +107,6 @@ function scan_for_unit_in_direction(
     return { hit: false, final_point: current_cell };
 }
 
-function query_units_in_rectangular_area_around_point(battle: Battle, from_exclusive: XY, distance_inclusive: number): Unit[] {
-    const units: Unit[] = [];
-
-    for (const unit of battle.units) {
-        if (!authorize_act_on_known_unit(battle, unit).ok) continue;
-
-        const unit_position = unit.position;
-        const distance = rectangular(unit_position, from_exclusive);
-
-        if (distance > 0 && distance <= distance_inclusive) {
-            units.push(unit);
-        }
-    }
-
-    return units;
-}
-
 function query_units_for_no_target_ability(battle: Battle, caster: Unit, targeting: Ability_Targeting): Unit[] {
     const units: Unit[] = [];
 
@@ -1062,7 +1045,7 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
         switch (ability.id) {
             case Ability_Id.luna_moon_glaive: {
                 defer_delta(battle, () => {
-                    const targets = query_units_in_rectangular_area_around_point(battle, target.position, 2);
+                    const targets = query_units_for_no_target_ability(battle, target, ability.secondary_targeting);
                     const allies = targets.filter(target => are_units_allies(source, target) && target != source);
                     const enemies = targets.filter(target => !are_units_allies(source, target));
                     const glaive_target = enemies.length > 0 ? random_in_array(enemies) : random_in_array(allies);
@@ -1670,7 +1653,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
             for (const ability of source.unit.abilities) {
                 if (ability.id != Ability_Id.dark_seer_ion_shell) continue;
 
-                const targets = query_units_in_rectangular_area_around_point(battle, unit.position, 1);
+                const targets = query_units_for_no_target_ability(battle, unit, ability.shield_targeting);
 
                 return apply_ability_effect_delta({
                     ability_id: Ability_Id.dark_seer_ion_shell,

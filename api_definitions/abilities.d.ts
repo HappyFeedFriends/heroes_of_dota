@@ -144,6 +144,7 @@ type Ability_Luna_Lucent_Beam = Ability_Definition_Active_Base & {
 
 type Ability_Luna_Moon_Glaive = Ability_Definition_Passive_Base & {
     id: Ability_Id.luna_moon_glaive
+    secondary_targeting: Ability_Targeting
 }
 
 type Ability_Luna_Eclipse = Ability_Definition_Active_Base & {
@@ -255,6 +256,7 @@ type Ability_Dark_Seer_Ion_Shell = Ability_Definition_Active_Base & {
     type: Ability_Type.target_unit
     damage_per_turn: number
     duration: number
+    shield_targeting: Ability_Targeting
 }
 
 type Ability_Dark_Seer_Surge = Ability_Definition_Active_Base & {
