@@ -2250,9 +2250,8 @@ export function cheat(battle: Battle_Record, player: Player, cheat: string, sele
             break;
         }
 
-        case "win": {
-            finish_battle(battle, battle_player);
-            submit_battle_deltas(battle, []);
+        case "gg": {
+            surrender_player_forces(battle, player);
 
             break;
         }
