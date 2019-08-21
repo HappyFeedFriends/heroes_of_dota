@@ -1232,6 +1232,7 @@ function get_item_icon_name(id: Item_Id): string {
         case Item_Id.chainmail: return "chainmail";
         case Item_Id.enchanted_mango: return "enchanted_mango";
         case Item_Id.octarine_core: return "octarine_core";
+        case Item_Id.basher: return "basher";
     }
 }
 
@@ -1733,6 +1734,7 @@ function get_item_tooltip(i: Item): string {
         case Item_Id.chainmail: return `+${i.armor_bonus} armor`;
         case Item_Id.enchanted_mango: return `+${i.bonus_charges} charge to a level 1 ability`;
         case Item_Id.octarine_core: return `Restore health per damage point dealt by abilities`;
+        case Item_Id.basher: return `Stun attacked targets for 1 turn`;
     }
 }
 
@@ -1836,6 +1838,8 @@ function get_modifier_icon(modifier_id: Modifier_Id): string {
         case Modifier_Id.item_morbid_mask: return from_item(Item_Id.morbid_mask);
         case Modifier_Id.item_chainmail: return from_item(Item_Id.chainmail);
         case Modifier_Id.item_octarine_core: return from_item(Item_Id.octarine_core);
+        case Modifier_Id.item_basher_bearer: return from_item(Item_Id.basher);
+        case Modifier_Id.item_basher_target: return from_item(Item_Id.basher);
 
         case Modifier_Id.dragon_knight_dragon_tail: return from_ability(Ability_Id.dragon_knight_dragon_tail);
         case Modifier_Id.dragon_knight_elder_dragon_form: return from_ability(Ability_Id.dragon_knight_elder_dragon_form);

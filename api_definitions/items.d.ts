@@ -14,7 +14,8 @@ declare const enum Item_Id {
     morbid_mask = 12,
     chainmail = 13,
     enchanted_mango = 14,
-    octarine_core = 15
+    octarine_core = 15,
+    basher = 16
 }
 
 type Item =
@@ -33,7 +34,8 @@ type Item =
     Item_Morbid_Mask |
     Item_Chainmail |
     Item_Enchanted_Mango |
-    Item_Octarine_Core
+    Item_Octarine_Core |
+    Item_Basher
 
 type Delta_Equip_Item =
     Delta_Equip_Item_With_Modifier |
@@ -43,7 +45,8 @@ type Delta_Equip_Item =
 
 type Delta_Item_Effect_Applied =
     Delta_Heart_Of_Tarrasque_Effect |
-    Delta_Item_Lifesteal_Effect
+    Delta_Item_Lifesteal_Effect |
+    Delta_Basher_Effect
 
 type Item_Base = {
     gold_cost: number
@@ -127,6 +130,10 @@ type Item_Octarine_Core = Item_Base & {
     id: Item_Id.octarine_core
 }
 
+type Item_Basher = Item_Base & {
+    id: Item_Id.basher
+}
+
 type Delta_Equip_Item_Base = {
     type: Delta_Type.equip_item
     unit_id: number
@@ -146,7 +153,8 @@ type Delta_Equip_Item_With_Modifier = Delta_Equip_Item_Base & {
         Item_Id.belt_of_strength |
         Item_Id.morbid_mask |
         Item_Id.chainmail |
-        Item_Id.octarine_core
+        Item_Id.octarine_core |
+        Item_Id.basher
 
     modifier: Modifier_Application
 }
@@ -164,6 +172,14 @@ type Delta_Equip_Refresher_Shard = Delta_Equip_Item_Base & {
     }[]
 }
 
+type Delta_Equip_Enchanted_Mango = Delta_Equip_Item_Base & {
+    item_id: Item_Id.enchanted_mango
+    change: {
+        ability_id: Ability_Id
+        charges_remaining: number
+    } | undefined
+}
+
 type Delta_Heart_Of_Tarrasque_Effect = {
     type: Delta_Type.item_effect_applied
     item_id: Item_Id.heart_of_tarrasque
@@ -176,10 +192,9 @@ type Delta_Item_Lifesteal_Effect = {
     heal: Unit_Health_Change
 }
 
-type Delta_Equip_Enchanted_Mango = Delta_Equip_Item_Base & {
-    item_id: Item_Id.enchanted_mango
-    change: {
-        ability_id: Ability_Id
-        charges_remaining: number
-    } | undefined
+type Delta_Basher_Effect = {
+    type: Delta_Type.item_effect_applied
+    item_id: Item_Id.basher
+    target_unit_id: number
+    modifier: Modifier_Application
 }

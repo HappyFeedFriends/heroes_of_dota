@@ -1942,6 +1942,16 @@ function play_item_effect_delta(main_player: Main_Player, delta: Delta_Item_Effe
             break;
         }
 
+        case Item_Id.basher: {
+            const target = find_unit_by_id(delta.target_unit_id);
+            if (!target) break;
+
+            unit_emit_sound(target, "DOTA_Item.SkullBasher");
+            apply_modifier(main_player, target, delta.modifier);
+
+            break;
+        }
+
         default: unreachable(delta);
     }
 
@@ -2174,6 +2184,11 @@ function play_item_equip_delta(main_player: Main_Player, hero: Hero, delta: Delt
         }
 
         case Item_Id.octarine_core: {
+            apply_modifier(main_player, hero, delta.modifier);
+            break;
+        }
+
+        case Item_Id.basher: {
             apply_modifier(main_player, hero, delta.modifier);
             break;
         }

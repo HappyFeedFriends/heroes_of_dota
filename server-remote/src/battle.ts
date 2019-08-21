@@ -984,6 +984,15 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
             }
         }
 
+        case Item_Id.basher: {
+            return {
+                type: Delta_Type.equip_item,
+                unit_id: hero.id,
+                item_id: item.id,
+                modifier: new_modifier(battle, Modifier_Id.item_basher_bearer)
+            }
+        }
+
     }
 }
 
@@ -1082,6 +1091,19 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
                             target_unit_id: source.id,
                             change: health_change(source, item.health_restored_per_attack)
                         }
+                    };
+                }
+            }
+        });
+
+        defer_delta(battle, () => {
+            for (const item of source.items) {
+                if (item.id == Item_Id.basher) {
+                    return {
+                        type: Delta_Type.item_effect_applied,
+                        item_id: item.id,
+                        target_unit_id: target.id,
+                        modifier: new_timed_modifier(battle, Modifier_Id.item_basher_target, 1, [ Modifier_Field.state_stunned_counter, 1 ])
                     };
                 }
             }

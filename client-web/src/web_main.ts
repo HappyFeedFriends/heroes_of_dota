@@ -766,6 +766,15 @@ function delta_to_colored_line(game: Game_In_Battle, delta: Delta): Colored_Line
             ]
         }
 
+        case Delta_Type.item_effect_applied: {
+            const id: Item_Id = delta.item_id;
+
+            return [
+                clr.txt(enum_to_string(id), "gray"),
+                clr.plain(" triggers")
+            ]
+        }
+
         case Delta_Type.end_turn: {
             return [
                 clr.txt("Next turn", "gray")

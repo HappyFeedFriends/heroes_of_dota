@@ -900,6 +900,16 @@ function collapse_item_effect(battle: Battle, effect: Delta_Item_Effect_Applied)
             break;
         }
 
+        case Item_Id.basher: {
+            const target = find_unit_by_id(battle, effect.target_unit_id);
+
+            if (target) {
+                apply_modifier(battle, source, target, effect.modifier);
+            }
+
+            break;
+        }
+
         case Item_Id.satanic:
         case Item_Id.octarine_core:
         case Item_Id.morbid_mask: {
@@ -1394,6 +1404,11 @@ function collapse_item_equip(battle: Battle, hero: Hero, delta: Delta_Equip_Item
         }
 
         case Item_Id.octarine_core: {
+            apply_modifier(battle, source, hero, delta.modifier);
+            break;
+        }
+
+        case Item_Id.basher: {
             apply_modifier(battle, source, hero, delta.modifier);
             break;
         }
