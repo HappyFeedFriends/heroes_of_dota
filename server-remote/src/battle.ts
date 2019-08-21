@@ -1,7 +1,7 @@
 import {Player, report_battle_over} from "./server";
 import {readFileSync} from "fs";
 import {submit_chat_message} from "./chat";
-import {Battleground, Spawn_Type} from "./battleground";
+import {Battleground, Shop_Type, Spawn_Type} from "./battleground";
 import {XY} from "./common";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
@@ -1905,7 +1905,30 @@ export function start_battle(players: Player[], battleground: Battleground): num
 
             case Spawn_Type.shop: {
                 const all_items = enum_values<Item_Id>();
-                const items: Item_Id[] = [];
+                const items: Item_Id[] = (() => {
+                    switch (spawn.shop_type) {
+                        case Shop_Type.normal: return [
+                            Item_Id.belt_of_strength,
+                            Item_Id.blades_of_attack,
+                            Item_Id.boots_of_speed,
+                            Item_Id.morbid_mask,
+                            // TODO enchanted_mango,
+                            // TODO chainmail
+                        ];
+
+                        case Shop_Type.secret: return [
+                            Item_Id.boots_of_travel,
+                            Item_Id.heart_of_tarrasque,
+                            Item_Id.assault_cuirass,
+                            Item_Id.satanic,
+                            Item_Id.divine_rapier,
+                            Item_Id.tome_of_knowledge,
+                            Item_Id.refresher_shard,
+                            Item_Id.mask_of_madness,
+                            Item_Id.armlet
+                        ]
+                    }
+                })();
 
                 for (let remaining = 3; remaining; remaining--) {
                     const index = random_int_up_to(all_items.length);

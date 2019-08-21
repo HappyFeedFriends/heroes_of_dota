@@ -5,6 +5,11 @@ export const enum Spawn_Type {
     tree
 }
 
+export const enum Shop_Type {
+    normal,
+    secret
+}
+
 type Rune_Spawn = {
     type: Spawn_Type.rune
     at: XY
@@ -12,6 +17,7 @@ type Rune_Spawn = {
 
 type Shop_Spawn = {
     type: Spawn_Type.shop
+    shop_type: Shop_Type
     at: XY
     facing: XY
 }
@@ -48,9 +54,10 @@ export function forest(): Battleground {
         }
     }
 
-    function shop(x: number, y: number, facing: XY): Shop_Spawn {
+    function shop(x: number, y: number, facing: XY, shop_type: Shop_Type): Shop_Spawn {
         return {
             type: Spawn_Type.shop,
+            shop_type: shop_type,
             at: xy(x, y),
             facing: facing
         }
@@ -112,8 +119,8 @@ export function forest(): Battleground {
             tree(4, 3),
             tree(4, 9),
             tree(4, 8),
-            shop(6, 1, up),
-            shop(6, 8, down),
+            shop(6, 1, up, Shop_Type.normal),
+            shop(6, 8, down, Shop_Type.secret),
             creep(10, 8, left),
             rune(1, 1),
         ]
