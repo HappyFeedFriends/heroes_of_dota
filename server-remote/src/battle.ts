@@ -950,6 +950,15 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 modifier: new_modifier(battle, Modifier_Id.item_belt_of_strength, [Modifier_Field.health_bonus, item.health_bonus])
             }
         }
+
+        case Item_Id.morbid_mask: {
+            return {
+                type: Delta_Type.equip_item,
+                unit_id: hero.id,
+                item_id: item.id,
+                modifier: new_modifier(battle, Modifier_Id.item_morbid_mask)
+            }
+        }
     }
 }
 
@@ -1003,13 +1012,28 @@ function pick_up_rune(battle: Battle_Record, hero: Hero, rune: Rune, move_cost: 
 function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, target: Unit, damage: number): void {
     if (source.supertype == Unit_Supertype.hero) {
         defer_delta(battle, () => {
-            if (source.items.some(item => item.id == Item_Id.satanic)) {
-                return {
-                    type: Delta_Type.health_change,
-                    source_unit_id: source.id,
-                    target_unit_id: source.id,
-                    ...health_change(source, Math.max(0, damage)) // In case we have a healing attack, I guess
-                };
+            for (const item of source.items) {
+                if (item.id == Item_Id.satanic) {
+                    return {
+                        type: Delta_Type.health_change,
+                        source_unit_id: source.id,
+                        target_unit_id: source.id,
+                        ...health_change(source, Math.max(0, damage)) // In case we have a healing attack, I guess
+                    };
+                }
+            }
+        });
+
+        defer_delta(battle, () => {
+            for (const item of source.items) {
+                if (item.id == Item_Id.morbid_mask) {
+                    return {
+                        type: Delta_Type.health_change,
+                        source_unit_id: source.id,
+                        target_unit_id: source.id,
+                        ...health_change(source, Math.max(0, damage)) // In case we have a healing attack, I guess
+                    };
+                }
             }
         });
     }

@@ -70,5 +70,11 @@ function item_id_to_item(item_id: Item_Id): Item {
             health_bonus: 4,
             gold_cost: 2
         };
+
+        case Item_Id.morbid_mask: return {
+            id: item_id,
+            health_restored_per_attack: 1,
+            gold_cost: 2
+        };
     }
 }
