@@ -2131,11 +2131,6 @@ function select_unit(new_entity_id: EntityId, full_stats = false) {
 function select_shop(new_entity_id: EntityId) {
     before_unit_selection_change();
 
-    if (selection.type == Selection_Type.shop) {
-        drop_selection();
-        return;
-    }
-
     const shop_id = battle.entity_id_to_shop_id[new_entity_id];
     const shop_ui = ui_shop_data.find(shop => shop.id == shop_id);
 
