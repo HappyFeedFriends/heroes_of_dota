@@ -1021,14 +1021,18 @@ function pick_up_rune(battle: Battle_Record, hero: Hero, rune: Rune, move_cost: 
 
 function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, target: Unit, damage: number): void {
     if (source.supertype == Unit_Supertype.hero) {
+        const damage_only = Math.max(0, damage); // In case we have a healing attack, I guess;
+
         defer_delta(battle, () => {
             for (const item of source.items) {
                 if (item.id == Item_Id.satanic) {
                     return {
-                        type: Delta_Type.health_change,
-                        source_unit_id: source.id,
-                        target_unit_id: source.id,
-                        ...health_change(source, Math.max(0, damage)) // In case we have a healing attack, I guess
+                        type: Delta_Type.item_effect_applied,
+                        item_id: item.id,
+                        heal: {
+                            target_unit_id: source.id,
+                            change: health_change(source, damage_only)
+                        }
                     };
                 }
             }
@@ -1038,10 +1042,12 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
             for (const item of source.items) {
                 if (item.id == Item_Id.morbid_mask) {
                     return {
-                        type: Delta_Type.health_change,
-                        source_unit_id: source.id,
-                        target_unit_id: source.id,
-                        ...health_change(source, Math.max(0, damage)) // In case we have a healing attack, I guess
+                        type: Delta_Type.item_effect_applied,
+                        item_id: item.id,
+                        heal: {
+                            target_unit_id: source.id,
+                            change: health_change(source, item.health_restored_per_attack)
+                        }
                     };
                 }
             }
@@ -1637,10 +1643,12 @@ function resolve_end_turn_effects(battle: Battle_Record) {
     // I don't know how to get rid of the ifs
     for_heroes_with_item<Item_Heart_Of_Tarrasque>(Item_Id.heart_of_tarrasque, (hero, item) => {
         defer_delta_by_unit(battle, hero, () => ({
-            type: Delta_Type.health_change,
-            source_unit_id: hero.id,
-            target_unit_id: hero.id,
-            ...health_change(hero, item.regeneration_per_turn)
+            type: Delta_Type.item_effect_applied,
+            item_id: item.id,
+            heal: {
+                target_unit_id: hero.id,
+                change: health_change(hero, item.regeneration_per_turn)
+            }
         }));
     });
 

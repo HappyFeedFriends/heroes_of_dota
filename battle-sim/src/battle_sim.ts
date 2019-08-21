@@ -885,6 +885,33 @@ function apply_modifier_default(source: Source, target: Unit, modifier: Modifier
     apply_modifier_changes(target, modifier.changes, false);
 }
 
+function collapse_item_effect(battle: Battle, effect: Delta_Item_Effect_Applied) {
+    const source = item_source(effect.item_id);
+
+    switch (effect.item_id) {
+        case Item_Id.heart_of_tarrasque: {
+            const target = find_unit_by_id(battle, effect.heal.target_unit_id);
+
+            if (target) {
+                change_health(battle, source, target, effect.heal.change);
+            }
+
+            break;
+        }
+
+        case Item_Id.satanic:
+        case Item_Id.morbid_mask: {
+            const target = find_unit_by_id(battle, effect.heal.target_unit_id);
+
+            if (target) {
+                change_health(battle, source, target, effect.heal.change);
+            }
+
+            break;
+        }
+    }
+}
+
 function collapse_ability_effect(battle: Battle, effect: Ability_Effect) {
     switch (effect.ability_id) {
         case Ability_Id.luna_moon_glaive: {
@@ -1638,6 +1665,12 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
         case Delta_Type.ability_effect_applied: {
             collapse_ability_effect(battle, delta.effect);
+
+            break;
+        }
+
+        case Delta_Type.item_effect_applied: {
+            collapse_item_effect(battle, delta);
 
             break;
         }

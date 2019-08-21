@@ -1905,6 +1905,34 @@ function play_unit_target_spell_delta(main_player: Main_Player, caster: Battle_P
     }
 }
 
+function play_item_effect_delta(main_player: Main_Player, delta: Delta_Item_Effect_Applied) {
+    switch (delta.item_id) {
+        case Item_Id.morbid_mask:
+        case Item_Id.satanic: {
+            const target = find_unit_by_id(delta.heal.target_unit_id);
+            if (!target) break;
+
+            change_health(main_player, target, target, delta.heal.change);
+            fx_by_unit("particles/generic_gameplay/generic_lifesteal.vpcf", target).release();
+            wait(0.2);
+
+            break;
+        }
+
+        case Item_Id.heart_of_tarrasque: {
+            const target = find_unit_by_id(delta.heal.target_unit_id);
+            if (!target) break;
+
+            change_health(main_player, target, target, delta.heal.change);
+            wait(0.2);
+
+            break;
+        }
+
+        default: unreachable(delta);
+    }
+}
+
 function play_ability_effect_delta(main_player: Main_Player, effect: Ability_Effect) {
     switch (effect.ability_id) {
         case Ability_Id.luna_moon_glaive: {
@@ -2744,6 +2772,12 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
 
         case Delta_Type.ability_effect_applied: {
             play_ability_effect_delta(main_player, delta.effect);
+
+            break;
+        }
+
+        case Delta_Type.item_effect_applied: {
+            play_item_effect_delta(main_player, delta);
 
             break;
         }

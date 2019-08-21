@@ -32,9 +32,10 @@ declare const enum Delta_Type {
     modifier_removed = 19,
     set_ability_charges_remaining = 20,
     ability_effect_applied = 21,
-    rune_pick_up = 22,
-    purchase_item = 23,
-    equip_item = 24,
+    item_effect_applied = 22,
+    rune_pick_up = 23,
+    purchase_item = 24,
+    equip_item = 25,
 
     end_turn = 26,
     game_start = 27,
@@ -575,6 +576,7 @@ type Delta =
     Delta_Modifier_Removed |
     Delta_Set_Ability_Charges_Remaining |
     Delta_Ability_Effect_Applied<Ability_Effect> |
+    Delta_Item_Effect_Applied |
     Delta_Rune_Pick_Up |
     Delta_Draw_Hero_Card |
     Delta_Draw_Spell_Card |

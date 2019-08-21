@@ -31,6 +31,15 @@ type Item =
     Item_Morbid_Mask |
     Item_Chainmail
 
+type Delta_Equip_Item =
+    Delta_Equip_Item_With_Modifier |
+    Delta_Equip_Tome_Of_Knowledge |
+    Delta_Equip_Refresher_Shard
+
+type Delta_Item_Effect_Applied =
+    Delta_Heart_Of_Tarrasque_Effect |
+    Delta_Item_Lifesteal_Effect
+
 type Item_Base = {
     gold_cost: number
 }
@@ -140,7 +149,14 @@ type Delta_Equip_Refresher_Shard = Delta_Equip_Item_Base & {
     }[]
 }
 
-type Delta_Equip_Item =
-    Delta_Equip_Item_With_Modifier |
-    Delta_Equip_Tome_Of_Knowledge |
-    Delta_Equip_Refresher_Shard
+type Delta_Heart_Of_Tarrasque_Effect = {
+    type: Delta_Type.item_effect_applied
+    item_id: Item_Id.heart_of_tarrasque
+    heal: Unit_Health_Change
+}
+
+type Delta_Item_Lifesteal_Effect = {
+    type: Delta_Type.item_effect_applied
+    item_id: Item_Id.morbid_mask | Item_Id.satanic
+    heal: Unit_Health_Change
+}
