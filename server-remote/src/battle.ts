@@ -1928,8 +1928,7 @@ export function start_battle(players: Player[], battleground: Battleground): num
             }
 
             case Spawn_Type.shop: {
-                const all_items = enum_values<Item_Id>();
-                const items: Item_Id[] = (() => {
+                const all_items = (() => {
                     switch (spawn.shop_type) {
                         case Shop_Type.normal: return [
                             Item_Id.belt_of_strength,
@@ -1953,6 +1952,8 @@ export function start_battle(players: Player[], battleground: Battleground): num
                         ]
                     }
                 })();
+
+                const items: Item_Id[] = [];
 
                 for (let remaining = 3; remaining; remaining--) {
                     const index = random_int_up_to(all_items.length);
