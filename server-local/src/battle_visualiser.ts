@@ -1914,7 +1914,15 @@ function play_item_effect_delta(main_player: Main_Player, delta: Delta_Item_Effe
 
             change_health(main_player, target, target, delta.heal.change);
             fx_by_unit("particles/generic_gameplay/generic_lifesteal.vpcf", target).release();
-            wait(0.2);
+
+            break;
+        }
+        case Item_Id.octarine_core: {
+            const target = find_unit_by_id(delta.heal.target_unit_id);
+            if (!target) break;
+
+            change_health(main_player, target, target, delta.heal.change);
+            fx_by_unit("particles/items3_fx/octarine_core_lifesteal.vpcf", target).release();
 
             break;
         }
@@ -1924,13 +1932,14 @@ function play_item_effect_delta(main_player: Main_Player, delta: Delta_Item_Effe
             if (!target) break;
 
             change_health(main_player, target, target, delta.heal.change);
-            wait(0.2);
 
             break;
         }
 
         default: unreachable(delta);
     }
+
+    wait(0.2);
 }
 
 function play_ability_effect_delta(main_player: Main_Player, effect: Ability_Effect) {
@@ -2154,6 +2163,11 @@ function play_item_equip_delta(main_player: Main_Player, hero: Hero, delta: Delt
         }
 
         case Item_Id.chainmail: {
+            apply_modifier(main_player, hero, delta.modifier);
+            break;
+        }
+
+        case Item_Id.octarine_core: {
             apply_modifier(main_player, hero, delta.modifier);
             break;
         }

@@ -13,7 +13,8 @@ declare const enum Item_Id {
     belt_of_strength = 11,
     morbid_mask = 12,
     chainmail = 13,
-    enchanted_mango = 14
+    enchanted_mango = 14,
+    octarine_core = 15
 }
 
 type Item =
@@ -31,7 +32,8 @@ type Item =
     Item_Belt_Of_Strength |
     Item_Morbid_Mask |
     Item_Chainmail |
-    Item_Enchanted_Mango
+    Item_Enchanted_Mango |
+    Item_Octarine_Core
 
 type Delta_Equip_Item =
     Delta_Equip_Item_With_Modifier |
@@ -121,6 +123,10 @@ type Item_Enchanted_Mango = Item_Base & {
     bonus_charges: number
 }
 
+type Item_Octarine_Core = Item_Base & {
+    id: Item_Id.octarine_core
+}
+
 type Delta_Equip_Item_Base = {
     type: Delta_Type.equip_item
     unit_id: number
@@ -139,7 +145,8 @@ type Delta_Equip_Item_With_Modifier = Delta_Equip_Item_Base & {
         Item_Id.blades_of_attack |
         Item_Id.belt_of_strength |
         Item_Id.morbid_mask |
-        Item_Id.chainmail
+        Item_Id.chainmail |
+        Item_Id.octarine_core
 
     modifier: Modifier_Application
 }
@@ -165,7 +172,7 @@ type Delta_Heart_Of_Tarrasque_Effect = {
 
 type Delta_Item_Lifesteal_Effect = {
     type: Delta_Type.item_effect_applied
-    item_id: Item_Id.morbid_mask | Item_Id.satanic
+    item_id: Item_Id.morbid_mask | Item_Id.satanic | Item_Id.octarine_core
     heal: Unit_Health_Change
 }
 

@@ -53,6 +53,11 @@ function item_id_to_item(item_id: Item_Id): Item {
             gold_cost: 8
         };
 
+        case Item_Id.octarine_core: return {
+            id: item_id,
+            gold_cost: 8
+        };
+
         case Item_Id.boots_of_speed: return {
             id: item_id,
             move_points_bonus: 1,

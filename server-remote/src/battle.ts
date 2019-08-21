@@ -966,6 +966,15 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
             }
         }
 
+        case Item_Id.octarine_core: {
+            return {
+                type: Delta_Type.equip_item,
+                unit_id: hero.id,
+                item_id: item.id,
+                modifier: new_modifier(battle, Modifier_Id.item_octarine_core)
+            }
+        }
+
         case Item_Id.chainmail: {
             return {
                 type: Delta_Type.equip_item,
@@ -1022,6 +1031,25 @@ function pick_up_rune(battle: Battle_Record, hero: Hero, rune: Rune, move_cost: 
                 modifier: new_modifier(battle, Modifier_Id.rune_double_damage, [Modifier_Field.attack_bonus, hero.attack_damage])
             };
         }
+    }
+}
+
+function on_target_dealt_damage_by_ability(battle: Battle_Record, source: Unit, target: Unit, damage: number): void {
+    if (source.supertype == Unit_Supertype.hero) {
+        defer_delta(battle, () => {
+            for (const item of source.items) {
+                if (item.id == Item_Id.octarine_core) {
+                    return {
+                        type: Delta_Type.item_effect_applied,
+                        item_id: item.id,
+                        heal: {
+                            target_unit_id: source.id,
+                            change: health_change(source, damage)
+                        }
+                    };
+                }
+            }
+        });
     }
 }
 
@@ -1526,6 +1554,8 @@ function server_change_health(battle: Battle_Record, source: Source, target: Uni
 
         if (attacker.attack && source.ability_id == attacker.attack.id) {
             on_target_dealt_damage_by_attack(battle, attacker, target, -change.value_delta);
+        } else if (change.value_delta < 0) {
+            on_target_dealt_damage_by_ability(battle, attacker, target, -change.value_delta);
         }
 
         if (killed) {
@@ -1948,7 +1978,8 @@ export function start_battle(players: Player[], battleground: Battleground): num
                             Item_Id.tome_of_knowledge,
                             Item_Id.refresher_shard,
                             Item_Id.mask_of_madness,
-                            Item_Id.armlet
+                            Item_Id.armlet,
+                            Item_Id.octarine_core
                         ]
                     }
                 })();

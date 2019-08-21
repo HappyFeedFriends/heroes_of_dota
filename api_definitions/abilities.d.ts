@@ -67,6 +67,7 @@ declare const enum Modifier_Id {
     item_belt_of_strength = 109,
     item_morbid_mask = 110,
     item_chainmail = 111,
+    item_octarine_core = 112,
 
     spell_euls_scepter = 200,
     spell_buckler = 201,
