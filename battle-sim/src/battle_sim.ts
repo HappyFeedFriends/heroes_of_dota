@@ -1248,6 +1248,14 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
             break;
         }
 
+        case Spell_Id.call_to_arms: {
+            for (const summon of cast.summons) {
+                spawn_minion(battle, caster, summon.unit_id, summon.unit_type, summon.at);
+            }
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }

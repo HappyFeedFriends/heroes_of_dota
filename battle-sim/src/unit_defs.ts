@@ -442,5 +442,16 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
                 ability_bench: []
             }
         }
+
+        case Minion_Type.lane_minion: {
+            return {
+                attack_damage: 3,
+                health: 3,
+                move_points: 3,
+                attack: basic_attack(1),
+                abilities: [],
+                ability_bench: []
+            }
+        }
     }
 }

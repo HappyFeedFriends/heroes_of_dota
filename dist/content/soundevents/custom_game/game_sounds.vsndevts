@@ -33,6 +33,14 @@
         vsnd_files = "sounds/music/valve_dota_001/stingers/respawn.vsnd"
     }
 
+    call_to_arms = {
+        type = "dota_src1_2d"
+        volume = 1.0
+        pitch = 1.0
+        event_type = 3.0
+        vsnd_files = "sounds/ambient/mega_horn_radiant.vsnd"
+    }
+
     hero_spawn = {
         type = "dota_src1_2d"
         volume = 1.0

@@ -104,6 +104,7 @@ type Modifier_Tied_Fx = {
 
 type Started_Gesture = {
     fade(): void
+    remove(): void
 }
 
 type Started_Sound = {
@@ -133,6 +134,29 @@ function find_hero_by_id(id: number): Hero | undefined {
     if (unit && unit.supertype == Unit_Supertype.hero) {
         return unit;
     }
+}
+
+function find_player_deployment_zone_facing(id: number): XY | undefined {
+    const participant = array_find(battle.participants, participant => participant.id == id);
+
+    if (!participant) return;
+
+    return {
+        x: participant.deployment_zone.face_x,
+        y: participant.deployment_zone.face_y
+    };
+}
+
+function are_units_allies(a: Unit, b: Unit): boolean {
+    if (a.supertype == Unit_Supertype.creep && b.supertype == Unit_Supertype.creep) {
+        return true;
+    }
+
+    if (a.supertype != Unit_Supertype.creep && b.supertype != Unit_Supertype.creep) {
+        return a.owner_remote_id == b.owner_remote_id;
+    }
+
+    return false;
 }
 
 function manhattan(from: XY, to: XY) {
@@ -195,6 +219,9 @@ function unit_start_gesture(unit: Unit, gesture: GameActivity_t, playback_rate?:
     return {
         fade(): void {
             unit.handle.FadeGesture(gesture)
+        },
+        remove(): void {
+            unit.handle.RemoveGesture(gesture)
         }
     }
 }
@@ -210,6 +237,7 @@ function creep_type_to_dota_unit_name(): string {
 function minion_type_to_dota_unit_name(minion_type: Minion_Type): string {
     switch (minion_type) {
         case Minion_Type.pocket_tower: return "hod_pocket_tower";
+        case Minion_Type.lane_minion: return "hod_lane_minion";
     }
 }
 
@@ -1394,6 +1422,26 @@ function battle_emit_sound(sound: string) {
     EmitSoundOnLocationWithCaster(battle.camera_dummy.GetAbsOrigin(), sound, battle.camera_dummy);
 }
 
+function spawn_unit_with_fx<T extends Unit>(at: XY, supplier: () => T): T {
+    fx("particles/hero_spawn.vpcf")
+        .to_location(0, at)
+        .release();
+
+    wait(0.25);
+
+    shake_screen(at, Shake.medium);
+
+    const new_unit = supplier();
+
+    unit_emit_sound(new_unit, "hero_spawn");
+    show_damage_effect_on_target(new_unit);
+    fx_by_unit("particles/dev/library/base_dust_hit.vpcf", new_unit).release();
+
+    battle.units.push(new_unit);
+
+    return new_unit;
+}
+
 function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, cast: Delta_Unit_Target_Ability, target: Unit) {
     turn_unit_towards_target(caster, target.position);
     highlight_grid_for_targeted_ability(caster, cast.ability_id, target.position);
@@ -1836,6 +1884,22 @@ function play_no_target_spell_delta(main_player: Main_Player, cast: Delta_Use_No
             break;
         }
 
+        case Spell_Id.call_to_arms: {
+            const facing = find_player_deployment_zone_facing(cast.player_id);
+
+            if (!facing) break;
+
+            battle_emit_sound("call_to_arms");
+
+            for (const summon of from_client_array(cast.summons)) {
+                const minion = spawn_unit_with_fx(summon.at, () => spawn_minion_for_battle(summon.unit_type, summon.unit_id, cast.player_id, summon.at, facing));
+
+                add_activity_override(minion, GameActivity_t.ACT_DOTA_SHARPEN_WEAPON, 1.0);
+            }
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }
@@ -1843,21 +1907,11 @@ function play_no_target_spell_delta(main_player: Main_Player, cast: Delta_Use_No
 function play_ground_target_spell_delta(main_player: Main_Player, cast: Delta_Use_Ground_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.pocket_tower: {
-            fx("particles/hero_spawn.vpcf")
-                .to_location(0, cast.at)
-                .release();
+            const facing = find_player_deployment_zone_facing(cast.player_id);
 
-            wait(0.25);
+            if (!facing) break;
 
-            shake_screen(cast.at, Shake.medium);
-
-            const tower = spawn_minion_for_battle(cast.new_unit_type, cast.new_unit_id, cast.player_id, cast.at, { x: 0, y: -1 });
-
-            unit_emit_sound(tower, "hero_spawn");
-            show_damage_effect_on_target(tower);
-            fx_by_unit("particles/dev/library/base_dust_hit.vpcf", tower).release();
-
-            battle.units.push(tower);
+            spawn_unit_with_fx(cast.at, () => spawn_minion_for_battle(cast.new_unit_type, cast.new_unit_id, cast.player_id, cast.at, facing));
 
             break;
         }
@@ -2315,8 +2369,8 @@ function change_health(main_player: Main_Player, source: Unit, target: Unit, cha
     update_player_state_net_table(main_player);
 
     if (target.health == 0 && !target.dead) {
-        if (source.supertype != Unit_Supertype.creep) {
-            // TODO only show this when killing actual enemies
+        // TODO gold earning could have an actual source, it's probably where we should spawn the particle
+        if (source.supertype != Unit_Supertype.creep && !are_units_allies(source, target)) {
             fx("particles/generic_gameplay/lasthit_coins.vpcf").to_unit_origin(1, target).release();
             fx_follow_unit("particles/generic_gameplay/lasthit_coins_local.vpcf", source)
                 .to_unit_origin(1, target)
@@ -2453,8 +2507,6 @@ function add_activity_translation(target: Unit, translation: Activity_Translatio
 function add_activity_override(target: Handle_Provider, activity: GameActivity_t, duration?: number) {
     if (target.handle.HasModifier("Modifier_Activity_Override")) {
         target.handle.RemoveModifierByName("Modifier_Activity_Override");
-
-        wait_one_frame();
     }
 
     const parameters: Modifier_Activity_Override_Params = {

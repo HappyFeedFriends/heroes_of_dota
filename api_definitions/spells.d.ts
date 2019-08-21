@@ -5,7 +5,8 @@ declare const enum Spell_Id {
     mekansm = 3,
     buckler = 4,
     drums_of_endurance = 5,
-    pocket_tower = 6
+    pocket_tower = 6,
+    call_to_arms = 7
 }
 
 declare const enum Spell_Type {
@@ -33,7 +34,8 @@ type Card_Spell_Unit_Target =
 type Card_Spell_No_Target =
     Spell_Mekansm |
     Spell_Buckler |
-    Spell_Drums_Of_Endurance
+    Spell_Drums_Of_Endurance |
+    Spell_Call_To_Arms
 
 type Card_Spell_Ground_Target =
     Spell_Pocket_Tower
@@ -88,6 +90,11 @@ type Spell_Pocket_Tower = Card_Spell_Ground_Target_Base & {
     spell_id: Spell_Id.pocket_tower
 }
 
+type Spell_Call_To_Arms = Card_Spell_No_Target_Base & {
+    spell_id: Spell_Id.call_to_arms
+    minions_to_summon: number
+}
+
 type Delta_Use_Unit_Target_Spell =
     Delta_Spell_Buyback |
     Delta_Spell_Town_Portal_Scroll |
@@ -96,7 +103,8 @@ type Delta_Use_Unit_Target_Spell =
 type Delta_Use_No_Target_Spell =
     Delta_Spell_Mekansm |
     Delta_Spell_Buckler |
-    Delta_Spell_Drums_Of_Endurance
+    Delta_Spell_Drums_Of_Endurance |
+    Delta_Spell_Call_To_Arms
 
 type Delta_Use_Ground_Target_Spell =
     Delta_Spell_Pocket_Tower
@@ -157,4 +165,16 @@ type Delta_Spell_Pocket_Tower = Delta_Use_Ground_Target_Spell_Base & {
     spell_id: Spell_Id.pocket_tower
     new_unit_type: Minion_Type
     new_unit_id: number
+}
+
+type Delta_Spell_Call_To_Arms = Delta_Use_No_Target_Spell_Base & {
+    spell_id: Spell_Id.call_to_arms
+    summons: {
+        unit_id: number
+        unit_type: Minion_Type,
+        at: {
+            x: number
+            y: number
+        }
+    }[]
 }

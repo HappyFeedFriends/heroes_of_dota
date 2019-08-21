@@ -72,7 +72,8 @@ declare const enum Hero_Type {
 }
 
 declare const enum Minion_Type {
-    pocket_tower = 0
+    pocket_tower = 0,
+    lane_minion = 1
 }
 
 declare const enum Shop_Type {

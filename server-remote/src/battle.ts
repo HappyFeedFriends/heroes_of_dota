@@ -38,6 +38,25 @@ export function random_in_array<T>(array: T[], length = array.length): T | undef
     return array[random_int_up_to(length)];
 }
 
+function pick_n_random<T>(array: T[], n: number): T[] {
+    const result: T[] = [];
+
+    if (array.length == 0) {
+        return result;
+    }
+
+    for (; n > 0; n--) {
+        const item_index = random_int_up_to(array.length);
+        result.push(array.splice(item_index, 1)[0]);
+
+        if (array.length == 0) {
+            return result;
+        }
+    }
+
+    return result;
+}
+
 function defer(battle: Battle_Record, action: () => void) {
     battle.deferred_actions.push(action);
 }
@@ -229,6 +248,20 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
                 targets: owned_units.map(target => ({
                     target_unit_id: target.id,
                     modifier: new_timed_modifier(battle, Modifier_Id.spell_drums_of_endurance, 1, [Modifier_Field.move_points_bonus, spell.move_points_bonus])
+                }))
+            }
+        }
+
+        case Spell_Id.call_to_arms: {
+            const spawn_points = pick_n_random(find_unoccupied_cell_in_deployment_zone_for_player(battle, player), spell.minions_to_summon);
+
+            return {
+                ...base,
+                spell_id: spell.spell_id,
+                summons: spawn_points.map(point => ({
+                    at: point.position,
+                    unit_id: get_next_entity_id(battle),
+                    unit_type: Minion_Type.lane_minion
                 }))
             }
         }
@@ -1853,24 +1886,8 @@ function submit_battle_deltas(battle: Battle_Record, battle_deltas: Delta[]) {
     }
 }
 
-export function random_unoccupied_point_in_deployment_zone(battle: Battle_Record, zone: Deployment_Zone): XY | undefined {
-    const free_cells: Cell[] = [];
-
-    for (let x = zone.min_x; x < zone.max_x; x++) {
-        for (let y = zone.min_y; y < zone.max_y; y++) {
-            const cell = grid_cell_at_raw(battle, x, y);
-
-            if (cell && !cell.occupied) {
-                free_cells.push(cell);
-            }
-        }
-    }
-
-    const free_cell = random_in_array(free_cells);
-
-    if (free_cell) {
-        return free_cell.position;
-    }
+export function find_unoccupied_cell_in_deployment_zone_for_player(battle: Battle_Record, player: Battle_Player) {
+    return battle.cells.filter(cell => !cell.occupied && is_point_in_deployment_zone(battle, cell.position, player));
 }
 
 export function get_battle_deltas_after(battle: Battle, head: number): Delta[] {
@@ -1937,31 +1954,18 @@ export function start_battle(players: Player[], battleground: Battleground): num
     const spawn_deltas: Delta[] = [];
 
     for (const player of battle.players) {
+        const spells = pick_n_random(enum_values<Spell_Id>(), 3);
+        const all_heroes = enum_values<Hero_Type>().filter(id => id != Hero_Type.sniper && id != Hero_Type.ursa);
+        const free_cells = find_unoccupied_cell_in_deployment_zone_for_player(battle, player);
+        const heroes_to_spawn = pick_n_random(all_heroes, 3);
+        const spawn_points = pick_n_random(free_cells, 3);
+
+        for (let index = 0; index < heroes_to_spawn.length; index++) {
+            spawn_deltas.push(spawn_hero(battle, player, spawn_points[index].position, heroes_to_spawn[index]));
+        }
+
         spawn_deltas.push(get_starting_gold(player));
-
-        const spell_collection = enum_values<Spell_Id>();
-
-        for (let index = 3; index > 0; index--) {
-            const index = random_int_up_to(spell_collection.length);
-            const spell_id = spell_collection.splice(index, 1)[0];
-
-            spawn_deltas.push(draw_spell_card(battle, player, spell_id));
-        }
-
-        const hero_collection = enum_values<Hero_Type>().filter(id => id != Hero_Type.sniper && id != Hero_Type.ursa);
-
-        for (let index = 3; index > 0; index--) {
-            const index = random_int_up_to(hero_collection.length);
-            const hero_type = hero_collection.splice(index, 1)[0];
-
-            defer_delta(battle, () => {
-                const spawn_at = random_unoccupied_point_in_deployment_zone(battle, player.deployment_zone);
-
-                if (spawn_at) {
-                    return spawn_hero(battle, player, spawn_at, hero_type);
-                }
-            });
-        }
+        spawn_deltas.push(...spells.map(id => draw_spell_card(battle, player, id)));
     }
 
     for (const spawn of battleground.spawns) {
@@ -2007,12 +2011,7 @@ export function start_battle(players: Player[], battleground: Battleground): num
                     }
                 })();
 
-                const items: Item_Id[] = [];
-
-                for (let remaining = 3; remaining; remaining--) {
-                    const index = random_int_up_to(all_items.length);
-                    items.push(...all_items.splice(index, 1));
-                }
+                const items = pick_n_random(all_items, 3);
 
                 spawn_deltas.push({
                     type: Delta_Type.shop_spawn,

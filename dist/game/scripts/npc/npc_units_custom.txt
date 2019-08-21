@@ -52,4 +52,20 @@
             "CanRespawn"  "1"
         }
     }
+
+    "hod_lane_minion" {
+        "Model"  "models/creeps/lane_creeps/creep_radiant_melee/radiant_melee.mdl"
+        "BaseClass"  "npc_dota_creature"
+        "ModelScale"  "1"
+
+        "AttackCapabilities"  "DOTA_UNIT_CAP_NO_ATTACK"
+        "MovementCapabilities"  "DOTA_UNIT_CAP_MOVE_GROUND"
+
+        "VisionDaytimeRange"  "0"
+        "VisionNighttimeRange"  "0"
+
+        "Creature" {
+            "CanRespawn"  "1"
+        }
+    }
 }
