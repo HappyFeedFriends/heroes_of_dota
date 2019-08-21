@@ -77,6 +77,7 @@ type Rune = {
 
 type Shop = {
     id: number
+    type: Shop_Type
     handle: CDOTA_BaseNPC
     position: XY
 }
@@ -251,10 +252,15 @@ function create_world_handle_for_rune(type: Rune_Type, at: XY): CDOTA_BaseNPC {
     return handle;
 }
 
-function create_world_handle_for_shop(at: XY, facing: XY): CDOTA_BaseNPC {
+function create_world_handle_for_shop(type: Shop_Type, at: XY, facing: XY): CDOTA_BaseNPC {
+    const shop_models: Record<Shop_Type, string> = {
+        [Shop_Type.normal]: "models/heroes/shopkeeper/shopkeeper.vmdl",
+        [Shop_Type.secret]: "models/heroes/shopkeeper_dire/shopkeeper_dire.vmdl"
+    };
+
     const world_location = battle_position_to_world_position_center(at);
     const handle = CreateUnitByName("npc_dummy_unit", world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
-    const model = "models/heroes/shopkeeper/shopkeeper.vmdl";
+    const model = shop_models[type];
     handle.AddNewModifier(handle, undefined, "Modifier_Battle_Unit", {});
     handle.SetModel(model);
     handle.SetOriginalModel(model);
@@ -2522,7 +2528,8 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
         case Delta_Type.shop_spawn: {
             battle.shops.push({
                 id: delta.shop_id,
-                handle: create_world_handle_for_shop(delta.at, delta.facing),
+                type: delta.shop_type,
+                handle: create_world_handle_for_shop(delta.shop_type, delta.at, delta.facing),
                 position: delta.at
             });
 
@@ -2896,7 +2903,8 @@ function use_cheat(cheat: string) {
             create_or_destroy(battle.shops, at, () => {
                 const shop: Shop = {
                     id: 0,
-                    handle: create_world_handle_for_shop(at, { x: 0, y: 1 }),
+                    type: Shop_Type.normal,
+                    handle: create_world_handle_for_shop(Shop_Type.normal, at, { x: 0, y: 1 }),
                     position: at,
                 };
 
@@ -3072,7 +3080,8 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
 
     battle.shops = snapshot.shops.map(shop => ({
         id: shop.id,
-        handle: create_world_handle_for_shop(shop.position, shop.facing),
+        type: shop.type,
+        handle: create_world_handle_for_shop(shop.type, shop.position, shop.facing),
         position: shop.position
     }));
 

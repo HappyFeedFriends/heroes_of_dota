@@ -5,11 +5,6 @@ export const enum Spawn_Type {
     tree
 }
 
-export const enum Shop_Type {
-    normal,
-    secret
-}
-
 type Rune_Spawn = {
     type: Spawn_Type.rune
     at: XY
@@ -83,6 +78,7 @@ export function forest(): Battleground {
     const up = xy(0, 1);
     const down = xy(0, -1);
     const left = xy(-1, 0);
+    const right = xy(1, 0);
 
     return {
         grid_size: grid_size,
@@ -119,10 +115,12 @@ export function forest(): Battleground {
             tree(4, 3),
             tree(4, 9),
             tree(4, 8),
-            shop(6, 1, up, Shop_Type.normal),
             shop(6, 8, down, Shop_Type.secret),
-            creep(10, 8, left),
+            shop(1, 3, up, Shop_Type.normal),
+            shop(11, 5, down, Shop_Type.normal),
+            creep(5, 1, right),
             rune(1, 1),
+            creep(10, 8, left)
         ]
     }
 }

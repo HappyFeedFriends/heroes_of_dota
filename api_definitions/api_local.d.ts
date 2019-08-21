@@ -158,6 +158,7 @@ type Rune_Snapshot = {
 
 type Shop_Snapshot = {
     id: number
+    type: Shop_Type
     position: {
         x: number
         y: number

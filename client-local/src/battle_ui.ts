@@ -1646,6 +1646,7 @@ function make_battle_snapshot(): Battle_Snapshot {
         })),
         shops: battle.shops.map(shop => ({
             id: shop.id,
+            type: shop.type,
             position: shop.position,
             facing: battle.shop_id_to_facing[shop.id]
         })),

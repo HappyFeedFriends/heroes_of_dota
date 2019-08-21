@@ -1,7 +1,7 @@
 import {Player, report_battle_over} from "./server";
 import {readFileSync} from "fs";
 import {submit_chat_message} from "./chat";
-import {Battleground, Shop_Type, Spawn_Type} from "./battleground";
+import {Battleground, Spawn_Type} from "./battleground";
 import {XY} from "./common";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
@@ -1993,6 +1993,7 @@ export function start_battle(players: Player[], battleground: Battleground): num
 
                 spawn_deltas.push({
                     type: Delta_Type.shop_spawn,
+                    shop_type: spawn.shop_type,
                     shop_id: get_next_entity_id(battle),
                     item_pool: items,
                     at: spawn.at,

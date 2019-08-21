@@ -75,6 +75,11 @@ declare const enum Minion_Type {
     pocket_tower = 0
 }
 
+declare const enum Shop_Type {
+    normal = 0,
+    secret = 1
+}
+
 declare const enum Unit_Supertype {
     hero = 0,
     creep = 1,
@@ -487,6 +492,7 @@ type Delta_Purchase_Item = {
 
 type Delta_Shop_Spawn = {
     type: Delta_Type.shop_spawn
+    shop_type: Shop_Type
     shop_id: number
     item_pool: Item_Id[]
     at: {

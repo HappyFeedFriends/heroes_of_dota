@@ -99,6 +99,7 @@ type Rune = {
 
 type Shop = {
     id: number
+    type: Shop_Type
     position: XY
     items: Item[]
 }
@@ -144,7 +145,7 @@ type Cost_Population_Result = {
 }
 
 const max_unit_level = 3;
-const shop_range = 2;
+const shop_range = 1;
 
 function xy(x: number, y: number): XY {
     return { x: x, y: y };
@@ -1536,6 +1537,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
         case Delta_Type.shop_spawn: {
             battle.shops.push({
                 id: delta.shop_id,
+                type: delta.shop_type,
                 items: delta.item_pool.map(item_id => item_id_to_item(item_id)),
                 position: delta.at
             });
