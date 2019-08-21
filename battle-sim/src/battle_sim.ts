@@ -1312,6 +1312,18 @@ function collapse_item_equip(battle: Battle, hero: Hero, delta: Delta_Equip_Item
             break;
         }
 
+        case Item_Id.enchanted_mango: {
+            if (!delta.change) break;
+
+            const ability = find_unit_ability(hero, delta.change.ability_id);
+
+            if (ability && ability.type != Ability_Type.passive) {
+                ability.charges_remaining = delta.change.charges_remaining;
+            }
+
+            break;
+        }
+
         case Item_Id.tome_of_knowledge: {
             hero.level = delta.new_level;
             break;

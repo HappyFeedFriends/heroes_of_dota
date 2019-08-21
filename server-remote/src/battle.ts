@@ -832,6 +832,29 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
             }
         }
 
+        case Item_Id.enchanted_mango: {
+            for (const ability of hero.abilities) {
+                if (ability.type != Ability_Type.passive && ability.available_since_level == 1) {
+                    return {
+                        type: Delta_Type.equip_item,
+                        unit_id: hero.id,
+                        item_id: item.id,
+                        change: {
+                            ability_id: ability.id,
+                            charges_remaining: ability.charges_remaining + item.bonus_charges
+                        }
+                    }
+                }
+            }
+
+            return {
+                type: Delta_Type.equip_item,
+                unit_id: hero.id,
+                item_id: item.id,
+                change: undefined
+            }
+        }
+
         case Item_Id.boots_of_travel: {
             return {
                 type: Delta_Type.equip_item,
@@ -1914,7 +1937,7 @@ export function start_battle(players: Player[], battleground: Battleground): num
                             Item_Id.boots_of_speed,
                             Item_Id.morbid_mask,
                             Item_Id.chainmail,
-                            // TODO enchanted_mango,
+                            Item_Id.enchanted_mango
                         ];
 
                         case Shop_Type.secret: return [

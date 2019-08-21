@@ -82,5 +82,11 @@ function item_id_to_item(item_id: Item_Id): Item {
             armor_bonus: 1,
             gold_cost: 2
         };
+
+        case Item_Id.enchanted_mango: return {
+            id: item_id,
+            bonus_charges: 1,
+            gold_cost: 2
+        };
     }
 }

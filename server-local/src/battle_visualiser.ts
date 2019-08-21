@@ -2158,6 +2158,13 @@ function play_item_equip_delta(main_player: Main_Player, hero: Hero, delta: Delt
             break;
         }
 
+        case Item_Id.enchanted_mango: {
+            fx_by_unit("particles/items3_fx/mango_active.vpcf", hero).release();
+            unit_emit_sound(hero, "DOTA_Item.Mango.Activate");
+
+            break;
+        }
+
         default: unreachable(delta);
     }
 

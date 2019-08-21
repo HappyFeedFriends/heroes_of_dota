@@ -1230,6 +1230,7 @@ function get_item_icon_name(id: Item_Id): string {
         case Item_Id.belt_of_strength: return "belt_of_strength";
         case Item_Id.morbid_mask: return "lifesteal";
         case Item_Id.chainmail: return "chainmail";
+        case Item_Id.enchanted_mango: return "enchanted_mango";
     }
 }
 
@@ -1728,6 +1729,7 @@ function get_item_tooltip(i: Item): string {
         case Item_Id.belt_of_strength: return `+${i.health_bonus} health`;
         case Item_Id.morbid_mask: return `Restore ${i.health_restored_per_attack} health when attacking`;
         case Item_Id.chainmail: return `+${i.armor_bonus} armor`;
+        case Item_Id.enchanted_mango: return `+${i.bonus_charges} charge to a level 1 ability`;
     }
 }
 
