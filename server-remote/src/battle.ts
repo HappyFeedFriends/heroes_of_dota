@@ -1975,21 +1975,6 @@ export function start_battle(players: Player[], battleground: Battleground): num
 
     const spawn_deltas: Delta[] = [];
 
-    for (const player of battle.players) {
-        const spells = pick_n_random(enum_values<Spell_Id>(), 3);
-        const all_heroes = enum_values<Hero_Type>().filter(id => id != Hero_Type.sniper && id != Hero_Type.ursa);
-        const free_cells = find_unoccupied_cell_in_deployment_zone_for_player(battle, player);
-        const heroes_to_spawn = pick_n_random(all_heroes, 3);
-        const spawn_points = pick_n_random(free_cells, 3);
-
-        for (let index = 0; index < heroes_to_spawn.length; index++) {
-            spawn_deltas.push(spawn_hero(battle, player, spawn_points[index].position, heroes_to_spawn[index]));
-        }
-
-        spawn_deltas.push(get_starting_gold(player));
-        spawn_deltas.push(...spells.map(id => draw_spell_card(battle, player, id)));
-    }
-
     for (const spawn of battleground.spawns) {
         switch (spawn.type) {
             case Spawn_Type.rune: {
@@ -2063,7 +2048,22 @@ export function start_battle(players: Player[], battleground: Battleground): num
         }
     }
 
-    defer_delta(battle, () => ({ type: Delta_Type.game_start }));
+    for (const player of battle.players) {
+        const spells = pick_n_random(enum_values<Spell_Id>(), 3);
+        const all_heroes = enum_values<Hero_Type>().filter(id => id != Hero_Type.sniper && id != Hero_Type.ursa);
+        const free_cells = find_unoccupied_cell_in_deployment_zone_for_player(battle, player);
+        const heroes_to_spawn = pick_n_random(all_heroes, 3);
+        const spawn_points = pick_n_random(free_cells, 3);
+
+        for (let index = 0; index < heroes_to_spawn.length; index++) {
+            spawn_deltas.push(spawn_hero(battle, player, spawn_points[index].position, heroes_to_spawn[index]));
+        }
+
+        spawn_deltas.push(get_starting_gold(player));
+        spawn_deltas.push(...spells.map(id => draw_spell_card(battle, player, id)));
+    }
+
+    spawn_deltas.push({ type: Delta_Type.game_start });
 
     submit_battle_deltas(battle, spawn_deltas);
 
