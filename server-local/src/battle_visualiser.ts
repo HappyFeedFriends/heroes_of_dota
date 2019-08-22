@@ -2359,7 +2359,7 @@ function change_health(main_player: Main_Player, source: Unit, target: Unit, cha
         fx("particles/msg_damage.vpcf")
             .to_unit_origin(0, target)
             .with_point_value(1, 0, amount)
-            .with_point_value(2, Math.max(1, amount / 1.5), 1)
+            .with_point_value(2, Math.max(1, amount / 1.5), 2)
             .with_point_value(3, r, g, b)
             .release()
     }
