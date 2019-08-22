@@ -919,6 +919,11 @@ function perform_basic_attack(main_player: Main_Player, unit: Unit, cast: Delta_
             tracking_projectile_to_point(unit, cast.result.final_point, ranged_attack_spec.particle_path, ranged_attack_spec.projectile_speed);
         }
     } else {
+        // TODO @SoundSystem
+        if (unit.supertype == Unit_Supertype.minion && unit.type == Minion_Type.lane_minion) {
+            unit_emit_sound(unit, "Creep_Good_Melee.PreAttack");
+        }
+
         try_play_sound_for_hero(unit, get_unit_pre_attack_sound);
         unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK);
 
@@ -931,6 +936,11 @@ function perform_basic_attack(main_player: Main_Player, unit: Unit, cast: Delta_
 
             shake_screen(target, Shake.weak);
             try_play_sound_for_hero(unit, get_unit_attack_sound);
+
+            // TODO @SoundSystem
+            if (unit.supertype == Unit_Supertype.minion && unit.type == Minion_Type.lane_minion) {
+                unit_emit_sound(unit, "Creep_Good_Melee.Attack");
+            }
         }
     }
 }
@@ -1105,7 +1115,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
             unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_1, 0.3);
             unit_emit_sound(unit, "Hero_Lion.Impale");
 
-            // TODO :VoiceOver
+            // TODO @VoiceOver
 
             const targets = filter_and_map_existing_units(from_client_array(cast.targets));
             const forks: Fork[] = [];
@@ -1179,7 +1189,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
                 unit_emit_sound(unit, "Hero_Mirana.ArrowImpact");
             }
 
-            // TODO :VoiceOver hit/miss voicelines
+            // TODO @VoiceOver hit/miss voicelines
             loop_sound.stop();
 
             particle.destroy_and_release(false);
@@ -2361,7 +2371,7 @@ function change_health(main_player: Main_Player, source: Unit, target: Unit, cha
     } else if (value_delta < 0) {
         show_damage_effect_on_target(target);
 
-        // TODO unify this into a singular sound system for all unit types
+        // TODO @SoundSystem unify this into a singular sound system for all unit types
         if (target.supertype == Unit_Supertype.minion && target.type == Minion_Type.pocket_tower) {
             unit_emit_sound(target, "pocket_tower_pain");
         } else {

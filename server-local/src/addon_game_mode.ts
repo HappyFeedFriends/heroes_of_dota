@@ -35,5 +35,6 @@ function Precache(context: CScriptPrecacheContext) {
     PrecacheUnitByNameSync(creep_type_to_dota_unit_name(), context);
 
     PrecacheResource("soundfile", "soundevents/custom_game/game_sounds.vsndevts", context);
+    PrecacheResource("soundfile", "soundevents/game_sounds_creeps.vsndevts", context);
     PrecacheResource("soundfile", "soundevents/game_sounds_ui_imported.vsndevts", context);
 }
