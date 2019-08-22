@@ -1961,6 +1961,13 @@ function play_unit_target_spell_delta(main_player: Main_Player, caster: Battle_P
             break;
         }
 
+        case Spell_Id.refresher_orb: {
+            fx("particles/items2_fx/refresher.vpcf").to_unit_attach_point(0, target, "attach_hitloc").release();
+            unit_emit_sound(target, "equip_refresher");
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }

@@ -1690,6 +1690,7 @@ function get_spell_card_art(spell_id: Spell_Id): string {
         case Spell_Id.town_portal_scroll: return "custom_game/spells/teleport_scroll.png";
         case Spell_Id.pocket_tower: return "custom_game/spells/pocket_tower.png";
         case Spell_Id.call_to_arms: return "custom_game/spells/call_to_arms.png";
+        case Spell_Id.refresher_orb: return "profile_badges/level_95.png";
     }
 }
 
@@ -1703,6 +1704,7 @@ function get_spell_name(spell_id: Spell_Id): string {
         case Spell_Id.town_portal_scroll: return "Town Portal Scroll";
         case Spell_Id.pocket_tower: return "Pocket Tower";
         case Spell_Id.call_to_arms: return "Call to Arms";
+        case Spell_Id.refresher_orb: return "Refresher Orb";
     }
 }
 
@@ -1716,6 +1718,7 @@ function get_spell_text(spell: Card_Spell): string {
         case Spell_Id.town_portal_scroll: return `Restore hero's health and return them to your hand`;
         case Spell_Id.pocket_tower: return `Summon a tower to attack a random enemy each turn. Extends deployment zone`;
         case Spell_Id.call_to_arms: return `Summon ${spell.minions_to_summon} lane creeps in your deployment zone`;
+        case Spell_Id.refresher_orb: return `Restore charges of all abilities for target`;
     }
 }
 

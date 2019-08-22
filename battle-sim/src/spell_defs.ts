@@ -60,5 +60,11 @@ function spell_definition_by_id(spell_id: Spell_Id): Card_Spell_Definition {
                 minions_to_summon: 2
             })
         }
+
+        case Spell_Id.refresher_orb: {
+            return spell<Spell_Refresher_Orb>({
+                targeting_flags: [ Spell_Unit_Targeting_Flag.heroes ]
+            })
+        }
     }
 }

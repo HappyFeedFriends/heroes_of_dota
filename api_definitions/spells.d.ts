@@ -6,7 +6,8 @@ declare const enum Spell_Id {
     buckler = 4,
     drums_of_endurance = 5,
     pocket_tower = 6,
-    call_to_arms = 7
+    call_to_arms = 7,
+    refresher_orb = 8
 }
 
 declare const enum Spell_Type {
@@ -29,7 +30,8 @@ type Card_Spell = Card_Spell_Definition & {
 type Card_Spell_Unit_Target =
     Spell_Buyback |
     Spell_Euls_Scepter |
-    Spell_Town_Portal_Scroll
+    Spell_Town_Portal_Scroll |
+    Spell_Refresher_Orb
 
 type Card_Spell_No_Target =
     Spell_Mekansm |
@@ -95,10 +97,15 @@ type Spell_Call_To_Arms = Card_Spell_No_Target_Base & {
     minions_to_summon: number
 }
 
+type Spell_Refresher_Orb = Card_Spell_Unit_Target_Base & {
+    spell_id: Spell_Id.refresher_orb
+}
+
 type Delta_Use_Unit_Target_Spell =
     Delta_Spell_Buyback |
     Delta_Spell_Town_Portal_Scroll |
-    Delta_Spell_Euls_Scepter
+    Delta_Spell_Euls_Scepter |
+    Delta_Spell_Refresher_Orb
 
 type Delta_Use_No_Target_Spell =
     Delta_Spell_Mekansm |
@@ -176,5 +183,13 @@ type Delta_Spell_Call_To_Arms = Delta_Use_No_Target_Spell_Base & {
             x: number
             y: number
         }
+    }[]
+}
+
+type Delta_Spell_Refresher_Orb = Delta_Use_Unit_Target_Spell_Base & {
+    spell_id: Spell_Id.refresher_orb
+    charge_changes: {
+        ability_id: Ability_Id
+        charges_remaining: number
     }[]
 }

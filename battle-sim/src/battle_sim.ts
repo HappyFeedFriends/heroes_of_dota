@@ -1314,6 +1314,18 @@ function collapse_unit_target_spell_use(battle: Battle, caster: Battle_Player, t
             break;
         }
 
+        case Spell_Id.refresher_orb: {
+            for (const change of cast.charge_changes) {
+                const ability = find_unit_ability(target, change.ability_id);
+
+                if (ability && ability.type != Ability_Type.passive) {
+                    ability.charges_remaining = change.charges_remaining;
+                }
+            }
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }

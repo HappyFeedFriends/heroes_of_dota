@@ -304,6 +304,28 @@ function perform_spell_cast_unit_target(battle: Battle_Record, player: Battle_Pl
                 modifier: new_timed_modifier(battle, Modifier_Id.spell_euls_scepter, 1, [ Modifier_Field.state_out_of_the_game_counter, 1 ])
             }
         }
+
+        case Spell_Id.refresher_orb: {
+            const changes: {
+                ability_id: Ability_Id,
+                charges_remaining: number
+            }[] = [];
+
+            for (const ability of target.abilities) {
+                if (ability.type != Ability_Type.passive) {
+                    changes.push({
+                        ability_id: ability.id,
+                        charges_remaining: ability.charges
+                    })
+                }
+            }
+
+            return {
+                ...base,
+                spell_id: spell.spell_id,
+                charge_changes: changes
+            }
+        }
     }
 }
 
