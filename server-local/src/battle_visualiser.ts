@@ -314,6 +314,8 @@ function create_world_handle_for_tree(tree_id: number, at: XY): CBaseEntity {
         model: random_model
     }) as CBaseModelEntity;
 
+    const angle = (battle.random_seed + tree_id) % 16 * (360 / 16) * (Math.PI / 180);
+    entity.SetForwardVector(Vector(Math.cos(angle), Math.sin(angle)));
     entity.SetRenderColor(80 + r_variance, 90 + g_variance, 30);
 
     return entity;
