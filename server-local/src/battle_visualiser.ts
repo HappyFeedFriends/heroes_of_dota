@@ -2622,20 +2622,22 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
 
         case Delta_Type.tree_spawn: {
             const tree_handle = create_world_handle_for_tree(delta.tree_id, delta.at_position);
-
-            battle.trees.push({
+            const tree = {
                 id: delta.tree_id,
                 handle: tree_handle,
                 position: delta.at_position
-            });
+            };
+
+            battle.trees.push(tree);
+
+            const world_target = battle_position_to_world_position_center(delta.at_position);
 
             fork(() => {
                 do_each_frame_for(0.12, progress => {
-                    const original = tree_handle.GetAbsOrigin();
-                    const ground_z = GetGroundHeight(original, undefined);
-                    tree_handle.SetAbsOrigin(Vector(original.x, original.y, (1 - progress) * 1000 + ground_z))
+                    tree_handle.SetAbsOrigin(Vector(world_target.x, world_target.y, (1 - progress) * 1000 + world_target.z))
                 });
-                
+
+                tree_handle.SetAbsOrigin(world_target);
                 tree_handle.EmitSound("tree_spawn");
             });
 
