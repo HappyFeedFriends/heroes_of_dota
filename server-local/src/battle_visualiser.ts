@@ -1414,7 +1414,7 @@ function apply_modifier(main_player: Main_Player, target: Unit, modifier: Modifi
     update_player_state_net_table(main_player);
 }
 
-function unit_emit_sound(unit: Unit, sound: string): Started_Sound {
+function unit_emit_sound(unit: Handle_Provider, sound: string): Started_Sound {
     unit.handle.EmitSound(sound);
 
     return {
@@ -2621,11 +2621,25 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
         }
 
         case Delta_Type.tree_spawn: {
+            const tree_handle = create_world_handle_for_tree(delta.tree_id, delta.at_position);
+
             battle.trees.push({
                 id: delta.tree_id,
-                handle: create_world_handle_for_tree(delta.tree_id, delta.at_position),
+                handle: tree_handle,
                 position: delta.at_position
             });
+
+            fork(() => {
+                do_each_frame_for(0.12, progress => {
+                    const original = tree_handle.GetAbsOrigin();
+                    const ground_z = GetGroundHeight(original, undefined);
+                    tree_handle.SetAbsOrigin(Vector(original.x, original.y, (1 - progress) * 1000 + ground_z))
+                });
+                
+                tree_handle.EmitSound("tree_spawn");
+            });
+
+            wait(0.05);
 
             break;
         }

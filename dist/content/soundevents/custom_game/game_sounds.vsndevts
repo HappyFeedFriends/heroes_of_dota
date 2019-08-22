@@ -49,6 +49,19 @@
         vsnd_files = "sounds/weapons/hero/tiny/tiny_toss_impact.vsnd"
     }
 
+    tree_spawn = {
+        type = "dota_update_default"
+        volume = 1.0
+        pitch = 1.0
+        vsnd_files = [
+            "sounds/physics/footsteps/hero/treant/step01.vsnd",
+            "sounds/physics/footsteps/hero/treant/step02.vsnd",
+            "sounds/physics/footsteps/hero/treant/step03.vsnd",
+            "sounds/physics/footsteps/hero/treant/step04.vsnd"
+        ]
+        soundlevel = 84
+    }
+
     equip_satanic = {
         type = "dota_update_default"
         vsnd_files =
