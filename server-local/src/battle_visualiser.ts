@@ -2652,16 +2652,14 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             const unit = find_hero_by_id(delta.hero_id);
             if (!unit) break;
 
-            const owner = array_find(battle.participants, player => player.id == unit.owner_remote_id);
-            if (!owner) break;
-
-            const facing = { x: owner.deployment_zone.face_x, y: owner.deployment_zone.face_y };
+            const facing = find_player_deployment_zone_facing(unit.owner_remote_id);
+            if (!facing) break;
 
             const in_hand_modifier = array_find_index(unit.modifiers, modifier => modifier.modifier_id == Modifier_Id.returned_to_hand);
             if (in_hand_modifier == -1) break;
 
             if (!unit.handle.IsAlive()) {
-                unit.handle.RespawnUnit();
+                unit.handle.RespawnHero(false, false);
             }
 
             const world_at = battle_position_to_world_position_center(delta.at_position);
