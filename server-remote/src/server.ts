@@ -32,7 +32,7 @@ const enum Right {
     query_battles
 }
 
-export interface Player {
+export interface Map_Player {
     steam_id: string
     id: number;
     name: string;
@@ -43,8 +43,8 @@ export interface Player {
     active_logins: number
 }
 
-export interface Player_Login {
-    player: Player
+export interface Map_Player_Login {
+    player: Map_Player
     chat_timestamp: number
     token: string
     last_used_at: number
@@ -52,19 +52,19 @@ export interface Player_Login {
 
 let dev_mode = false;
 
-const players: Player[] = [];
-const token_to_player_login = new Map<string, Player_Login>();
-const steam_id_to_player = new Map<string, Player>();
+const players: Map_Player[] = [];
+const token_to_player_login = new Map<string, Map_Player_Login>();
+const steam_id_to_player = new Map<string, Map_Player>();
 
 let player_id_auto_increment = 0;
 
-let test_player: Player | undefined = undefined;
+let test_player: Map_Player | undefined = undefined;
 
 function generate_access_token() {
     return randomBytes(32).toString("hex");
 }
 
-function make_new_player(steam_id: string, name: string): Player {
+function make_new_player(steam_id: string, name: string): Map_Player {
     return {
         steam_id: steam_id,
         id: player_id_auto_increment++,
@@ -98,7 +98,7 @@ type Do_With_Player_Error = {
 
 type Do_With_Player_Result<T> = Do_With_Player_Ok<T> | Do_With_Player_Error | Do_With_Player_Unauthorized;
 
-function try_do_with_player<T>(access_token: string, do_what: (player: Player, login: Player_Login) => T | undefined): Do_With_Player_Result<T> {
+function try_do_with_player<T>(access_token: string, do_what: (player: Map_Player, login: Map_Player_Login) => T | undefined): Do_With_Player_Result<T> {
     const player_login = token_to_player_login.get(access_token);
 
     if (!player_login) {
@@ -152,7 +152,7 @@ function try_authorize_steam_player_from_dedicated_server(steam_id: string, stea
 
     const token = generate_access_token();
 
-    const player_login: Player_Login = {
+    const player_login: Map_Player_Login = {
         player: player,
         token: token,
         chat_timestamp: -1,
@@ -178,7 +178,7 @@ interface Result_Error {
 
 const handlers = new Map<string, Request_Handler>();
 
-function player_to_player_state_object(player: Player): Player_State_Data {
+function player_to_player_state_object(player: Map_Player): Player_State_Data {
     switch (player.state) {
         case Player_State.on_global_map: {
             return {
@@ -231,7 +231,7 @@ function player_to_player_state_object(player: Player): Player_State_Data {
     }
 }
 
-function can_player(player: Player, right: Right) {
+function can_player(player: Map_Player, right: Right) {
     switch (right) {
         case Right.log_in_with_character: {
             return player.state == Player_State.not_logged_in;
@@ -269,7 +269,7 @@ function validate_dedicated_server_key(key: string) {
     return true;
 }
 
-function initiate_battle_between_players(player_one: Player, player_two: Player) {
+function initiate_battle_between_players(player_one: Map_Player, player_two: Map_Player) {
     player_one.state = Player_State.in_battle;
     player_two.state = Player_State.in_battle;
 

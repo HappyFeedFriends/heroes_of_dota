@@ -1,8 +1,8 @@
-import {Player, Player_Login} from "./server";
+import {Map_Player, Map_Player_Login} from "./server";
 
 const chat_message_history: Chat_Message[] = [];
 
-export function pull_pending_chat_messages_for_player(player_login: Player_Login): Chat_Message[] {
+export function pull_pending_chat_messages_for_player(player_login: Map_Player_Login): Chat_Message[] {
     const result: Chat_Message[] = [];
     const now = Date.now();
 
@@ -17,7 +17,7 @@ export function pull_pending_chat_messages_for_player(player_login: Player_Login
     return result;
 }
 
-export function submit_chat_message(player: Player, message: string) {
+export function submit_chat_message(player: Map_Player, message: string) {
     const new_message: Chat_Message = {
         from_player_id: player.id,
         from_player_name: player.name,

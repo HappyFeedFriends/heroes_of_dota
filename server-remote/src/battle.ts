@@ -1,4 +1,4 @@
-import {Player, report_battle_over} from "./server";
+import {Map_Player, report_battle_over} from "./server";
 import {readFileSync} from "fs";
 import {submit_chat_message} from "./chat";
 import {Battleground, Spawn_Type} from "./battleground";
@@ -1922,7 +1922,7 @@ export function get_all_battles(): Battle_Record[] {
     return battles;
 }
 
-export function surrender_player_forces(battle: Battle_Record, player: Player) {
+export function surrender_player_forces(battle: Battle_Record, player: Map_Player) {
     const battle_player = battle.players.find(battle_player => battle_player.id == player.id);
 
     if (battle_player) {
@@ -1942,7 +1942,7 @@ export function surrender_player_forces(battle: Battle_Record, player: Player) {
     }
 }
 
-export function start_battle(players: Player[], battleground: Battleground): number {
+export function start_battle(players: Map_Player[], battleground: Battleground): number {
     const battle_players: Battle_Participant_Info[] = players.map(player => ({
         id: player.id,
         name: player.name,
@@ -2070,7 +2070,7 @@ export function start_battle(players: Player[], battleground: Battleground): num
     return battle.id;
 }
 
-export function cheat(battle: Battle_Record, player: Player, cheat: string, selected_unit_id: number) {
+export function cheat(battle: Battle_Record, player: Map_Player, cheat: string, selected_unit_id: number) {
     const parts = cheat.split(" ");
     const battle_player = battle.players.find(battle_player => battle_player.id == player.id);
 
