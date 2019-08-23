@@ -892,6 +892,75 @@ function delta_to_colored_line(game: Game_In_Battle, delta: Delta): Colored_Line
     return undefined;
 }
 
+function process_battle_events_to_log(log: Colored_Line[], event: Battle_Event) {
+    switch (event.type) {
+        case Battle_Event_Type.health_changed: {
+            const { source, target, change, dead } = event;
+
+            if (change.value_delta > 0) {
+                log.push([
+                    clr.source_name(source),
+                    clr.plain(" restores "),
+                    clr.txt(change.value_delta.toString(), "gray"),
+                    clr.plain(" health to "),
+                    clr.unit_name(target)
+                ]);
+            } else if (change.value_delta < 0) {
+                log.push([
+                    clr.unit_name(target),
+                    clr.plain(" takes "),
+                    clr.txt((-change.value_delta).toString(), "gray"),
+                    clr.plain(" damage from "),
+                    clr.source_name(source)
+                ]);
+            }
+
+            if (dead) {
+                log.push([
+                    clr.unit_name(target),
+                    clr.plain(" dies")
+                ]);
+            }
+
+            break;
+        }
+
+        case Battle_Event_Type.modifier_applied: {
+            const { source, target, modifier } = event;
+
+            const lines = [
+                clr.source_name(source),
+                clr.plain(" applies "),
+                clr.txt(enum_to_string(modifier.modifier_id), "gray"),
+                clr.plain(" to "),
+                clr.unit_name(target)
+            ];
+
+            if (modifier.duration) {
+                lines.push(
+                    clr.plain(" for "),
+                    clr.txt(modifier.duration.toString(), "gray"),
+                    clr.plain(" turns")
+                );
+            }
+
+            log.push(lines);
+
+            break;
+        }
+
+        case Battle_Event_Type.card_added_to_hand: {
+            log.push([
+                clr.player_name(event.player),
+                clr.plain(" draws "),
+                clr.card_name(event.card)
+            ]);
+
+            break;
+        }
+    }
+}
+
 function draw_battle_log(game: Game_In_Battle) {
     const ctx = game.ctx;
     const lines = game.battle_log;
@@ -1426,66 +1495,9 @@ function game_from_state(player_state: Player_State_Data, game_base: Game_Base):
             const battle_log: Colored_Line[] = [];
             const battle: Battle = {
                 ...make_battle(player_state.participants, player_state.grid_size.width, player_state.grid_size.height),
-                change_health: (battle: Battle, source: Source, target: Unit, change: Health_Change) => {
-                    if (change.value_delta > 0) {
-                        battle_log.push([
-                            clr.source_name(source),
-                            clr.plain(" restores "),
-                            clr.txt(change.value_delta.toString(), "gray"),
-                            clr.plain(" health to "),
-                            clr.unit_name(target)
-                        ]);
-                    } else if (change.value_delta < 0) {
-                        battle_log.push([
-                            clr.unit_name(target),
-                            clr.plain(" takes "),
-                            clr.txt((-change.value_delta).toString(), "gray"),
-                            clr.plain(" damage from "),
-                            clr.source_name(source)
-                        ]);
-                    }
-
-                    const died = change_health_default(battle, source, target, change);
-
-                    if (died) {
-                        battle_log.push([
-                            clr.unit_name(target),
-                            clr.plain(" dies")
-                        ]);
-                    }
-
-                    return died;
+                receive_event: (battle: Battle, event: Battle_Event) => {
+                    process_battle_events_to_log(battle_log, event);
                 },
-                apply_modifier: (source: Source, target: Unit, modifier: Modifier_Application) => {
-                    apply_modifier_default(source, target, modifier);
-
-                    const lines = [
-                        clr.source_name(source),
-                        clr.plain(" applies "),
-                        clr.txt(enum_to_string(modifier.modifier_id), "gray"),
-                        clr.plain(" to "),
-                        clr.unit_name(target)
-                    ];
-
-                    if (modifier.duration) {
-                        lines.push(
-                            clr.plain(" for "),
-                            clr.txt(modifier.duration.toString(), "gray"),
-                            clr.plain(" turns")
-                        );
-                    }
-
-                    battle_log.push(lines);
-                },
-                add_card_to_hand: (player: Battle_Player, card: Card) => {
-                    add_card_to_hand_default(player, card);
-
-                    battle_log.push([
-                        clr.player_name(player),
-                        clr.plain(" draws "),
-                        clr.card_name(card)
-                    ]);
-                }
             };
 
             fill_grid(battle);

@@ -39,10 +39,7 @@ type Battle = {
     turning_player: Battle_Player
     cells: Cell[]
     grid_size: XY
-    change_health: (battle: Battle, source: Source, target: Unit, change: Health_Change) => boolean,
-    apply_modifier: (source: Source, target: Unit, modifier: Modifier_Application) => void,
-    add_card_to_hand: (player: Battle_Player, card: Card) => void,
-    spawn_minion: (battle: Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY) => Minion
+    receive_event: (battle: Battle, event: Battle_Event) => void
 }
 
 type Battle_Player = {
@@ -52,6 +49,34 @@ type Battle_Player = {
     gold: number
     has_used_a_card_this_turn: boolean
     deployment_zone: Deployment_Zone
+}
+
+const enum Battle_Event_Type {
+    health_changed,
+    modifier_applied,
+    card_added_to_hand,
+    unit_spawned
+}
+
+type Battle_Event = {
+    type: Battle_Event_Type.health_changed
+    source: Source
+    target: Unit
+    change: Health_Change
+    dead: boolean
+} | {
+    type: Battle_Event_Type.modifier_applied
+    source: Source
+    target: Unit
+    modifier: Modifier_Application
+} | {
+    type: Battle_Event_Type.card_added_to_hand
+    player: Battle_Player
+    card: Card
+} | {
+    type: Battle_Event_Type.unit_spawned
+    unit: Unit
+    at: XY
 }
 
 type Cell = {
@@ -422,10 +447,7 @@ function make_battle(participants: Battle_Participant_Info[], grid_width: number
         turning_player: players[0],
         deltas: [],
         grid_size: xy(grid_width, grid_height),
-        change_health: change_health_default,
-        apply_modifier: apply_modifier_default,
-        add_card_to_hand: add_card_to_hand_default,
-        spawn_minion: spawn_minion_default
+        receive_event: () => {}
     }
 }
 
@@ -714,20 +736,6 @@ function replace_ability(unit: Unit, ability_id_to_bench: Ability_Id, currently_
     }
 }
 
-function change_health_default(battle: Battle, source: Source, target: Unit, change: Health_Change): boolean {
-    target.health = change.new_value;
-
-    if (!target.dead && change.new_value == 0) {
-        free_cell(battle, target.position);
-
-        target.dead = true;
-
-        return true;
-    }
-
-    return false;
-}
-
 function end_turn(battle: Battle, next_turning_player: Battle_Player) {
     for (const unit of battle.units) {
         if (unit.supertype == Unit_Supertype.creep || unit.owner == battle.turning_player) {
@@ -748,12 +756,37 @@ function end_turn(battle: Battle, next_turning_player: Battle_Player) {
     battle.turning_player = next_turning_player;
 }
 
-function add_card_to_hand_default(player: Battle_Player, card: Card) {
-    player.hand.push(card);
-}
-
 function change_health(battle: Battle, source: Source, target: Unit, change: Health_Change) {
-    return battle.change_health(battle, source, target, change);
+    // @AsConst
+    const event_base = {
+        source: source,
+        target: target,
+        change: change
+    };
+
+    target.health = change.new_value;
+
+    if (!target.dead && change.new_value == 0) {
+        free_cell(battle, target.position);
+
+        target.dead = true;
+
+        battle.receive_event(battle, {
+            type: Battle_Event_Type.health_changed,
+            ...event_base,
+            dead: true
+        });
+
+        return true;
+    }
+
+    battle.receive_event(battle, {
+        type: Battle_Event_Type.health_changed,
+        ...event_base,
+        dead: false
+    });
+
+    return false;
 }
 
 function change_gold(player: Battle_Player, gold_change: number) {
@@ -761,7 +794,13 @@ function change_gold(player: Battle_Player, gold_change: number) {
 }
 
 function add_card_to_hand(battle: Battle, player: Battle_Player, card: Card) {
-    battle.add_card_to_hand(player, card);
+    player.hand.push(card);
+
+    battle.receive_event(battle, {
+        type: Battle_Event_Type.card_added_to_hand,
+        player: player,
+        card: card
+    })
 }
 
 function occupy_cell(battle: Battle, at: XY) {
@@ -816,11 +855,15 @@ function unit_base(id: number, definition: Unit_Definition, at: XY): Unit_Base {
     }
 }
 
-function spawn_minion(battle: Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY): Minion {
-    return battle.spawn_minion(battle, owner, unit_id, type, at);
+function unit_spawn_event(unit: Unit, at: XY): Battle_Event {
+    return {
+        type: Battle_Event_Type.unit_spawned,
+        unit: unit,
+        at: at
+    }
 }
 
-function spawn_minion_default(battle: Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY): Minion {
+function spawn_minion(battle: Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY): Minion {
     const minion: Minion = {
         ...unit_base(unit_id, minion_definition_by_type(type), at),
         supertype: Unit_Supertype.minion,
@@ -831,6 +874,8 @@ function spawn_minion_default(battle: Battle, owner: Battle_Player, unit_id: num
     battle.units.push(minion);
 
     occupy_cell(battle, at);
+
+    battle.receive_event(battle, unit_spawn_event(minion, at));
 
     return minion;
 }
@@ -859,10 +904,6 @@ function apply_modifier_changes(target: Unit, changes: Modifier_Change[], invert
 }
 
 function apply_modifier(battle: Battle, source: Source, target: Unit, modifier: Modifier_Application) {
-    battle.apply_modifier(source, target, modifier);
-}
-
-function apply_modifier_default(source: Source, target: Unit, modifier: Modifier_Application) {
     const modifier_base: Modifier_Base = {
         id: modifier.modifier_id,
         handle_id: modifier.modifier_handle_id,
@@ -884,6 +925,13 @@ function apply_modifier_default(source: Source, target: Unit, modifier: Modifier
     }
 
     apply_modifier_changes(target, modifier.changes, false);
+
+    battle.receive_event(battle, {
+        type: Battle_Event_Type.modifier_applied,
+        source: source,
+        target: target,
+        modifier: modifier
+    });
 }
 
 function collapse_item_effect(battle: Battle, effect: Delta_Item_Effect_Applied) {
@@ -1504,27 +1552,35 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
             if (!owner) break;
 
-            battle.units.push({
+            const hero: Hero = {
                 ...unit_base(delta.unit_id, hero_definition_by_type(delta.hero_type), delta.at_position),
                 supertype: Unit_Supertype.hero,
                 type: delta.hero_type,
                 owner: owner,
                 level: 1,
                 items: []
-            });
+            };
+
+            battle.units.push(hero);
 
             occupy_cell(battle, delta.at_position);
+
+            battle.receive_event(battle, unit_spawn_event(hero, delta.at_position));
 
             break;
         }
 
         case Delta_Type.creep_spawn: {
-            battle.units.push({
+            const creep: Creep = {
                 ...unit_base(delta.unit_id, creep_definition(), delta.at_position),
                 supertype: Unit_Supertype.creep
-            });
+            };
+
+            battle.units.push(creep);
 
             occupy_cell(battle, delta.at_position);
+
+            battle.receive_event(battle, unit_spawn_event(creep, delta.at_position));
 
             break;
         }

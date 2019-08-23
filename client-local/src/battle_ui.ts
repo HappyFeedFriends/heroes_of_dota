@@ -299,32 +299,6 @@ function update_related_visual_data_from_delta(delta: Delta, delta_paths: Move_D
     }
 
     switch (delta.type) {
-        case Delta_Type.hero_spawn: {
-            const owner = find_player_by_id(battle, delta.owner_id);
-
-            if (!owner) break;
-
-            battle.unit_id_to_facing[delta.unit_id] = {
-                x: owner.deployment_zone.face_x,
-                y: owner.deployment_zone.face_y
-            };
-
-            break;
-        }
-
-        case Delta_Type.hero_spawn_from_hand: {
-            const hero = find_hero_by_id(battle, delta.hero_id);
-
-            if (!hero) break;
-
-            battle.unit_id_to_facing[delta.hero_id] = {
-                x: hero.owner.deployment_zone.face_x,
-                y: hero.owner.deployment_zone.face_y
-            };
-
-            break;
-        }
-
         case Delta_Type.creep_spawn: {
             battle.unit_id_to_facing[delta.unit_id] = {
                 x: delta.facing.x,
@@ -540,23 +514,23 @@ function create_cell_particle_at(position: XYZ) {
     return particle;
 }
 
-function on_card_added(player: Battle_Player, card: Card) {
-    add_card_to_hand_default(player, card);
-
-    if (player == battle.this_player) {
-        add_card_panel(card);
+function on_battle_event(battle: UI_Battle, event: Battle_Event) {
+    if (event.type == Battle_Event_Type.card_added_to_hand) {
+        if (event.player == battle.this_player) {
+            add_card_panel(event.card);
+        }
     }
-}
 
-function on_minion_spawned(battle: UI_Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY): Minion {
-    const minion = spawn_minion_default(battle, owner, unit_id, type, at);
+    if (event.type == Battle_Event_Type.unit_spawned) {
+        if (event.unit.supertype != Unit_Supertype.creep) {
+            const owner = event.unit.owner;
 
-    battle.unit_id_to_facing[unit_id] = {
-        x: 0,
-        y: -1
-    };
-
-    return minion;
+            battle.unit_id_to_facing[event.unit.id] = {
+                x: owner.deployment_zone.face_x,
+                y: owner.deployment_zone.face_y
+            };
+        }
+    }
 }
 
 function process_state_transition(from: Player_State, new_state: Player_Net_Table) {
@@ -595,8 +569,7 @@ function process_state_transition(from: Player_State, new_state: Player_Net_Tabl
             outline_particles: [],
             shop_range_outline_particles: [],
             zone_highlight_particles: [],
-            add_card_to_hand: on_card_added,
-            spawn_minion: on_minion_spawned
+            receive_event: on_battle_event
         };
 
         set_selection({

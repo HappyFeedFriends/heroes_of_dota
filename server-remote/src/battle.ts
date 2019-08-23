@@ -1623,10 +1623,10 @@ function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: 
     defer_move();
 }
 
-function server_change_health(battle: Battle_Record, source: Source, target: Unit, change: Health_Change) {
-    const killed = change_health_default(battle, source, target, change);
+function on_battle_event(battle: Battle_Record, event: Battle_Event) {
+    if (event.type == Battle_Event_Type.health_changed && event.source.type == Source_Type.unit) {
+        const { source, target, change, dead } = event;
 
-    if (source.type == Source_Type.unit) {
         const attacker = source.unit;
 
         if (attacker.attack && source.ability_id == attacker.attack.id) {
@@ -1635,7 +1635,7 @@ function server_change_health(battle: Battle_Record, source: Source, target: Uni
             on_target_dealt_damage_by_ability(battle, attacker, target, -change.value_delta);
         }
 
-        if (killed) {
+        if (dead) {
             if (!are_units_allies(attacker, target) && attacker.supertype != Unit_Supertype.creep) {
                 const bounty = get_gold_for_killing(target);
 
@@ -1663,8 +1663,6 @@ function server_change_health(battle: Battle_Record, source: Source, target: Uni
             }
         }
     }
-
-    return killed;
 }
 
 function resolve_end_turn_effects(battle: Battle_Record) {
@@ -1960,7 +1958,7 @@ export function start_battle(players: Player[], battleground: Battleground): num
         finished: false,
         creep_targets: new Map(),
         end_turn_queued: false,
-        change_health: server_change_health
+        receive_event: on_battle_event
     };
 
     fill_grid(battle);
