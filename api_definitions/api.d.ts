@@ -766,6 +766,8 @@ type Query_Battles_Response = {
     battles: Battle_Info[]
 }
 
+type Find_By_Id<Union, Id> = Union extends { id: Id } ? Union : never;
+
 declare function copy<T>(arg: T): T;
 declare function enum_to_string(enum_member: any): string;
 declare function enum_values<T>(): T[];

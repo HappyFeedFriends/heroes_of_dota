@@ -1710,22 +1710,22 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }
     }
 
-    function for_heroes_with_item<T extends Item>(item_id: T["id"], action: (hero: Hero, item: T) => void) {
+    function for_heroes_with_item<T extends Item_Id>(item_id: T, action: (hero: Hero, item: Find_By_Id<Item, T>) => void) {
         const item_units = item_to_units.get(item_id);
 
         if (item_units) {
             for (const [hero, item] of item_units) {
-                action(hero, item as T);
+                action(hero, item as Find_By_Id<Item, T>);
             }
         }
     }
 
-    function for_heroes_with_ability<T extends Ability>(ability_id: T["id"], action: (unit: Unit, ability: T) => void) {
+    function for_heroes_with_ability<T extends Ability_Id>(ability_id: T, action: (unit: Unit, ability: Find_By_Id<Ability, T>) => void) {
         const ability_units = ability_to_units.get(ability_id);
 
         if (ability_units) {
             for (const [unit, ability] of ability_units) {
-                action(unit, ability as T);
+                action(unit, ability as Find_By_Id<Ability, T>);
             }
         }
     }
@@ -1751,8 +1751,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }
     }
 
-    // I don't know how to get rid of the ifs
-    for_heroes_with_item<Item_Heart_Of_Tarrasque>(Item_Id.heart_of_tarrasque, (hero, item) => {
+    for_heroes_with_item(Item_Id.heart_of_tarrasque, (hero, item) => {
         defer_delta_by_unit(battle, hero, () => ({
             type: Delta_Type.item_effect_applied,
             item_id: item.id,
@@ -1763,7 +1762,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }));
     });
 
-    for_heroes_with_item<Item_Armlet>(Item_Id.armlet, (hero, item) => {
+    for_heroes_with_item(Item_Id.armlet, (hero, item) => {
         defer_delta_by_unit(battle, hero, () => ({
             type: Delta_Type.health_change,
             source_unit_id: hero.id,
@@ -1795,7 +1794,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         });
     });
 
-    for_heroes_with_ability<Ability_Pocket_Tower_Attack>(Ability_Id.pocket_tower_attack, (unit, ability) => {
+    for_heroes_with_ability(Ability_Id.pocket_tower_attack, (unit, ability) => {
         defer_delta_by_unit(battle, unit, () => {
             if (is_unit_disarmed(unit)) return;
 
