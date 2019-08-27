@@ -1016,7 +1016,7 @@ function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell
         }
 
         if (hover.type == Hover_Type.cell && can_highlighted_ability_target_hovered_cell && highlighted_ability_selector) {
-            if (ability_selector_fits(highlighted_ability_selector, selection.unit.position, hover.cell, cell.position)) {
+            if (ability_selector_fits(battle, highlighted_ability_selector, selection.unit.position, hover.cell, cell.position)) {
                 alpha = 140;
                 cell_color = color_red;
             }
@@ -2844,7 +2844,7 @@ function highlight_grid_for_targeted_ability(event: Grid_Highlight_Targeted_Abil
     highlight_grid_for_unit_ability_with_predicate(
         event.unit_id,
         event.ability_id,
-        (ability, cell) => ability_selector_fits(ability.targeting.selector, event.from, event.to, cell.position)
+        (ability, cell) => ability_selector_fits(battle, ability.targeting.selector, event.from, event.to, cell.position)
     );
 }
 

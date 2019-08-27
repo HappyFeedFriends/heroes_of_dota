@@ -116,7 +116,8 @@ declare const enum Ability_Target_Selector_Type {
     single_target = 0,
     rectangle = 1,
     line = 2,
-    t_shape = 3
+    t_shape = 3,
+    first_in_line = 4
 }
 
 declare const enum Ability_Type {
@@ -206,10 +207,16 @@ type Ability_Target_Selector_T_Shape = {
     arm_length: number
 }
 
+type Ability_Target_Selector_First_In_Line = {
+    type: Ability_Target_Selector_Type.first_in_line
+    length: number
+}
+
 type Ability_Target_Selector =
     Ability_Target_Selector_Single_Target |
     Ability_Target_Selector_Rectangle |
     Ability_Target_Selector_Line |
+    Ability_Target_Selector_First_In_Line |
     Ability_Target_Selector_T_Shape
 
 type Ability_Targeting =

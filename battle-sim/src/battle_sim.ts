@@ -615,7 +615,7 @@ function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, fr
     }
 }
 
-function ability_selector_fits(selector: Ability_Target_Selector, from: XY, to: XY, check_at: XY): boolean {
+function ability_selector_fits(battle: Battle, selector: Ability_Target_Selector, from: XY, to: XY, check_at: XY): boolean {
     function points_on_the_same_line(a: XY, b: XY, c: XY) {
         return are_points_on_the_same_line(a, b) && are_points_on_the_same_line(a, c) && are_points_on_the_same_line(b, c);
     }
@@ -643,6 +643,42 @@ function ability_selector_fits(selector: Ability_Target_Selector, from: XY, to: 
         case Ability_Target_Selector_Type.line: {
             if (points_on_the_same_line(from, to, check_at)) {
                 return fits_line(selector.length);
+            }
+
+            return false;
+        }
+
+        case Ability_Target_Selector_Type.first_in_line: {
+            if (points_on_the_same_line(from, to, check_at) && fits_line(selector.length)) {
+                const direction_normal = direction_normal_between_points(from, to);
+                const current_cell = xy(from.x, from.y);
+
+                for (let scanned = 0; scanned < selector.length; scanned++) {
+                    current_cell.x += direction_normal.x;
+                    current_cell.y += direction_normal.y;
+
+                    const unit = unit_at(battle, current_cell);
+
+                    if (unit && authorize_act_on_known_unit(battle, unit).ok) {
+                        // selector.selector_result = { ok: true, unit: unit };
+                        return true;
+                    }
+
+                    const cell = grid_cell_at(battle, current_cell);
+
+                    if (!cell) {
+                        // selector.selector_result = { ok: false, final_cell: xy_sub(current_cell, direction_normal) };
+                        return false;
+                    }
+
+                    if (cell.occupied) {
+                        // selector.selector_result = { ok: false, final_cell: current_cell };
+                        return false;
+                    }
+                }
+
+                // selector.selector_result = { ok: false, final_cell: current_cell };
+                return false;
             }
 
             return false;

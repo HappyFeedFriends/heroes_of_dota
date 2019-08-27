@@ -146,7 +146,7 @@ function query_units_with_selector(battle: Battle, from: XY, target: XY, selecto
     for (const unit of battle.units) {
         if (!authorize_act_on_known_unit(battle, unit).ok) continue;
 
-        if (ability_selector_fits(selector, from, target, unit.position)) {
+        if (ability_selector_fits(battle, selector, from, target, unit.position)) {
             units.push(unit);
         }
     }
@@ -540,7 +540,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
 
             const selector = ability.targeting.selector;
             const free_cells = battle.cells
-                .filter(cell => !cell.occupied && ability_selector_fits(selector, unit.position, target, cell.position))
+                .filter(cell => !cell.occupied && ability_selector_fits(battle, selector, unit.position, target, cell.position))
                 .map(cell => cell.position);
 
             const closest_free_cell = (for_unit_cell: XY) => {
