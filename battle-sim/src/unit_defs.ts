@@ -28,6 +28,13 @@ function single_target(): Ability_Target_Selector_Single_Target {
     }
 }
 
+function first_unit_in_line(length: number): Ability_Target_Selector_First_In_Line {
+    return {
+        type: Ability_Target_Selector_Type.first_in_line,
+        length: length
+    }
+}
+
 function targets_in_rectangle(radius: number): Ability_Target_Selector_Rectangle {
     return {
         type: Ability_Target_Selector_Type.rectangle,
@@ -62,7 +69,7 @@ function target_rect_area_around_caster(area_radius: number, selector: Ability_T
 function basic_attack(range: number): Ability_Basic_Attack {
     return active_ability<Ability_Basic_Attack>({
         available_since_level: 0,
-        targeting: target_line(range),
+        targeting: target_line(range, first_unit_in_line(range)),
         flags: [],
         charges: 1
     });
@@ -103,7 +110,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 abilities: [
                     active_ability<Ability_Pudge_Hook>({
                         available_since_level: 1,
-                        targeting: target_line(5),
+                        targeting: target_line(5, first_unit_in_line(5)),
                         flags: [],
                         charges: 1,
                         damage: 5
@@ -321,7 +328,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     }),
                     active_ability<Ability_Mirana_Arrow>({
                         available_since_level: 2,
-                        targeting: target_line(7, targets_in_line(7)),
+                        targeting: target_line(7, first_unit_in_line(7)),
                         flags: [],
                         charges: 1
                     }),

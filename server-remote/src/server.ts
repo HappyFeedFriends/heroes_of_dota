@@ -1,10 +1,12 @@
 import {createServer} from "http";
 import {randomBytes} from "crypto"
 import {
-    Battle_Record, cheat,
-    find_battle_by_id, find_unoccupied_cell_in_deployment_zone_for_player, get_all_battles,
-    get_battle_deltas_after, random_in_array,
-    start_battle, surrender_player_forces,
+    cheat,
+    find_battle_by_id,
+    get_all_battles,
+    get_battle_deltas_after,
+    start_battle,
+    surrender_player_forces,
     try_take_turn_action
 } from "./battle";
 import {unreachable, XY, xy} from "./common";
@@ -12,6 +14,7 @@ import {pull_pending_chat_messages_for_player, submit_chat_message} from "./chat
 import {performance} from "perf_hooks"
 import {readFileSync} from "fs";
 import * as battleground from "./battleground";
+import {take_ai_action} from "./ai";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
@@ -344,32 +347,6 @@ export function report_battle_over(battle: Battle, winner_player_id: number) {
     }
 }
 
-function take_ai_action(battle: Battle_Record, ai: Battle_Player) {
-    function act(action: Turn_Action) {
-        try_take_turn_action(battle, ai, action);
-    }
-
-    if (ai.hand.length > 0) {
-        const random_hero_card = random_in_array(ai.hand.filter(card => card.type == Card_Type.hero));
-
-        if (random_hero_card) {
-            const random_unoccupied_position = random_in_array(find_unoccupied_cell_in_deployment_zone_for_player(battle, ai));
-
-            if (random_unoccupied_position) {
-                act({
-                    type: Action_Type.use_hero_card,
-                    card_id: random_hero_card.id,
-                    at: random_unoccupied_position.position
-                });
-            }
-        }
-    }
-
-    act({
-        type: Action_Type.end_turn
-    })
-}
-
 handlers.set("/get_player_state", body => {
     const request = JSON.parse(body) as Get_Player_State_Request;
     const player_state = try_do_with_player(request.access_token, player_to_player_state_object);
@@ -530,7 +507,7 @@ handlers.set("/take_battle_action", body => {
             const battle_ai = battle.players.find(battle_player => battle_player.id == ai.id);
 
             if (battle_ai && request.action.type == Action_Type.end_turn && battle.turning_player == battle_ai) {
-                setTimeout(() => take_ai_action(battle, battle_ai), 1000);
+                take_ai_action(battle, battle_ai)
             }
         }
 

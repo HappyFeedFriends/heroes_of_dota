@@ -90,16 +90,16 @@ type Scan_Result_Missed = {
     final_point: XY
 }
 
-function scan_for_unit_in_direction(
+function query_first_unit_in_line(
     battle: Battle,
     from_exclusive: XY,
     to: XY,
-    max_scan_distance: number,
+    line_length: number,
     direction_normal: XY = direction_normal_between_points(from_exclusive, to)
 ): Scan_Result_Hit | Scan_Result_Missed {
     let current_cell = xy(from_exclusive.x, from_exclusive.y);
 
-    for (let scanned = 0; scanned < max_scan_distance; scanned++) {
+    for (let scanned = 0; scanned < line_length; scanned++) {
         current_cell.x += direction_normal.x;
         current_cell.y += direction_normal.y;
 
@@ -361,7 +361,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
 
     switch (ability.id) {
         case Ability_Id.basic_attack: {
-            const scan = scan_for_unit_in_direction(battle, unit.position, target, ability.targeting.line_length);
+            const scan = query_first_unit_in_line(battle, unit.position, target, ability.targeting.line_length);
 
             if (scan.hit) {
                 const damage = calculate_basic_attack_damage_to_target(unit, scan.unit);
@@ -390,7 +390,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
         case Ability_Id.pudge_hook: {
             const distance = ability.targeting.line_length;
             const direction = direction_normal_between_points(unit.position, target);
-            const scan = scan_for_unit_in_direction(battle, unit.position, target, distance, direction);
+            const scan = query_first_unit_in_line(battle, unit.position, target, distance, direction);
 
             if (scan.hit) {
                 return {
@@ -482,7 +482,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
         }
 
         case Ability_Id.mirana_arrow: {
-            const scan = scan_for_unit_in_direction(battle, unit.position, target, ability.targeting.line_length);
+            const scan = query_first_unit_in_line(battle, unit.position, target, ability.targeting.line_length);
 
             if (scan.hit) {
                 return {

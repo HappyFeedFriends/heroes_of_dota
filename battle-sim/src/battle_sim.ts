@@ -660,24 +660,16 @@ function ability_selector_fits(battle: Battle, selector: Ability_Target_Selector
                     const unit = unit_at(battle, current_cell);
 
                     if (unit && authorize_act_on_known_unit(battle, unit).ok) {
-                        // selector.selector_result = { ok: true, unit: unit };
                         return true;
                     }
 
                     const cell = grid_cell_at(battle, current_cell);
 
-                    if (!cell) {
-                        // selector.selector_result = { ok: false, final_cell: xy_sub(current_cell, direction_normal) };
-                        return false;
-                    }
-
-                    if (cell.occupied) {
-                        // selector.selector_result = { ok: false, final_cell: current_cell };
+                    if (!cell || cell.occupied) {
                         return false;
                     }
                 }
 
-                // selector.selector_result = { ok: false, final_cell: current_cell };
                 return false;
             }
 
