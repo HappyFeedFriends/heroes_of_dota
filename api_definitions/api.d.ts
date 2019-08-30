@@ -155,6 +155,36 @@ type Query_Battles_Response = {
     battles: Battle_Info[]
 }
 
+type Get_Hero_Collection = {
+    request: {
+        access_token: string
+        page: number
+    }
+
+    response: {
+        heroes: {
+            hero: Hero_Type
+            copies: number
+        }[]
+        total_pages: number
+    }
+}
+
+type Get_Spell_Collection = {
+    request: {
+        access_token: string
+        page: number
+    }
+
+    response: {
+        spells: {
+            spell: Spell_Id
+            copies: number
+        }[]
+        total_pages: number
+    }
+}
+
 type Find_By_Id<Union, Id> = Union extends { id: Id } ? Union : never;
 
 declare function copy<T>(arg: T): T;

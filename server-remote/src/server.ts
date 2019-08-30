@@ -35,7 +35,7 @@ const enum Right {
     query_battles
 }
 
-export interface Map_Player {
+export type Map_Player = {
     steam_id: string
     id: number;
     name: string;
@@ -44,13 +44,35 @@ export interface Map_Player {
     state: Player_State;
     current_battle_id: number; // TODO maybe we don't want to have current_battle_id in other states, but a union for 1 value? ehh
     active_logins: number
+    deck: Card_Deck
+    collection: Card_Collection
 }
 
-export interface Map_Player_Login {
+export type Map_Player_Login = {
     player: Map_Player
     chat_timestamp: number
     token: string
     last_used_at: number
+}
+
+type Card_Deck = {
+    heroes: Hero_Type[]
+    spells: Spell_Id[]
+}
+
+type Collection_Hero_Card = {
+    hero: Hero_Type
+    copies: number
+}
+
+type Collection_Spell_Card = {
+    spell: Spell_Id,
+    copies: number
+}
+
+type Card_Collection = {
+    heroes: Collection_Hero_Card[]
+    spells: Collection_Spell_Card[]
 }
 
 let dev_mode = false;
@@ -68,6 +90,22 @@ function generate_access_token() {
 }
 
 function make_new_player(steam_id: string, name: string): Map_Player {
+    const heroes: Collection_Hero_Card[] = [];
+    const spells: Collection_Spell_Card[] = [];
+
+    for (const hero of enum_values<Hero_Type>().filter(id => id != Hero_Type.sniper && id != Hero_Type.ursa)) {
+        heroes.push({ hero: hero, copies: 1 });
+    }
+
+    for (const spell of enum_values<Spell_Id>()) {
+        spells.push({ spell: spell, copies: 1 });
+    }
+
+    const deck: Card_Deck = {
+        heroes: enum_values<Hero_Type>(),
+        spells: enum_values<Spell_Id>()
+    };
+
     return {
         steam_id: steam_id,
         id: player_id_auto_increment++,
@@ -76,7 +114,12 @@ function make_new_player(steam_id: string, name: string): Map_Player {
         current_location: xy(0, 0),
         movement_history: [],
         current_battle_id: 0,
-        active_logins: 0
+        active_logins: 0,
+        deck: deck,
+        collection: {
+            heroes: heroes,
+            spells: spells
+        }
     }
 }
 
@@ -169,12 +212,12 @@ function try_authorize_steam_player_from_dedicated_server(steam_id: string, stea
     return [player.id, token];
 }
 
-interface Result_Ok {
+type Result_Ok = {
     type: Result_Type.ok;
     content?: string;
 }
 
-interface Result_Error {
+type Result_Error = {
     type: Result_Type.error;
     code: number;
 }
@@ -595,6 +638,42 @@ handlers.set("/pull_chat_messages", body => {
     });
 
     return action_on_player_to_result(result);
+});
+
+const cards_per_page = 8;
+
+handlers.set("/get_hero_collection", body => {
+    const request = JSON.parse(body) as Get_Hero_Collection["request"];
+    const collection = try_do_with_player<Get_Hero_Collection["response"]>(request.access_token, player => {
+        const heroes = player.collection.heroes;
+
+        return {
+            heroes: heroes.map(card => ({
+                hero: card.hero,
+                copies: card.copies
+            })),
+            total_pages: Math.ceil(heroes.length / cards_per_page)
+        }
+    });
+
+    return action_on_player_to_result(collection);
+});
+
+handlers.set("/get_spell_collection", body => {
+    const request = JSON.parse(body) as Get_Spell_Collection["request"];
+    const collection = try_do_with_player<Get_Spell_Collection["response"]>(request.access_token, player => {
+        const spells = player.collection.spells;
+
+        return {
+            spells: spells.map(card => ({
+                spell: card.spell,
+                copies: card.copies
+            })),
+            total_pages: Math.ceil(spells.length / cards_per_page),
+        }
+    });
+
+    return action_on_player_to_result(collection);
 });
 
 handlers.set("/", body => {

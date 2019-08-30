@@ -1,0 +1,38 @@
+@import "shared";
+
+#global_map_ui {
+  width: 100%;
+  height: 100%;
+}
+
+#action_bar {
+  align: center bottom;
+  margin: 20px;
+
+  #collection_button {
+    width: 200px;
+    height: 40px;
+    background-color: #688bff;
+
+    &:hover {
+      background-color: #5f7ee9;
+
+      Label {
+        color: #e1e1e1;
+      }
+    }
+
+    &:active {
+      background-color: #5f7ee9;
+      transform: translateX(1px) translateY(1px);
+    }
+
+    Label {
+      font-family: @font-title;
+      color: white;
+      align: center center;
+      text-align: center center;
+      font-size: 24px;
+    }
+  }
+}
