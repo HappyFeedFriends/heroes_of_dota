@@ -534,7 +534,7 @@ function on_battle_event(battle: UI_Battle, event: Battle_Event) {
 }
 
 function process_state_transition(from: Player_State, new_state: Player_Net_Table) {
-    $.Msg(`Transition from ${from} to2 ${new_state.state}`);
+    $.Msg(`Transition from ${from} to ${new_state.state}`);
 
     if (from == Player_State.in_battle) {
         for (const cell of battle.cells) {
@@ -1185,6 +1185,14 @@ function ui_end_turn() {
     take_battle_action({
         type: Action_Type.end_turn
     });
+}
+
+function get_hero_name(hero: Hero_Type): string {
+    const enum_string = enum_to_string(hero);
+
+    return enum_string.split("_")
+        .map(word => word[0].toUpperCase() + word.slice(1))
+        .reduce((prev, value) => prev + " " + value);
 }
 
 function get_item_icon_name(id: Item_Id): string {
@@ -2509,7 +2517,7 @@ function create_hero_card_ui_base(container: Panel, hero_type: Hero_Type, health
     const name_panel = $.CreatePanel("Panel", container, "name_panel");
     const hero_name = $.CreatePanel("Label", name_panel, "");
 
-    hero_name.text = get_hero_dota_name(hero_type);
+    hero_name.text = get_hero_name(hero_type);
 
     const stat_panel = $.CreatePanel("Panel", container, "stat_panel");
 

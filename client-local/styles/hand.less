@@ -31,7 +31,7 @@
         align: center center;
         color: white;
         font-family: @font-regular;
-        font-size: 18px;
+        font-size: 13px;
         text-shadow: 0px 0px 2px 2.0 #333333ff;
       }
     }
@@ -51,7 +51,7 @@
 
   #name_panel {
     width: 100%;
-    height: 36px;
+    height: 30px;
     background-color: rgba(0, 127, 162, 0.53);
     background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
     background-size: 100% 100%;
@@ -95,7 +95,6 @@
       #value {
         font-family: @font-mono;
         font-size: 16px;
-        margin-bottom: -3px;
         color: white;
         text-align: center;
       }
@@ -146,8 +145,9 @@
   }
 
   &:hover, &.in_preview {
-    width: 200px;
-    height: 300px;
+    //width: 200px;
+    //height: 300px;
+    ui-scale: 125%;
     z-index: 10;
   }
 }

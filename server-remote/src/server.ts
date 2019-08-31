@@ -642,13 +642,18 @@ handlers.set("/pull_chat_messages", body => {
 
 const cards_per_page = 8;
 
+function get_array_page<T>(array: T[], page: number, elements_per_page: number) {
+    const start = page * elements_per_page;
+    return array.slice(start, start + elements_per_page);
+}
+
 handlers.set("/get_hero_collection", body => {
     const request = JSON.parse(body) as Get_Hero_Collection["request"];
     const collection = try_do_with_player<Get_Hero_Collection["response"]>(request.access_token, player => {
         const heroes = player.collection.heroes;
 
         return {
-            heroes: heroes.map(card => ({
+            heroes: get_array_page(heroes, request.page, cards_per_page).map(card => ({
                 hero: card.hero,
                 copies: card.copies
             })),
@@ -665,7 +670,7 @@ handlers.set("/get_spell_collection", body => {
         const spells = player.collection.spells;
 
         return {
-            spells: spells.map(card => ({
+            spells: get_array_page(spells, request.page, cards_per_page).map(card => ({
                 spell: card.spell,
                 copies: card.copies
             })),

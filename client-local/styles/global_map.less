@@ -36,3 +36,100 @@
     }
   }
 }
+
+#collection {
+  align: center center;
+  flow-children: down;
+
+  width: 1260px;
+  height: 800px;
+  background-color: #4e6180;
+  background-image: url("s2r://panorama/images/backgrounds/dashboard_vignette_png.vtex");
+  background-size: 100% 100%;
+  padding: 40px;
+
+  transition-property: transform, opacity;
+  transition-duration: 0.1s;
+  transform: translateY(60px);
+  opacity: 0;
+
+  box-shadow: #151515 0 0 16px 0;
+
+  &.visible {
+    transform: none;
+    opacity: 1;
+  }
+
+  >#header {
+    //height: 0px;
+    width: 100%;
+
+    Label {
+      font-family: @font-title;
+      font-size: 40px;
+
+      letter-spacing: 2px;
+
+      color: white;
+      align: center center;
+      text-shadow: 0px 0px 4px 3.0 rgb(0, 0, 0);
+    }
+  }
+
+  >#content {
+    height: 100%;
+    width: 100%;
+
+    flow-children: right;
+
+    #page {
+      align: center center;
+      flow-children: right-wrap;
+      width: 80%;
+
+      .card {
+        margin: 20px;
+      }
+    }
+
+    #deck {
+      width: 100%;
+      height: 100%;
+      box-shadow: #151515 0 0 16px 0;
+
+      //background-color: rgba(97, 150, 178, 0.33);
+      //background-image: url("s2r://panorama/images/backgrounds/dashboard_vignette_png.vtex");
+      //background-size: 100% 100%;
+
+      #deck_header {
+        width: 100%;
+        height: 40px;
+
+        background-color: #3a4882;
+        background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
+        background-size: 100% 100%;
+
+        border-bottom: 2px solid #1b1b37;
+
+        Label {
+          color: white;
+          font-family: @font-title;
+          font-size: 22px;
+          align: center center;
+          letter-spacing: 1px;
+
+          text-shadow: 0px 0px 4px 3.0 rgb(0, 0, 0);
+
+        }
+
+      }
+
+      #deck_content {
+        width: 100%;
+        height: 100%;
+
+        box-shadow: inset #151515 0 0 16px 0;
+      }
+    }
+  }
+}
