@@ -24,7 +24,7 @@ function periodically_pull_chat_messages() {
         access_token: get_access_token()
     };
 
-    remote_request<Pull_Pending_Chat_Messages_Request, Pull_Pending_Chat_Messages_Response>("/pull_chat_messages", request, response => {
+    api_request(Api_Request_Type.pull_chat_messages, request, response => {
         add_new_chat_messages(response.messages);
     });
 }
@@ -60,7 +60,7 @@ function hack_into_game_chat() {
                     } else {
                         const unit = selection.type == Selection_Type.unit ? selection.unit : undefined;
 
-                        remote_request<Battle_Cheat_Command_Request, Boolean>("/battle_cheat", {
+                        api_request(Api_Request_Type.battle_cheat, {
                             access_token: get_access_token(),
                             cheat: text.substring(1),
                             selected_unit_id: unit ? unit.id : -1
@@ -69,7 +69,7 @@ function hack_into_game_chat() {
                 } else if (text.charAt(0) == "/") {
                     cheat(text.substring(1));
                 } else {
-                    remote_request<Submit_Chat_Message_Request, Submit_Chat_Message_Response>("/submit_chat_message", {
+                    api_request(Api_Request_Type.submit_chat_message, {
                         access_token: get_access_token(),
                         message: text
                     }, response => add_new_chat_messages(response.messages));
@@ -122,7 +122,7 @@ function subscribe_to_debug_message_event() {
     GameEvents.Subscribe("log_chat_debug_message", data => {
         const event = data as Debug_Chat_Message_Event;
 
-        remote_request<Submit_Chat_Message_Request, Submit_Chat_Message_Response>("/submit_chat_message", {
+        api_request(Api_Request_Type.submit_chat_message, {
             access_token: get_access_token(),
             message: event.message
         }, response => add_new_chat_messages(response.messages));

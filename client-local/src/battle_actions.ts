@@ -6,7 +6,7 @@ function take_battle_action(action: Turn_Action, success_callback?: () => void) 
         action: action
     };
 
-    remote_request<Take_Battle_Action_Request, Take_Battle_Action_Response>("/take_battle_action", request, response => {
+    api_request(Api_Request_Type.take_battle_action, request, response => {
         if (success_callback) {
             success_callback();
         }
@@ -263,7 +263,6 @@ function authorize_ability_use_with_error_ui(unit: Unit, ability: Ability): Abil
 
     return ability_use;
 }
-
 
 function try_attack_target(source: Unit, target: XY, flash_ground_on_error: boolean) {
     if (!source.attack) {

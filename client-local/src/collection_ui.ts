@@ -24,7 +24,7 @@ function ui_toggle_collection() {
             page: 0
         };
 
-        remote_request<Get_Hero_Collection["request"], Get_Hero_Collection["response"]>("/get_hero_collection", request, response => {
+        api_request(Api_Request_Type.get_hero_collection, request, response => {
             refresh_collection_contents(response.heroes);
         });
     }

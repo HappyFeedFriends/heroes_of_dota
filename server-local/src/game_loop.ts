@@ -324,7 +324,7 @@ function main() {
 }
 
 function game_loop() {
-    let authorization: Authorize_Steam_User_Response | undefined;
+    let authorization: { token: string, id: number } | undefined;
     let player_id: PlayerID | undefined = undefined;
     let player_unit: CDOTA_BaseNPC_Hero | undefined = undefined;
     let players: Player_Map = {};

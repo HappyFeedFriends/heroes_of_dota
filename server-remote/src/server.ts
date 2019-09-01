@@ -18,8 +18,6 @@ import {take_ai_action} from "./ai";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
-type Request_Handler = (body: string) => Request_Result;
-
 const enum Result_Type {
     ok = 0,
     error = 1
@@ -80,6 +78,7 @@ let dev_mode = false;
 const players: Map_Player[] = [];
 const token_to_player_login = new Map<string, Map_Player_Login>();
 const steam_id_to_player = new Map<string, Map_Player>();
+const api_handlers: ((body: object) => Request_Result<object>)[] = [];
 
 let player_id_auto_increment = 0;
 
@@ -163,14 +162,10 @@ function try_do_with_player<T>(access_token: string, do_what: (player: Map_Playe
     }
 }
 
-function action_on_player_to_result<N, T>(result: Do_With_Player_Result<N>, map?: (data: N) => T): Request_Result {
+function action_on_player_to_result<N>(result: Do_With_Player_Result<N>): Request_Result<N> {
     switch (result.type) {
         case Do_With_Player_Result_Type.ok: {
-            if (map) {
-                return make_ok_json<T>(map(result.data));
-            } else {
-                return make_ok_json<N>(result.data);
-            }
+            return make_ok(result.data);
         }
 
         case Do_With_Player_Result_Type.error: {
@@ -212,17 +207,15 @@ function try_authorize_steam_player_from_dedicated_server(steam_id: string, stea
     return [player.id, token];
 }
 
-type Result_Ok = {
-    type: Result_Type.ok;
-    content?: string;
+type Result_Ok<T> = {
+    type: Result_Type.ok
+    content: T
 }
 
 type Result_Error = {
-    type: Result_Type.error;
-    code: number;
+    type: Result_Type.error
+    code: number
 }
-
-const handlers = new Map<string, Request_Handler>();
 
 function player_to_player_state_object(player: Map_Player): Player_State_Data {
     switch (player.state) {
@@ -311,6 +304,10 @@ function can_player(player: Map_Player, right: Right) {
     return unreachable(right);
 }
 
+function register_api_handler<T extends Api_Request_Type>(type: T, handler: (data: Find_Request<T>) => Request_Result<Find_Response<T>>) {
+    api_handlers[type] = body => handler(body as Find_Request<T>)
+}
+
 function validate_dedicated_server_key(key: string) {
     return true;
 }
@@ -359,18 +356,14 @@ function check_and_disconnect_offline_players() {
     }
 }
 
-// TODO automatically validate dedicated key on /trusted path
-// TODO don't forget that elements in JSON array can be null
-handlers.set("/trusted/try_authorize_steam_user", body => {
-    const request = JSON.parse(body) as Authorize_Steam_User_Request;
-
-    if (!validate_dedicated_server_key(request.dedicated_server_key)) {
+register_api_handler(Api_Request_Type.authorize_steam_user, req => {
+    if (!validate_dedicated_server_key(req.dedicated_server_key)) {
         return make_error(403);
     }
 
-    const [player_id, token] = try_authorize_steam_player_from_dedicated_server(request.steam_id, request.steam_user_name);
+    const [player_id, token] = try_authorize_steam_player_from_dedicated_server(req.steam_id, req.steam_user_name);
 
-    return make_ok_json<Authorize_Steam_User_Response>({
+    return make_ok({
         id: player_id,
         token: token
     });
@@ -390,27 +383,24 @@ export function report_battle_over(battle: Battle, winner_player_id: number) {
     }
 }
 
-handlers.set("/get_player_state", body => {
-    const request = JSON.parse(body) as Get_Player_State_Request;
-    const player_state = try_do_with_player(request.access_token, player_to_player_state_object);
+register_api_handler(Api_Request_Type.get_player_state, req => {
+    const player_state = try_do_with_player(req.access_token, player_to_player_state_object);
 
     return action_on_player_to_result(player_state);
 });
 
-handlers.set("/trusted/submit_player_movement", body => {
-    const request = JSON.parse(body) as Submit_Player_Movement_Request;
-
-    if (!validate_dedicated_server_key(request.dedicated_server_key)) {
+register_api_handler(Api_Request_Type.submit_player_movement, req => {
+    if (!validate_dedicated_server_key(req.dedicated_server_key)) {
         return make_error(403);
     }
 
-    const ok = try_do_with_player(request.access_token, player => {
+    const ok = try_do_with_player(req.access_token, player => {
         if (!can_player(player, Right.submit_movement)) {
             return;
         }
 
-        player.current_location = xy(request.current_location.x, request.current_location.y);
-        player.movement_history = request.movement_history.map(entry => ({
+        player.current_location = xy(req.current_location.x, req.current_location.y);
+        player.movement_history = req.movement_history.map(entry => ({
             order_x: entry.order_x,
             order_y: entry.order_y,
             location_x: entry.location_x,
@@ -418,8 +408,8 @@ handlers.set("/trusted/submit_player_movement", body => {
         }));
 
         if (test_player) {
-            test_player.current_location = xy(request.current_location.x + 800, request.current_location.y);
-            test_player.movement_history = request.movement_history.map(entry => ({
+            test_player.current_location = xy(req.current_location.x + 800, req.current_location.y);
+            test_player.movement_history = req.movement_history.map(entry => ({
                 order_x: entry.order_x + 800,
                 order_y: entry.order_y,
                 location_x: entry.location_x + 800,
@@ -430,18 +420,22 @@ handlers.set("/trusted/submit_player_movement", body => {
         return true;
     });
 
-    return action_on_player_to_result<boolean, Submit_Player_Movement_Response>(ok, () => ({}));
+    const result = action_on_player_to_result(ok);
+
+    if (result.type == Result_Type.ok) {
+        return make_ok({});
+    }
+
+    return result;
 });
 
 // TODO not necessarily has to be trusted, right? It's just a read, though might be a heavy one
-handlers.set("/trusted/query_players_movement", body => {
-    const request = JSON.parse(body) as Query_Players_Movement_Request;
-
-    if (!validate_dedicated_server_key(request.dedicated_server_key)) {
+register_api_handler(Api_Request_Type.query_players_movement, req => {
+    if (!validate_dedicated_server_key(req.dedicated_server_key)) {
         return make_error(403);
     }
 
-    const player_locations = try_do_with_player<Query_Players_Movement_Response>(request.access_token, requesting_player => {
+    const player_locations = try_do_with_player(req.access_token, requesting_player => {
         if (!can_player(requesting_player, Right.submit_movement)) {
             return;
         }
@@ -473,19 +467,17 @@ handlers.set("/trusted/query_players_movement", body => {
     return action_on_player_to_result(player_locations);
 });
 
-handlers.set("/trusted/attack_player", body => {
-    const request = JSON.parse(body) as Attack_Player_Request;
-
-    if (!validate_dedicated_server_key(request.dedicated_server_key)) {
+register_api_handler(Api_Request_Type.attack_player, req => {
+    if (!validate_dedicated_server_key(req.dedicated_server_key)) {
         return make_error(403);
     }
 
-    const player_state = try_do_with_player(request.access_token, player => {
+    const player_state = try_do_with_player(req.access_token, player => {
         if (!can_player(player, Right.attack_a_character)) {
             return;
         }
 
-        const other_player = player_by_id(request.target_player_id);
+        const other_player = player_by_id(req.target_player_id);
 
         if (!other_player) {
             return;
@@ -503,27 +495,25 @@ handlers.set("/trusted/attack_player", body => {
     return action_on_player_to_result(player_state);
 });
 
-handlers.set("/query_battle_deltas", body => {
-    const request = JSON.parse(body) as Query_Deltas_Request;
-    const result = try_do_with_player<Query_Deltas_Response>(request.access_token, player => {
-        const battle = find_battle_by_id(request.battle_id);
+register_api_handler(Api_Request_Type.query_battle_deltas, req => {
+    const result = try_do_with_player(req.access_token, player => {
+        const battle = find_battle_by_id(req.battle_id);
 
         if (!battle) {
-            console.error(`Battle #${request.battle_id} was not found`);
+            console.error(`Battle #${req.battle_id} was not found`);
             return;
         }
 
         return {
-            deltas: get_battle_deltas_after(battle, request.since_delta),
+            deltas: get_battle_deltas_after(battle, req.since_delta),
         };
     });
 
     return action_on_player_to_result(result);
 });
 
-handlers.set("/take_battle_action", body => {
-    const request = JSON.parse(body) as Take_Battle_Action_Request;
-    const result = try_do_with_player<Take_Battle_Action_Response>(request.access_token, player => {
+register_api_handler(Api_Request_Type.take_battle_action, req => {
+    const result = try_do_with_player(req.access_token, player => {
         if (!can_player(player, Right.submit_battle_action)) {
             return;
         }
@@ -543,13 +533,13 @@ handlers.set("/take_battle_action", body => {
         }
 
         const previous_head = battle.deltas.length;
-        const deltas = try_take_turn_action(battle, battle_player, request.action);
+        const deltas = try_take_turn_action(battle, battle_player, req.action);
         const ai = test_player;
 
         if (ai) {
             const battle_ai = battle.players.find(battle_player => battle_player.id == ai.id);
 
-            if (battle_ai && request.action.type == Action_Type.end_turn && battle.turning_player == battle_ai) {
+            if (battle_ai && req.action.type == Action_Type.end_turn && battle.turning_player == battle_ai) {
                 take_ai_action(battle, battle_ai)
             }
         }
@@ -565,10 +555,8 @@ handlers.set("/take_battle_action", body => {
     return action_on_player_to_result(result);
 });
 
-handlers.set("/query_battles", body => {
-    const request = JSON.parse(body) as Query_Battles_Request;
-
-    const result = try_do_with_player<Query_Battles_Response>(request.access_token, player => {
+register_api_handler(Api_Request_Type.query_battles, req => {
+    const result = try_do_with_player(req.access_token, player => {
         if (!can_player(player, Right.query_battles)) {
             return;
         }
@@ -593,16 +581,15 @@ handlers.set("/query_battles", body => {
     return action_on_player_to_result(result);
 });
 
-handlers.set("/battle_cheat", body => {
+register_api_handler(Api_Request_Type.battle_cheat, req => {
     // TODO validate admin profile
 
-    const request = JSON.parse(body) as Battle_Cheat_Command_Request;
-    const result = try_do_with_player<true>(request.access_token, player => {
+    const result = try_do_with_player<true>(req.access_token, player => {
         const battle = find_battle_by_id(player.current_battle_id);
 
         if (!battle) return;
 
-        cheat(battle, player, request.cheat, request.selected_unit_id);
+        cheat(battle, player, req.cheat, req.selected_unit_id);
 
         return true;
     });
@@ -610,16 +597,15 @@ handlers.set("/battle_cheat", body => {
     return action_on_player_to_result(result);
 });
 
-handlers.set("/submit_chat_message", body => {
-    const request = JSON.parse(body) as Submit_Chat_Message_Request;
-    const result = try_do_with_player<Submit_Chat_Message_Response>(request.access_token, (player, login) => {
+register_api_handler(Api_Request_Type.submit_chat_message, req => {
+    const result = try_do_with_player(req.access_token, (player, login) => {
         if (!can_player(player, Right.submit_chat_messages)) {
             return;
         }
 
         // TODO validate message size
 
-        submit_chat_message(player, request.message);
+        submit_chat_message(player, req.message);
 
         return {
             messages: pull_pending_chat_messages_for_player(login)
@@ -629,9 +615,8 @@ handlers.set("/submit_chat_message", body => {
     return action_on_player_to_result(result);
 });
 
-handlers.set("/pull_chat_messages", body => {
-    const request = JSON.parse(body) as Pull_Pending_Chat_Messages_Request;
-    const result = try_do_with_player<Pull_Pending_Chat_Messages_Response>(request.access_token, (player, login) => {
+register_api_handler(Api_Request_Type.pull_chat_messages, req => {
+    const result = try_do_with_player(req.access_token, (player, login) => {
         return {
             messages: pull_pending_chat_messages_for_player(login)
         };
@@ -647,13 +632,12 @@ function get_array_page<T>(array: T[], page: number, elements_per_page: number) 
     return array.slice(start, start + elements_per_page);
 }
 
-handlers.set("/get_hero_collection", body => {
-    const request = JSON.parse(body) as Get_Hero_Collection["request"];
-    const collection = try_do_with_player<Get_Hero_Collection["response"]>(request.access_token, player => {
+register_api_handler(Api_Request_Type.get_hero_collection, req => {
+    const collection = try_do_with_player(req.access_token, player => {
         const heroes = player.collection.heroes;
 
         return {
-            heroes: get_array_page(heroes, request.page, cards_per_page).map(card => ({
+            heroes: get_array_page(heroes, req.page, cards_per_page).map(card => ({
                 hero: card.hero,
                 copies: card.copies
             })),
@@ -664,13 +648,12 @@ handlers.set("/get_hero_collection", body => {
     return action_on_player_to_result(collection);
 });
 
-handlers.set("/get_spell_collection", body => {
-    const request = JSON.parse(body) as Get_Spell_Collection["request"];
-    const collection = try_do_with_player<Get_Spell_Collection["response"]>(request.access_token, player => {
+register_api_handler(Api_Request_Type.get_spell_collection, req => {
+    const collection = try_do_with_player(req.access_token, player => {
         const spells = player.collection.spells;
 
         return {
-            spells: get_array_page(spells, request.page, cards_per_page).map(card => ({
+            spells: get_array_page(spells, req.page, cards_per_page).map(card => ({
                 spell: card.spell,
                 copies: card.copies
             })),
@@ -681,47 +664,44 @@ handlers.set("/get_spell_collection", body => {
     return action_on_player_to_result(collection);
 });
 
-handlers.set("/", body => {
-    return make_ok_json({
-        status: "ok"
-    });
-});
-
-type Request_Result = Result_Ok | Result_Error;
+type Request_Result<T> = Result_Ok<T> | Result_Error;
 
 function make_error(code: number): Result_Error {
     return { type: Result_Type.error, code: code };
 }
 
-function make_ok(result: string): Result_Ok {
+function make_ok<T>(result: T): Result_Ok<T> {
     return { type: Result_Type.ok, content: result };
 }
 
-function make_ok_json<T>(data: T): Result_Ok {
-    return make_ok(JSON.stringify(data));
+function request_body(data: string) {
+    const json_data_key = "json_data=";
+
+    if (data.startsWith(json_data_key)) {
+        return decodeURIComponent(data.substring(json_data_key.length).replace(/\+/g, "%20"));
+    } else {
+        return data;
+    }
 }
 
-function handle_request(url: string, data: string): Request_Result {
-    try {
-        const handler = handlers.get(url);
+function try_extract_request_type(url: string): Api_Request_Type | undefined {
+    const api_start = "/api";
 
-        if (handler) {
-            const json_data_key = "json_data=";
-
-            if (data.startsWith(json_data_key)) {
-                return handler(decodeURIComponent(data.substring(json_data_key.length).replace(/\+/g, "%20")));
-            } else {
-                return handler(data);
-            }
-        } else {
-            return make_error(404);
-        }
-    } catch (error) {
-        console.log(error);
-        console.log(error.stack);
-
-        return make_error(500);
+    if (url.startsWith(api_start)) {
+        return parseInt(url.substr(api_start.length), 10);
     }
+
+    return;
+}
+
+function handle_api_request(handler: (body: object) => Request_Result<object>, data: string) {
+    const result = handler(JSON.parse(request_body(data)));
+
+    if (result.type == Result_Type.ok) {
+        return make_ok(JSON.stringify(result.content));
+    }
+
+    return result;
 }
 
 export function start_server(dev: boolean) {
@@ -810,8 +790,35 @@ export function start_server(dev: boolean) {
                 return;
             }
 
+            let url_name = url;
+
             const handle_start = performance.now();
-            const result = handle_request(url, body);
+
+            let result: Request_Result<string>;
+
+            try {
+                const request_type = try_extract_request_type(url);
+
+                if (request_type != undefined) {
+                    url_name = enum_to_string(request_type);
+
+                    const handler = api_handlers[request_type];
+
+                    if (handler) {
+                        result = handle_api_request(handler, body);
+                    } else {
+                        result = make_error(404);
+                    }
+                } else {
+                    result = make_error(404);
+                }
+            } catch (error) {
+                console.log(error);
+                console.log(error.stack);
+
+                result = make_error(500);
+            }
+
             const handle_time = performance.now() - handle_start;
 
             switch (result.type) {
@@ -831,7 +838,7 @@ export function start_server(dev: boolean) {
             }
 
             const time = performance.now() - time_start;
-            console.log(`${url} -> ${result.type == Result_Type.ok ? 'ok' : result.code}, took ${time.toFixed(2)}ms total, handle: ${handle_time.toFixed(2)}ms`)
+            console.log(`${url_name} -> ${result.type == Result_Type.ok ? 'ok' : result.code}, took ${time.toFixed(2)}ms total, handle: ${handle_time.toFixed(2)}ms`)
         });
     }).listen(3638);
 

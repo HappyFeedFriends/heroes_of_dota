@@ -136,8 +136,8 @@ function rune_image(type: Rune_Type): Image_Resource {
     return image_from_url(`data:image/png;base64,${rune_type_to_base64_image()}`)
 }
 
-async function api_request<Request, Response>(path: string, data: Request): Promise<Response> {
-    const response = await fetch(path, {
+async function api_request<T extends Api_Request_Type>(type: T, data: Find_Request<T>): Promise<Find_Response<T>> {
+    const response = await fetch("api" + type, {
         method: "POST",
         mode: "cors",
         cache: "no-cache",
@@ -147,16 +147,14 @@ async function api_request<Request, Response>(path: string, data: Request): Prom
         body: JSON.stringify(data),
     });
 
-    return await response.json() as Response;
+    return await response.json() as Find_Response<T>;
 }
 
 async function take_battle_action(game: Game_In_Battle, action: Turn_Action) {
-    const request = {
+    const response = await api_request(Api_Request_Type.take_battle_action, {
         access_token: game.access_token,
         action: action
-    };
-
-    const response = await api_request<Take_Battle_Action_Request, Take_Battle_Action_Response>("/take_battle_action", request);
+    });
 
     receive_battle_deltas(game, response.previous_head, response.deltas);
 }
@@ -166,7 +164,7 @@ function contains(x: number, y: number, sx: number, sy: number, width: number, h
 }
 
 function on_player_clicked(state: Game, player: Player) {
-    api_request<Attack_Player_Request, Attack_Player_Response>("/trusted/attack_player", {
+    api_request(Api_Request_Type.attack_player, {
         dedicated_server_key: "",
         access_token: state.access_token,
         target_player_id: player.id
@@ -259,7 +257,7 @@ async function check_and_try_refresh_battles(game: Game_On_Global_Map, time: num
 
     game.refreshed_battles_at = time;
 
-    const response = await api_request<Query_Battles_Request, Query_Battles_Response>("/query_battles", {
+    const response = await api_request(Api_Request_Type.query_battles, {
         access_token: game.access_token
     });
 
@@ -273,7 +271,7 @@ async function check_and_try_refresh_nearby_players(game: Game_On_Global_Map, ti
 
     game.refreshed_nearby_players_at = time;
 
-    const response = await api_request<Query_Players_Movement_Request, Query_Players_Movement_Response>("/trusted/query_players_movement", {
+    const response = await api_request(Api_Request_Type.query_players_movement, {
         dedicated_server_key: "",
         access_token: game.access_token
     });
@@ -293,7 +291,7 @@ async function check_and_try_request_player_state(state: Game, time: number) {
 
     state.requested_player_state_at = time;
 
-    const player_data = await api_request<Get_Player_State_Request, Player_State_Data>("/get_player_state", {
+    const player_data = await api_request(Api_Request_Type.get_player_state, {
         access_token: state.access_token
     });
 
@@ -314,7 +312,7 @@ async function check_and_try_request_chat(state: Game, time: number) {
 
     state.requested_chat_at = time;
 
-    const response = await api_request<Pull_Pending_Chat_Messages_Request, Pull_Pending_Chat_Messages_Response>("/pull_chat_messages", {
+    const response = await api_request(Api_Request_Type.pull_chat_messages, {
         access_token: state.access_token
     });
 
@@ -327,15 +325,14 @@ async function check_and_try_request_battle_deltas(game: Game_In_Battle, time: n
     }
 
     const head_before = game.battle.delta_head;
-    const request: Query_Deltas_Request = {
-        access_token: game.access_token,
-        battle_id: game.battle_id,
-        since_delta: head_before
-    };
 
     game.requested_battle_deltas_at = time;
 
-    const response = await api_request<Query_Deltas_Request, Query_Deltas_Response>("/query_battle_deltas", request);
+    const response = await api_request(Api_Request_Type.query_battle_deltas, {
+        access_token: game.access_token,
+        battle_id: game.battle_id,
+        since_delta: head_before
+    });
 
     receive_battle_deltas(game, head_before, response.deltas);
 }
@@ -1552,13 +1549,13 @@ async function start_game() {
 
     fix_canvas_dpi_scale(canvas, context);
 
-    const auth = await api_request<Authorize_Steam_User_Request, Authorize_Steam_User_Response>("/trusted/try_authorize_steam_user", {
+    const auth = await api_request(Api_Request_Type.authorize_steam_user, {
         dedicated_server_key: "",
         steam_id: "3637",
         steam_user_name: "Mister Guy"
     });
 
-    const player_state = await api_request<Get_Player_State_Request, Player_State_Data>("/get_player_state", {
+    const player_state = await api_request(Api_Request_Type.get_player_state, {
         access_token: auth.token
     });
 
@@ -1618,13 +1615,13 @@ async function start_game() {
             const message = input.value;
 
             if (message.startsWith("-") && game.state == Player_State.in_battle) {
-                api_request<Battle_Cheat_Command_Request, Boolean>("/battle_cheat", {
+                api_request(Api_Request_Type.battle_cheat, {
                     access_token: game.access_token,
                     cheat: message.substring(1),
                     selected_unit_id: game.selection.type == Selection_Type.unit ? game.selection.unit_id : -1
                 });
             } else {
-                api_request<Submit_Chat_Message_Request, Submit_Chat_Message_Response>("/submit_chat_message", {
+                api_request(Api_Request_Type.submit_chat_message, {
                     access_token: game.access_token,
                     message: message
                 }).then(response => {

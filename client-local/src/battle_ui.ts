@@ -492,13 +492,12 @@ function periodically_request_battle_deltas_when_in_battle() {
     }
 
     const head_before = battle.delta_head;
-    const request: Query_Deltas_Request = {
+
+    api_request(Api_Request_Type.query_battle_deltas, {
         access_token: get_access_token(),
         battle_id: battle.id,
         since_delta: head_before
-    };
-
-    remote_request<Query_Deltas_Request, Query_Deltas_Response>("/query_battle_deltas", request, response => {
+    }, response => {
         receive_battle_deltas(head_before, response.deltas);
     });
 }

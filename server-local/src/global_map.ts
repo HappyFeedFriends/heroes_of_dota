@@ -24,7 +24,7 @@ const movement_history_length = 30;
 
 function submit_player_movement(main_player: Main_Player) {
     const current_location = main_player.hero_unit.GetAbsOrigin();
-    const request: Submit_Player_Movement_Request = {
+    const request = {
         access_token: main_player.token,
         current_location: {
             x: current_location.x,
@@ -39,7 +39,7 @@ function submit_player_movement(main_player: Main_Player) {
         dedicated_server_key: get_dedicated_server_key()
     };
 
-    remote_request_with_retry_on_403("/trusted/submit_player_movement", main_player, request);
+    api_request_with_retry_on_403(Api_Request_Type.submit_player_movement, main_player, request);
 }
 
 function process_player_global_map_order(main_player: Main_Player, players: Player_Map, order: ExecuteOrderEvent): boolean {
@@ -128,12 +128,10 @@ function update_player_from_movement_history(player: Player) {
 }
 
 function query_other_players_movement(main_player: Main_Player, players: Player_Map) {
-    const request: Query_Players_Movement_Request = {
+    const response = api_request_with_retry_on_403(Api_Request_Type.query_players_movement, main_player, {
         access_token: main_player.token,
         dedicated_server_key: get_dedicated_server_key()
-    };
-
-    const response = remote_request_with_retry_on_403<Query_Players_Movement_Request, Query_Players_Movement_Response>("/trusted/query_players_movement", main_player, request);
+    });
 
     if (!response) {
         return;
@@ -204,7 +202,7 @@ function submit_and_query_movement_loop(main_player: Main_Player, players: Playe
 }
 
 function attack_player(main_player: Main_Player, target_player_id: number) {
-    const new_player_state = remote_request<Attack_Player_Request, Attack_Player_Response>("/trusted/attack_player", {
+    const new_player_state = api_request(Api_Request_Type.attack_player, {
         access_token: main_player.token,
         dedicated_server_key: get_dedicated_server_key(),
         target_player_id: target_player_id

@@ -21,6 +21,10 @@ function remote_request_async<T extends Object, N extends Object>(endpoint: stri
     });
 }
 
+function api_request<T extends Api_Request_Type>(type: T, data: Find_Request<T>): Find_Response<T> | undefined {
+    return remote_request("/api" + type, data);
+}
+
 function remote_request<T extends Object, N extends Object>(endpoint: string, body: T): N | undefined {
     let request_completed = false;
     let result: N | undefined = undefined;
@@ -38,6 +42,10 @@ function remote_request<T extends Object, N extends Object>(endpoint: string, bo
     wait_until(() => request_completed);
 
     return result;
+}
+
+function api_request_with_retry_on_403<T extends Api_Request_Type>(type: T, main_player: Main_Player, data: Find_Request<T>): Find_Response<T> | undefined {
+    return remote_request_with_retry_on_403("/api" + type, main_player, data);
 }
 
 function remote_request_with_retry_on_403<T extends Object, N extends Object>(endpoint: string, main_player: Main_Player, body: T): N | undefined {

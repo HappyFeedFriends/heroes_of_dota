@@ -4,6 +4,21 @@ declare const enum Player_State {
     not_logged_in = 2
 }
 
+declare const enum Api_Request_Type {
+    submit_chat_message = 0,
+    pull_chat_messages = 1,
+    battle_cheat = 2,
+    get_hero_collection = 3,
+    get_spell_collection = 4,
+    take_battle_action = 5,
+    query_battle_deltas = 6,
+    get_player_state = 7,
+    query_battles = 8,
+    authorize_steam_user = 9,
+    query_players_movement = 10,
+    submit_player_movement = 11,
+    attack_player = 12
+}
 
 type Movement_History_Entry = {
     order_x: number
@@ -11,70 +26,6 @@ type Movement_History_Entry = {
     location_x: number
     location_y: number
 }
-
-type Query_Deltas_Request = {
-    access_token: string
-    battle_id: number
-    since_delta: number
-}
-
-type Query_Deltas_Response = {
-    deltas: Delta[]
-}
-
-type Take_Battle_Action_Request = {
-    access_token: string
-    action: Turn_Action
-}
-
-type Take_Battle_Action_Response = {
-    previous_head: number
-    deltas: Delta[]
-}
-
-type Submit_Player_Movement_Request = {
-    dedicated_server_key: string
-    access_token: string
-    current_location: {
-        x: number
-        y: number
-    }
-    movement_history: Movement_History_Entry[]
-}
-
-type Submit_Player_Movement_Response = {}
-
-type Authorize_Steam_User_Request = {
-    steam_id: string
-    steam_user_name: string
-    dedicated_server_key: string
-}
-
-type Authorize_Steam_User_Response = {
-    id: number
-    token: string
-}
-
-type Get_Player_State_Request = {
-    access_token: string
-}
-
-type Query_Players_Movement_Request = {
-    dedicated_server_key: string
-    access_token: string
-}
-
-type Player_Movement_Data = {
-    id: number
-    player_name: string // TODO might want to move id:name connection into a separate request
-    movement_history: Movement_History_Entry[]
-    current_location: {
-        x: number
-        y: number
-    }
-}
-
-type Query_Players_Movement_Response = Player_Movement_Data[]
 
 type Player_State_Not_Logged_In_Data = {
     state: Player_State.not_logged_in
@@ -101,27 +52,152 @@ type Player_State_In_Battle_Data = {
 
 type Player_State_Data = Player_State_Not_Logged_In_Data | Player_State_On_Global_Map_Data | Player_State_In_Battle_Data
 
-type Attack_Player_Request = {
+type With_Token = {
+    access_token: string
+}
+
+type With_Private_Key = {
     dedicated_server_key: string
-    access_token: string
-    target_player_id: number
 }
 
-type Attack_Player_Response = Player_State_Data
+type Api_Request = {
+    type: Api_Request_Type.submit_chat_message
 
-type Submit_Chat_Message_Request = {
-    access_token: string
-    message: string
+    request: {
+        message: string
+    } & With_Token
+
+    response: {
+        messages: Chat_Message[]
+    }
+} | {
+    type: Api_Request_Type.pull_chat_messages
+
+    request: With_Token
+
+    response: {
+        messages: Chat_Message[]
+    }
+} | {
+    type: Api_Request_Type.battle_cheat
+
+    request: {
+        cheat: string
+        selected_unit_id: number
+    } & With_Token
+
+    response: {
+    }
+} | {
+    type: Api_Request_Type.get_hero_collection
+
+    request: {
+        page: number
+    } & With_Token
+
+    response: {
+        heroes: {
+            hero: Hero_Type
+            copies: number
+        }[]
+        total_pages: number
+    }
+} | {
+    type: Api_Request_Type.get_spell_collection
+
+    request: {
+        page: number
+    } & With_Token
+
+    response: {
+        spells: {
+            spell: Spell_Id
+            copies: number
+        }[]
+        total_pages: number
+    }
+} | {
+    type: Api_Request_Type.take_battle_action
+
+    request: {
+        action: Turn_Action
+    } & With_Token
+
+    response: {
+        previous_head: number
+        deltas: Delta[]
+    }
+} | {
+    type: Api_Request_Type.query_battle_deltas
+
+    request: {
+        battle_id: number
+        since_delta: number
+    } & With_Token
+
+    response: {
+        deltas: Delta[]
+    }
+} | {
+    type: Api_Request_Type.query_battles
+
+    request: With_Token
+    response: {
+        battles: Battle_Info[]
+    }
+} | {
+    type: Api_Request_Type.get_player_state
+
+    request: With_Token
+    response: Player_State_Data
+} | {
+    type: Api_Request_Type.authorize_steam_user
+
+    request: {
+        steam_id: string
+        steam_user_name: string
+        dedicated_server_key: string
+    }
+
+    response: {
+        id: number
+        token: string
+    }
+} | {
+    type: Api_Request_Type.query_players_movement
+
+    request: With_Token & With_Private_Key
+    response: Player_Movement_Data[]
+} | {
+    type: Api_Request_Type.submit_player_movement
+
+    request: {
+        current_location: {
+            x: number
+            y: number
+        }
+        movement_history: Movement_History_Entry[]
+    } & With_Token & With_Private_Key
+
+    response: {}
+} | {
+    type: Api_Request_Type.attack_player
+
+    request: {
+        target_player_id: number
+    } & With_Token & With_Private_Key
+
+    response: Player_State_Data
 }
 
-type Submit_Chat_Message_Response = Pull_Pending_Chat_Messages_Response
-
-type Pull_Pending_Chat_Messages_Request = {
-    access_token: string
-}
-
-type Pull_Pending_Chat_Messages_Response = {
-    messages: Chat_Message[]
+type Player_Movement_Data = {
+    id: number
+    player_name: string // TODO might want to move id:name connection into a separate request
+    movement_history: Movement_History_Entry[]
+    current_location: {
+        x: number
+        y: number
+    }
 }
 
 type Chat_Message = {
@@ -129,12 +205,6 @@ type Chat_Message = {
     from_player_name: string
     message: string
     timestamp: number
-}
-
-type Battle_Cheat_Command_Request = {
-    access_token: string
-    cheat: string
-    selected_unit_id: number
 }
 
 type Battle_Info = {
@@ -147,45 +217,10 @@ type Battle_Info = {
     participants: Battle_Participant_Info[]
 }
 
-type Query_Battles_Request = {
-    access_token: string
-}
-
-type Query_Battles_Response = {
-    battles: Battle_Info[]
-}
-
-type Get_Hero_Collection = {
-    request: {
-        access_token: string
-        page: number
-    }
-
-    response: {
-        heroes: {
-            hero: Hero_Type
-            copies: number
-        }[]
-        total_pages: number
-    }
-}
-
-type Get_Spell_Collection = {
-    request: {
-        access_token: string
-        page: number
-    }
-
-    response: {
-        spells: {
-            spell: Spell_Id
-            copies: number
-        }[]
-        total_pages: number
-    }
-}
-
 type Find_By_Id<Union, Id> = Union extends { id: Id } ? Union : never;
+type Find_By_Type<Union, Type> = Union extends { type: Type } ? Union : never;
+type Find_Request<T> = Find_By_Type<Api_Request, T>["request"]
+type Find_Response<T> = Find_By_Type<Api_Request, T>["response"]
 
 declare function copy<T>(arg: T): T;
 declare function enum_to_string(enum_member: any): string;
