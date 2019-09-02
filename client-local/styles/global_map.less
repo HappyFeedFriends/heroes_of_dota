@@ -94,8 +94,10 @@
 
     #deck {
       width: 100%;
-      height: 100%;
+      //height: 100%;
       box-shadow: #151515 0 0 16px 0;
+      flow-children: down;
+      vertical-align: center;
 
       //background-color: rgba(97, 150, 178, 0.33);
       //background-image: url("s2r://panorama/images/backgrounds/dashboard_vignette_png.vtex");
@@ -126,9 +128,47 @@
 
       #deck_content {
         width: 100%;
-        height: 100%;
+        flow-children: down;
 
         box-shadow: inset #151515 0 0 16px 0;
+
+        >.deck_card {
+          width: 100%;
+          background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
+          background-color: #3e4873;
+          background-size: 100% 100%;
+          border-bottom: 1px solid #1d2b3a;
+
+          &.hero>#image {
+            horizontal-align: right;
+
+            height: 100%;
+            width: 80px;
+            opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
+            background-size: auto 130%;
+            background-position: 50% 50%;
+          }
+
+          &.spell>#image {
+            horizontal-align: right;
+
+            height: 100%;
+            width: 80px;
+            opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
+            background-size: 170% auto;
+            background-position: 50% 50%;
+          }
+
+          >#name {
+            padding: 5px 0;
+
+            font-family: @font-regular;
+            font-stretch: condensed;
+            font-size: 22px;
+            color: #ececec;
+            margin-left: 16px;
+          }
+        }
       }
     }
   }

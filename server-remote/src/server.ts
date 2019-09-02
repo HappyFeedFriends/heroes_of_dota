@@ -89,10 +89,12 @@ function generate_access_token() {
 }
 
 function make_new_player(steam_id: string, name: string): Map_Player {
+    const all_heroes = enum_values<Hero_Type>().filter(id => id != Hero_Type.sniper && id != Hero_Type.ursa);
+
     const heroes: Collection_Hero_Card[] = [];
     const spells: Collection_Spell_Card[] = [];
 
-    for (const hero of enum_values<Hero_Type>().filter(id => id != Hero_Type.sniper && id != Hero_Type.ursa)) {
+    for (const hero of all_heroes) {
         heroes.push({ hero: hero, copies: 1 });
     }
 
@@ -101,8 +103,14 @@ function make_new_player(steam_id: string, name: string): Map_Player {
     }
 
     const deck: Card_Deck = {
-        heroes: enum_values<Hero_Type>(),
-        spells: enum_values<Spell_Id>()
+        heroes: all_heroes,
+        spells: [
+            Spell_Id.buyback,
+            Spell_Id.town_portal_scroll,
+            Spell_Id.call_to_arms,
+            Spell_Id.mekansm,
+            Spell_Id.pocket_tower
+        ]
     };
 
     return {
@@ -662,6 +670,17 @@ register_api_handler(Api_Request_Type.get_spell_collection, req => {
     });
 
     return action_on_player_to_result(collection);
+});
+
+register_api_handler(Api_Request_Type.get_deck, req => {
+    const deck = try_do_with_player(req.access_token, player => {
+        return {
+            heroes: player.deck.heroes,
+            spells: player.deck.spells
+        }
+    });
+
+    return action_on_player_to_result(deck);
 });
 
 type Request_Result<T> = Result_Ok<T> | Result_Error;

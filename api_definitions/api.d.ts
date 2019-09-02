@@ -5,19 +5,25 @@ declare const enum Player_State {
 }
 
 declare const enum Api_Request_Type {
-    submit_chat_message = 0,
-    pull_chat_messages = 1,
-    battle_cheat = 2,
-    get_hero_collection = 3,
-    get_spell_collection = 4,
-    take_battle_action = 5,
-    query_battle_deltas = 6,
-    get_player_state = 7,
-    query_battles = 8,
-    authorize_steam_user = 9,
-    query_players_movement = 10,
-    submit_player_movement = 11,
-    attack_player = 12
+    authorize_steam_user = 0,
+
+    submit_chat_message = 1,
+    pull_chat_messages = 2,
+
+    get_player_state = 3,
+    query_battles = 4,
+    attack_player = 5,
+    query_players_movement = 6,
+    submit_player_movement = 7,
+
+    take_battle_action = 8,
+    query_battle_deltas = 9,
+
+    get_hero_collection = 10,
+    get_spell_collection = 11,
+    get_deck = 12,
+
+    battle_cheat = 13,
 }
 
 type Movement_History_Entry = {
@@ -188,6 +194,15 @@ type Api_Request = {
     } & With_Token & With_Private_Key
 
     response: Player_State_Data
+} | {
+    type: Api_Request_Type.get_deck
+
+    request: With_Token
+
+    response: {
+        heroes: Hero_Type[]
+        spells: Spell_Id[]
+    }
 }
 
 type Player_Movement_Data = {
