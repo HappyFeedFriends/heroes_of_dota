@@ -183,6 +183,7 @@ hide_default_ui();
 subscribe_to_net_table_key<Player_Net_Table>("main", "player", data => {
     $("#global_map_ui").style.visibility = data.state == Player_State.on_global_map ? "visible" : "collapse";
     $("#battle_ui").style.visibility = data.state == Player_State.in_battle ? "visible" : "collapse";
+    $("#disconnected_ui").style.visibility = data.state == Player_State.not_logged_in ? "visible" : "collapse";
 
     if (data.state == Player_State.in_battle) {
         GameUI.SetCameraDistance(1400);

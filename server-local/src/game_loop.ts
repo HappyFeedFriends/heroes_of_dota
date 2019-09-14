@@ -188,12 +188,6 @@ function update_player_state_net_table(main_player: Main_Player) {
     CustomNetTables.SetTableValue("main", "player", player_state_to_player_net_table(main_player));
 }
 
-function update_access_token(main_player: Main_Player, new_token: string) {
-    main_player.token = new_token;
-
-    update_player_state_net_table(main_player);
-}
-
 function on_player_connected_async(callback: (player_id: PlayerID) => void) {
     ListenToGameEvent("player_connect_full", event => callback(event.PlayerID), null);
 }
@@ -222,6 +216,8 @@ function on_custom_event_async<T>(event_name: string, callback: (data: T) => voi
 }
 
 function process_state_transition(main_player: Main_Player, current_state: Player_State, next_state: Player_State_Data) {
+    print(`State transition ${current_state} => ${next_state.state}`);
+
     if (next_state.state == Player_State.on_global_map) {
         FindClearSpaceForUnit(main_player.hero_unit, Vector(next_state.player_position.x, next_state.player_position.y), true);
 
@@ -254,6 +250,7 @@ function process_state_transition(main_player: Main_Player, current_state: Playe
         }));
         battle.participants = next_state.participants;
         battle.grid_size = next_state.grid_size;
+        battle.is_over = false;
 
         const camera_look_at = battle.world_origin + Vector(next_state.grid_size.width, next_state.grid_size.height - 2) * get_battle_cell_size() / 2 as Vector;
 
@@ -289,6 +286,33 @@ function get_default_battleground_data(): [Vector, CDOTA_BaseNPC] {
     ) as CDOTA_BaseNPC;
 
     return [origin, camera_entity];
+}
+
+function reconnect_loop(main_player: Main_Player) {
+    while (true) {
+        if (main_player.state == Player_State.not_logged_in) {
+            const auth = try_authorize_user(main_player.player_id, get_dedicated_server_key());
+
+            if (auth) {
+                main_player.remote_id = auth.id;
+                main_player.token = auth.token;
+
+                print(`Authorized with id ${main_player.remote_id}`);
+
+                const player_state = try_with_delays_until_success(1, () => api_request(Api_Request_Type.get_player_state, {
+                    access_token: main_player.token
+                }));
+
+                print(`State received`);
+
+                process_state_transition(main_player, Player_State.not_logged_in, player_state);
+            } else {
+                wait(3);
+            }
+        }
+
+        wait_one_frame();
+    }
 }
 
 function main() {
@@ -341,30 +365,26 @@ function game_loop() {
 
     // We hope that hero spawn happens strictly after player connect, otherwise it doesn't make sense anyway
     on_player_hero_spawned_async(player_id, entity => player_unit = entity);
-
-    while ((authorization = try_authorize_user(player_id, get_dedicated_server_key())) == undefined) wait(3);
     while (player_unit == undefined) wait_one_frame();
 
-    print(`Authorized, hero handle found`);
+    print(`Hero handle found`);
 
     const main_player: Main_Player = {
-        remote_id: authorization.id,
+        remote_id: -1,
         player_id: player_id,
         hero_unit: player_unit,
-        token: authorization.token,
+        token: "",
         movement_history: [],
         current_order_x: 0,
         current_order_y: 0,
         state: Player_State.not_logged_in
     };
 
-    update_access_token(main_player, authorization.token);
+    update_player_state_net_table(main_player);
 
-    const player_state = try_with_delays_until_success(1, () => try_get_player_state(main_player));
+    fork(() => reconnect_loop(main_player));
 
-    print(`State received`);
-
-    process_state_transition(main_player, Player_State.not_logged_in, player_state);
+    wait_until(() => main_player.state != Player_State.not_logged_in);
 
     on_player_order_async(order => {
         if (main_player.state == Player_State.on_global_map) {

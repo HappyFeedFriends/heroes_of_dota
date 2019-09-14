@@ -20,7 +20,11 @@
             <Panel id="chat_messages" style="flow-children: down; color: white; font-size: 16px;"/>
         </Panel>
 
-        <Panel id="battle_ui" hittest="false">
+        <Panel id="disconnected_ui" hittest="false">
+            <Label text="Connecting to server..."/>
+        </Panel>
+
+        <Panel id="battle_ui" hittest="false" style="visibility: collapse;">
             <Panel id="control_panel">
                 <Panel id="heroes_panel">
                     <Panel id="background"/>
@@ -63,7 +67,7 @@
             </Panel>
         </Panel>
 
-        <Panel id="global_map_ui">
+        <Panel id="global_map_ui" style="visibility: collapse;">
             <Panel id="action_bar">
                 <Button id="collection_button" onactivate="ui_toggle_collection();">
                     <Label text="Collection"/>

@@ -22,14 +22,10 @@ function remote_request_async<T extends Object, N extends Object>(endpoint: stri
 }
 
 function api_request<T extends Api_Request_Type>(type: T, data: Find_Request<T>): Find_Response<T> | undefined {
-    return remote_request("/api" + type, data);
-}
-
-function remote_request<T extends Object, N extends Object>(endpoint: string, body: T): N | undefined {
     let request_completed = false;
-    let result: N | undefined = undefined;
+    let result: Find_Response<T> | undefined = undefined;
 
-    remote_request_async<T, N>(endpoint, body,
+    remote_request_async<Find_Request<T>, Find_Response<T>>("/api" + type, data,
         response => {
             result = response;
             request_completed = true;
@@ -45,17 +41,15 @@ function remote_request<T extends Object, N extends Object>(endpoint: string, bo
 }
 
 function api_request_with_retry_on_403<T extends Api_Request_Type>(type: T, main_player: Main_Player, data: Find_Request<T>): Find_Response<T> | undefined {
-    return remote_request_with_retry_on_403("/api" + type, main_player, data);
-}
-
-function remote_request_with_retry_on_403<T extends Object, N extends Object>(endpoint: string, main_player: Main_Player, body: T): N | undefined {
     let request_completed = false;
-    let result: N | undefined = undefined;
+    let result: Find_Response<T> | undefined = undefined;
 
     while (true) {
+        wait_until(() => main_player.state != Player_State.not_logged_in);
+
         let unauthorized = false;
 
-        remote_request_async<T, N>(endpoint, body,
+        remote_request_async<Find_Request<T>, Find_Response<T>>("/api" + type, data,
             response => {
                 result = response;
                 request_completed = true;
@@ -64,7 +58,8 @@ function remote_request_with_retry_on_403<T extends Object, N extends Object>(en
                 result = undefined;
                 request_completed = true;
 
-                if (code == 403) {
+                // 0 means server is offline
+                if (code == 403 || code == 0) {
                     unauthorized = true;
                 }
             });
@@ -72,11 +67,8 @@ function remote_request_with_retry_on_403<T extends Object, N extends Object>(en
         wait_until(() => request_completed);
 
         if (unauthorized) {
-            const token = try_authorize_user(main_player.player_id, get_dedicated_server_key());
-
-            if (token) {
-                update_access_token(main_player, token.token);
-            }
+            const previous_state = main_player.state;
+            process_state_transition(main_player, previous_state, { state: Player_State.not_logged_in });
         } else {
             return result;
         }

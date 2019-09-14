@@ -3099,7 +3099,7 @@ function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC)
             height: 0
         },
         has_started: false,
-        is_over: false,
+        is_over: true,
         camera_dummy: camera_entity,
         modifier_tied_fxs: []
     };
