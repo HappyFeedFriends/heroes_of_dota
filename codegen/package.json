@@ -9,7 +9,7 @@
     "@types/node": "^12.6.9",
     "ttypescript": "^1.5.5",
     "typescript": "3.3.3",
-    "typescript-to-lua": "^0.15.0"
+    "typescript-to-lua": "^0.15.2"
   },
   "author": "",
   "license": "ISC"
