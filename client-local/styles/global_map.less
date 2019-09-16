@@ -50,16 +50,15 @@
   }
 }
 
-#collection {
+#collection_window {
   align: center center;
-  flow-children: down;
+  flow-children: right;
 
   width: 1300px;
   height: 800px;
   background-color: #4e6180;
   background-image: url("s2r://panorama/images/backgrounds/dashboard_vignette_png.vtex");
   background-size: 100% 100%;
-  padding: 40px;
 
   transition-property: transform, opacity;
   transition-duration: 0.1s;
@@ -73,32 +72,29 @@
     opacity: 1;
   }
 
-  >#header {
-    //height: 0px;
-    width: 100%;
-
-    Label {
-      font-family: @font-title;
-      font-size: 40px;
-
-      letter-spacing: 2px;
-
-      color: white;
-      align: center center;
-      text-shadow: 0px 0px 4px 3.0 rgb(0, 0, 0);
-    }
-  }
-
-  // panorama/images/status_icons/loadingthrobber_round_png.vtex
-
-  >#content {
+  #collection {
+    width: fill-parent-flow(1.0);
     height: 100%;
-    width: 100%;
+    padding: 40px 20px;
 
-    flow-children: right;
+    >#header {
+      //height: 0px;
+      width: 100%;
+
+      Label {
+        font-family: @font-title;
+        font-size: 48px;
+
+        letter-spacing: 2px;
+
+        color: white;
+        align: center center;
+        text-shadow: 0px 0px 4px 3.0 rgb(0, 0, 0);
+      }
+    }
 
     #page_overlay {
-      width: 80%;
+      width: 100%;
       height: 100%;
       align: center center;
 
@@ -155,122 +151,132 @@
         }
       }
     }
+  }
 
-    #deck {
+  #deck {
+    width: 260px;
+    margin-left: 20px;
+    height: 100%;
+    flow-children: down;
+    vertical-align: top;
+    box-shadow: #151515 0 0 8px 0;
+    border-left: 1px solid black;
+    //box-shadow: inset #151515 0 0 16px 0;
+
+
+    //background-color: rgba(115, 133, 178, 0.33);
+    //background-image: url("s2r://panorama/images/backgrounds/dashboard_background_ingame_psd.vtex");
+    //background-size: 100% 100%;
+
+
+    background-color: rgba(115, 133, 178, 0.33);
+    background-image: url("s2r://panorama/images/hud/reborn/ability_bg_psd.vtex");
+    background-position: center bottom;
+    background-size: 100% 100%;
+
+    #deck_inner {
       width: 100%;
-      //height: 100%;
       flow-children: down;
-      vertical-align: center;
+    }
 
-      //background-color: rgba(97, 150, 178, 0.33);
-      //background-image: url("s2r://panorama/images/backgrounds/dashboard_vignette_png.vtex");
-      //background-size: 100% 100%;
+    #deck_header {
+      width: 100%;
+      padding: 8px;
 
-      #deck_inner {
-        width: 100%;
-        box-shadow: #151515 0 0 16px 0;
-        flow-children: down;
+      background-color: #3a4882;
+      background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
+      background-size: 100% 100%;
+
+      border-bottom: 1px solid black;
+
+      Label {
+        color: white;
+        font-family: @font-title;
+        font-size: 32px;
+        align: center center;
+        letter-spacing: 1px;
+        text-align: center center;
+        margin: 20px 0;
+
+        text-shadow: 0px 0px 4px 3.0 rgb(0, 0, 0);
       }
+    }
 
-      #deck_header {
+    #deck_content {
+      width: 100%;
+      flow-children: down;
+
+      >.deck_card {
         width: 100%;
-        height: 40px;
-
-        background-color: #3a4882;
         background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
+        background-color: #3e4873;
         background-size: 100% 100%;
+        border-bottom: 1px solid #1d2b3a;
 
-        border-bottom: 2px solid #1b1b37;
+        &.hero>#image {
+          horizontal-align: right;
+
+          height: 100%;
+          width: 80px;
+          opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
+          background-size: auto 130%;
+          background-position: 50% 50%;
+        }
+
+        &.spell>#image {
+          horizontal-align: right;
+
+          height: 100%;
+          width: 80px;
+          opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
+          background-size: 170% auto;
+          background-position: 50% 50%;
+        }
+
+        >#name {
+          padding: 5px 0;
+
+          font-family: @font-regular;
+          font-stretch: condensed;
+          font-size: 22px;
+          color: #ececec;
+          margin-left: 16px;
+        }
+      }
+    }
+
+    #deck_footer {
+      flow-children: right;
+      align: center bottom;
+
+      .deck_counter {
+        margin: 10px;
+        flow-children: right;
+        vertical-align: center;
+
+        #deck_counter_icon {
+          width: 32px;
+          height: 32px;
+          background-size: 100% 100%;
+          saturation: 0.9;
+
+          &.heroes {
+            background-image: url("s2r://panorama/images/hud/pip_str_png.vtex");
+          }
+
+          &.spells {
+            background-image: url("s2r://panorama/images/hud/pip_int_png.vtex");
+          }
+        }
+
+        #deck_counter_delim {
+          margin-left: 4px;
+        }
 
         Label {
           color: white;
-          font-family: @font-title;
-          font-size: 22px;
-          align: center center;
-          letter-spacing: 1px;
-
-          text-shadow: 0px 0px 4px 3.0 rgb(0, 0, 0);
-        }
-      }
-
-      #deck_content {
-        width: 100%;
-        flow-children: down;
-
-        box-shadow: inset #151515 0 0 16px 0;
-
-        >.deck_card {
-          width: 100%;
-          background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
-          background-color: #3e4873;
-          background-size: 100% 100%;
-          border-bottom: 1px solid #1d2b3a;
-
-          &.hero>#image {
-            horizontal-align: right;
-
-            height: 100%;
-            width: 80px;
-            opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
-            background-size: auto 130%;
-            background-position: 50% 50%;
-          }
-
-          &.spell>#image {
-            horizontal-align: right;
-
-            height: 100%;
-            width: 80px;
-            opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
-            background-size: 170% auto;
-            background-position: 50% 50%;
-          }
-
-          >#name {
-            padding: 5px 0;
-
-            font-family: @font-regular;
-            font-stretch: condensed;
-            font-size: 22px;
-            color: #ececec;
-            margin-left: 16px;
-          }
-        }
-      }
-
-      #deck_footer {
-        flow-children: right;
-        horizontal-align: center;
-
-        .deck_counter {
-          margin: 10px;
-          flow-children: right;
-          vertical-align: center;
-
-          #deck_counter_icon {
-            width: 32px;
-            height: 32px;
-            background-size: 100% 100%;
-            saturation: 0.9;
-
-            &.heroes {
-              background-image: url("s2r://panorama/images/hud/pip_str_png.vtex");
-            }
-
-            &.spells {
-              background-image: url("s2r://panorama/images/hud/pip_int_png.vtex");
-            }
-          }
-
-          #deck_counter_delim {
-            margin-left: 4px;
-          }
-
-          Label {
-            color: white;
-            font-size: 28px;
-            font-family: @font-mono;
-          }
+          font-size: 28px;
+          font-family: @font-mono;
         }
       }
     }

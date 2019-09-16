@@ -4,7 +4,7 @@ type Deck_Counter = {
     max: LabelPanel;
 }
 
-const collection_ui = $("#collection");
+const collection_ui = $("#collection_window");
 const page_overlay = collection_ui.FindChildTraverse("page_overlay");
 const page_root = collection_ui.FindChildTraverse("page");
 const deck_content_root = collection_ui.FindChildTraverse("deck_content");
@@ -60,6 +60,13 @@ function make_deck_counter(parent: Panel, type: string): Deck_Counter {
     }
 }
 
+function save_deck(contents: Deck_Contents) {
+    api_request(Api_Request_Type.save_deck, {
+        access_token: get_access_token(),
+        ...contents
+    }, () => {});
+}
+
 function refresh_collection_hero_page(page: Collection_Page) {
     page_root.RemoveAndDeleteChildren();
 
@@ -76,12 +83,7 @@ function refresh_collection_hero_page(page: Collection_Page) {
                 card_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
                     deck_contents.spells.push(card.spell);
                     refresh_deck_contents(deck_contents);
-
-                    // TODO pre request animate
-                    api_request(Api_Request_Type.save_deck, {
-                        access_token: get_access_token(),
-                        ...deck_contents
-                    }, () => {});
+                    save_deck(deck_contents);
                 });
 
                 break;
@@ -99,12 +101,7 @@ function refresh_collection_hero_page(page: Collection_Page) {
                 card_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
                     deck_contents.heroes.push(card.hero);
                     refresh_deck_contents(deck_contents);
-
-                    // TODO pre request animate
-                    api_request(Api_Request_Type.save_deck, {
-                        access_token: get_access_token(),
-                        ...deck_contents
-                    }, () => {});
+                    save_deck(deck_contents);
                 });
 
                 break;

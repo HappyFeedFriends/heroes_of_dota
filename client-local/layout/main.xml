@@ -74,11 +74,12 @@
                 </Button>
             </Panel>
 
-            <Panel id="collection">
-                <Panel id="header">
-                    <Label text="COLLECTION"/>
-                </Panel>
-                <Panel id="content">
+            <Panel id="collection_window">
+                <Panel id="collection">
+                    <Panel id="header">
+                        <Label text="COLLECTION"/>
+                    </Panel>
+
                     <Panel id="page_overlay">
                         <Panel id="page_container">
                             <Panel id="page_switch_left" class="page_switch left"/>
@@ -88,17 +89,18 @@
 
                         <Panel class="loading_spinner"/>
                     </Panel>
+                </Panel>
 
-                    <Panel id="deck">
-                        <Panel id="deck_inner">
-                            <Panel id="deck_header">
-                                <Label text="YOUR DECK"/>
-                            </Panel>
-                            <Panel id="deck_content"/>
-                        </Panel>
+                <Panel id="deck">
+                    <Panel id="deck_header">
+                        <Label text="DECK"/>
+                    </Panel>
+                    <Panel id="deck_inner">
 
-                        <Panel id="deck_footer">
-                        </Panel>
+                        <Panel id="deck_content"/>
+                    </Panel>
+
+                    <Panel id="deck_footer">
                     </Panel>
                 </Panel>
             </Panel>
