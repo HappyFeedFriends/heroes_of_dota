@@ -79,9 +79,16 @@
                     <Label text="COLLECTION"/>
                 </Panel>
                 <Panel id="content">
-                    <Panel id="page">
+                    <Panel id="page_overlay">
+                        <Panel id="page_container">
+                            <Panel id="page_switch_left" class="page_switch left"/>
+                            <Panel id="page"/>
+                            <Panel id="page_switch_right" class="page_switch right"/>
+                        </Panel>
 
+                        <Panel class="loading_spinner"/>
                     </Panel>
+
                     <Panel id="deck">
                         <Panel id="deck_inner">
                             <Panel id="deck_header">
@@ -91,19 +98,6 @@
                         </Panel>
 
                         <Panel id="deck_footer">
-                            <Panel class="deck_counter">
-                                <Panel id="deck_counter_icon" class="heroes"/>
-                                <Label id="deck_counter_current" text="2"/>
-                                <Label id="deck_counter_delim" text="/"/>
-                                <Label id="deck_counter_max" text="3"/>
-                            </Panel>
-
-                            <Panel class="deck_counter">
-                                <Panel id="deck_counter_icon" class="spells"/>
-                                <Label id="deck_counter_current" text="2"/>
-                                <Label id="deck_counter_delim" text="/"/>
-                                <Label id="deck_counter_max" text="3"/>
-                            </Panel>
                         </Panel>
                     </Panel>
                 </Panel>

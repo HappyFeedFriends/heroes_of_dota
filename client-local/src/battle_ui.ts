@@ -1688,7 +1688,7 @@ function get_spell_name(spell_id: Spell_Id): string {
     }
 }
 
-function get_spell_text(spell: Card_Spell): string {
+function get_spell_text(spell: Card_Spell_Definition): string {
     switch (spell.spell_id) {
         case Spell_Id.buyback: return `Spend gold to return a dead ally hero to your hand`;
         case Spell_Id.euls_scepter: return `Make target untargetable until next turn`;
@@ -2525,6 +2525,20 @@ function create_hero_card_ui_base(container: Panel, hero_type: Hero_Type, health
     create_stat_container(stat_panel, "move_points", move);
 }
 
+function create_spell_card_ui_base(container: Panel, spell: Spell_Id, spell_text: string) {
+    const name_panel = $.CreatePanel("Panel", container, "name_panel");
+    const spell_name = $.CreatePanel("Label", name_panel, "");
+    spell_name.text = get_spell_name(spell);
+
+    const art = $.CreatePanel("Image", container, "card_art");
+    art.SetScaling(ScalingFunction.STRETCH_TO_FIT_X_PRESERVE_ASPECT);
+    art.SetImage(`file://{images}/${get_spell_card_art(spell)}`);
+
+    const text_container = $.CreatePanel("Panel", container, "card_text");
+    const text = $.CreatePanel("Label", text_container, "");
+
+    text.text = spell_text;
+}
 
 function create_card_ui(root: Panel, card: Card) {
     const container = $.CreatePanel("Panel", root, "");
@@ -2557,18 +2571,7 @@ function create_card_ui(root: Panel, card: Card) {
         case Card_Type.spell: {
             container.AddClass("spell");
 
-            const name_panel = $.CreatePanel("Panel", container, "name_panel");
-            const spell_name = $.CreatePanel("Label", name_panel, "");
-            spell_name.text = get_spell_name(card.spell_id);
-
-            const art = $.CreatePanel("Image", container, "card_art");
-            art.SetScaling(ScalingFunction.STRETCH_TO_FIT_X_PRESERVE_ASPECT);
-            art.SetImage(`file://{images}/${get_spell_card_art(card.spell_id)}`);
-
-            const text_container = $.CreatePanel("Panel", container, "card_text");
-            const text = $.CreatePanel("Label", text_container, "");
-
-            text.text = get_spell_text(card);
+            create_spell_card_ui_base(container, card.spell_id, get_spell_text(card));
 
             break;
         }

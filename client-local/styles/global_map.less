@@ -54,7 +54,7 @@
   align: center center;
   flow-children: down;
 
-  width: 1260px;
+  width: 1300px;
   height: 800px;
   background-color: #4e6180;
   background-image: url("s2r://panorama/images/backgrounds/dashboard_vignette_png.vtex");
@@ -89,19 +89,70 @@
     }
   }
 
+  // panorama/images/status_icons/loadingthrobber_round_png.vtex
+
   >#content {
     height: 100%;
     width: 100%;
 
     flow-children: right;
 
-    #page {
-      align: center center;
-      flow-children: right-wrap;
+    #page_overlay {
       width: 80%;
+      height: 100%;
+      align: center center;
 
-      .card {
-        margin: 20px;
+      &.loading #page {
+        opacity: 0;
+      }
+
+      .loading_spinner {
+        align: center center;
+      }
+
+      &.loading .loading_spinner {
+        opacity: 1;
+      }
+
+      #page_container {
+        flow-children: right;
+        width: 100%;
+        height: 100%;
+
+        .page_switch {
+          height: 100%;
+          width: 60px;
+          background-repeat: no-repeat;
+          background-position: 50% 50%;
+          brightness: 0.5;
+
+          &.left {
+            background-image: url("s2r://panorama/images/control_icons/arrow_solid_left_png.vtex");
+          }
+
+          &.right {
+            background-image: url("s2r://panorama/images/control_icons/arrow_solid_right_png.vtex");
+          }
+
+          &.hidden {
+            opacity: 0;
+          }
+
+          &:hover {
+            background-color: rgba(0, 0, 0, 0.4);
+          }
+        }
+
+        #page {
+          vertical-align: center;
+          flow-children: right-wrap;
+          width: fill-parent-flow(1.0);
+          transition: opacity 0.1s linear 0s;
+
+          .card {
+            margin: 12px;
+          }
+        }
       }
     }
 
@@ -223,5 +274,38 @@
         }
       }
     }
+  }
+}
+
+.loading_spinner {
+  width: 29px;
+  height: 29px;
+
+  transition: opacity 0.1s linear 0s;
+  opacity: 0;
+
+  animation-name: loading_spinner_animation;
+  animation-duration: 1.0s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+
+  background-image: url("file://{images}/status_icons/loadingthrobber_round.png");
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  background-size: 100% 100%;
+}
+
+@loading_spinner_animation: 'loading_spinner_animation';
+@keyframes @loading_spinner_animation {
+  0% {
+    transform: rotateZ(360deg);
+  }
+
+  50% {
+    transform: rotateZ(180deg);
+  }
+
+  100% {
+    transform: rotateZ(0deg);
   }
 }

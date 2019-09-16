@@ -19,10 +19,9 @@ declare const enum Api_Request_Type {
     take_battle_action = 8,
     query_battle_deltas = 9,
 
-    get_hero_collection = 10,
-    get_spell_collection = 11,
-    get_deck = 12,
-    save_deck = 13,
+    get_collection_page = 10,
+    get_deck = 11,
+    save_deck = 12,
 
     battle_cheat = 50,
 }
@@ -96,33 +95,13 @@ type Api_Request = {
     response: {
     }
 } | {
-    type: Api_Request_Type.get_hero_collection
+    type: Api_Request_Type.get_collection_page
 
     request: {
         page: number
     } & With_Token
 
-    response: {
-        heroes: {
-            hero: Hero_Type
-            copies: number
-        }[]
-        total_pages: number
-    }
-} | {
-    type: Api_Request_Type.get_spell_collection
-
-    request: {
-        page: number
-    } & With_Token
-
-    response: {
-        spells: {
-            spell: Spell_Id
-            copies: number
-        }[]
-        total_pages: number
-    }
+    response: Collection_Page
 } | {
     type: Api_Request_Type.take_battle_action
 
@@ -205,6 +184,23 @@ type Api_Request = {
 
     request: Deck_Contents & With_Token
     response: {}
+}
+
+type Collection_Page = {
+    cards: Collection_Card[]
+    hero_pages: number
+    spell_pages: number
+    total_pages: number
+}
+
+type Collection_Card = {
+    type: Card_Type.hero
+    hero: Hero_Type
+    copies: number
+} | {
+    type: Card_Type.spell
+    spell: Spell_Id
+    copies: number
 }
 
 type Deck_Contents = {

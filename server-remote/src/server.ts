@@ -648,33 +648,45 @@ function get_array_page<T>(array: T[], page: number, elements_per_page: number) 
     return array.slice(start, start + elements_per_page);
 }
 
-register_api_handler(Api_Request_Type.get_hero_collection, req => {
+register_api_handler(Api_Request_Type.get_collection_page, req => {
     const collection = try_do_with_player(req.access_token, player => {
         const heroes = player.collection.heroes;
-
-        return {
-            heroes: get_array_page(heroes, req.page, cards_per_page).map(card => ({
-                hero: card.hero,
-                copies: card.copies
-            })),
-            total_pages: Math.ceil(heroes.length / cards_per_page)
-        }
-    });
-
-    return action_on_player_to_result(collection);
-});
-
-register_api_handler(Api_Request_Type.get_spell_collection, req => {
-    const collection = try_do_with_player(req.access_token, player => {
         const spells = player.collection.spells;
 
-        return {
-            spells: get_array_page(spells, req.page, cards_per_page).map(card => ({
-                spell: card.spell,
-                copies: card.copies
-            })),
-            total_pages: Math.ceil(spells.length / cards_per_page),
+        const hero_pages = Math.ceil(heroes.length / cards_per_page);
+        const spell_pages = Math.ceil(spells.length / cards_per_page);
+        const total_pages = hero_pages + spell_pages;
+
+        let cards: Collection_Card[] = [];
+
+        if (req.page >= 0) {
+            if (req.page < hero_pages) {
+                for (const hero_card of get_array_page(heroes, req.page, cards_per_page)) {
+                    cards.push({
+                        type: Card_Type.hero,
+                        hero: hero_card.hero,
+                        copies: hero_card.copies
+                    });
+                }
+            } else if (req.page < total_pages) {
+                for (const spell_card of get_array_page(spells, req.page - hero_pages, cards_per_page)) {
+                    cards.push({
+                        type: Card_Type.spell,
+                        spell: spell_card.spell,
+                        copies: spell_card.copies
+                    });
+                }
+            }
         }
+
+        const result: Collection_Page = {
+            cards: cards,
+            hero_pages: hero_pages,
+            spell_pages: spell_pages,
+            total_pages: total_pages
+        };
+
+        return result;
     });
 
     return action_on_player_to_result(collection);
