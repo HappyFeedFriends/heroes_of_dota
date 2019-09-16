@@ -2,7 +2,12 @@ const collection_ui = $("#collection");
 const collection_page_root = collection_ui.FindChildTraverse("page");
 const deck_content_root = collection_ui.FindChildTraverse("deck_content");
 
-function refresh_collection_contents(heroes: { hero: Hero_Type, copies: number }[]) {
+let deck_contents: Deck_Contents = {
+    spells: [],
+    heroes: []
+};
+
+function refresh_collection_hero_page(heroes: { hero: Hero_Type, copies: number }[]) {
     collection_page_root.RemoveAndDeleteChildren();
 
     for (const hero of heroes) {
@@ -13,13 +18,24 @@ function refresh_collection_contents(heroes: { hero: Hero_Type, copies: number }
         card_panel.AddClass("in_preview");
 
         create_hero_card_ui_base(card_panel, hero.hero, definition.health, definition.attack_damage, definition.move_points);
+
+        card_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+            deck_contents.heroes.push(hero.hero);
+            refresh_deck_contents(deck_contents);
+
+            // TODO pre request animate
+            api_request(Api_Request_Type.save_deck, {
+                access_token: get_access_token(),
+                ...deck_contents
+            }, () => {});
+        });
     }
 }
 
-function refresh_deck_contents(heroes: Hero_Type[], spells: Spell_Id[]) {
+function refresh_deck_contents(deck: Deck_Contents) {
     deck_content_root.RemoveAndDeleteChildren();
 
-    for (const hero of heroes) {
+    for (const hero of deck.heroes) {
         const card = $.CreatePanel("Panel", deck_content_root, "");
         card.AddClass("deck_card");
         card.AddClass("hero");
@@ -31,7 +47,7 @@ function refresh_deck_contents(heroes: Hero_Type[], spells: Spell_Id[]) {
         safely_set_panel_background_image(image, get_full_unit_icon_path(hero));
     }
 
-    for (const spell of spells) {
+    for (const spell of deck.spells) {
         const card = $.CreatePanel("Panel", deck_content_root, "");
         card.AddClass("deck_card");
         card.AddClass("spell");
@@ -54,13 +70,15 @@ function ui_toggle_collection() {
         };
 
         api_request(Api_Request_Type.get_hero_collection, request, response => {
-            refresh_collection_contents(response.heroes);
+            refresh_collection_hero_page(response.heroes);
         });
 
         api_request(Api_Request_Type.get_deck, {
             access_token: get_access_token(),
         }, response => {
-            refresh_deck_contents(response.heroes, response.spells);
+            deck_contents = response;
+
+            refresh_deck_contents(deck_contents);
         });
     }
 }

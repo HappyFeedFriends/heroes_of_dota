@@ -22,8 +22,9 @@ declare const enum Api_Request_Type {
     get_hero_collection = 10,
     get_spell_collection = 11,
     get_deck = 12,
+    save_deck = 13,
 
-    battle_cheat = 13,
+    battle_cheat = 50,
 }
 
 type Movement_History_Entry = {
@@ -198,11 +199,17 @@ type Api_Request = {
     type: Api_Request_Type.get_deck
 
     request: With_Token
+    response: Deck_Contents
+} | {
+    type: Api_Request_Type.save_deck
 
-    response: {
-        heroes: Hero_Type[]
-        spells: Spell_Id[]
-    }
+    request: Deck_Contents & With_Token
+    response: {}
+}
+
+type Deck_Contents = {
+    heroes: Hero_Type[]
+    spells: Spell_Id[]
 }
 
 type Player_Movement_Data = {

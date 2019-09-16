@@ -80,6 +80,10 @@ const token_to_player_login = new Map<string, Map_Player_Login>();
 const steam_id_to_player = new Map<string, Map_Player>();
 const api_handlers: ((body: object) => Request_Result<object>)[] = [];
 
+const cards_per_page = 8;
+const heroes_in_deck = 3;
+const spells_in_deck = 5;
+
 let player_id_auto_increment = 0;
 
 let test_player: Map_Player | undefined = undefined;
@@ -103,7 +107,11 @@ function make_new_player(steam_id: string, name: string): Map_Player {
     }
 
     const deck: Card_Deck = {
-        heroes: all_heroes,
+        heroes: [
+            Hero_Type.dragon_knight,
+            Hero_Type.luna,
+            Hero_Type.vengeful_spirit
+        ],
         spells: [
             Spell_Id.buyback,
             Spell_Id.town_portal_scroll,
@@ -312,7 +320,9 @@ function can_player(player: Map_Player, right: Right) {
     return unreachable(right);
 }
 
-function register_api_handler<T extends Api_Request_Type>(type: T, handler: (data: Find_Request<T>) => Request_Result<Find_Response<T>>) {
+type Verify_Type_Exists<Union, Type> = Union extends { type: Type } ? Type : never;
+
+function register_api_handler<T extends Api_Request_Type>(type: Verify_Type_Exists<Api_Request, T>, handler: (data: Find_Request<T>) => Request_Result<Find_Response<T>>) {
     api_handlers[type] = body => handler(body as Find_Request<T>)
 }
 
@@ -633,8 +643,6 @@ register_api_handler(Api_Request_Type.pull_chat_messages, req => {
     return action_on_player_to_result(result);
 });
 
-const cards_per_page = 8;
-
 function get_array_page<T>(array: T[], page: number, elements_per_page: number) {
     const start = page * elements_per_page;
     return array.slice(start, start + elements_per_page);
@@ -681,6 +689,31 @@ register_api_handler(Api_Request_Type.get_deck, req => {
     });
 
     return action_on_player_to_result(deck);
+});
+
+register_api_handler(Api_Request_Type.save_deck, req => {
+    return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+        if (req.heroes.length != heroes_in_deck) {
+            return;
+        }
+
+        if (req.spells.length != spells_in_deck) {
+            return;
+        }
+
+        if (new Set(req.heroes).size != heroes_in_deck) {
+            return;
+        }
+
+        if (new Set(req.spells).size != spells_in_deck) {
+            return;
+        }
+
+        player.deck.heroes = req.heroes;
+        player.deck.spells = req.spells;
+
+        return {};
+    }));
 });
 
 type Request_Result<T> = Result_Ok<T> | Result_Error;
