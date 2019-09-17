@@ -4,6 +4,10 @@ type Deck_Counter = {
     max: LabelPanel;
 }
 
+type Collection_Card_UI = Collection_Card & {
+    panel: Panel
+}
+
 const window_background = $("#window_background");
 const collection_ui = $("#collection_window");
 const page_overlay = collection_ui.FindChildTraverse("page_overlay");
@@ -48,6 +52,8 @@ let deck_contents: Deck_Contents = {
     heroes: []
 };
 
+let page_contents: Collection_Card_UI[] = [];
+
 let current_page = 0;
 let total_pages = 0;
 
@@ -90,10 +96,44 @@ function save_deck(contents: Deck_Contents) {
     }, () => {});
 }
 
+function is_card_already_in_the_deck(card: Collection_Card): boolean {
+    switch (card.type) {
+        case Card_Type.hero: {
+            return deck_contents.heroes.indexOf(card.hero) != -1;
+        }
+
+        case Card_Type.spell: {
+            return deck_contents.spells.indexOf(card.spell) != -1;
+        }
+    }
+}
+
+function refresh_card_availability() {
+    for (let card of page_contents) {
+        card.panel.SetHasClass("unavailable", is_card_already_in_the_deck(card));
+    }
+}
+
 function refresh_collection_hero_page(page: Collection_Page) {
     page_root.RemoveAndDeleteChildren();
 
+    page_contents.splice(0);
+
     let current_row: Panel = page_root; // Assign to dummy value, we are going to reassign on first iteration
+
+    function attach_card_to_deck_pusher<T extends Collection_Card>(card_panel: Panel, card: T, pusher: (card: T) => void) {
+        card_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+            if (is_card_already_in_the_deck(card)) {
+                show_generic_error("Already in the deck");
+
+                return;
+            }
+
+            pusher(card);
+            refresh_deck_contents(deck_contents);
+            save_deck(deck_contents);
+        });
+    }
 
     for (let index = 0; index < card_rows * cards_in_row; index++) {
         if (index % cards_in_row == 0) {
@@ -117,17 +157,17 @@ function refresh_collection_hero_page(page: Collection_Page) {
         card_panel.AddClass("card");
         card_panel.AddClass("in_preview");
 
+        page_contents.push({
+            ...card,
+            panel: card_panel
+        });
+
         switch (card.type) {
             case Card_Type.spell: {
                 card_panel.AddClass("spell");
 
                 create_spell_card_ui_base(card_panel, card.spell, get_spell_text(spell_definition_by_id(card.spell)));
-
-                card_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-                    deck_contents.spells.push(card.spell);
-                    refresh_deck_contents(deck_contents);
-                    save_deck(deck_contents);
-                });
+                attach_card_to_deck_pusher(card_panel, card, card => deck_contents.spells.push(card.spell));
 
                 break;
             }
@@ -137,12 +177,7 @@ function refresh_collection_hero_page(page: Collection_Page) {
                 card_panel.AddClass("hero");
 
                 create_hero_card_ui_base(card_panel, card.hero, definition.health, definition.attack_damage, definition.move_points);
-
-                card_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-                    deck_contents.heroes.push(card.hero);
-                    refresh_deck_contents(deck_contents);
-                    save_deck(deck_contents);
-                });
+                attach_card_to_deck_pusher(card_panel, card, card => deck_contents.heroes.push(card.hero));
 
                 break;
             }
@@ -150,6 +185,8 @@ function refresh_collection_hero_page(page: Collection_Page) {
             default: unreachable(card);
         }
     }
+
+    refresh_card_availability();
 }
 
 function refresh_deck_contents(deck: Deck_Contents) {
@@ -205,6 +242,8 @@ function refresh_deck_contents(deck: Deck_Contents) {
             }
         });
     }
+
+    refresh_card_availability();
 }
 
 function update_page_switchers() {

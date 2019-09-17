@@ -166,6 +166,11 @@
           }
 
           .card {
+            &.unavailable {
+              wash-color: gray;
+              box-shadow: none;
+            }
+
             margin: 12px;
           }
         }
@@ -304,7 +309,6 @@
           color: white;
           font-size: 28px;
           font-family: @font-mono;
-
         }
       }
     }
