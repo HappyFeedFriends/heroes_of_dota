@@ -129,6 +129,12 @@ function refresh_collection_hero_page(page: Collection_Page) {
                 return;
             }
 
+            if (deck_contents.spells.length + deck_contents.heroes.length == heroes_in_deck + spells_in_deck) {
+                show_generic_error("Deck limit reached");
+
+                return;
+            }
+
             pusher(card);
             refresh_deck_contents(deck_contents);
             save_deck(deck_contents);
