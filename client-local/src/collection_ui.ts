@@ -10,8 +10,12 @@ const page_root = collection_ui.FindChildTraverse("page");
 const deck_content_root = collection_ui.FindChildTraverse("deck_content");
 const deck_footer = collection_ui.FindChildTraverse("deck_footer");
 
-const deck_counter_heroes = make_deck_counter(deck_footer, "heroes");
-const deck_counter_spells = make_deck_counter(deck_footer, "spells");
+// TODO hardcoded values
+const heroes_in_deck = 3;
+const spells_in_deck = 5;
+
+const deck_counter_heroes = make_deck_counter(deck_footer, "heroes", `A deck requires exactly ${heroes_in_deck} heroes`);
+const deck_counter_spells = make_deck_counter(deck_footer, "spells", `A deck requires exactly ${spells_in_deck} spells`);
 
 const collection_left_page_switch = collection_ui.FindChildTraverse("page_switch_left");
 const collection_right_page_switch = collection_ui.FindChildTraverse("page_switch_right");
@@ -45,7 +49,17 @@ let total_pages = 0;
 
 let page_requests_in_flight = 0;
 
-function make_deck_counter(parent: Panel, type: string): Deck_Counter {
+function attach_tooltip(target: Panel, text: string) {
+    target.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
+        $.DispatchEvent("DOTAShowTextTooltip", target, text);
+    });
+
+    target.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, () => {
+        $.DispatchEvent("DOTAHideTextTooltip");
+    });
+}
+
+function make_deck_counter(parent: Panel, type: string, tooltip: string): Deck_Counter {
     const root = $.CreatePanel("Panel", parent, "");
     root.AddClass("deck_counter");
 
@@ -55,6 +69,8 @@ function make_deck_counter(parent: Panel, type: string): Deck_Counter {
     const current = $.CreatePanel("Label", root, "");
     $.CreatePanel("Label", root, "deck_counter_delim").text = "/";
     const max = $.CreatePanel("Label", root, "");
+
+    attach_tooltip(root, tooltip);
 
     return {
         root: root,
@@ -138,9 +154,8 @@ function refresh_deck_contents(deck: Deck_Contents) {
     deck_counter_heroes.current.text = deck.heroes.length.toString(10);
     deck_counter_spells.current.text = deck.spells.length.toString(10);
 
-    // TODO hardcoded values
-    deck_counter_heroes.max.text = "3";
-    deck_counter_spells.max.text = "5";
+    deck_counter_heroes.max.text = heroes_in_deck.toString(10);
+    deck_counter_spells.max.text = spells_in_deck.toString(10);
 
     for (const hero of deck.heroes) {
         const card = $.CreatePanel("Panel", deck_content_root, "");
