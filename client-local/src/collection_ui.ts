@@ -4,11 +4,15 @@ type Deck_Counter = {
     max: LabelPanel;
 }
 
+const window_background = $("#window_background");
 const collection_ui = $("#collection_window");
 const page_overlay = collection_ui.FindChildTraverse("page_overlay");
 const page_root = collection_ui.FindChildTraverse("page");
 const deck_content_root = collection_ui.FindChildTraverse("deck_content");
 const deck_footer = collection_ui.FindChildTraverse("deck_footer");
+
+// Makes it impossible to click through, so background doesn't receive a click event and dismiss the window
+collection_ui.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
 
 // TODO hardcoded values
 const heroes_in_deck = 3;
@@ -230,9 +234,12 @@ function request_current_page() {
 }
 
 function ui_toggle_collection() {
-    collection_ui.ToggleClass("visible");
+    const now_visible = !collection_ui.BHasClass("visible");
 
-    if (collection_ui.BHasClass("visible")) {
+    collection_ui.SetHasClass("visible", now_visible);
+    window_background.SetHasClass("visible", now_visible);
+
+    if (now_visible) {
         request_current_page();
 
         api_request(Api_Request_Type.get_deck, {
@@ -242,5 +249,9 @@ function ui_toggle_collection() {
 
             refresh_deck_contents(deck_contents);
         });
+
+        window_background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+            ui_toggle_collection();
+        })
     }
 }

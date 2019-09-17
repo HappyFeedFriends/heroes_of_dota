@@ -74,6 +74,8 @@
                 </Button>
             </Panel>
 
+            <Panel id="window_background"/>
+
             <Panel id="collection_window">
                 <Panel id="collection">
                     <Panel id="header">
