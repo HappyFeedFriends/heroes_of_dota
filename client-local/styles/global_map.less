@@ -73,6 +73,7 @@
   }
 
   #collection {
+    flow-children: down;
     width: fill-parent-flow(1.0);
     height: 100%;
     padding: 40px 20px;
@@ -141,9 +142,14 @@
 
         #page {
           vertical-align: center;
-          flow-children: right-wrap;
+          flow-children: down;
           width: fill-parent-flow(1.0);
           transition: opacity 0.1s linear 0s;
+
+          .page_row {
+            horizontal-align: center;
+            flow-children: right;
+          }
 
           .card {
             margin: 12px;

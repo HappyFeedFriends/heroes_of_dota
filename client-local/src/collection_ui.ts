@@ -16,6 +16,9 @@ const deck_counter_spells = make_deck_counter(deck_footer, "spells");
 const collection_left_page_switch = collection_ui.FindChildTraverse("page_switch_left");
 const collection_right_page_switch = collection_ui.FindChildTraverse("page_switch_right");
 
+const cards_in_row = 4;
+const card_rows = 2;
+
 collection_left_page_switch.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
     if (current_page > 0) {
         current_page--;
@@ -70,13 +73,33 @@ function save_deck(contents: Deck_Contents) {
 function refresh_collection_hero_page(page: Collection_Page) {
     page_root.RemoveAndDeleteChildren();
 
-    for (const card of page.cards) {
+    let current_row: Panel = page_root; // Assign to dummy value, we are going to reassign on first iteration
+
+    for (let index = 0; index < card_rows * cards_in_row; index++) {
+        if (index % cards_in_row == 0) {
+            current_row = $.CreatePanel("Panel", page_root, "");
+            current_row.AddClass("page_row");
+        }
+
+        // Filling the layout
+        if (index >= page.cards.length) {
+            const card_panel = $.CreatePanel("Panel", current_row, "");
+            card_panel.AddClass("card");
+            card_panel.AddClass("in_preview");
+            card_panel.style.opacity = "0";
+
+            continue;
+        }
+
+        const card = page.cards[index];
+
+        const card_panel = $.CreatePanel("Panel", current_row, "");
+        card_panel.AddClass("card");
+        card_panel.AddClass("in_preview");
+
         switch (card.type) {
             case Card_Type.spell: {
-                const card_panel = $.CreatePanel("Panel", page_root, "");
-                card_panel.AddClass("card");
                 card_panel.AddClass("spell");
-                card_panel.AddClass("in_preview");
 
                 create_spell_card_ui_base(card_panel, card.spell, get_spell_text(spell_definition_by_id(card.spell)));
 
@@ -91,10 +114,7 @@ function refresh_collection_hero_page(page: Collection_Page) {
 
             case Card_Type.hero: {
                 const definition = hero_definition_by_type(card.hero);
-                const card_panel = $.CreatePanel("Panel", page_root, "");
-                card_panel.AddClass("card");
                 card_panel.AddClass("hero");
-                card_panel.AddClass("in_preview");
 
                 create_hero_card_ui_base(card_panel, card.hero, definition.health, definition.attack_damage, definition.move_points);
 
