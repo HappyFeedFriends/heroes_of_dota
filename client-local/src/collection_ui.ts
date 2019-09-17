@@ -161,6 +161,9 @@ function refresh_deck_contents(deck: Deck_Contents) {
     deck_counter_heroes.max.text = heroes_in_deck.toString(10);
     deck_counter_spells.max.text = spells_in_deck.toString(10);
 
+    deck_counter_heroes.root.SetHasClass("incomplete", deck.heroes.length != heroes_in_deck);
+    deck_counter_spells.root.SetHasClass("incomplete", deck.spells.length != spells_in_deck);
+
     for (const hero of deck.heroes) {
         const card = $.CreatePanel("Panel", deck_content_root, "");
         card.AddClass("deck_card");

@@ -98,7 +98,6 @@
                         <Label text="DECK"/>
                     </Panel>
                     <Panel id="deck_inner">
-
                         <Panel id="deck_content"/>
                     </Panel>
 
