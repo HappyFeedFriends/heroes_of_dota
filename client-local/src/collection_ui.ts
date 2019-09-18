@@ -130,7 +130,7 @@ function refresh_collection_hero_page(page: Collection_Page) {
             }
 
             if (deck_contents.spells.length + deck_contents.heroes.length == heroes_in_deck + spells_in_deck) {
-                show_generic_error("Deck limit reached");
+                show_generic_error("Deck is full");
 
                 return;
             }

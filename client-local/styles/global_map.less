@@ -171,6 +171,18 @@
               box-shadow: none;
             }
 
+            &:not(.unavailable) {
+              &:hover {
+                box-shadow: @active-card-color 0 0 8px 0;
+                transform: translateY(-4px);
+              }
+
+              &:active {
+                wash-color: #cccccc;
+                transform: scale3d(1.03, 1.03, 1);
+              }
+            }
+
             margin: 12px;
           }
         }
@@ -238,6 +250,22 @@
         background-size: 100% 100%;
         border-bottom: 1px solid #1d2b3a;
 
+        &:hover {
+          brightness: 1.4;
+
+          #name {
+            transform: translateX(3px);
+          }
+        }
+
+        &:active {
+          brightness: 2;
+
+          #name {
+            transform: translateX(5px);
+          }
+        }
+
         &.hero>#image {
           horizontal-align: right;
 
@@ -260,6 +288,9 @@
 
         >#name {
           padding: 5px 0;
+
+          transition-property: transform, position;
+          transition-duration: 0.1s;
 
           font-family: @font-regular;
           font-stretch: condensed;
