@@ -142,7 +142,7 @@ function refresh_collection_hero_page(page: Collection_Page) {
     function attach_add_to_deck_handler<T extends Collection_Card>(card_panel: Panel, card: T) {
         card_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
             if (is_card_already_in_the_deck(card)) {
-                show_generic_error("Already in the deck");
+                show_generic_error("This card is already in your deck");
 
                 return;
             }
