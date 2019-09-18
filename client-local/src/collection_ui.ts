@@ -4,6 +4,21 @@ type Deck_Counter = {
     max: LabelPanel;
 }
 
+type Deck_UI = {
+    heroes: Deck_Hero[]
+    spells: Deck_Spell[]
+}
+
+type Deck_Hero = {
+    type: Hero_Type
+    panel: Panel
+}
+
+type Deck_Spell = {
+    id: Spell_Id
+    panel: Panel
+}
+
 type Collection_Card_UI = Collection_Card & {
     panel: Panel
 }
@@ -47,7 +62,7 @@ collection_right_page_switch.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
     }
 });
 
-let deck_contents: Deck_Contents = {
+let deck_ui: Deck_UI = {
     spells: [],
     heroes: []
 };
@@ -89,21 +104,24 @@ function make_deck_counter(parent: Panel, type: string, tooltip: string): Deck_C
     }
 }
 
-function save_deck(contents: Deck_Contents) {
-    api_request(Api_Request_Type.save_deck, {
+function save_deck() {
+    const request = {
         access_token: get_access_token(),
-        ...contents
-    }, () => {});
+        heroes: deck_ui.heroes.map(hero => hero.type),
+        spells: deck_ui.spells.map(spell => spell.id)
+    };
+
+    api_request(Api_Request_Type.save_deck, request, () => {});
 }
 
 function is_card_already_in_the_deck(card: Collection_Card): boolean {
     switch (card.type) {
         case Card_Type.hero: {
-            return deck_contents.heroes.indexOf(card.hero) != -1;
+            return deck_ui.heroes.find(hero => hero.type == card.hero) != undefined;
         }
 
         case Card_Type.spell: {
-            return deck_contents.spells.indexOf(card.spell) != -1;
+            return deck_ui.spells.find(spell => spell.id == card.spell) != undefined;
         }
     }
 }
@@ -121,7 +139,7 @@ function refresh_collection_hero_page(page: Collection_Page) {
 
     let current_row: Panel = page_root; // Assign to dummy value, we are going to reassign on first iteration
 
-    function attach_card_to_deck_pusher<T extends Collection_Card>(card_panel: Panel, card: T, pusher: (card: T) => void) {
+    function attach_add_to_deck_handler<T extends Collection_Card>(card_panel: Panel, card: T) {
         card_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
             if (is_card_already_in_the_deck(card)) {
                 show_generic_error("Already in the deck");
@@ -129,15 +147,16 @@ function refresh_collection_hero_page(page: Collection_Page) {
                 return;
             }
 
-            if (deck_contents.spells.length + deck_contents.heroes.length == heroes_in_deck + spells_in_deck) {
+            if (deck_ui.spells.length + deck_ui.heroes.length == heroes_in_deck + spells_in_deck) {
                 show_generic_error("Deck is full");
 
                 return;
             }
 
-            pusher(card);
-            refresh_deck_contents(deck_contents);
-            save_deck(deck_contents);
+            create_deck_card_panel_from_card(card);
+            refresh_card_availability();
+            update_deck_counters();
+            save_deck();
         });
     }
 
@@ -173,7 +192,7 @@ function refresh_collection_hero_page(page: Collection_Page) {
                 card_panel.AddClass("spell");
 
                 create_spell_card_ui_base(card_panel, card.spell, get_spell_text(spell_definition_by_id(card.spell)));
-                attach_card_to_deck_pusher(card_panel, card, card => deck_contents.spells.push(card.spell));
+                attach_add_to_deck_handler(card_panel, card);
 
                 break;
             }
@@ -183,7 +202,7 @@ function refresh_collection_hero_page(page: Collection_Page) {
                 card_panel.AddClass("hero");
 
                 create_hero_card_ui_base(card_panel, card.hero, definition.health, definition.attack_damage, definition.move_points);
-                attach_card_to_deck_pusher(card_panel, card, card => deck_contents.heroes.push(card.hero));
+                attach_add_to_deck_handler(card_panel, card);
 
                 break;
             }
@@ -195,61 +214,98 @@ function refresh_collection_hero_page(page: Collection_Page) {
     refresh_card_availability();
 }
 
-function refresh_deck_contents(deck: Deck_Contents) {
-    deck_content_root.RemoveAndDeleteChildren();
+function create_deck_card_panel_from_card(card: Collection_Card): Panel {
+    switch (card.type) {
+        case Card_Type.spell: return create_deck_spell_card_panel(card.spell);
+        case Card_Type.hero: return create_deck_hero_card_panel(card.hero);
+    }
+}
 
-    deck_counter_heroes.current.text = deck.heroes.length.toString(10);
-    deck_counter_spells.current.text = deck.spells.length.toString(10);
+function create_deck_hero_card_panel(hero: Hero_Type) {
+    const panel = create_deck_card_panel("hero", get_hero_name(hero), get_full_unit_icon_path(hero), panel => ({
+        type: hero,
+        panel: panel
+    }), deck_ui.heroes);
+
+    const this_is_the_first_hero_panel_added = deck_ui.heroes.length == 1;
+    if (this_is_the_first_hero_panel_added) {
+        panel.GetParent().MoveChildBefore(panel, panel.GetParent().GetChild(0));
+    }
+
+    return panel;
+}
+
+function create_deck_spell_card_panel(spell: Spell_Id) {
+    return create_deck_card_panel("spell", get_spell_name(spell), `file://{images}/${get_spell_card_art(spell)}`, panel => ({
+        id: spell,
+        panel: panel
+    }), deck_ui.spells);
+}
+
+function create_deck_card_panel<T extends { panel: Panel }>(type: string, text: string, image_path: string, creator: (panel: Panel) => T, target: T[]) {
+    const card = $.CreatePanel("Panel", deck_content_root, "");
+    card.AddClass("deck_card");
+    card.AddClass(type);
+
+    const flash = $.CreatePanel("Panel", card, "");
+    flash.AddClass("animate_add_to_deck_flash");
+
+    const label = $.CreatePanel("Label", card, "name");
+    label.text = text;
+
+    const image = $.CreatePanel("Panel", card, "image");
+    safely_set_panel_background_image(image, image_path);
+
+    if (target.length > 0) {
+        deck_content_root.MoveChildAfter(card, target[target.length - 1].panel);
+    }
+
+    const creation = creator(card);
+
+    target.push(creation);
+
+    card.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        const index = target.indexOf(creation);
+
+        if (index != -1) {
+            target.splice(index, 1);
+        }
+
+        card.DeleteAsync(0.0);
+        refresh_card_availability();
+        update_deck_counters();
+    });
+
+    return card;
+}
+
+function update_deck_counters() {
+    deck_counter_heroes.current.text = deck_ui.heroes.length.toString(10);
+    deck_counter_spells.current.text = deck_ui.spells.length.toString(10);
 
     deck_counter_heroes.max.text = heroes_in_deck.toString(10);
     deck_counter_spells.max.text = spells_in_deck.toString(10);
 
-    deck_counter_heroes.root.SetHasClass("incomplete", deck.heroes.length != heroes_in_deck);
-    deck_counter_spells.root.SetHasClass("incomplete", deck.spells.length != spells_in_deck);
+    deck_counter_heroes.root.SetHasClass("incomplete", deck_ui.heroes.length != heroes_in_deck);
+    deck_counter_spells.root.SetHasClass("incomplete", deck_ui.spells.length != spells_in_deck);
+}
+
+function refresh_deck_contents(deck: Deck_Contents) {
+    deck_content_root.RemoveAndDeleteChildren();
+
+    deck_ui.heroes = [];
+    deck_ui.spells = [];
 
     for (const hero of deck.heroes) {
-        const card = $.CreatePanel("Panel", deck_content_root, "");
-        card.AddClass("deck_card");
-        card.AddClass("hero");
-
-        const label = $.CreatePanel("Label", card, "name");
-        label.text = get_hero_name(hero);
-
-        const image = $.CreatePanel("Panel", card, "image");
-        safely_set_panel_background_image(image, get_full_unit_icon_path(hero));
-
-        card.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-            const index = deck_contents.heroes.indexOf(hero);
-
-            if (index != -1) {
-                deck_contents.heroes.splice(index, 1);
-                refresh_deck_contents(deck_contents);
-            }
-        });
+        create_deck_hero_card_panel(hero);
     }
 
     for (const spell of deck.spells) {
-        const card = $.CreatePanel("Panel", deck_content_root, "");
-        card.AddClass("deck_card");
-        card.AddClass("spell");
-
-        const label = $.CreatePanel("Label", card, "name");
-        label.text = get_spell_name(spell);
-
-        const image = $.CreatePanel("Panel", card, "image");
-        safely_set_panel_background_image(image, `file://{images}/${get_spell_card_art(spell)}`);
-
-        card.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-            const index = deck_contents.spells.indexOf(spell);
-
-            if (index != -1) {
-                deck_contents.spells.splice(index, 1);
-                refresh_deck_contents(deck_contents);
-            }
-        });
+        create_deck_spell_card_panel(spell);
     }
 
     refresh_card_availability();
+    update_deck_counters();
 }
 
 function update_page_switchers() {
@@ -293,9 +349,7 @@ function ui_toggle_collection() {
         api_request(Api_Request_Type.get_deck, {
             access_token: get_access_token(),
         }, response => {
-            deck_contents = response;
-
-            refresh_deck_contents(deck_contents);
+            refresh_deck_contents(response);
         });
 
         window_background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {

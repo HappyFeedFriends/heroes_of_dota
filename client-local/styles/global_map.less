@@ -250,6 +250,9 @@
         background-size: 100% 100%;
         border-bottom: 1px solid #1d2b3a;
 
+        transition-property: position;
+        transition-duration: 0.06s;
+
         &:hover {
           brightness: 1.4;
 
@@ -364,6 +367,15 @@
   background-size: 100% 100%;
 }
 
+.animate_add_to_deck_flash {
+  width: 100%;
+  height: 100%;
+  animation-name: add_to_deck_flash_animation;
+  animation-duration: 0.2s;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+}
+
 @loading_spinner_animation: 'loading_spinner_animation';
 @keyframes @loading_spinner_animation {
   0% {
@@ -376,5 +388,35 @@
 
   100% {
     transform: rotateZ(0deg);
+  }
+}
+
+@define flash_start: #ffffff00;
+@define flash_stop: #ffffffbb;
+
+@add_to_deck_flash_animation: 'add_to_deck_flash_animation';
+@keyframes @add_to_deck_flash_animation {
+  0% {
+    opacity: 0;
+    background-color: gradient(linear, 0% 100%, 100% 0%, from(flash_start), color-stop(-0.1, flash_stop), color-stop(0.0, flash_stop), to(flash_start));
+  }
+
+  20% {
+    opacity: 1;
+    background-color: gradient(linear, 0% 100%, 100% 0%, from(flash_start), color-stop(-0.1, flash_stop), color-stop(0.0, flash_stop), to(flash_start));
+  }
+
+  50% {
+    background-color: gradient(linear, 0% 100%, 100% 0%, from(flash_start), color-stop(0.45, flash_stop), color-stop(0.55, flash_stop), to(flash_start));
+  }
+
+  80% {
+    opacity: 1;
+    background-color: gradient(linear, 0% 100%, 100% 0%, from(flash_start), color-stop(1, flash_stop), color-stop(1.1, flash_stop), to(flash_start));
+  }
+
+  100% {
+    opacity: 0;
+    background-color: gradient(linear, 0% 100%, 100% 0%, from(flash_start), color-stop(1, flash_stop), color-stop(1.2, flash_stop), to(flash_start));
   }
 }
