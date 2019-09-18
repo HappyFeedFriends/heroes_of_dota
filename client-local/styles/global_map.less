@@ -208,9 +208,7 @@
     //background-size: 100% 100%;
 
 
-    background-color: rgba(115, 133, 178, 0.33);
-    background-image: url("s2r://panorama/images/hud/reborn/ability_bg_psd.vtex");
-    background-position: center bottom;
+    background-image: url("s2r://panorama/images/hud/reborn/bg_item_build_psd.vtex");
     background-size: 100% 100%;
 
     #deck_inner {
@@ -222,8 +220,8 @@
       width: 100%;
       padding: 8px;
 
-      background-color: #3a4882;
-      background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
+      //background-color: #3a4882;
+      //background-image: url("s2r://panorama/images/dota_plus/shop_button_bg_psd.vtex");
       background-size: 100% 100%;
 
       border-bottom: 1px solid black;
@@ -231,11 +229,11 @@
       Label {
         color: white;
         font-family: @font-title;
-        font-size: 32px;
+        font-size: 42px;
         align: center center;
         letter-spacing: 1px;
         text-align: center center;
-        margin: 20px 0;
+        margin: 10px 0;
 
         text-shadow: 0px 0px 4px 3.0 rgb(0, 0, 0);
       }
@@ -248,12 +246,19 @@
       >.deck_card {
         width: 100%;
         background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
-        background-color: #3e4873;
         background-size: 100% 100%;
-        border-bottom: 1px solid #1d2b3a;
+        border-bottom: 1px solid #111111;
 
         transition-property: position;
         transition-duration: 0.06s;
+
+        &.hero {
+          background-color: @hero-card-header-color;
+        }
+
+        &.spell {
+          background-color: @spell-card-header-color;
+        }
 
         &:hover {
           brightness: 1.4;
@@ -302,6 +307,7 @@
           font-size: 22px;
           color: #ececec;
           margin-left: 16px;
+          text-shadow: 0px 0px 2px 2.0 #333333ff;
         }
       }
     }
