@@ -24,7 +24,7 @@ type Game_Not_Logged_In = Game_Base & {
 
 type Game_On_Global_Map = Game_Base & {
     state: Player_State.on_global_map
-    nearby_players: Player[]
+    nearby_entities: Map_Entity[]
     battles: Battle_Info[]
     refreshed_nearby_players_at: number
     refreshed_battles_at: number
@@ -79,10 +79,24 @@ declare const enum Button_State {
     clicked = 2
 }
 
-type Player = {
+const enum Map_Entity_Type {
+    player,
+    npc
+}
+
+type Map_Player = {
+    type: Map_Entity_Type.player
     id: number
     name: string
 }
+
+type Map_NPC = {
+    type: Map_Entity_Type.npc
+    id: number
+    npc_type: NPC_Type
+}
+
+type Map_Entity = Map_Player | Map_NPC
 
 type Image_Resource = {
     img: HTMLImageElement
@@ -165,12 +179,30 @@ function contains(x: number, y: number, sx: number, sy: number, width: number, h
     return x >= sx && y >= sy && x < sx + width && y < sy + height;
 }
 
-function on_player_clicked(state: Game, player: Player) {
-    api_request(Api_Request_Type.attack_player, {
-        dedicated_server_key: "",
-        access_token: state.access_token,
-        target_player_id: player.id
-    });
+function on_entity_clicked(state: Game, entity: Map_Entity) {
+    switch (entity.type) {
+        case Map_Entity_Type.player: {
+            api_request(Api_Request_Type.attack_player, {
+                dedicated_server_key: "",
+                access_token: state.access_token,
+                target_player_id: entity.id
+            });
+
+            break;
+        }
+
+        case Map_Entity_Type.npc: {
+            api_request(Api_Request_Type.attack_npc, {
+                dedicated_server_key: "",
+                access_token: state.access_token,
+                target_npc_id: entity.id
+            });
+
+            break;
+        }
+
+        default: unreachable(entity);
+    }
 }
 
 function button_behavior(top_left_x: number, top_left_y: number, width: number, height: number): Button_State {
@@ -213,18 +245,19 @@ function button(text: string, top_left_x: number, top_left_y: number, font_size_
     return do_button(text, top_left_x, top_left_y, font_size_px, padding) == Button_State.clicked;
 }
 
-function draw_player_list(game: Game_On_Global_Map) {
+function draw_entity_list(game: Game_On_Global_Map) {
     const font_size_px = 18;
     const padding = 8;
     const margin = 4;
 
     let height_offset = 0;
 
-    for (const player of game.nearby_players) {
+    for (const entity of game.nearby_entities) {
         const top_left_x = 30, top_left_y = 70 + height_offset;
+        const entity_name = entity.type == Map_Entity_Type.npc ? enum_to_string(entity.npc_type) : entity.name;
 
-        if (button(player.name, top_left_x, top_left_y, font_size_px, padding)) {
-            on_player_clicked(game, player);
+        if (button(entity_name, top_left_x, top_left_y, font_size_px, padding)) {
+            on_entity_clicked(game, entity);
         }
 
         height_offset += margin + padding + font_size_px + padding + margin;
@@ -273,17 +306,32 @@ async function check_and_try_refresh_nearby_players(game: Game_On_Global_Map, ti
 
     game.refreshed_nearby_players_at = time;
 
-    const response = await api_request(Api_Request_Type.query_players_movement, {
+    const response = await api_request(Api_Request_Type.query_entity_movement, {
         dedicated_server_key: "",
         access_token: game.access_token
     });
 
-    game.nearby_players = response.map(player => {
-        return {
-            id: player.id,
-            name: player.player_name
-        }
+    const players = response.players.map(entity => {
+        const player: Map_Player = {
+            type: Map_Entity_Type.player,
+            id: entity.id,
+            name: entity.player_name
+        };
+
+        return player;
     });
+
+    const neutrals = response.neutrals.map(entity => {
+        const npc: Map_NPC = {
+            type: Map_Entity_Type.npc,
+            npc_type: entity.type,
+            id: entity.id
+        };
+
+        return npc;
+    });
+
+    game.nearby_entities = [...players, ...neutrals];
 }
 
 async function check_and_try_request_player_state(state: Game, time: number) {
@@ -1457,7 +1505,7 @@ function do_one_frame(time: number) {
 
     switch (game.state) {
         case Player_State.on_global_map: {
-            draw_player_list(game);
+            draw_entity_list(game);
             draw_battle_list(game);
 
             check_and_try_refresh_nearby_players(game, time);
@@ -1589,7 +1637,7 @@ function game_from_state(player_state: Player_State_Data, game_base: Game_Base):
             return {
                 ...game_base,
                 state: player_state.state,
-                nearby_players: [],
+                nearby_entities: [],
                 battles: [],
                 refreshed_nearby_players_at: Number.MIN_SAFE_INTEGER,
                 refreshed_battles_at: Number.MIN_SAFE_INTEGER

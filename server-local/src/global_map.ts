@@ -1,10 +1,18 @@
-type Player = {
-    id: number;
-    hero_unit: CDOTA_BaseNPC_Hero;
+type Entity_With_Movement = {
     movement_history: Movement_History_Entry[]
     last_recorded_x: number
     last_recorded_y: number
+    unit: CDOTA_BaseNPC
 }
+
+type Map_NPC = {
+    id: number
+    type: NPC_Type
+} & Entity_With_Movement
+
+type Map_Player = {
+    id: number
+} & Entity_With_Movement
 
 type Main_Player = {
     token: string;
@@ -17,7 +25,10 @@ type Main_Player = {
     state: Player_State;
 }
 
-type Player_Map = Record<number, Player>;
+type Map_State = {
+    players: Record<number, Map_Player>,
+    neutrals: Record<number, Map_NPC>
+}
 
 const movement_history_submit_rate = 0.7;
 const movement_history_length = 30;
@@ -42,25 +53,32 @@ function submit_player_movement(main_player: Main_Player) {
     api_request_with_retry_on_403(Api_Request_Type.submit_player_movement, main_player, request);
 }
 
-function process_player_global_map_order(main_player: Main_Player, players: Player_Map, order: ExecuteOrderEvent): boolean {
+function process_player_global_map_order(main_player: Main_Player, map: Map_State, order: ExecuteOrderEvent): boolean {
+    function try_find_entity_by_unit<T extends Entity_With_Movement>(entities: Record<number, T>, query: CBaseEntity): T | undefined {
+        for (let entity_id in entities) {
+            const entity = entities[entity_id];
+
+            if (entity.unit == query) {
+                return entity;
+            }
+        }
+    }
+
     for (let index in order.units) {
         if (order.units[index] == main_player.hero_unit.entindex()) {
             if (order.order_type == DotaUnitOrder_t.DOTA_UNIT_ORDER_MOVE_TO_POSITION) {
                 main_player.current_order_x = order.position_x;
                 main_player.current_order_y = order.position_y;
             } else if (order.order_type == DotaUnitOrder_t.DOTA_UNIT_ORDER_ATTACK_TARGET) {
-                const attacked_entity = EntIndexToHScript(order.entindex_target);
+                const clicked_entity = EntIndexToHScript(order.entindex_target);
 
-                for (let player_id in players) {
-                    const player = players[player_id];
+                const attacked_player = try_find_entity_by_unit(map.players, clicked_entity);
+                const attacked_npc = try_find_entity_by_unit(map.neutrals, clicked_entity);
 
-                    if (player.hero_unit == attacked_entity) {
-                        fork(() => {
-                            attack_player(main_player, player.id);
-                        });
-
-                        break;
-                    }
+                if (attacked_player) {
+                    fork(() => attack_player(main_player, attacked_player));
+                } else if (attacked_npc) {
+                    fork(() => attack_npc(main_player, attacked_npc));
                 }
 
                 return false;
@@ -75,32 +93,47 @@ function process_player_global_map_order(main_player: Main_Player, players: Play
     return true;
 }
 
-function create_new_player_from_response(response: Player_Movement_Data): Player {
+function create_map_unit(dota_name: string, location: XY) {
+    return CreateUnitByName(
+        dota_name,
+        Vector(location.x, location.y),
+        true,
+        null,
+        null,
+        DOTATeam_t.DOTA_TEAM_GOODGUYS
+    );
+}
+
+function create_new_player_from_movement_data(data: Player_Movement_Data): Map_Player {
     return {
-        id: response.id,
-        movement_history: response.movement_history,
-        hero_unit: CreateUnitByName(
-            "npc_dota_hero_lina",
-            Vector(response.current_location.x, response.current_location.y),
-            true,
-            null,
-            null,
-            DOTATeam_t.DOTA_TEAM_GOODGUYS
-        ) as CDOTA_BaseNPC_Hero,
-        last_recorded_x: response.current_location.x,
-        last_recorded_y: response.current_location.y
+        id: data.id,
+        movement_history: data.movement_history,
+        unit: create_map_unit("npc_dota_hero_lina", data.current_location),
+        last_recorded_x: data.current_location.x,
+        last_recorded_y: data.current_location.y
     };
 }
 
-function update_player_from_movement_history(player: Player) {
-    const current_unit_position = player.hero_unit.GetAbsOrigin();
+function create_new_npc_from_movement_data(data: NPC_Movement_Data): Map_NPC {
+    return {
+        id: data.id,
+        type: data.type,
+        movement_history: data.movement_history,
+        unit: create_map_unit("hod_creep", data.current_location),
+        last_recorded_x: data.current_location.x,
+        last_recorded_y: data.current_location.y
+    };
+}
+
+function update_entity_from_movement_history(entity: Entity_With_Movement) {
+    const current_unit_position = entity.unit.GetAbsOrigin();
     const snap_distance = 400;
 
     let closest_entry: Movement_History_Entry | undefined;
     let minimum_distance = 1e6;
     let closest_entry_index = 0;
 
-    player.movement_history.forEach((entry, entry_index) => {
+    entity.movement_history.forEach((entry, entry_index) => {
         const delta = current_unit_position - Vector(entry.location_x, entry.location_y) as Vector;
         const distance = delta.Length2D();
 
@@ -115,20 +148,20 @@ function update_player_from_movement_history(player: Player) {
 
     if (closest_entry) {
         if (minimum_distance > 0) {
-            player.hero_unit.MoveToPosition(Vector(closest_entry.order_x, closest_entry.order_y));
+            entity.unit.MoveToPosition(Vector(closest_entry.order_x, closest_entry.order_y));
         }
-    } else if (player.movement_history.length > 0) {
-        const last_entry = player.movement_history[player.movement_history.length - 1];
+    } else if (entity.movement_history.length > 0) {
+        const last_entry = entity.movement_history[entity.movement_history.length - 1];
 
-        FindClearSpaceForUnit(player.hero_unit, Vector(last_entry.location_x, last_entry.location_y), true);
-        player.hero_unit.MoveToPosition(Vector(last_entry.order_x, last_entry.order_y));
+        FindClearSpaceForUnit(entity.unit, Vector(last_entry.location_x, last_entry.location_y), true);
+        entity.unit.MoveToPosition(Vector(last_entry.order_x, last_entry.order_y));
     } else {
-        FindClearSpaceForUnit(player.hero_unit, Vector(player.last_recorded_x, player.last_recorded_y), true);
+        FindClearSpaceForUnit(entity.unit, Vector(entity.last_recorded_x, entity.last_recorded_y), true);
     }
 }
 
-function query_other_players_movement(main_player: Main_Player, players: Player_Map) {
-    const response = api_request_with_retry_on_403(Api_Request_Type.query_players_movement, main_player, {
+function query_other_entities_movement(main_player: Main_Player, map: Map_State) {
+    const response = api_request_with_retry_on_403(Api_Request_Type.query_entity_movement, main_player, {
         access_token: main_player.token,
         dedicated_server_key: get_dedicated_server_key()
     });
@@ -137,42 +170,47 @@ function query_other_players_movement(main_player: Main_Player, players: Player_
         return;
     }
 
-    const received_movement_history_this_frame: Record<number, boolean> = {};
+    function process_received_movement<T extends Movement_Data>(entities: Record<number, Entity_With_Movement>, received: T[], maker: (data: T) => Entity_With_Movement) {
+        const received_movement_history_this_frame: Record<number, boolean> = {};
 
-    for (const id in players) {
-        received_movement_history_this_frame[id] = false;
+        for (const id in entities) {
+            received_movement_history_this_frame[id] = false;
+        }
+
+        received.forEach(entity_data => {
+            const entity = entities[entity_data.id];
+
+            received_movement_history_this_frame[entity_data.id] = true;
+
+            if (entity) {
+                entity.movement_history = entity_data.movement_history;
+                entity.last_recorded_x = entity_data.current_location.x;
+                entity.last_recorded_y = entity_data.current_location.y;
+
+                update_entity_from_movement_history(entity);
+            } else {
+                const new_entity = maker(entity_data);
+
+                entities[entity_data.id] = new_entity;
+
+                update_entity_from_movement_history(new_entity);
+            }
+        });
+
+        for (const id in entities) {
+            const entity = entities[id];
+            const should_be_kept = received_movement_history_this_frame[id];
+
+            if (!should_be_kept) {
+                delete entities[id];
+
+                entity.unit.RemoveSelf();
+            }
+        }
     }
 
-    response.forEach(player_data => {
-        const player = players[player_data.id];
-
-        received_movement_history_this_frame[player_data.id] = true;
-
-        if (player) {
-            player.movement_history = player_data.movement_history;
-            player.last_recorded_x = player_data.current_location.x;
-            player.last_recorded_y = player_data.current_location.y;
-
-            update_player_from_movement_history(player);
-        } else {
-            const new_player = create_new_player_from_response(player_data);
-
-            players[new_player.id] = new_player;
-
-            update_player_from_movement_history(new_player);
-        }
-    });
-
-    for (const id in players) {
-        const player = players[id];
-        const should_be_kept = received_movement_history_this_frame[id];
-
-        if (!should_be_kept) {
-            delete players[id];
-
-            player.hero_unit.RemoveSelf();
-        }
-    }
+    process_received_movement(map.players, response.players, create_new_player_from_movement_data);
+    process_received_movement(map.neutrals, response.neutrals, create_new_npc_from_movement_data);
 }
 
 function update_main_player_movement_history(main_player: Main_Player) {
@@ -190,22 +228,34 @@ function update_main_player_movement_history(main_player: Main_Player) {
     }
 }
 
-function submit_and_query_movement_loop(main_player: Main_Player, players: Player_Map) {
+function submit_and_query_movement_loop(main_player: Main_Player, map: Map_State) {
     while (true) {
         // TODO decide if we want to query other players movements even in battle
         wait_until(() => main_player.state == Player_State.on_global_map);
         wait(movement_history_submit_rate);
 
         fork(() => submit_player_movement(main_player));
-        fork(() => query_other_players_movement(main_player, players));
+        fork(() => query_other_entities_movement(main_player, map));
     }
 }
 
-function attack_player(main_player: Main_Player, target_player_id: number) {
+function attack_player(main_player: Main_Player, player: Map_Player) {
     const new_player_state = api_request(Api_Request_Type.attack_player, {
         access_token: main_player.token,
         dedicated_server_key: get_dedicated_server_key(),
-        target_player_id: target_player_id
+        target_player_id: player.id
+    });
+
+    if (new_player_state) {
+        try_submit_state_transition(main_player, new_player_state);
+    }
+}
+
+function attack_npc(main_player: Main_Player, npc: Map_NPC) {
+    const new_player_state = api_request(Api_Request_Type.attack_npc, {
+        access_token: main_player.token,
+        dedicated_server_key: get_dedicated_server_key(),
+        target_npc_id: npc.id
     });
 
     if (new_player_state) {

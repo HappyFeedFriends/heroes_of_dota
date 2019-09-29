@@ -13,18 +13,23 @@ declare const enum Api_Request_Type {
     get_player_state = 3,
     query_battles = 4,
     attack_player = 5,
-    query_players_movement = 6,
-    submit_player_movement = 7,
+    attack_npc = 6,
+    query_entity_movement = 7,
+    submit_player_movement = 8,
 
-    take_battle_action = 8,
-    query_battle_deltas = 9,
+    take_battle_action = 9,
+    query_battle_deltas = 10,
 
-    get_collection_page = 10,
-    get_deck = 11,
-    save_deck = 12,
+    get_collection_page = 11,
+    get_deck = 12,
+    save_deck = 13,
 
     battle_cheat = 50,
     get_debug_ai_data = 100
+}
+
+declare const enum NPC_Type {
+    satyr = 0
 }
 
 type Movement_History_Entry = {
@@ -151,10 +156,13 @@ type Api_Request = {
         token: string
     }
 } | {
-    type: Api_Request_Type.query_players_movement
+    type: Api_Request_Type.query_entity_movement
 
     request: With_Token & With_Private_Key
-    response: Player_Movement_Data[]
+    response: {
+        players: Player_Movement_Data[]
+        neutrals: NPC_Movement_Data[]
+    }
 } | {
     type: Api_Request_Type.submit_player_movement
 
@@ -172,6 +180,14 @@ type Api_Request = {
 
     request: {
         target_player_id: number
+    } & With_Token & With_Private_Key
+
+    response: Player_State_Data
+} | {
+    type: Api_Request_Type.attack_npc
+
+    request: {
+        target_npc_id: number
     } & With_Token & With_Private_Key
 
     response: Player_State_Data
@@ -214,14 +230,21 @@ type Deck_Contents = {
     spells: Spell_Id[]
 }
 
-type Player_Movement_Data = {
+type Movement_Data = {
     id: number
-    player_name: string // TODO might want to move id:name connection into a separate request
     movement_history: Movement_History_Entry[]
     current_location: {
         x: number
         y: number
     }
+}
+
+type Player_Movement_Data = Movement_Data & {
+    player_name: string // TODO might want to move id:name connection into a separate request
+}
+
+type NPC_Movement_Data = Movement_Data & {
+    type: NPC_Type
 }
 
 type Chat_Message = {

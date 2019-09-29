@@ -348,10 +348,12 @@ function main() {
 }
 
 function game_loop() {
-    let authorization: { token: string, id: number } | undefined;
     let player_id: PlayerID | undefined = undefined;
     let player_unit: CDOTA_BaseNPC_Hero | undefined = undefined;
-    let players: Player_Map = {};
+    let map: Map_State = {
+        players: {},
+        neutrals: {}
+    };
 
     reinitialize_battle(...get_default_battleground_data());
 
@@ -388,7 +390,7 @@ function game_loop() {
 
     on_player_order_async(order => {
         if (main_player.state == Player_State.on_global_map) {
-            return process_player_global_map_order(main_player, players, order);
+            return process_player_global_map_order(main_player, map, order);
         }
 
         return false;
@@ -417,7 +419,7 @@ function game_loop() {
         });
     }
 
-    fork(() => submit_and_query_movement_loop(main_player, players));
+    fork(() => submit_and_query_movement_loop(main_player, map));
     fork(() => {
         while(true) {
             const state_data = try_get_player_state(main_player);

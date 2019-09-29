@@ -16,6 +16,7 @@ import {readFileSync} from "fs";
 import * as battleground from "./battleground";
 import {take_ai_action} from "./ai";
 import {get_debug_ai_data} from "./debug_draw";
+import {get_nearby_neutrals} from "./npc_controller";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
@@ -452,7 +453,7 @@ register_api_handler(Api_Request_Type.submit_player_movement, req => {
 });
 
 // TODO not necessarily has to be trusted, right? It's just a read, though might be a heavy one
-register_api_handler(Api_Request_Type.query_players_movement, req => {
+register_api_handler(Api_Request_Type.query_entity_movement, req => {
     if (!validate_dedicated_server_key(req.dedicated_server_key)) {
         return make_error(403);
     }
@@ -462,28 +463,31 @@ register_api_handler(Api_Request_Type.query_players_movement, req => {
             return;
         }
 
-        const result: Player_Movement_Data[] = [];
+        const player_movement: Player_Movement_Data[] = [];
 
         for (const player of players) {
             if (player != requesting_player && can_player(player, Right.submit_movement)) {
-                result.push({
+                player_movement.push({
                     id: player.id,
                     player_name: player.name,
-                    movement_history: player.movement_history.map(entry => ({
-                        order_x: entry.order_x,
-                        order_y: entry.order_y,
-                        location_x: entry.location_x,
-                        location_y: entry.location_y
-                    })),
-                    current_location: {
-                        x: player.current_location.x,
-                        y: player.current_location.y
-                    }
+                    movement_history: player.movement_history,
+                    current_location: player.current_location
                 });
             }
         }
 
-        return result;
+        const nearby_neutrals = get_nearby_neutrals(requesting_player);
+        const npc_movement: NPC_Movement_Data[] = nearby_neutrals.map(npc => ({
+            id: npc.id,
+            type: npc.type,
+            movement_history: npc.movement_history,
+            current_location: npc.current_location
+        }));
+
+        return {
+            players: player_movement,
+            neutrals: npc_movement
+        };
     });
 
     return action_on_player_to_result(player_locations);
