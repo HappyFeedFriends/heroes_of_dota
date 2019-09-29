@@ -5,8 +5,6 @@ type Registered_Command = {
 
 interface Command_Storage extends Panel {
     registered_commands: { [key: string]:Registered_Command };
-
-    register_key_bind(key_bind_name: string, callback: () => void): void;
 }
 
 const command_storage = $.GetContextPanel() as Command_Storage;

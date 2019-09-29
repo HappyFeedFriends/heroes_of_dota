@@ -5,6 +5,16 @@ import {
     random_in_array,
     try_take_turn_action
 } from "./battle";
+import {performance} from "perf_hooks";
+import {random_seed} from "./server";
+import {
+    cell_size,
+    debug,
+    push_color_rescale,
+    push_debug_context,
+    rescale_colors,
+    clear_debug_ai_data
+} from "./debug_draw";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
@@ -15,15 +25,21 @@ type AI = {
     pathing_costs_by_unit: Map<Unit, Cost_Population_Result>
 }
 
-function try_work_with_unit(ai: AI, actor: Unit) {
+const black = 0x000000;
+const red = 0xff0000;
+const green = 0x00ff00;
+
+function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
     const act_on_unit_permission = authorize_act_on_known_unit(ai.battle, actor);
-    if (!act_on_unit_permission.ok) return;
+    if (!act_on_unit_permission.ok) return [];
 
     const act_on_owned_unit_permission = authorize_act_on_owned_unit(ai.act_permission, act_on_unit_permission);
-    if (!act_on_owned_unit_permission.ok) return;
+    if (!act_on_owned_unit_permission.ok) return [];
 
     const order_permission = authorize_order_unit(act_on_owned_unit_permission);
-    if (!order_permission.ok) return;
+    if (!order_permission.ok) return [];
+
+    push_debug_context(actor);
 
     const pathing = ai.pathing_costs_by_unit.get(actor)!;
 
@@ -36,6 +52,8 @@ function try_work_with_unit(ai: AI, actor: Unit) {
     }
 
     const interesting_cells: Interesting_Cell[] = [];
+
+    push_color_rescale();
 
     for (const cell of ai.battle.cells) {
         for (const target of ai.battle.units) {
@@ -67,14 +85,28 @@ function try_work_with_unit(ai: AI, actor: Unit) {
                     cell: cell.position,
                     weight: weight,
                     costs: populate_path_costs(ai.battle, cell.position)!
-                })
+                });
+
+                const size = cell_size * 0.2;
+                const offset = cell_size - size;
+                const x = cell.position.x * cell_size + offset / 2;
+                const y = cell.position.y * cell_size + offset / 2;
+
+                debug.text(weight, cell.position.x * cell_size + size, cell.position.y * cell_size + size, weight.toFixed(2));
+                debug.rect(weight, x, y, x + size, y + size);
             }
         }
     }
 
+    rescale_colors(green, red);
+
+    push_color_rescale();
+
     let best_cell_score = Number.MIN_SAFE_INTEGER;
     let best_cell: Cell | undefined = undefined;
     let best_cell_targets: Interesting_Cell[] = [];
+
+    let maximum_walkable_distance = ai.battle.grid_size.x * ai.battle.grid_size.y;
 
     for (const cell of ai.battle.cells) {
         const cell_index = grid_cell_index(ai.battle, cell.position);
@@ -110,9 +142,17 @@ function try_work_with_unit(ai: AI, actor: Unit) {
             }
 
             if (from_cell_to_target != undefined) {
-                cell_score += -from_cell_to_target + ((actor.max_move_points + actor.move_points_bonus) * target.weight * weight_multiplier);
+                cell_score += ((maximum_walkable_distance - from_cell_to_target) / maximum_walkable_distance) * target.weight * weight_multiplier;
             }
         }
+
+        const size = cell_size * 0.2;
+        const offset = cell_size - size;
+        const x = cell.position.x * cell_size + offset / 2;
+        const y = cell.position.y * cell_size + offset / 2;
+
+        debug.text(cell_score, cell.position.x * cell_size + size, cell.position.y * cell_size + size, cell_score.toFixed(2));
+        debug.circle(cell_score, x, y, size);
 
         if (cell_score > best_cell_score) {
             best_cell_targets = cell_targets;
@@ -121,24 +161,36 @@ function try_work_with_unit(ai: AI, actor: Unit) {
         }
     }
 
+    rescale_colors(green, red);
+
+    const actions: Turn_Action[] = [];
+
     if (best_cell) {
-        try_take_turn_action(ai.battle, ai.player, {
+        actions.push({
             type: Action_Type.move,
             unit_id: actor.id,
             to: best_cell.position
         });
 
+        debug.arrow(green, actor.position, best_cell.position);
+
         if (best_cell_targets.length > 0) {
             const best_weight_target = best_cell_targets.reduce((prev, val) => prev.weight > val.weight ? prev : val);
 
-            try_take_turn_action(ai.battle, ai.player, {
+            actions.push({
                 type: Action_Type.ground_target_ability,
                 unit_id: actor.id,
                 ability_id: actor.attack!.id,
                 to: best_weight_target.enemy.position
             });
+
+            debug.arrow(red, best_cell.position, best_weight_target.enemy.position);
         }
     }
+
+    debug.text(black, 1 * cell_size, 11 * cell_size, `Random Seed: ${random_seed}`);
+
+    return actions;
 }
 
 function try_use_any_card(battle: Battle_Record, ai: Battle_Player) {
@@ -161,28 +213,38 @@ export function take_ai_action(battle: Battle_Record, player: Battle_Player) {
     const act_permission = authorize_action_by_player(battle, player);
     if (!act_permission.ok) return;
 
-    const ai: AI = {
-        battle: battle,
-        player: player,
-        pathing_costs_by_unit: new Map<Unit, Cost_Population_Result>(),
-        act_permission: act_permission
-    };
+    const start_time = performance.now();
+
+    if (player.hand.length > 0) {
+        try_use_any_card(battle, player);
+    }
+
+    clear_debug_ai_data();
 
     for (const unit of battle.units) {
-        const costs = populate_path_costs(battle, unit.position)!;
+        const ai: AI = {
+            battle: battle,
+            player: player,
+            pathing_costs_by_unit: new Map<Unit, Cost_Population_Result>(),
+            act_permission: act_permission
+        };
 
-        ai.pathing_costs_by_unit.set(unit, costs);
+        for (const unit of battle.units) {
+            const costs = populate_path_costs(battle, unit.position)!;
+
+            ai.pathing_costs_by_unit.set(unit, costs);
+        }
+
+        const actions = ai_compute_actions_for_unit(ai, unit);
+
+        for (const action of actions) {
+            try_take_turn_action(battle, ai.player, action);
+        }
     }
 
-    if (ai.player.hand.length > 0) {
-        try_use_any_card(battle, ai.player);
-    }
-
-    for (const unit of battle.units) {
-        try_work_with_unit(ai, unit);
-    }
-
-    try_take_turn_action(battle, ai.player, {
+    try_take_turn_action(battle, player, {
         type: Action_Type.end_turn
-    })
+    });
+
+    console.log(`take_ai_action: ${performance.now() - start_time}ms`);
 }

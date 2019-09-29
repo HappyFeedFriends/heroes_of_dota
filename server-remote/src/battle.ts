@@ -1,4 +1,4 @@
-import {Map_Player, report_battle_over} from "./server";
+import {Map_Player, random, report_battle_over} from "./server";
 import {readFileSync} from "fs";
 import {submit_chat_message} from "./chat";
 import {Battleground, Spawn_Type} from "./battleground";
@@ -25,11 +25,11 @@ type Deferred_Action = () => void
 export function random_int_range(lower_bound: number, upper_bound: number) {
     const range = upper_bound - lower_bound;
 
-    return lower_bound + Math.floor(Math.random() * range);
+    return lower_bound + Math.floor(random() * range);
 }
 
 export function random_int_up_to(upper_bound: number) {
-    return Math.floor(Math.random() * upper_bound);
+    return Math.floor(random() * upper_bound);
 }
 
 export function random_in_array<T>(array: T[], length = array.length): T | undefined {

@@ -38,6 +38,8 @@ type Game_In_Battle = Game_Base & {
     selection: Selection_State
     battle_log: Colored_Line[]
     spectating: boolean
+    ai_data: Debug_AI_Data | undefined
+    show_ai_data: boolean
 }
 
 type Game = Game_In_Battle | Game_On_Global_Map | Game_Not_Logged_In;
@@ -302,6 +304,10 @@ async function check_and_try_request_player_state(state: Game, time: number) {
         }
 
         game = game_from_state(player_data, game);
+
+        if (game.state == Player_State.in_battle) {
+            game.ai_data = await api_request(Api_Request_Type.get_debug_ai_data, {});
+        }
     }
 }
 
@@ -1239,6 +1245,62 @@ function draw_grid(game: Game_In_Battle, player: Battle_Player | undefined, high
         }
     }
 
+    if (game.show_ai_data && game.ai_data) {
+        const ai = game.ai_data;
+
+        function padded_hex(num: number, len: number) {
+            const str = num.toString(16);
+            return "0".repeat(len - str.length) + str;
+        }
+
+        ctx.fillStyle = "black";
+
+        if (is_unit_selection(game.selection)) {
+            ctx.font = "10px Open Sans";
+
+            for (const debug of ai.unit_debug) {
+                if (debug.unit_id == game.selection.unit_id) {
+                    for (const cmd of debug.cmds) {
+                        ctx.fillStyle = "#" + padded_hex(cmd.clr, 6);
+                        ctx.strokeStyle = "#" + padded_hex(cmd.clr, 6);
+                        ctx.lineWidth = 2;
+
+                        switch (cmd.type) {
+                            case Debug_Draw_Cmd_Type.circle: {
+                                const half_r = cmd.r / 2;
+
+                                ctx.beginPath();
+                                ctx.arc(cmd.x + half_r, cmd.y + half_r, half_r, 0, Math.PI * 2);
+                                ctx.fill();
+
+                                break;
+                            }
+
+                            case Debug_Draw_Cmd_Type.line: {
+                                ctx.beginPath();
+                                ctx.moveTo(cmd.x1, cmd.y1);
+                                ctx.lineTo(cmd.x2, cmd.y2);
+                                ctx.stroke();
+                                break;
+                            }
+
+                            case Debug_Draw_Cmd_Type.rect: {
+                                ctx.fillRect(cmd.x1, cmd.y1, cmd.x2 - cmd.x1, cmd.y2 - cmd.y1);
+                                break;
+                            }
+
+                            case Debug_Draw_Cmd_Type.text: {
+                                ctx.fillText(cmd.text, cmd.x, cmd.y);
+
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     ctx.translate(-grid_top_left_x, -grid_top_left_y);
 }
 
@@ -1422,11 +1484,21 @@ function do_one_frame(time: number) {
             draw_grid(game, this_player, ability_was_highlighted);
 
             if (button("End turn", 30, 120, 18, 6)) {
+                const battle = game;
+
                 take_battle_action(game, {
                     type: Action_Type.end_turn
-                });
+                })
+                    .then(() => api_request(Api_Request_Type.get_debug_ai_data, {}))
+                    .then(ai_data => battle.ai_data = ai_data);
 
                 drop_selection(game);
+            }
+
+            if (game.ai_data) {
+                if (button(`AI data${game.show_ai_data ? ' ✓' : ''}`, 30, 160, 18, 6)) {
+                    game.show_ai_data = !game.show_ai_data;
+                }
             }
 
             if (this_player) {
@@ -1507,7 +1579,9 @@ function game_from_state(player_state: Player_State_Data, game_base: Game_Base):
                 battle_id: player_state.battle_id,
                 selection: { type: Selection_Type.none },
                 battle_log: battle_log,
-                spectating: false
+                spectating: false,
+                ai_data: undefined,
+                show_ai_data: false
             };
         }
 
@@ -1555,11 +1629,7 @@ async function start_game() {
         steam_user_name: "Mister Guy"
     });
 
-    const player_state = await api_request(Api_Request_Type.get_player_state, {
-        access_token: auth.token
-    });
-
-    game = game_from_state(player_state, {
+    game = game_from_state({ state: Player_State.not_logged_in }, {
         canvas_width: canvas.width,
         canvas_height: canvas.height,
         ctx: context,

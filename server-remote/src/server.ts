@@ -15,6 +15,7 @@ import {performance} from "perf_hooks"
 import {readFileSync} from "fs";
 import * as battleground from "./battleground";
 import {take_ai_action} from "./ai";
+import {get_debug_ai_data} from "./debug_draw";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
@@ -87,6 +88,9 @@ const spells_in_deck = 5;
 let player_id_auto_increment = 0;
 
 let test_player: Map_Player | undefined = undefined;
+
+export let random: () => number;
+export let random_seed: number;
 
 function generate_access_token() {
     return randomBytes(32).toString("hex");
@@ -728,6 +732,10 @@ register_api_handler(Api_Request_Type.save_deck, req => {
     }));
 });
 
+register_api_handler(Api_Request_Type.get_debug_ai_data, req => {
+    return make_ok(get_debug_ai_data());
+});
+
 type Request_Result<T> = Result_Ok<T> | Result_Error;
 
 function make_error(code: number): Result_Error {
@@ -768,8 +776,29 @@ function handle_api_request(handler: (body: object) => Request_Result<object>, d
     return result;
 }
 
-export function start_server(dev: boolean) {
+function static_file(path: string): () => string {
+    if (dev_mode) {
+        return () => readFileSync(path, "utf8");
+    }
+
+    const contents = readFileSync(path, "utf8");
+
+    return () => contents;
+}
+
+export function start_server(dev: boolean, seed: number) {
     dev_mode = dev;
+
+    // TODO this is xorshift32, replace with a better algo
+    //      https://github.com/bryc/code/blob/master/jshash/PRNGs.md
+    random = function(a) {
+        return function() {
+            a ^= a << 25; a ^= a >>> 7; a ^= a << 2;
+            return (a >>> 0) / 4294967296;
+        }
+    }(seed);
+
+    random_seed = seed;
 
     if (dev) {
         test_player = make_new_player("whatever", "Test guy");
@@ -786,9 +815,9 @@ export function start_server(dev: boolean) {
         console.log("Test player enabled");
     }
 
-    const game_html = readFileSync("dist/game.html", "utf8");
-    const battle_sim = readFileSync("dist/battle_sim.js", "utf8");
-    const web_main = readFileSync("dist/web_main.js", "utf8");
+    const game_html = static_file("dist/game.html");
+    const battle_sim = static_file("dist/battle_sim.js");
+    const web_main = static_file("dist/web_main.js");
 
     setInterval(check_and_disconnect_offline_players, 1000);
 
@@ -822,20 +851,20 @@ export function start_server(dev: boolean) {
                 switch (url) {
                     case "/": {
                         res.writeHead(200);
-                        res.end(game_html);
+                        res.end(game_html());
                         break;
                     }
 
                     case "/battle_sim.js": {
                         res.writeHead(200);
-                        res.end(battle_sim);
+                        res.end(battle_sim());
 
                         break;
                     }
 
                     case "/web_main.js": {
                         res.writeHead(200);
-                        res.end(web_main);
+                        res.end(web_main());
                         break;
                     }
 

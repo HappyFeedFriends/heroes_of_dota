@@ -24,6 +24,7 @@ declare const enum Api_Request_Type {
     save_deck = 12,
 
     battle_cheat = 50,
+    get_debug_ai_data = 100
 }
 
 type Movement_History_Entry = {
@@ -184,6 +185,11 @@ type Api_Request = {
 
     request: Deck_Contents & With_Token
     response: {}
+} | {
+    type: Api_Request_Type.get_debug_ai_data
+
+    request: {}
+    response: Debug_AI_Data
 }
 
 type Collection_Page = {
@@ -233,6 +239,48 @@ type Battle_Info = {
     }
     random_seed: number
     participants: Battle_Participant_Info[]
+}
+
+type Debug_AI_Data = {
+    unit_debug: {
+        unit_id: number
+        cmds: Debug_Draw_Cmd[]
+    }[]
+}
+
+declare const enum Debug_Draw_Cmd_Type {
+    line = 0,
+    circle = 1,
+    text = 2,
+    rect = 3
+}
+
+type Debug_Draw_Cmd = {
+    type: Debug_Draw_Cmd_Type.circle
+    clr: number
+    x: number
+    y: number
+    r: number
+} | {
+    type: Debug_Draw_Cmd_Type.line
+    clr: number
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+} | {
+    type: Debug_Draw_Cmd_Type.rect
+    clr: number
+    x1: number
+    y1: number
+    x2: number
+    y2: number
+} | {
+    type: Debug_Draw_Cmd_Type.text
+    clr: number
+    x: number
+    y: number
+    text: string
 }
 
 type Find_By_Id<Union, Id> = Union extends { id: Id } ? Union : never;
