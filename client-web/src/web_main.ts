@@ -673,6 +673,7 @@ namespace clr {
     }
 
     export function player_name(player: Battle_Player) {
+        // TODO handle NPC names
         return txt(player_name_cache[player.id], player_color(player.id, 0.8))
     }
 
@@ -1435,6 +1436,7 @@ function draw_battle_list(global_map: Game_On_Global_Map) {
     }
 
     for (const battle of battles) {
+        // TODO handle NPC names
         const top_left_x = 250, top_left_y = 70 + height_offset;
         const text = `Spectate ${get_or_request_player_name(game, battle.participants[0].id)} vs ${get_or_request_player_name(game, battle.participants[1].id)}`;
 

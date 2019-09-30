@@ -21,3 +21,9 @@ const test_npc: Map_NPC = {
 export function get_nearby_neutrals(player: Map_Player): Map_NPC[] {
     return [ test_npc ];
 }
+
+export function npc_by_id(id: number): Map_NPC | undefined {
+    if (id == 10000) {
+        return test_npc;
+    }
+}

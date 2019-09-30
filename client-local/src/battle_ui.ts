@@ -1991,6 +1991,7 @@ function update_current_turning_player_indicator() {
 
     label.text = `...'s turn`;
 
+    // TODO handle NPC names
     async_get_player_name(battle.turning_player.id, name => {
         label.text = `${name}'s turn`;
     });

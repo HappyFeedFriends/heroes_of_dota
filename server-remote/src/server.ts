@@ -17,7 +17,7 @@ import {readFileSync} from "fs";
 import * as battleground from "./battleground";
 import {take_ai_action} from "./ai";
 import {get_debug_ai_data} from "./debug_draw";
-import {get_nearby_neutrals} from "./npc_controller";
+import {get_nearby_neutrals, Map_NPC, npc_by_id} from "./npc_controller";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
@@ -343,6 +343,27 @@ function player_to_battle_participant(player: Map_Player): Battle_Participant {
     }
 }
 
+function npc_to_battle_participant(npc: Map_NPC): Battle_Participant {
+    return {
+        id: npc.id,
+        heroes: [ Hero_Type.ursa, Hero_Type.mirana, Hero_Type.vengeful_spirit ],
+        spells: []
+    }
+}
+
+function initiate_battle_between_player_and_npc(player: Map_Player, npc: Map_NPC) {
+    player.state = Player_State.in_battle;
+
+    // TODO change npc state
+
+    const battle_id = start_battle([
+        player_to_battle_participant(player),
+        npc_to_battle_participant(npc)
+    ], battleground.forest());
+
+    player.current_battle_id = battle_id;
+}
+
 function initiate_battle_between_players(player_one: Map_Player, player_two: Map_Player) {
     player_one.state = Player_State.in_battle;
     player_two.state = Player_State.in_battle;
@@ -402,6 +423,7 @@ register_api_handler(Api_Request_Type.authorize_steam_user, req => {
 
 export function report_battle_over(battle: Battle, winner_player_id: number) {
     for (const battle_player of battle.players) {
+        // TODO handle NPC winner
         const player = player_by_id(battle_player.id);
 
         if (player) {
@@ -535,6 +557,31 @@ register_api_handler(Api_Request_Type.attack_player, req => {
         }
 
         initiate_battle_between_players(player, other_player);
+
+        return player_to_player_state_object(player);
+    });
+
+    return action_on_player_to_result(player_state);
+});
+
+register_api_handler(Api_Request_Type.attack_npc, req => {
+    if (!validate_dedicated_server_key(req.dedicated_server_key)) {
+        return make_error(403);
+    }
+
+    const player_state = try_do_with_player(req.access_token, player => {
+        if (!can_player(player, Right.attack_a_character)) {
+            return;
+        }
+
+        const npc = npc_by_id(req.target_npc_id);
+
+        if (!npc) {
+            return;
+        }
+
+        // TODO check if npc is already in battle
+        initiate_battle_between_player_and_npc(player, npc);
 
         return player_to_player_state_object(player);
     });
