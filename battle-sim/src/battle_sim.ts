@@ -44,7 +44,6 @@ type Battle = {
 
 type Battle_Player = {
     id: number
-    name: string
     hand: Card[]
     gold: number
     has_used_a_card_this_turn: boolean
@@ -428,7 +427,6 @@ function item_source(item_id: Item_Id): Source_Item {
 function make_battle(participants: Battle_Participant_Info[], grid_width: number, grid_height: number): Battle {
     const players = participants.map(participant => ({
         id: participant.id,
-        name: participant.name,
         deployment_zone: participant.deployment_zone,
         gold: 0,
         has_used_a_card_this_turn: false,

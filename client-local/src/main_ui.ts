@@ -1,16 +1,57 @@
 type XYZ = [number, number, number];
+type Player_Name_Callback = (name: string) => void;
 
 $.Msg("TS initialized");
 
 const remote_root = Game.IsInToolsMode() ? "http://127.0.0.1:3638" : "http://cia-is.moe:3638";
+const player_name_storage: Record<number, string> = {};
+const player_name_requests: Record<number, Player_Name_Callback[]> = {};
 
-function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>, callback: (response: Find_Response<T>) => void) {
+function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>, callback: (response: Find_Response<T>) => void, fail?: () => void) {
     $.AsyncWebRequest(remote_root + "/api" + type, {
         type: "POST",
         data: { json_data: JSON.stringify(body) },
         timeout: 10000,
-        success: response => callback(JSON.parse(response))
+        success: response => callback(JSON.parse(response)),
+        error: () => {
+            if (fail) {
+                fail();
+            }
+        }
     });
+}
+
+function async_get_player_name(player_id: number, callback: Player_Name_Callback): void {
+    const cached_name = player_name_storage[player_id];
+
+    if (cached_name) {
+        callback(cached_name);
+        return;
+    }
+
+    let callbacks = player_name_requests[player_id];
+
+    if (!callbacks) {
+       callbacks = [ callback ];
+
+       player_name_requests[player_id] = callbacks;
+    } else {
+        callbacks.push(callback);
+    }
+
+    api_request(Api_Request_Type.get_player_name, { access_token: get_access_token(), player_id: player_id }, data => {
+        const callbacks = player_name_requests[player_id];
+
+        if (callbacks) {
+            for (const callback of callbacks) {
+                callback(data.name);
+            }
+
+            delete player_name_requests[player_id];
+        }
+
+        player_name_storage[player_id] = data.name;
+    }, () => delete player_name_requests[player_id]);
 }
 
 function fire_event<T extends Object>(event_name: string, data: T) {

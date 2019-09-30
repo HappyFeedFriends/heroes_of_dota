@@ -1989,7 +1989,11 @@ function add_spawned_hero_to_control_panel(hero: Hero) {
 function update_current_turning_player_indicator() {
     const label = $("#current_turning_player_label") as LabelPanel;
 
-    label.text = `${battle.turning_player.name}'s turn`;
+    label.text = `...'s turn`;
+
+    async_get_player_name(battle.turning_player.id, name => {
+        label.text = `${name}'s turn`;
+    });
 }
 
 function update_hero_control_panel_state(row: Hero_Row, hero: Hero) {

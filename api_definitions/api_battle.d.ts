@@ -351,7 +351,6 @@ type Deployment_Zone = {
 
 type Battle_Participant_Info = {
     id: number
-    name: string
     deployment_zone: Deployment_Zone
 }
 

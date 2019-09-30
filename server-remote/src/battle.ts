@@ -18,6 +18,12 @@ export type Battle_Record = Battle & {
     end_turn_queued: boolean
 }
 
+export type Battle_Participant = {
+    id: number
+    heroes: Hero_Type[]
+    spells: Spell_Id[]
+}
+
 const battles: Battle_Record[] = [];
 
 type Deferred_Action = () => void
@@ -1941,11 +1947,10 @@ export function surrender_player_forces(battle: Battle_Record, player: Map_Playe
     }
 }
 
-export function start_battle(players: Map_Player[], battleground: Battleground): number {
-    const battle_players: Battle_Participant_Info[] = players.map(player => ({
+export function start_battle(participants: Battle_Participant[], battleground: Battleground): number {
+    const battle_players: Battle_Participant_Info[] = participants.map(player => ({
         id: player.id,
-        name: player.name,
-        deployment_zone: player == players[0] ? battleground.deployment_zones[0] : battleground.deployment_zones[1]
+        deployment_zone: player == participants[0] ? battleground.deployment_zones[0] : battleground.deployment_zones[1]
     }));
 
     const battle: Battle_Record = {
@@ -2045,11 +2050,11 @@ export function start_battle(players: Map_Player[], battleground: Battleground):
         }
     }
 
-    for (const map_player of players) {
-        const player = battle.players.find(player => player.id == map_player.id);
+    for (const participant of participants) {
+        const player = battle.players.find(player => player.id == participant.id);
         if (!player) continue;
 
-        const random_heroes = pick_n_random(map_player.deck.heroes.slice(), 3);
+        const random_heroes = pick_n_random(participant.heroes.slice(), 3);
         const free_cells = find_unoccupied_cell_in_deployment_zone_for_player(battle, player);
         const spawn_points = pick_n_random(free_cells, 3);
 
@@ -2058,7 +2063,7 @@ export function start_battle(players: Map_Player[], battleground: Battleground):
         }
 
         spawn_deltas.push(get_starting_gold(player));
-        spawn_deltas.push(...map_player.deck.spells.map(id => draw_spell_card(battle, player, id)));
+        spawn_deltas.push(...participant.spells.map(id => draw_spell_card(battle, player, id)));
     }
 
     spawn_deltas.push({ type: Delta_Type.game_start });
@@ -2118,22 +2123,6 @@ export function cheat(battle: Battle_Record, player: Map_Player, cheat: string, 
     }
 
     switch (parts[0]) {
-        case "dbg": {
-            const messages = [
-                `=========DEBUG=======`,
-                `Battle ${battle.id}`,
-                `Participants: ${battle.players[0].name} (id${battle.players[0].id}) and ${battle.players[1].name} (id${battle.players[1].id})`,
-                `Deltas: ${battle.deltas.length} total, head at ${battle.delta_head}`,
-                `Turning player: ${battle.turning_player.name}`,
-            ];
-
-            for (const message of messages) {
-                submit_chat_message(player, message);
-            }
-
-            break;
-        }
-
         case "charges": {
             const unit = find_unit_by_id(battle, selected_unit_id);
 

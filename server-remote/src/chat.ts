@@ -20,7 +20,6 @@ export function pull_pending_chat_messages_for_player(player_login: Map_Player_L
 export function submit_chat_message(player: Map_Player, message: string) {
     const new_message: Chat_Message = {
         from_player_id: player.id,
-        from_player_name: player.name,
         message: message,
         timestamp: Date.now()
     };

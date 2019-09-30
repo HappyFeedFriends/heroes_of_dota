@@ -1,6 +1,7 @@
 import {createServer} from "http";
 import {randomBytes} from "crypto"
 import {
+    Battle_Participant,
     cheat,
     find_battle_by_id,
     get_all_battles,
@@ -263,7 +264,6 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                 random_seed: battle.random_seed,
                 participants: battle.players.map(player => ({
                     id: player.id,
-                    name: player.name,
                     deployment_zone: player.deployment_zone
                 })),
                 grid_size: {
@@ -335,13 +335,21 @@ function validate_dedicated_server_key(key: string) {
     return true;
 }
 
+function player_to_battle_participant(player: Map_Player): Battle_Participant {
+    return {
+        id: player.id,
+        heroes: player.deck.heroes,
+        spells: player.deck.spells
+    }
+}
+
 function initiate_battle_between_players(player_one: Map_Player, player_two: Map_Player) {
     player_one.state = Player_State.in_battle;
     player_two.state = Player_State.in_battle;
 
     const battle_id = start_battle([
-        player_one,
-        player_two
+        player_to_battle_participant(player_one),
+        player_to_battle_participant(player_two)
     ], battleground.forest());
 
     player_one.current_battle_id = battle_id;
@@ -412,6 +420,20 @@ register_api_handler(Api_Request_Type.get_player_state, req => {
     return action_on_player_to_result(player_state);
 });
 
+register_api_handler(Api_Request_Type.get_player_name, req => {
+    const player_state = try_do_with_player(req.access_token, requesting_player => {
+        const player = player_by_id(req.player_id);
+
+        if (player) {
+            return {
+                name: player.name
+            }
+        }
+    });
+
+    return action_on_player_to_result(player_state);
+});
+
 register_api_handler(Api_Request_Type.submit_player_movement, req => {
     if (!validate_dedicated_server_key(req.dedicated_server_key)) {
         return make_error(403);
@@ -469,7 +491,6 @@ register_api_handler(Api_Request_Type.query_entity_movement, req => {
             if (player != requesting_player && can_player(player, Right.submit_movement)) {
                 player_movement.push({
                     id: player.id,
-                    player_name: player.name,
                     movement_history: player.movement_history,
                     current_location: player.current_location
                 });
@@ -597,7 +618,6 @@ register_api_handler(Api_Request_Type.query_battles, req => {
                 },
                 participants: battle.players.map(player => ({
                     id: player.id,
-                    name: player.name,
                     deployment_zone: player.deployment_zone
                 }))
             }))

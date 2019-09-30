@@ -16,13 +16,14 @@ declare const enum Api_Request_Type {
     attack_npc = 6,
     query_entity_movement = 7,
     submit_player_movement = 8,
+    get_player_name = 9,
 
-    take_battle_action = 9,
-    query_battle_deltas = 10,
+    take_battle_action = 10,
+    query_battle_deltas = 11,
 
-    get_collection_page = 11,
-    get_deck = 12,
-    save_deck = 13,
+    get_collection_page = 12,
+    get_deck = 13,
+    save_deck = 14,
 
     battle_cheat = 50,
     get_debug_ai_data = 100
@@ -143,6 +144,12 @@ type Api_Request = {
     request: With_Token
     response: Player_State_Data
 } | {
+    type: Api_Request_Type.get_player_name
+    request: { player_id: number } & With_Token
+    response: {
+        name: string
+    }
+} | {
     type: Api_Request_Type.authorize_steam_user
 
     request: {
@@ -240,7 +247,6 @@ type Movement_Data = {
 }
 
 type Player_Movement_Data = Movement_Data & {
-    player_name: string // TODO might want to move id:name connection into a separate request
 }
 
 type NPC_Movement_Data = Movement_Data & {
@@ -249,7 +255,6 @@ type NPC_Movement_Data = Movement_Data & {
 
 type Chat_Message = {
     from_player_id: number
-    from_player_name: string
     message: string
     timestamp: number
 }

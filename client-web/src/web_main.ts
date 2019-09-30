@@ -112,6 +112,7 @@ type Colored_Line = Array<Colored_String>
 
 let game: Game;
 
+const player_name_cache: Record<number, string> = {};
 const image_cache: Map<string, Image_Resource> = new Map();
 const cell_size = 36;
 const grid_top_left_x = 120;
@@ -164,6 +165,33 @@ async function api_request<T extends Api_Request_Type>(type: T, data: Find_Reque
     });
 
     return await response.json() as Find_Response<T>;
+}
+
+function get_or_request_player_name(game: Game, player_id: number): string {
+    const cached_name = player_name_cache[player_id];
+
+    if (cached_name) {
+        return cached_name;
+    }
+
+    async_get_player_name(game, player_id);
+
+    return "...";
+}
+
+
+async function async_get_player_name(game: Game, player_id: number): Promise<string> {
+    const cached_name = player_name_cache[player_id];
+
+    if (cached_name) {
+        return cached_name;
+    }
+
+    const result = await api_request(Api_Request_Type.get_player_name, { access_token: game.access_token, player_id: player_id });
+
+    player_name_cache[player_id] = result.name;
+
+    return result.name;
 }
 
 async function take_battle_action(game: Game_In_Battle, action: Turn_Action) {
@@ -281,8 +309,12 @@ function draw_header(game: Game) {
     ctx.fillText(enum_to_string(game.state), 30, 30);
 }
 
-function accept_chat_messages(game: Game, messages: Chat_Message[]) {
-    game.chat_messages.push(...messages.map(message => `${message.from_player_name}: ${message.message}`));
+async function accept_chat_messages(game: Game, messages: Chat_Message[]) {
+    for (const message of messages) {
+        const name = await async_get_player_name(game, message.from_player_id);
+
+        game.chat_messages.push(`${name}: ${message.message}`);
+    }
 }
 
 async function check_and_try_refresh_battles(game: Game_On_Global_Map, time: number) {
@@ -311,11 +343,15 @@ async function check_and_try_refresh_nearby_players(game: Game_On_Global_Map, ti
         access_token: game.access_token
     });
 
+    for (const player of response.players) {
+        await async_get_player_name(game, player.id);
+    }
+
     const players = response.players.map(entity => {
         const player: Map_Player = {
             type: Map_Entity_Type.player,
             id: entity.id,
-            name: entity.player_name
+            name: get_or_request_player_name(game, entity.id)
         };
 
         return player;
@@ -354,6 +390,10 @@ async function check_and_try_request_player_state(state: Game, time: number) {
         game = game_from_state(player_data, game);
 
         if (game.state == Player_State.in_battle) {
+            for (const player of game.battle.players) {
+                await async_get_player_name(game, player.id);
+            }
+
             game.ai_data = await api_request(Api_Request_Type.get_debug_ai_data, {});
         }
     }
@@ -633,7 +673,7 @@ namespace clr {
     }
 
     export function player_name(player: Battle_Player) {
-        return txt(player.name, player_color(player.id, 0.8))
+        return txt(player_name_cache[player.id], player_color(player.id, 0.8))
     }
 
     export function hero_type_by_name(type: Hero_Type, player_id: number) {
@@ -943,7 +983,7 @@ function delta_to_colored_line(game: Game_In_Battle, delta: Delta): Colored_Line
     return undefined;
 }
 
-function process_battle_events_to_log(log: Colored_Line[], event: Battle_Event) {
+async function process_battle_events_to_log(log: Colored_Line[], event: Battle_Event) {
     switch (event.type) {
         case Battle_Event_Type.health_changed: {
             const { source, target, change, dead } = event;
@@ -1396,7 +1436,7 @@ function draw_battle_list(global_map: Game_On_Global_Map) {
 
     for (const battle of battles) {
         const top_left_x = 250, top_left_y = 70 + height_offset;
-        const text = `Spectate ${battle.participants[0].name} vs ${battle.participants[1].name}`;
+        const text = `Spectate ${get_or_request_player_name(game, battle.participants[0].id)} vs ${get_or_request_player_name(game, battle.participants[1].id)}`;
 
         if (button(text, top_left_x, top_left_y, font_size_px, padding)) {
             game = game_from_state({

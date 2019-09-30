@@ -4,7 +4,11 @@ function add_new_chat_messages(messages: Chat_Message[]) {
     for (const message of messages) {
         const message_panel = $.CreatePanel("Label", messages_panel, "");
 
-        message_panel.text = `${message.from_player_name}: ${message.message}`;
+        message_panel.text = `...: ${message.message}`;
+
+        async_get_player_name(message.from_player_id, name => {
+            message_panel.text = `${name}: ${message.message}`;
+        });
     }
 
     const children = messages_panel.Children();
