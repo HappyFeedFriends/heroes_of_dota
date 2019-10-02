@@ -1,7 +1,7 @@
 type Move_Delta_Paths = Record<number, { x: number, y: number }[]>
 
 type Visualizer_Unit_Data_Base = Unit_Stats & {
-    id: number
+    id: Unit_Id
     modifiers: Modifier_Id[]
     hidden: boolean
 }
@@ -22,18 +22,18 @@ type Visualizer_Minion_Data = Visualizer_Unit_Data_Base & {
 type Visualizer_Unit_Data = Visualizer_Hero_Data | Visualizer_Creep_Data | Visualizer_Minion_Data
 
 type Visualizer_Player_Data = {
-    id: number
+    id: Battle_Player_Id
     gold: number
 }
 
 type Modifier_Data = {
     modifier_id: Modifier_Id
-    modifier_handle_id: number
+    modifier_handle_id: Modifier_Handle_Id
     changes: Modifier_Change[]
 }
 
 type Player_Net_Table_Base = {
-    id: number
+    id: Player_Id
     token: string
 }
 
@@ -48,7 +48,8 @@ type Player_Net_Table_On_Global_Map = Player_Net_Table_Base & {
 type Player_Net_Table_In_Battle = Player_Net_Table_Base & {
     state: Player_State.in_battle
     battle: {
-        id: number
+        id: Battle_Id
+        battle_player_id: Battle_Player_Id
         participants: Battle_Participant_Info[]
         players: Visualizer_Player_Data[]
         world_origin: {
@@ -60,8 +61,8 @@ type Player_Net_Table_In_Battle = Player_Net_Table_Base & {
             height: number
         }
         entity_id_to_unit_data: Record<number, Visualizer_Unit_Data>
-        entity_id_to_rune_id: Record<number, number>
-        entity_id_to_shop_id: Record<number, number>
+        entity_id_to_rune_id: Record<number, Rune_Id>
+        entity_id_to_shop_id: Record<number, Shop_Id>
         current_visual_head: number
     }
 }
@@ -85,7 +86,7 @@ type Battle_Cheat_Event = {
 type Fast_Forward_Event = Battle_Snapshot
 
 type Grid_Highlight_Targeted_Ability_Event = {
-    unit_id: number
+    unit_id: Unit_Id
     ability_id: Ability_Id
     from: {
         x: number
@@ -98,7 +99,7 @@ type Grid_Highlight_Targeted_Ability_Event = {
 }
 
 type Grid_Highlight_No_Target_Ability_Event = {
-    unit_id: number
+    unit_id: Unit_Id
     ability_id: Ability_Id
     from: {
         x: number
@@ -107,16 +108,16 @@ type Grid_Highlight_No_Target_Ability_Event = {
 }
 
 type Game_Over_Event = {
-    winner_player_id: number
+    winner_player_id: Battle_Player_Id
 }
 
 type Player_Snapshot = {
-    id: number
+    id: Battle_Player_Id
     gold: number
 }
 
 type Unit_Snapshot_Base = Unit_Stats & {
-    id: number
+    id: Unit_Id
     modifiers: Modifier_Data[]
     position: {
         x: number
@@ -131,7 +132,7 @@ type Unit_Snapshot_Base = Unit_Stats & {
 type Hero_Snapshot = Unit_Snapshot_Base & {
     supertype: Unit_Supertype.hero
     level: number
-    owner_id: number
+    owner_id: Battle_Player_Id
     type: Hero_Type
 }
 
@@ -142,13 +143,13 @@ type Creep_Snapshot = Unit_Snapshot_Base & {
 type Minion_Snapshot = Unit_Snapshot_Base & {
     supertype: Unit_Supertype.minion
     type: Minion_Type
-    owner_id: number
+    owner_id: Battle_Player_Id
 }
 
 type Unit_Snapshot = Hero_Snapshot | Creep_Snapshot | Minion_Snapshot
 
 type Rune_Snapshot = {
-    id: number
+    id: Rune_Id
     type: Rune_Type
     position: {
         x: number
@@ -157,7 +158,7 @@ type Rune_Snapshot = {
 }
 
 type Shop_Snapshot = {
-    id: number
+    id: Shop_Id
     type: Shop_Type
     position: {
         x: number
@@ -170,7 +171,7 @@ type Shop_Snapshot = {
 }
 
 type Tree_Snapshot = {
-    id: number
+    id: Tree_Id
     position: {
         x: number
         y: number

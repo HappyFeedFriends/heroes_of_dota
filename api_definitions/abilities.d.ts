@@ -369,7 +369,7 @@ type Delta_Use_No_Target_Ability =
 
 type Basic_Attack_Hit = {
     hit: true
-    target_unit_id: number
+    target_unit_id: Unit_Id
     damage_dealt: Health_Change
 }
 
@@ -380,7 +380,7 @@ type Delta_Ability_Basic_Attack = Delta_Ground_Target_Ability_Base & {
 
 type Pudge_Hook_Hit = {
     hit: true
-    target_unit_id: number
+    target_unit_id: Unit_Id
     damage_dealt: Health_Change
     move_target_to: {
         x: number
@@ -412,12 +412,12 @@ type Health_Change = {
 }
 
 type Unit_Health_Change = {
-    target_unit_id: number;
+    target_unit_id: Unit_Id;
     change: Health_Change;
 }
 
 type Unit_Modifier_Application = {
-    target_unit_id: number
+    target_unit_id: Unit_Id
     modifier: Modifier_Application
 }
 
@@ -450,7 +450,7 @@ type Delta_Ability_Luna_Lucent_Beam = Delta_Unit_Target_Ability_Base & {
 
 type Concussive_Shot_Hit = {
     hit: true
-    target_unit_id: number
+    target_unit_id: Unit_Id
     damage: Health_Change
     modifier: Modifier_Application
 }
@@ -477,29 +477,29 @@ type Delta_Ability_Skywrath_Mystic_Flare = Delta_Ground_Target_Ability_Base & {
 
 type Ability_Effect_Luna_Moon_Glaive = {
     ability_id: Ability_Id.luna_moon_glaive
-    source_unit_id: number
-    target_unit_id: number
-    original_target_id: number
+    source_unit_id: Unit_Id
+    target_unit_id: Unit_Id
+    original_target_id: Unit_Id
     damage_dealt: Health_Change
 }
 
 type Ability_Effect_Mirana_Starfall = {
     ability_id: Ability_Id.mirana_starfall
-    source_unit_id: number
-    target_unit_id: number
+    source_unit_id: Unit_Id
+    target_unit_id: Unit_Id
     damage_dealt: Health_Change
 }
 
 type Ability_Effect_Dark_Seer_Ion_Shell = {
     ability_id: Ability_Id.dark_seer_ion_shell
-    source_unit_id: number
+    source_unit_id: Unit_Id
     targets: Unit_Health_Change[]
 }
 
 type Ability_Effect_Pocket_Tower_Attack = {
     ability_id: Ability_Id.pocket_tower_attack
-    source_unit_id: number
-    target_unit_id: number
+    source_unit_id: Unit_Id
+    target_unit_id: Unit_Id
     damage_dealt: Health_Change
 }
 
@@ -590,7 +590,7 @@ type Delta_Ability_Dark_Seer_Surge = Delta_Unit_Target_Ability_Base & {
 }
 
 type Vacuum_Target = {
-    target_unit_id: number,
+    target_unit_id: Unit_Id,
     move_to: {
         x: number,
         y: number

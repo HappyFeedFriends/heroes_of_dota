@@ -67,7 +67,7 @@ function hack_into_game_chat() {
                         api_request(Api_Request_Type.battle_cheat, {
                             access_token: get_access_token(),
                             cheat: text.substring(1),
-                            selected_unit_id: unit ? unit.id : -1
+                            selected_unit_id: unit ? unit.id : -1 as Unit_Id
                         }, response => response);
                     }
                 } else if (text.charAt(0) == "/") {

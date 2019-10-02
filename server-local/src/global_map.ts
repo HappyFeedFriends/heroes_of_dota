@@ -6,17 +6,17 @@ type Entity_With_Movement = {
 }
 
 type Map_NPC = {
-    id: number
-    type: NPC_Type
+    id: Npc_Id
+    type: Npc_Type
 } & Entity_With_Movement
 
 type Map_Player = {
-    id: number
+    id: Player_Id
 } & Entity_With_Movement
 
 type Main_Player = {
     token: string;
-    remote_id: number,
+    remote_id: Player_Id,
     player_id: PlayerID;
     hero_unit: CDOTA_BaseNPC_Hero;
     movement_history: Movement_History_Entry[]
@@ -170,7 +170,9 @@ function query_other_entities_movement(main_player: Main_Player, map: Map_State)
         return;
     }
 
-    function process_received_movement<T extends Movement_Data>(entities: Record<number, Entity_With_Movement>, received: T[], maker: (data: T) => Entity_With_Movement) {
+    type All_Movement_Data = Player_Movement_Data | NPC_Movement_Data;
+
+    function process_received_movement<T extends All_Movement_Data>(entities: Record<number, Entity_With_Movement>, received: T[], maker: (data: T) => Entity_With_Movement) {
         const received_movement_history_this_frame: Record<number, boolean> = {};
 
         for (const id in entities) {

@@ -53,12 +53,12 @@ type Card_Selection = {
 type Selection_State = No_Selection | Unit_Selection | Ability_Selection | Shop_Selection | Card_Selection;
 
 type UI_Player_Data = {
-    id: number
+    id: Battle_Player_Id
     gold: number
 }
 
 type UI_Shop_Data = {
-    id: number
+    id: Shop_Id
 
     displayed_gold: number
     root_container: Panel
@@ -69,7 +69,7 @@ type UI_Shop_Data = {
 }
 
 type UI_Unit_Data_Base = {
-    id: number
+    id: Unit_Id
     hidden: boolean
 
     stat_bar_panel: Panel,
@@ -103,11 +103,11 @@ type UI_Minion_Data = UI_Unit_Data_Base & {
 type UI_Unit_Data = UI_Hero_Data | UI_Creep_Data | UI_Minion_Data;
 
 type UI_Battle = Battle & {
-    id: number
+    id: Battle_Id
     world_origin: XY
     entity_id_to_unit_data: Record<EntityId, UI_Unit_Data>
-    entity_id_to_rune_id: Record<number, number>
-    entity_id_to_shop_id: Record<number, number>
+    entity_id_to_rune_id: Record<number, Rune_Id>
+    entity_id_to_shop_id: Record<number, Shop_Id>
     unit_id_to_facing: Record<number, XY>
     shop_id_to_facing: Record<number, XY>
     cells: UI_Cell[]
@@ -135,7 +135,7 @@ type Stat_Indicator = {
 }
 
 type Hero_Row = {
-    unit_id: number
+    unit_id: Unit_Id
     panel: Panel
     ability_buttons: Hero_Ability_Button[]
     health_label: LabelPanel
@@ -279,7 +279,7 @@ function find_shop_by_entity_id(battle: UI_Battle, entity_id: EntityId | undefin
     return find_shop_by_id(battle, shop_id);
 }
 
-function find_unit_entity_data_by_unit_id(battle: UI_Battle, unit_id: number): [ EntityId, UI_Unit_Data ] | undefined {
+function find_unit_entity_data_by_unit_id(battle: UI_Battle, unit_id: Unit_Id): [ EntityId, UI_Unit_Data ] | undefined {
     for (const entity_id in battle.entity_id_to_unit_data) {
         const data = battle.entity_id_to_unit_data[entity_id];
 
@@ -545,7 +545,7 @@ function process_state_transition(from: Player_State, new_state: Player_Net_Tabl
     if (new_state.state == Player_State.in_battle) {
         const new_data = new_state.battle;
         const base = make_battle(from_server_array(new_data.participants), new_data.grid_size.width, new_data.grid_size.height);
-        const this_player = find_player_by_id(base, new_state.id);
+        const this_player = find_player_by_id(base, new_state.battle.battle_player_id);
 
         if (!this_player) {
             $.Msg("Error: not participating in this battle");
@@ -1988,13 +1988,26 @@ function add_spawned_hero_to_control_panel(hero: Hero) {
 
 function update_current_turning_player_indicator() {
     const label = $("#current_turning_player_label") as LabelPanel;
+    const map_entity = battle.turning_player.map_entity;
 
-    label.text = `...'s turn`;
+    switch (map_entity.type) {
+        case Map_Entity_Type.player: {
+            label.text = `...'s turn`;
 
-    // TODO handle NPC names
-    async_get_player_name(battle.turning_player.id, name => {
-        label.text = `${name}'s turn`;
-    });
+            async_get_player_name(map_entity.player_id, name => {
+                label.text = `${name}'s turn`;
+            });
+
+            break;
+        }
+
+        case Map_Entity_Type.npc: {
+            label.text = `${enum_to_string(map_entity.npc_type)}'s turn`;
+            break;
+        }
+
+        default: unreachable(map_entity);
+    }
 }
 
 function update_hero_control_panel_state(row: Hero_Row, hero: Hero) {
@@ -2833,7 +2846,7 @@ function update_hand() {
     }
 }
 
-function highlight_grid_for_unit_ability_with_predicate(unit_id: number, ability_id: AbilityId, predicate: (ability: Ability_Active, cell: Cell) => boolean) {
+function highlight_grid_for_unit_ability_with_predicate(unit_id: Unit_Id, ability_id: AbilityId, predicate: (ability: Ability_Active, cell: Cell) => boolean) {
     const unit = find_unit_by_id(battle, unit_id);
 
     if (!unit) return;

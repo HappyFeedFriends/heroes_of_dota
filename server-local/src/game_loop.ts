@@ -126,8 +126,8 @@ function player_state_to_player_net_table(main_player: Main_Player): Player_Net_
     switch (main_player.state) {
         case Player_State.in_battle: {
             const entity_id_to_unit_data: Record<EntityID, Visualizer_Unit_Data> = {};
-            const entity_id_to_rune_id: Record<number, number> = {};
-            const entity_id_to_shop_id: Record<number, number> = {};
+            const entity_id_to_rune_id: Record<number, Rune_Id> = {};
+            const entity_id_to_shop_id: Record<number, Shop_Id> = {};
 
             for (const unit of battle.units) {
                 entity_id_to_unit_data[unit.handle.entindex()] = unit_to_visualizer_unit_data(unit);
@@ -147,6 +147,7 @@ function player_state_to_player_net_table(main_player: Main_Player): Player_Net_
                 token: main_player.token,
                 battle: {
                     id: battle.id,
+                    battle_player_id: battle.this_player_id,
                     participants: battle.participants,
                     players: battle.players.map(player => ({
                         id: player.id,
@@ -244,6 +245,7 @@ function process_state_transition(main_player: Main_Player, current_state: Playe
 
         battle.id = next_state.battle_id;
         battle.random_seed = next_state.random_seed;
+        battle.this_player_id = next_state.battle_player_id;
         battle.players = next_state.participants.map(participant => ({
             id: participant.id,
             gold: 0
@@ -372,7 +374,7 @@ function game_loop() {
     print(`Hero handle found`);
 
     const main_player: Main_Player = {
-        remote_id: -1,
+        remote_id: -1 as Player_Id,
         player_id: player_id,
         hero_unit: player_unit,
         token: "",

@@ -222,7 +222,7 @@ function authorize_action_by_player(battle: Battle, player: Battle_Player): Play
     }
 }
 
-function authorize_card_use(action: Player_Action_Permission, card_id: number): Card_Use_Auth {
+function authorize_card_use(action: Player_Action_Permission, card_id: Card_Id): Card_Use_Auth {
     const card = find_player_card_by_id(action.player, card_id);
 
     if (!card) return { ok: false, kind: Card_Use_Error.other };
@@ -298,7 +298,7 @@ function authorize_no_target_card_spell_use(use: Card_Use_Permission): No_Target
     }
 }
 
-function authorize_unit_target_for_spell_card_use(use: Unit_Target_Spell_Card_Use_Permission, unit_id: number): Spell_Target_Unit_Auth {
+function authorize_unit_target_for_spell_card_use(use: Unit_Target_Spell_Card_Use_Permission, unit_id: Unit_Id): Spell_Target_Unit_Auth {
     const unit = find_unit_by_id(use.battle, unit_id);
 
     if (!unit) return  { ok: false, kind: Spell_Target_Unit_Error.other };
@@ -374,7 +374,7 @@ function authorize_act_on_known_unit(battle: Battle, unit: Unit): Act_On_Unit_Au
     }
 }
 
-function authorize_act_on_unit(battle: Battle, unit_id: number): Act_On_Unit_Auth {
+function authorize_act_on_unit(battle: Battle, unit_id: Unit_Id): Act_On_Unit_Auth {
     const unit = find_unit_by_id(battle, unit_id);
 
     if (!unit) return { ok: false, kind: Act_On_Unit_Error.other };
@@ -391,7 +391,7 @@ function authorize_act_on_owned_unit(player_action: Player_Action_Permission, ac
     }
 }
 
-function authorize_shop_use(act_on_unit: Act_On_Owned_Unit_Permission, shop_id: number): Use_Shop_Auth {
+function authorize_shop_use(act_on_unit: Act_On_Owned_Unit_Permission, shop_id: Shop_Id): Use_Shop_Auth {
     function error(error: Use_Shop_Error): Action_Error<Use_Shop_Error> {
         return { ok: false, kind: error };
     }
@@ -460,7 +460,7 @@ function authorize_move_order(order_unit: Order_Unit_Permission, to: XY, ignore_
     }
 }
 
-function authorize_rune_pickup_order(order_unit: Order_Unit_Permission, rune_id: number): Rune_Pickup_Order_Auth {
+function authorize_rune_pickup_order(order_unit: Order_Unit_Permission, rune_id: Rune_Id): Rune_Pickup_Order_Auth {
     const rune = order_unit.battle.runes.find(rune => rune.id == rune_id);
 
     if (!rune) return { ok: false, kind: Rune_Pickup_Order_Error.other };

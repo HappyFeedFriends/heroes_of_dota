@@ -136,7 +136,7 @@ type Item_Basher = Item_Base & {
 
 type Delta_Equip_Item_Base = {
     type: Delta_Type.equip_item
-    unit_id: number
+    unit_id: Unit_Id
 }
 
 type Delta_Equip_Item_With_Modifier = Delta_Equip_Item_Base & {
@@ -195,6 +195,6 @@ type Delta_Item_Lifesteal_Effect = {
 type Delta_Basher_Effect = {
     type: Delta_Type.item_effect_applied
     item_id: Item_Id.basher
-    target_unit_id: number
+    target_unit_id: Unit_Id
     modifier: Modifier_Application
 }

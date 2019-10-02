@@ -13,7 +13,7 @@ type Game_Base = {
     requested_player_state_at: number
     requested_chat_at: number
     mouse: Mouse_State
-    player_id: number
+    player_id: Player_Id
     any_button_clicked_this_frame: boolean
     chat_messages: string[]
 }
@@ -33,7 +33,8 @@ type Game_On_Global_Map = Game_Base & {
 type Game_In_Battle = Game_Base & {
     state: Player_State.in_battle
     battle: Battle
-    battle_id: number
+    battle_id: Battle_Id
+    battle_player_id: Battle_Player_Id
     requested_battle_deltas_at: number
     selection: Selection_State
     battle_log: Colored_Line[]
@@ -57,17 +58,17 @@ type No_Selection = {
 
 type Card_Selection = {
     type: Selection_Type.card
-    card_id: number
+    card_id: Card_Id
 }
 
 type Unit_Selection = {
     type: Selection_Type.unit
-    unit_id: number
+    unit_id: Unit_Id
 }
 
 type Ability_Selection = {
     type: Selection_Type.ability
-    unit_id: number
+    unit_id: Unit_Id
     ability_id: Ability_Id
 }
 
@@ -79,21 +80,16 @@ declare const enum Button_State {
     clicked = 2
 }
 
-const enum Map_Entity_Type {
-    player,
-    npc
-}
-
 type Map_Player = {
     type: Map_Entity_Type.player
-    id: number
+    id: Player_Id
     name: string
 }
 
 type Map_NPC = {
     type: Map_Entity_Type.npc
-    id: number
-    npc_type: NPC_Type
+    id: Npc_Id
+    npc_type: Npc_Type
 }
 
 type Map_Entity = Map_Player | Map_NPC
@@ -167,7 +163,7 @@ async function api_request<T extends Api_Request_Type>(type: T, data: Find_Reque
     return await response.json() as Find_Response<T>;
 }
 
-function get_or_request_player_name(game: Game, player_id: number): string {
+function get_or_request_player_name(game: Game, player_id: Player_Id): string {
     const cached_name = player_name_cache[player_id];
 
     if (cached_name) {
@@ -180,7 +176,7 @@ function get_or_request_player_name(game: Game, player_id: number): string {
 }
 
 
-async function async_get_player_name(game: Game, player_id: number): Promise<string> {
+async function async_get_player_name(game: Game, player_id: Player_Id): Promise<string> {
     const cached_name = player_name_cache[player_id];
 
     if (cached_name) {
@@ -391,7 +387,9 @@ async function check_and_try_request_player_state(state: Game, time: number) {
 
         if (game.state == Player_State.in_battle) {
             for (const player of game.battle.players) {
-                await async_get_player_name(game, player.id);
+                if (player.map_entity.type == Map_Entity_Type.player) {
+                    await async_get_player_name(game, player.map_entity.player_id);
+                }
             }
 
             game.ai_data = await api_request(Api_Request_Type.get_debug_ai_data, {});
@@ -656,20 +654,24 @@ namespace clr {
         }
     }
 
-    export function player_color(player_id: number, alpha: number) {
-        if (game.state == Player_State.in_battle && game.spectating) {
-            const colors = [
-                `rgba(255, 180, 36, ${alpha})`,
-                `rgba(0, 124, 255, ${alpha})`,
-                `rgba(0, 255, 0, ${alpha})`
-            ];
+    export function player_color(player_id: Battle_Player_Id, alpha: number) {
+        if (game.state == Player_State.in_battle) {
+            if (game.spectating) {
+                const colors = [
+                    `rgba(255, 180, 36, ${alpha})`,
+                    `rgba(0, 124, 255, ${alpha})`,
+                    `rgba(0, 255, 0, ${alpha})`
+                ];
 
-            const index = game.battle.players.findIndex(player => player.id == player_id);
+                const index = game.battle.players.findIndex(player => player.id == player_id);
 
-            return colors[index];
+                return colors[index];
+            } else {
+                return game.battle_player_id == player_id ? `rgba(0, 255, 0, ${alpha})` : `rgba(255, 0, 0, ${alpha})`;
+            }
         }
 
-        return game.player_id == player_id ? `rgba(0, 255, 0, ${alpha})` : `rgba(255, 0, 0, ${alpha})`;
+        return "black";
     }
 
     export function player_name(player: Battle_Player) {
@@ -677,7 +679,7 @@ namespace clr {
         return txt(player_name_cache[player.id], player_color(player.id, 0.8))
     }
 
-    export function hero_type_by_name(type: Hero_Type, player_id: number) {
+    export function hero_type_by_name(type: Hero_Type, player_id: Battle_Player_Id) {
         return txt(enum_to_string(type), player_color(player_id, 0.8))
     }
 
@@ -1435,15 +1437,21 @@ function draw_battle_list(global_map: Game_On_Global_Map) {
         battles.splice(0, battles.length - 10);
     }
 
+    function entity_name(participant: Battle_Participant_Info) {
+        const entity = participant.map_entity;
+        const entity_name = entity.type == Map_Entity_Type.npc ? enum_to_string(entity.npc_type) : get_or_request_player_name(game, entity.player_id);
+    }
+
     for (const battle of battles) {
         // TODO handle NPC names
         const top_left_x = 250, top_left_y = 70 + height_offset;
-        const text = `Spectate ${get_or_request_player_name(game, battle.participants[0].id)} vs ${get_or_request_player_name(game, battle.participants[1].id)}`;
+        const text = `Spectate ${entity_name(battle.participants[0])} vs ${entity_name(battle.participants[1])}`;
 
         if (button(text, top_left_x, top_left_y, font_size_px, padding)) {
             game = game_from_state({
                 state: Player_State.in_battle,
                 battle_id: battle.id,
+                battle_player_id: -1 as Battle_Player_Id,
                 grid_size: battle.grid_size,
                 participants: battle.participants,
                 random_seed: battle.random_seed
@@ -1557,7 +1565,7 @@ function do_one_frame(time: number) {
         }
 
         case Player_State.in_battle: {
-            const this_player = find_player_by_id(game.battle, game.player_id);
+            const this_player = find_player_by_id(game.battle, game.battle_player_id);
 
             let ability_was_highlighted = false;
 
@@ -1667,6 +1675,7 @@ function game_from_state(player_state: Player_State_Data, game_base: Game_Base):
                 requested_battle_deltas_at: Number.MIN_SAFE_INTEGER,
                 battle: battle,
                 battle_id: player_state.battle_id,
+                battle_player_id: player_state.battle_player_id,
                 selection: { type: Selection_Type.none },
                 battle_log: battle_log,
                 spectating: false,
@@ -1778,7 +1787,7 @@ async function start_game() {
                 api_request(Api_Request_Type.battle_cheat, {
                     access_token: game.access_token,
                     cheat: message.substring(1),
-                    selected_unit_id: game.selection.type == Selection_Type.unit ? game.selection.unit_id : -1
+                    selected_unit_id: game.selection.type == Selection_Type.unit ? game.selection.unit_id : -1 as Unit_Id
                 });
             } else {
                 api_request(Api_Request_Type.submit_chat_message, {

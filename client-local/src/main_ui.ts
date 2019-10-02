@@ -21,7 +21,7 @@ function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>,
     });
 }
 
-function async_get_player_name(player_id: number, callback: Player_Name_Callback): void {
+function async_get_player_name(player_id: Player_Id, callback: Player_Name_Callback): void {
     const cached_name = player_name_storage[player_id];
 
     if (cached_name) {

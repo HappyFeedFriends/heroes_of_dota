@@ -29,9 +29,23 @@ declare const enum Api_Request_Type {
     get_debug_ai_data = 100
 }
 
-declare const enum NPC_Type {
+declare const enum Map_Entity_Type {
+    player = 0,
+    npc = 1
+}
+
+declare const enum Npc_Type {
     satyr = 0
 }
+
+declare const enum Player_Id_Brand { _ = "" }
+type Player_Id = number & Player_Id_Brand;
+
+declare const enum Npc_Id_Brand { _ = "" }
+type Npc_Id = number & Npc_Id_Brand;
+
+declare const enum Battle_Id_Brand { _ = "" }
+type Battle_Id = number & Battle_Id_Brand;
 
 type Movement_History_Entry = {
     order_x: number
@@ -54,7 +68,8 @@ type Player_State_On_Global_Map_Data = {
 
 type Player_State_In_Battle_Data = {
     state: Player_State.in_battle
-    battle_id: number
+    battle_id: Battle_Id
+    battle_player_id: Battle_Player_Id
     random_seed: number
     grid_size: {
         width: number
@@ -96,7 +111,7 @@ type Api_Request = {
 
     request: {
         cheat: string
-        selected_unit_id: number
+        selected_unit_id: Unit_Id
     } & With_Token
 
     response: {
@@ -124,7 +139,7 @@ type Api_Request = {
     type: Api_Request_Type.query_battle_deltas
 
     request: {
-        battle_id: number
+        battle_id: Battle_Id
         since_delta: number
     } & With_Token
 
@@ -145,7 +160,7 @@ type Api_Request = {
     response: Player_State_Data
 } | {
     type: Api_Request_Type.get_player_name
-    request: { player_id: number } & With_Token
+    request: { player_id: Player_Id } & With_Token
     response: {
         name: string
     }
@@ -159,7 +174,7 @@ type Api_Request = {
     }
 
     response: {
-        id: number
+        id: Player_Id
         token: string
     }
 } | {
@@ -186,7 +201,7 @@ type Api_Request = {
     type: Api_Request_Type.attack_player
 
     request: {
-        target_player_id: number
+        target_player_id: Player_Id
     } & With_Token & With_Private_Key
 
     response: Player_State_Data
@@ -194,7 +209,7 @@ type Api_Request = {
     type: Api_Request_Type.attack_npc
 
     request: {
-        target_npc_id: number
+        target_npc_id: Npc_Id
     } & With_Token & With_Private_Key
 
     response: Player_State_Data
@@ -238,7 +253,6 @@ type Deck_Contents = {
 }
 
 type Movement_Data = {
-    id: number
     movement_history: Movement_History_Entry[]
     current_location: {
         x: number
@@ -247,20 +261,22 @@ type Movement_Data = {
 }
 
 type Player_Movement_Data = Movement_Data & {
+    id: Player_Id
 }
 
 type NPC_Movement_Data = Movement_Data & {
-    type: NPC_Type
+    id: Npc_Id
+    type: Npc_Type
 }
 
 type Chat_Message = {
-    from_player_id: number
+    from_player_id: Player_Id
     message: string
     timestamp: number
 }
 
 type Battle_Info = {
-    id: number
+    id: Battle_Id
     grid_size: {
         width: number
         height: number
@@ -271,7 +287,7 @@ type Battle_Info = {
 
 type Debug_AI_Data = {
     unit_debug: {
-        unit_id: number
+        unit_id: Unit_Id
         cmds: Debug_Draw_Cmd[]
     }[]
 }

@@ -4,7 +4,8 @@ type XY = {
 }
 
 type Battle = {
-    id: number
+    id: Battle_Id
+    this_player_id: Battle_Player_Id
     random_seed: number
     participants: Battle_Participant_Info[]
     players: Battle_Player[]
@@ -27,12 +28,12 @@ type Battle = {
 }
 
 type Battle_Player = {
-    id: number
+    id: Battle_Player_Id
     gold: number
 }
 
 type Unit_Base = Unit_Stats & {
-    id: number
+    id: Unit_Id
     handle: CDOTA_BaseNPC_Hero
     position: XY;
     modifiers: Modifier_Data[]
@@ -42,7 +43,7 @@ type Unit_Base = Unit_Stats & {
 
 type Hero = Unit_Base & {
     supertype: Unit_Supertype.hero
-    owner_remote_id: number
+    owner_remote_id: Battle_Player_Id
     level: number
     type: Hero_Type
 }
@@ -53,20 +54,20 @@ type Creep = Unit_Base & {
 
 type Minion = Unit_Base & {
     supertype: Unit_Supertype.minion
-    owner_remote_id: number
+    owner_remote_id: Battle_Player_Id
     type: Minion_Type
 }
 
 type Unit = Hero | Creep | Minion
 
 type Tree = {
-    id: number
+    id: Tree_Id
     handle: CBaseEntity
     position: XY
 }
 
 type Rune = {
-    id: number
+    id: Rune_Id
     type: Rune_Type
     handle: CDOTA_BaseNPC
     position: XY
@@ -76,7 +77,7 @@ type Rune = {
 }
 
 type Shop = {
-    id: number
+    id: Shop_Id
     type: Shop_Type
     handle: CDOTA_BaseNPC
     position: XY
@@ -98,7 +99,7 @@ type Ranged_Attack_Spec = {
 
 type Modifier_Tied_Fx = {
     fx: FX
-    unit_id: number
+    unit_id: Unit_Id
     modifier_id: Modifier_Id
 }
 
@@ -124,11 +125,11 @@ function get_battle_remote_head(): number {
     return table.maxn(battle.deltas);
 }
 
-function find_unit_by_id(id: number): Unit | undefined {
+function find_unit_by_id(id: Unit_Id): Unit | undefined {
     return array_find(battle.units, unit => unit.id == id);
 }
 
-function find_hero_by_id(id: number): Hero | undefined {
+function find_hero_by_id(id: Unit_Id): Hero | undefined {
     const unit = find_unit_by_id(id);
 
     if (unit && unit.supertype == Unit_Supertype.hero) {
@@ -136,7 +137,7 @@ function find_hero_by_id(id: number): Hero | undefined {
     }
 }
 
-function find_player_deployment_zone_facing(id: number): XY | undefined {
+function find_player_deployment_zone_facing(id: Battle_Player_Id): XY | undefined {
     const participant = array_find(battle.participants, participant => participant.id == id);
 
     if (!participant) return;
@@ -299,7 +300,7 @@ function create_world_handle_for_shop(type: Shop_Type, at: XY, facing: XY): CDOT
     return handle;
 }
 
-function create_world_handle_for_tree(tree_id: number, at: XY): CBaseEntity {
+function create_world_handle_for_tree(tree_id: Tree_Id, at: XY): CBaseEntity {
     const models = [
         "models/props_tree/cypress/tree_cypress010.vmdl",
         "models/props_tree/cypress/tree_cypress008.vmdl"
@@ -339,7 +340,7 @@ function destroy_rune(rune: Rune, destroy_effects_instantly: boolean) {
     rune.rune_fx.destroy_and_release(destroy_effects_instantly);
 }
 
-function unit_base(unit_id: number, dota_unit_name: string, definition: Unit_Definition, at: XY, facing: XY): Unit_Base {
+function unit_base(unit_id: Unit_Id, dota_unit_name: string, definition: Unit_Definition, at: XY, facing: XY): Unit_Base {
     return {
         handle: create_world_handle_for_battle_unit(dota_unit_name, at, facing),
         id: unit_id,
@@ -362,7 +363,7 @@ function unit_base(unit_id: number, dota_unit_name: string, definition: Unit_Def
     };
 }
 
-function spawn_creep_for_battle(unit_id: number, definition: Unit_Definition, at: XY, facing: XY): Creep {
+function spawn_creep_for_battle(unit_id: Unit_Id, definition: Unit_Definition, at: XY, facing: XY): Creep {
     const base = unit_base(unit_id, creep_type_to_dota_unit_name(), definition, at, facing);
 
     return assign<Unit_Base, Creep>(base, {
@@ -370,7 +371,7 @@ function spawn_creep_for_battle(unit_id: number, definition: Unit_Definition, at
     })
 }
 
-function spawn_hero_for_battle(hero_type: Hero_Type, unit_id: number, owner_id: number, at: XY, facing: XY): Hero {
+function spawn_hero_for_battle(hero_type: Hero_Type, unit_id: Unit_Id, owner_id: Battle_Player_Id, at: XY, facing: XY): Hero {
     const definition = hero_definition_by_type(hero_type);
     const base = unit_base(unit_id, hero_type_to_dota_unit_name(hero_type), definition, at, facing);
 
@@ -382,7 +383,7 @@ function spawn_hero_for_battle(hero_type: Hero_Type, unit_id: number, owner_id: 
     });
 }
 
-function spawn_minion_for_battle(type: Minion_Type, unit_id: number, owner_id: number, at: XY, facing: XY) {
+function spawn_minion_for_battle(type: Minion_Type, unit_id: Unit_Id, owner_id: Battle_Player_Id, at: XY, facing: XY) {
     const definition = minion_definition_by_type(type);
     const base = unit_base(unit_id, minion_type_to_dota_unit_name(type), definition, at, facing);
 
@@ -531,7 +532,7 @@ function linear_projectile_with_targets<T>(
 
 type Replace_Target_Unit_Id<T> = Pick<T, Exclude<keyof T, "target_unit_id">> & { unit: Unit };
 
-function filter_and_map_existing_units<T extends { target_unit_id: number }>(array: T[]): Replace_Target_Unit_Id<T>[] {
+function filter_and_map_existing_units<T extends { target_unit_id: Unit_Id }>(array: T[]): Replace_Target_Unit_Id<T>[] {
     const result: Replace_Target_Unit_Id<T>[] = [];
 
     for (const member of array) {
@@ -2448,7 +2449,7 @@ function change_hero_level(main_player: Main_Player, hero: Hero, new_level: numb
 }
 
 function change_gold(main_player: Main_Player, player: Battle_Player, change: number) {
-    if (player.id == main_player.remote_id && battle.has_started) {
+    if (player.id == battle.this_player_id && battle.has_started) {
         battle_emit_sound("General.Coins");
     }
 
@@ -2849,7 +2850,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
 
             update_player_state_net_table(main_player);
 
-            if (delta.start_turn_of_player_id == main_player.remote_id) {
+            if (delta.start_turn_of_player_id == battle.this_player_id) {
                 CustomGameEventManager.Send_ServerToAllClients("show_start_turn_ui", {});
             }
 
@@ -2961,8 +2962,8 @@ function use_cheat(cheat: string) {
 
             create_or_destroy(battle.trees, at, () => {
                 const tree: Tree = {
-                    id: 0,
-                    handle: create_world_handle_for_tree(RandomInt(0, 420), at),
+                    id: 0 as Tree_Id,
+                    handle: create_world_handle_for_tree(RandomInt(0, 420) as Tree_Id, at),
                     position: at
                 };
 
@@ -2980,7 +2981,7 @@ function use_cheat(cheat: string) {
 
             create_or_destroy(battle.runes, at, () => {
                 const rune: Rune = {
-                    id: 0,
+                    id: 0 as Rune_Id,
                     type: Rune_Type.double_damage,
                     handle: create_world_handle_for_rune(Rune_Type.double_damage, at),
                     position: at,
@@ -3002,7 +3003,7 @@ function use_cheat(cheat: string) {
 
             create_or_destroy(battle.shops, at, () => {
                 const shop: Shop = {
-                    id: 0,
+                    id: 0 as Shop_Id,
                     type: Shop_Type.normal,
                     handle: create_world_handle_for_shop(Shop_Type.normal, at, { x: 0, y: 1 }),
                     position: at,
@@ -3082,7 +3083,8 @@ function clean_battle_world_handles() {
 
 function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC) {
     battle = {
-        id: -1,
+        id: -1 as Battle_Id,
+        this_player_id: -1 as Battle_Player_Id,
         random_seed: 0,
         deltas: [],
         players: [],

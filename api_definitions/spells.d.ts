@@ -24,7 +24,7 @@ declare const enum Spell_Unit_Targeting_Flag {
 
 type Card_Spell_Definition = Card_Spell_Unit_Target | Card_Spell_No_Target | Card_Spell_Ground_Target
 type Card_Spell = Card_Spell_Definition & {
-    id: number
+    id: Card_Id
 }
 
 type Card_Spell_Unit_Target =
@@ -118,19 +118,19 @@ type Delta_Use_Ground_Target_Spell =
 
 type Delta_Use_Unit_Target_Spell_Base = {
     type: Delta_Type.use_unit_target_spell
-    player_id: number
-    target_id: number
+    player_id: Battle_Player_Id
+    target_id: Unit_Id
 }
 
 type Delta_Use_Ground_Target_Spell_Base = {
     type: Delta_Type.use_ground_target_spell
-    player_id: number
+    player_id: Battle_Player_Id
     at: XY
 }
 
 type Delta_Use_No_Target_Spell_Base = {
     type: Delta_Type.use_no_target_spell
-    player_id: number
+    player_id: Battle_Player_Id
 }
 
 type Delta_Spell_Buyback = Delta_Use_Unit_Target_Spell_Base & {
@@ -138,14 +138,14 @@ type Delta_Spell_Buyback = Delta_Use_Unit_Target_Spell_Base & {
     gold_change: number
     heal: Health_Change
     modifier: Modifier_Application
-    new_card_id: number
+    new_card_id: Card_Id
 }
 
 type Delta_Spell_Town_Portal_Scroll = Delta_Use_Unit_Target_Spell_Base & {
     spell_id: Spell_Id.town_portal_scroll
     heal: Health_Change
     modifier: Modifier_Application
-    new_card_id: number
+    new_card_id: Card_Id
 }
 
 type Delta_Spell_Euls_Scepter = Delta_Use_Unit_Target_Spell_Base & {
@@ -171,13 +171,13 @@ type Delta_Spell_Drums_Of_Endurance = Delta_Use_No_Target_Spell_Base & {
 type Delta_Spell_Pocket_Tower = Delta_Use_Ground_Target_Spell_Base & {
     spell_id: Spell_Id.pocket_tower
     new_unit_type: Minion_Type
-    new_unit_id: number
+    new_unit_id: Unit_Id
 }
 
 type Delta_Spell_Call_To_Arms = Delta_Use_No_Target_Spell_Base & {
     spell_id: Spell_Id.call_to_arms
     summons: {
-        unit_id: number
+        unit_id: Unit_Id
         unit_type: Minion_Type,
         at: {
             x: number

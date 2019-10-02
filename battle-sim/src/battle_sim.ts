@@ -43,11 +43,12 @@ type Battle = {
 }
 
 type Battle_Player = {
-    id: number
+    id: Battle_Player_Id
     hand: Card[]
     gold: number
     has_used_a_card_this_turn: boolean
     deployment_zone: Deployment_Zone
+    map_entity: Battle_Participant_Map_Entity
 }
 
 const enum Battle_Event_Type {
@@ -85,7 +86,7 @@ type Cell = {
 }
 
 type Unit_Base = Unit_Stats & {
-    id: number;
+    id: Unit_Id;
     dead: boolean;
     position: XY;
     has_taken_an_action_this_turn: boolean;
@@ -117,25 +118,25 @@ type Minion = Unit_Base & {
 
 type Rune = {
     type: Rune_Type
-    id: number
+    id: Rune_Id
     position: XY
 }
 
 type Shop = {
-    id: number
+    id: Shop_Id
     type: Shop_Type
     position: XY
     items: Item[]
 }
 
 type Tree = {
-    id: number
+    id: Tree_Id
     position: XY
 }
 
 type Modifier_Base = {
     id: Modifier_Id
-    handle_id: number
+    handle_id: Modifier_Handle_Id
     source: Source
     changes: Modifier_Change[]
 }
@@ -336,11 +337,11 @@ function is_point_in_deployment_zone(battle: Battle, xy: XY, player: Battle_Play
     );
 }
 
-function find_unit_by_id(battle: Battle, id: number): Unit | undefined {
+function find_unit_by_id(battle: Battle, id: Unit_Id): Unit | undefined {
     return battle.units.find(unit => unit.id == id);
 }
 
-function find_hero_by_id(battle: Battle, id: number): Hero | undefined {
+function find_hero_by_id(battle: Battle, id: Unit_Id): Hero | undefined {
     const unit = find_unit_by_id(battle, id);
 
     if (unit && unit.supertype == Unit_Supertype.hero) {
@@ -348,23 +349,23 @@ function find_hero_by_id(battle: Battle, id: number): Hero | undefined {
     }
 }
 
-function find_player_by_id(battle: Battle, id: number): Battle_Player | undefined {
+function find_player_by_id(battle: Battle, id: Battle_Player_Id): Battle_Player | undefined {
     return battle.players.find(player => player.id == id);
 }
 
-function find_rune_by_id(battle: Battle, id: number): Rune | undefined {
+function find_rune_by_id(battle: Battle, id: Rune_Id): Rune | undefined {
     return battle.runes.find(rune => rune.id == id);
 }
 
-function find_shop_by_id(battle: Battle, id: number): Shop | undefined {
+function find_shop_by_id(battle: Battle, id: Shop_Id): Shop | undefined {
     return battle.shops.find(shop => shop.id == id);
 }
 
-function find_player_card_by_id(player: Battle_Player, card_id: number): Card | undefined {
+function find_player_card_by_id(player: Battle_Player, card_id: Card_Id): Card | undefined {
     return player.hand.find(card => card.id == card_id);
 }
 
-function find_modifier_by_handle_id(battle: Battle, id: number): [ Unit, Modifier ] | undefined {
+function find_modifier_by_handle_id(battle: Battle, id: Modifier_Handle_Id): [ Unit, Modifier ] | undefined {
     for (const unit of battle.units) {
         for (const modifier of unit.modifiers) {
             if (modifier.handle_id == id) {
@@ -430,7 +431,8 @@ function make_battle(participants: Battle_Participant_Info[], grid_width: number
         deployment_zone: participant.deployment_zone,
         gold: 0,
         has_used_a_card_this_turn: false,
-        hand: []
+        hand: [],
+        map_entity: participant.map_entity
     }));
 
     return {
@@ -845,7 +847,7 @@ function free_cell(battle: Battle, at: XY) {
     }
 }
 
-function unit_base(id: number, definition: Unit_Definition, at: XY): Unit_Base {
+function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base {
     function ability_definition_to_ability(definition: Ability_Definition): Ability {
         if (definition.type == Ability_Type.passive) {
             return definition;
@@ -889,7 +891,7 @@ function unit_spawn_event(unit: Unit, at: XY): Battle_Event {
     }
 }
 
-function spawn_minion(battle: Battle, owner: Battle_Player, unit_id: number, type: Minion_Type, at: XY): Minion {
+function spawn_minion(battle: Battle, owner: Battle_Player, unit_id: Unit_Id, type: Minion_Type, at: XY): Minion {
     const minion: Minion = {
         ...unit_base(unit_id, minion_definition_by_type(type), at),
         supertype: Unit_Supertype.minion,

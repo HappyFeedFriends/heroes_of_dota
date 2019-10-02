@@ -133,6 +133,27 @@ declare const enum Modifier_Change_Type {
     ability_swap = 1
 }
 
+declare const enum Unit_Id_Brand { _ = "" }
+type Unit_Id = number & Unit_Id_Brand;
+
+declare const enum Card_Id_Brand { _ = "" }
+type Card_Id = number & Card_Id_Brand;
+
+declare const enum Shop_Id_Brand { _ = "" }
+type Shop_Id = number & Shop_Id_Brand;
+
+declare const enum Rune_Id_Brand { _ = "" }
+type Rune_Id = number & Rune_Id_Brand;
+
+declare const enum Tree_Id_Brand { _ = "" }
+type Tree_Id = number & Tree_Id_Brand;
+
+declare const enum Modifier_Handle_Id_Brand { _ = "" }
+type Modifier_Handle_Id = number & Modifier_Handle_Id_Brand;
+
+declare const enum Battle_Player_Id_Brand { _ = "" }
+type Battle_Player_Id = number & Battle_Player_Id_Brand;
+
 type Unit_Stats = {
     armor: number
     health: number
@@ -221,7 +242,7 @@ type Ability_Targeting =
 
 type Action_Move = {
     type: Action_Type.move
-    unit_id: number
+    unit_id: Unit_Id
     to: {
         x: number
         y: number
@@ -235,7 +256,7 @@ type Action_End_Turn = {
 type Action_Ground_Target_Ability = {
     type: Action_Type.ground_target_ability
     ability_id: Ability_Id
-    unit_id: number
+    unit_id: Unit_Id
     to: {
         x: number
         y: number
@@ -245,19 +266,19 @@ type Action_Ground_Target_Ability = {
 type Action_Unit_Target_Ability = {
     type: Action_Type.unit_target_ability
     ability_id: Ability_Id
-    unit_id: number
-    target_id: number
+    unit_id: Unit_Id
+    target_id: Unit_Id
 }
 
 type Action_No_Target_Ability = {
     type: Action_Type.use_no_target_ability
     ability_id: Ability_Id
-    unit_id: number
+    unit_id: Unit_Id
 }
 
 type Action_Use_Hero_Card = {
     type: Action_Type.use_hero_card
-    card_id: number
+    card_id: Card_Id
     at: {
         x: number
         y: number
@@ -266,7 +287,7 @@ type Action_Use_Hero_Card = {
 
 type Action_Use_Existing_Hero_Card = {
     type: Action_Type.use_existing_hero_card
-    card_id: number
+    card_id: Card_Id
     at: {
         x: number
         y: number
@@ -275,18 +296,18 @@ type Action_Use_Existing_Hero_Card = {
 
 type Action_Use_No_Target_Spell = {
     type: Action_Type.use_no_target_spell_card
-    card_id: number
+    card_id: Card_Id
 }
 
 type Action_Use_Unit_Target_Spell = {
     type: Action_Type.use_unit_target_spell_card
-    card_id: number
-    unit_id: number
+    card_id: Card_Id
+    unit_id: Unit_Id
 }
 
 type Action_Use_Ground_Target_Spell = {
     type: Action_Type.use_ground_target_spell_card
-    card_id: number
+    card_id: Card_Id
     at: {
         x: number
         y: number
@@ -295,14 +316,14 @@ type Action_Use_Ground_Target_Spell = {
 
 type Action_Pick_Up_Rune = {
     type: Action_Type.pick_up_rune
-    unit_id: number
-    rune_id: number
+    unit_id: Unit_Id
+    rune_id: Rune_Id
 }
 
 type Action_Purchase_Item = {
     type: Action_Type.purchase_item
-    unit_id: number
-    shop_id: number
+    unit_id: Unit_Id
+    shop_id: Shop_Id
     item_id: Item_Id
 }
 
@@ -322,20 +343,20 @@ type Turn_Action =
 
 type Card_Unknown = {
     type: Card_Type.unknown
-    id: number
+    id: Card_Id
 }
 
 type Card_Hero = {
     type: Card_Type.hero
     hero_type: Hero_Type
-    id: number
+    id: Card_Id
 }
 
 type Card_Existing_Hero = {
     type: Card_Type.existing_hero
     generated_by: Spell_Id
-    id: number
-    hero_id: number
+    id: Card_Id
+    hero_id: Unit_Id
 }
 
 type Card = Card_Unknown | Card_Hero | Card_Existing_Hero | Card_Spell
@@ -349,22 +370,32 @@ type Deployment_Zone = {
     face_y: number
 }
 
+type Battle_Participant_Map_Entity = {
+    type: Map_Entity_Type.player
+    player_id: Player_Id
+} | {
+    type: Map_Entity_Type.npc
+    npc_id: Npc_Id
+    npc_type: Npc_Type
+}
+
 type Battle_Participant_Info = {
-    id: number
+    id: Battle_Player_Id
     deployment_zone: Deployment_Zone
+    map_entity: Battle_Participant_Map_Entity
 }
 
 type Delta_Health_Change = {
     type: Delta_Type.health_change
-    source_unit_id: number
-    target_unit_id: number
+    source_unit_id: Unit_Id
+    target_unit_id: Unit_Id
     new_value: number
     value_delta: number
 }
 
 type Delta_Move = {
     type: Delta_Type.unit_move
-    unit_id: number
+    unit_id: Unit_Id
     move_cost: number
     to_position: {
         x: number
@@ -375,8 +406,8 @@ type Delta_Move = {
 type Delta_Hero_Spawn = {
     type: Delta_Type.hero_spawn
     hero_type: Hero_Type
-    unit_id: number
-    owner_id: number
+    unit_id: Unit_Id
+    owner_id: Battle_Player_Id
     at_position: {
         x: number
         y: number
@@ -386,7 +417,7 @@ type Delta_Hero_Spawn = {
 type Delta_Hero_Spawn_From_Hand = {
     type: Delta_Type.hero_spawn_from_hand
     source_spell_id: Spell_Id
-    hero_id: number
+    hero_id: Unit_Id
     at_position: {
         x: number
         y: number
@@ -395,7 +426,7 @@ type Delta_Hero_Spawn_From_Hand = {
 
 type Delta_Creep_Spawn = {
     type: Delta_Type.creep_spawn
-    unit_id: number
+    unit_id: Unit_Id
     at_position: {
         x: number
         y: number
@@ -408,7 +439,7 @@ type Delta_Creep_Spawn = {
 
 type Delta_Tree_Spawn = {
     type: Delta_Type.tree_spawn
-    tree_id: number
+    tree_id: Tree_Id
     at_position: {
         x: number
         y: number
@@ -417,7 +448,7 @@ type Delta_Tree_Spawn = {
 
 type Delta_Ground_Target_Ability_Base = {
     type: Delta_Type.use_ground_target_ability
-    unit_id: number
+    unit_id: Unit_Id
     target_position: {
         x: number
         y: number
@@ -426,34 +457,34 @@ type Delta_Ground_Target_Ability_Base = {
 
 type Delta_Unit_Target_Ability_Base = {
     type: Delta_Type.use_unit_target_ability
-    unit_id: number
-    target_unit_id: number
+    unit_id: Unit_Id
+    target_unit_id: Unit_Id
 }
 
 type Delta_Use_No_Target_Ability_Base = {
     type: Delta_Type.use_no_target_ability
-    unit_id: number
+    unit_id: Unit_Id
 }
 
 type Delta_End_Turn = {
     type: Delta_Type.end_turn
-    start_turn_of_player_id: number
+    start_turn_of_player_id: Battle_Player_Id
 }
 
 type Delta_Level_Change = {
     type: Delta_Type.level_change
-    unit_id: number
+    unit_id: Unit_Id
     new_level: number
 }
 
 type Delta_Modifier_Removed = {
     type: Delta_Type.modifier_removed
-    modifier_handle_id: number
+    modifier_handle_id: Modifier_Handle_Id
 }
 
 type Delta_Set_Ability_Charges_Remaining = {
     type: Delta_Type.set_ability_charges_remaining
-    unit_id: number
+    unit_id: Unit_Id
     ability_id: Ability_Id
     charges_remaining: number
 }
@@ -465,28 +496,28 @@ type Delta_Ability_Effect_Applied<T extends Ability_Effect> = {
 
 type Delta_Draw_Hero_Card = {
     type: Delta_Type.draw_hero_card
-    player_id: number
-    card_id: number
+    player_id: Battle_Player_Id
+    card_id: Card_Id
     hero_type: Hero_Type
 }
 
 type Delta_Draw_Spell_Card = {
     type: Delta_Type.draw_spell_card
-    player_id: number
-    card_id: number
+    player_id: Battle_Player_Id
+    card_id: Card_Id
     spell_id: Spell_Id
 }
 
 type Delta_Use_Card = {
     type: Delta_Type.use_card
-    player_id: number
-    card_id: number
+    player_id: Battle_Player_Id
+    card_id: Card_Id
 }
 
 type Delta_Purchase_Item = {
     type: Delta_Type.purchase_item
-    unit_id: number
-    shop_id: number
+    unit_id: Unit_Id
+    shop_id: Shop_Id
     gold_cost: number
     item_id: Item_Id
 }
@@ -494,7 +525,7 @@ type Delta_Purchase_Item = {
 type Delta_Shop_Spawn = {
     type: Delta_Type.shop_spawn
     shop_type: Shop_Type
-    shop_id: number
+    shop_id: Shop_Id
     item_pool: Item_Id[]
     at: {
         x: number
@@ -509,7 +540,7 @@ type Delta_Shop_Spawn = {
 type Delta_Rune_Spawn = {
     type: Delta_Type.rune_spawn
     rune_type: Rune_Type
-    rune_id: number
+    rune_id: Rune_Id
     at: {
         x: number
         y: number
@@ -518,8 +549,8 @@ type Delta_Rune_Spawn = {
 
 type Delta_Rune_Pick_Up_Base = {
     type: Delta_Type.rune_pick_up
-    unit_id: number
-    rune_id: number
+    unit_id: Unit_Id
+    rune_id: Rune_Id
     move_cost: number
 }
 
@@ -551,7 +582,7 @@ type Delta_Rune_Pick_Up =
 
 type Delta_Gold_Change = {
     type: Delta_Type.gold_change
-    player_id: number
+    player_id: Battle_Player_Id
     change: number
 }
 
@@ -561,7 +592,7 @@ type Delta_Game_Start = {
 
 type Delta_Game_Over = {
     type: Delta_Type.game_over
-    winner_player_id: number
+    winner_player_id: Battle_Player_Id
 }
 
 type Delta =
@@ -610,7 +641,7 @@ type Modifier_Change_Ability_Swap = {
 type Modifier_Change = Modifier_Change_Field_Change | Modifier_Change_Ability_Swap
 
 type Modifier_Application = {
-    modifier_handle_id: number
+    modifier_handle_id: Modifier_Handle_Id
     modifier_id: Modifier_Id
     changes: Modifier_Change[]
     duration?: number

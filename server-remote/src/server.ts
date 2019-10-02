@@ -17,7 +17,7 @@ import {readFileSync} from "fs";
 import * as battleground from "./battleground";
 import {take_ai_action} from "./ai";
 import {get_debug_ai_data} from "./debug_draw";
-import {get_nearby_neutrals, Map_NPC, npc_by_id} from "./npc_controller";
+import {get_nearby_neutrals, Map_Npc, npc_by_id} from "./npc_controller";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
@@ -38,12 +38,13 @@ const enum Right {
 
 export type Map_Player = {
     steam_id: string
-    id: number;
+    id: Player_Id;
     name: string;
     current_location: XY;
     movement_history: Movement_History_Entry[];
     state: Player_State;
-    current_battle_id: number; // TODO maybe we don't want to have current_battle_id in other states, but a union for 1 value? ehh
+    current_battle_id: Battle_Id; // TODO maybe we don't want to have current_battle_id in other states, but a union for 1 value? ehh
+    current_battle_player_id: Battle_Player_Id
     active_logins: number
     deck: Card_Deck
     collection: Card_Collection
@@ -87,7 +88,7 @@ const cards_per_page = 8;
 const heroes_in_deck = 3;
 const spells_in_deck = 5;
 
-let player_id_auto_increment = 0;
+let player_id_auto_increment: Player_Id = 0 as Player_Id;
 
 let test_player: Map_Player | undefined = undefined;
 
@@ -96,6 +97,19 @@ export let random_seed: number;
 
 function generate_access_token() {
     return randomBytes(32).toString("hex");
+}
+
+function a(battle: Battle) {
+    const ai = test_player;
+
+    if (ai) {
+        // battle.turning_player;
+        // const battle_ai = battle.players.find(battle_player => battle_player.id == ai.id);
+
+        /*if (battle_ai && req.action.type == Action_Type.end_turn && battle.turning_player == battle_ai) {
+            take_ai_action(battle, battle_ai)
+        }*/
+    }
 }
 
 function make_new_player(steam_id: string, name: string): Map_Player {
@@ -129,12 +143,13 @@ function make_new_player(steam_id: string, name: string): Map_Player {
 
     return {
         steam_id: steam_id,
-        id: player_id_auto_increment++,
+        id: player_id_auto_increment++ as Player_Id,
         name: name,
         state: Player_State.on_global_map,
         current_location: xy(0, 0),
         movement_history: [],
-        current_battle_id: 0,
+        current_battle_id: 0 as Battle_Id, // TODO ugh
+        current_battle_player_id: 0 as Battle_Player_Id,
         active_logins: 0,
         deck: deck,
         collection: {
@@ -200,11 +215,11 @@ function action_on_player_to_result<N>(result: Do_With_Player_Result<N>): Reques
     }
 }
 
-function player_by_id(player_id: number) {
+function player_by_id(player_id: Player_Id) {
     return players.find(player => player.id == player_id);
 }
 
-function try_authorize_steam_player_from_dedicated_server(steam_id: string, steam_name: string): [number, string] {
+function try_authorize_steam_player_from_dedicated_server(steam_id: string, steam_name: string): [Player_Id, string] {
     let player = steam_id_to_player.get(steam_id);
 
     if (!player) {
@@ -261,10 +276,12 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
             return {
                 state: player.state,
                 battle_id: player.current_battle_id,
+                battle_player_id: player.current_battle_player_id,
                 random_seed: battle.random_seed,
                 participants: battle.players.map(player => ({
                     id: player.id,
-                    deployment_zone: player.deployment_zone
+                    deployment_zone: player.deployment_zone,
+                    map_entity: player.map_entity
                 })),
                 grid_size: {
                     width: battle.grid_size.x,
@@ -337,21 +354,24 @@ function validate_dedicated_server_key(key: string) {
 
 function player_to_battle_participant(player: Map_Player): Battle_Participant {
     return {
+        type: Map_Entity_Type.player,
         id: player.id,
         heroes: player.deck.heroes,
         spells: player.deck.spells
     }
 }
 
-function npc_to_battle_participant(npc: Map_NPC): Battle_Participant {
+function npc_to_battle_participant(npc: Map_Npc): Battle_Participant {
     return {
+        type: Map_Entity_Type.npc,
         id: npc.id,
+        npc_type: npc.type,
         heroes: [ Hero_Type.ursa, Hero_Type.mirana, Hero_Type.vengeful_spirit ],
         spells: []
     }
 }
 
-function initiate_battle_between_player_and_npc(player: Map_Player, npc: Map_NPC) {
+function initiate_battle_between_player_and_npc(player: Map_Player, npc: Map_Npc) {
     player.state = Player_State.in_battle;
 
     // TODO change npc state
@@ -421,17 +441,36 @@ register_api_handler(Api_Request_Type.authorize_steam_user, req => {
     });
 });
 
-export function report_battle_over(battle: Battle, winner_player_id: number) {
+export function report_battle_over(battle: Battle, winner_entity: Battle_Participant_Map_Entity) {
     for (const battle_player of battle.players) {
-        // TODO handle NPC winner
-        const player = player_by_id(battle_player.id);
+        const entity = battle_player.map_entity;
 
-        if (player) {
-            player.state = Player_State.on_global_map;
+        switch (entity.type) {
+            case Map_Entity_Type.npc: {
+                const npc = npc_by_id(entity.npc_id);
 
-            if (player.id == winner_player_id) {
-                submit_chat_message(player, `Battle over! ${player.name} wins`);
+                if (npc) {
+                    // TODO handle NPC state change
+                }
+
+                break;
             }
+
+            case Map_Entity_Type.player: {
+                const player = player_by_id(entity.player_id);
+
+                if (player) {
+                    player.state = Player_State.on_global_map;
+
+                    if (entity == winner_entity) {
+                        submit_chat_message(player, `Battle over! ${player.name} wins`);
+                    }
+                }
+
+                break;
+            }
+
+            default: unreachable(entity);
         }
     }
 }
@@ -619,7 +658,7 @@ register_api_handler(Api_Request_Type.take_battle_action, req => {
             return;
         }
 
-        const battle_player = battle.players.find(battle_player => battle_player.id == player.id);
+        const battle_player = battle.players.find(battle_player => battle_player.id == player.current_battle_player_id);
 
         if (!battle_player) {
             console.error(`Player ${player.id} is in battle, but was not found in the list of players`);
@@ -628,15 +667,6 @@ register_api_handler(Api_Request_Type.take_battle_action, req => {
 
         const previous_head = battle.deltas.length;
         const deltas = try_take_turn_action(battle, battle_player, req.action);
-        const ai = test_player;
-
-        if (ai) {
-            const battle_ai = battle.players.find(battle_player => battle_player.id == ai.id);
-
-            if (battle_ai && req.action.type == Action_Type.end_turn && battle.turning_player == battle_ai) {
-                take_ai_action(battle, battle_ai)
-            }
-        }
 
         if (deltas) {
             return {
@@ -665,7 +695,8 @@ register_api_handler(Api_Request_Type.query_battles, req => {
                 },
                 participants: battle.players.map(player => ({
                     id: player.id,
-                    deployment_zone: player.deployment_zone
+                    deployment_zone: player.deployment_zone,
+                    map_entity: player.map_entity
                 }))
             }))
         };
@@ -870,21 +901,6 @@ export function start_server(dev: boolean, seed: number) {
     }(seed);
 
     random_seed = seed;
-
-    if (dev) {
-        test_player = make_new_player("whatever", "Test guy");
-        test_player.state = Player_State.on_global_map;
-        test_player.movement_history = [{
-            location_x: 0,
-            location_y: 0,
-            order_x: 0,
-            order_y: 0
-        }];
-
-        players.push(test_player);
-
-        console.log("Test player enabled");
-    }
 
     const game_html = static_file("dist/game.html");
     const battle_sim = static_file("dist/battle_sim.js");

@@ -1,6 +1,5 @@
 import {Map_Player, random, report_battle_over} from "./server";
 import {readFileSync} from "fs";
-import {submit_chat_message} from "./chat";
 import {Battleground, Spawn_Type} from "./battleground";
 import {XY} from "./common";
 
@@ -9,7 +8,7 @@ eval(readFileSync("dist/battle_sim.js", "utf8"));
 let battle_id_auto_increment = 0;
 
 export type Battle_Record = Battle & {
-    id: number
+    id: Battle_Id
     entity_id_auto_increment: number
     finished: boolean
     random_seed: number
@@ -18,8 +17,19 @@ export type Battle_Record = Battle & {
     end_turn_queued: boolean
 }
 
-export type Battle_Participant = {
-    id: number
+export type Battle_Participant = Player_Participant | Npc_Participant
+
+type Player_Participant = {
+    type: Map_Entity_Type.player
+    id: Player_Id
+    heroes: Hero_Type[]
+    spells: Spell_Id[]
+}
+
+type Npc_Participant = {
+    type: Map_Entity_Type.npc
+    id: Npc_Id
+    npc_type: Npc_Type
     heroes: Hero_Type[]
     spells: Spell_Id[]
 }
@@ -198,7 +208,7 @@ function convert_field_changes(changes: [Modifier_Field, number][]): Modifier_Ch
 function new_modifier(battle: Battle_Record, id: Modifier_Id, ...changes: [Modifier_Field, number][]): Modifier_Application {
     return {
         modifier_id: id,
-        modifier_handle_id: get_next_entity_id(battle),
+        modifier_handle_id: get_next_entity_id(battle) as Modifier_Handle_Id,
         changes: convert_field_changes(changes)
     }
 }
@@ -206,7 +216,7 @@ function new_modifier(battle: Battle_Record, id: Modifier_Id, ...changes: [Modif
 function new_timed_modifier(battle: Battle_Record, id: Modifier_Id, duration: number, ...changes: [Modifier_Field, number][]): Modifier_Application {
     return {
         modifier_id: id,
-        modifier_handle_id: get_next_entity_id(battle),
+        modifier_handle_id: get_next_entity_id(battle) as Modifier_Handle_Id,
         changes: convert_field_changes(changes),
         duration: duration
     }
@@ -266,7 +276,7 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
                 spell_id: spell.spell_id,
                 summons: spawn_points.map(point => ({
                     at: point.position,
-                    unit_id: get_next_entity_id(battle),
+                    unit_id: get_next_entity_id(battle) as Unit_Id,
                     unit_type: Minion_Type.lane_minion
                 }))
             }
@@ -286,7 +296,7 @@ function perform_spell_cast_unit_target(battle: Battle_Record, player: Battle_Pl
             return {
                 ...base,
                 spell_id: spell.spell_id,
-                new_card_id: get_next_entity_id(battle),
+                new_card_id: get_next_entity_id(battle) as Card_Id,
                 gold_change: -get_buyback_cost(target),
                 heal: { new_value: target.max_health, value_delta: 0 },
                 modifier: new_modifier(battle, Modifier_Id.returned_to_hand, [ Modifier_Field.state_out_of_the_game_counter, 1 ])
@@ -297,7 +307,7 @@ function perform_spell_cast_unit_target(battle: Battle_Record, player: Battle_Pl
             return {
                 ...base,
                 spell_id: spell.spell_id,
-                new_card_id: get_next_entity_id(battle),
+                new_card_id: get_next_entity_id(battle) as Card_Id,
                 heal: { new_value: target.max_health, value_delta: 0 },
                 modifier: new_modifier(battle, Modifier_Id.returned_to_hand, [ Modifier_Field.state_out_of_the_game_counter, 1 ])
             }
@@ -348,7 +358,7 @@ function perform_spell_cast_ground_target(battle: Battle_Record, player: Battle_
                 ...base,
                 spell_id: spell.spell_id,
                 new_unit_type: Minion_Type.pocket_tower,
-                new_unit_id: get_next_entity_id(battle)
+                new_unit_id: get_next_entity_id(battle) as Unit_Id
             }
         }
     }
@@ -721,7 +731,7 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
                 ability_id: ability.id,
                 modifier: {
                     modifier_id: Modifier_Id.dragon_knight_elder_dragon_form,
-                    modifier_handle_id: get_next_entity_id(battle),
+                    modifier_handle_id: get_next_entity_id(battle) as Modifier_Handle_Id,
                     changes: [{
                         type: Modifier_Change_Type.ability_swap,
                         swap_to: Ability_Id.dragon_knight_elder_dragon_form_attack,
@@ -1200,7 +1210,7 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
 }
 
 function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Player_Action_Permission, action: Turn_Action): Delta[] | undefined {
-    function authorize_unit_for_order(unit_id: number): Order_Unit_Auth {
+    function authorize_unit_for_order(unit_id: Unit_Id): Order_Unit_Auth {
         const act_on_unit_permission = authorize_act_on_unit(battle, unit_id);
         if (!act_on_unit_permission.ok) return { ok: false, kind: Order_Unit_Error.other };
 
@@ -1210,7 +1220,7 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
         return authorize_order_unit(act_on_owned_unit_permission);
     }
 
-    function authorize_unit_for_ability(unit_id: number, ability_id: Ability_Id): Ability_Use_Permission | undefined {
+    function authorize_unit_for_ability(unit_id: Unit_Id, ability_id: Ability_Id): Ability_Use_Permission | undefined {
         const order_unit_permission = authorize_unit_for_order(unit_id);
         if (!order_unit_permission.ok) return;
 
@@ -1437,7 +1447,7 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
 }
 
 function spawn_hero(battle: Battle_Record, owner: Battle_Player, at_position: XY, type: Hero_Type) : Delta_Hero_Spawn {
-    const id = get_next_entity_id(battle);
+    const id = get_next_entity_id(battle) as Unit_Id;
 
     return {
         type: Delta_Type.hero_spawn,
@@ -1449,7 +1459,7 @@ function spawn_hero(battle: Battle_Record, owner: Battle_Player, at_position: XY
 }
 
 function spawn_creep(battle: Battle_Record, at_position: XY, facing: XY): Delta_Creep_Spawn {
-    const id = get_next_entity_id(battle);
+    const id = get_next_entity_id(battle) as Unit_Id;
 
     return {
         type: Delta_Type.creep_spawn,
@@ -1460,7 +1470,7 @@ function spawn_creep(battle: Battle_Record, at_position: XY, facing: XY): Delta_
 }
 
 function spawn_tree(battle: Battle_Record, at_position: XY): Delta_Tree_Spawn {
-    const id = get_next_entity_id(battle);
+    const id = get_next_entity_id(battle) as Tree_Id;
 
     return {
         type: Delta_Type.tree_spawn,
@@ -1474,7 +1484,7 @@ function draw_hero_card(battle: Battle_Record, player: Battle_Player, hero_type:
         type: Delta_Type.draw_hero_card,
         player_id: player.id,
         hero_type: hero_type,
-        card_id: get_next_entity_id(battle)
+        card_id: get_next_entity_id(battle) as Card_Id
     }
 }
 
@@ -1483,7 +1493,7 @@ function draw_spell_card(battle: Battle_Record, player: Battle_Player, spell_id:
         type: Delta_Type.draw_spell_card,
         player_id: player.id,
         spell_id: spell_id,
-        card_id: get_next_entity_id(battle)
+        card_id: get_next_entity_id(battle) as Card_Id
     }
 }
 
@@ -1840,7 +1850,7 @@ function finish_battle(battle: Battle_Record, winner: Battle_Player) {
 
     battle.finished = true;
 
-    report_battle_over(battle, winner.id);
+    report_battle_over(battle, winner.map_entity);
 }
 
 function check_battle_over(battle: Battle_Record) {
@@ -1873,7 +1883,7 @@ export function try_take_turn_action(battle: Battle_Record, player: Battle_Playe
     }
 }
 
-function get_next_turning_player_id(battle: Battle_Record): number {
+function get_next_turning_player_id(battle: Battle_Record): Battle_Player_Id {
     const current_index = battle.players.indexOf(battle.turning_player);
     const next_index = current_index + 1;
 
@@ -1919,7 +1929,7 @@ export function get_battle_deltas_after(battle: Battle, head: number): Delta[] {
     return battle.deltas.slice(head);
 }
 
-export function find_battle_by_id(id: number): Battle_Record | undefined {
+export function find_battle_by_id(id: Battle_Id): Battle_Record | undefined {
     return battles.find(battle => battle.id == id);
 }
 
@@ -1928,7 +1938,7 @@ export function get_all_battles(): Battle_Record[] {
 }
 
 export function surrender_player_forces(battle: Battle_Record, player: Map_Player) {
-    const battle_player = battle.players.find(battle_player => battle_player.id == player.id);
+    const battle_player = battle.players.find(battle_player => battle_player.id == player.current_battle_player_id);
 
     if (battle_player) {
         const player_units = battle.units.filter(unit => unit.supertype != Unit_Supertype.creep && unit.owner == battle_player);
@@ -1947,15 +1957,30 @@ export function surrender_player_forces(battle: Battle_Record, player: Map_Playe
     }
 }
 
-export function start_battle(participants: Battle_Participant[], battleground: Battleground): number {
+export function start_battle(participants: Battle_Participant[], battleground: Battleground): Battle_Id {
+    function participant_to_map_entity(participant: Battle_Participant): Battle_Participant_Map_Entity {
+        switch (participant.type) {
+            case Map_Entity_Type.npc: return {
+                type: Map_Entity_Type.npc,
+                npc_id: participant.id,
+                npc_type: participant.npc_type
+            }
+
+            case Map_Entity_Type.player: return {
+                type: Map_Entity_Type.player,
+                player_id: participant.id
+            }
+        }
+    }
     const battle_players: Battle_Participant_Info[] = participants.map(player => ({
         id: player.id,
-        deployment_zone: player == participants[0] ? battleground.deployment_zones[0] : battleground.deployment_zones[1]
+        deployment_zone: player == participants[0] ? battleground.deployment_zones[0] : battleground.deployment_zones[1],
+        map_entity: participant_to_map_entity(player)
     }));
 
     const battle: Battle_Record = {
         ...make_battle(battle_players, battleground.grid_size.x, battleground.grid_size.y),
-        id: battle_id_auto_increment++,
+        id: battle_id_auto_increment++ as Battle_Id,
         entity_id_auto_increment: 0,
         deferred_actions: [],
         random_seed: random_int_range(0, 65536),
@@ -1985,7 +2010,7 @@ export function start_battle(participants: Battle_Participant[], battleground: B
                 spawn_deltas.push({
                     type: Delta_Type.rune_spawn,
                     rune_type: random_rune,
-                    rune_id: get_next_entity_id(battle),
+                    rune_id: get_next_entity_id(battle) as Rune_Id,
                     at: spawn.at
                 });
 
@@ -2025,7 +2050,7 @@ export function start_battle(participants: Battle_Participant[], battleground: B
                 spawn_deltas.push({
                     type: Delta_Type.shop_spawn,
                     shop_type: spawn.shop_type,
-                    shop_id: get_next_entity_id(battle),
+                    shop_id: get_next_entity_id(battle) as Shop_Id,
                     item_pool: items,
                     at: spawn.at,
                     facing: spawn.facing
@@ -2075,9 +2100,9 @@ export function start_battle(participants: Battle_Participant[], battleground: B
     return battle.id;
 }
 
-export function cheat(battle: Battle_Record, player: Map_Player, cheat: string, selected_unit_id: number) {
+export function cheat(battle: Battle_Record, player: Map_Player, cheat: string, selected_unit_id: Unit_Id) {
     const parts = cheat.split(" ");
-    const battle_player = battle.players.find(battle_player => battle_player.id == player.id);
+    const battle_player = battle.players.find(battle_player => battle_player.id == player.current_battle_player_id);
 
     if (!battle_player) return;
 
@@ -2142,7 +2167,7 @@ export function cheat(battle: Battle_Record, player: Map_Player, cheat: string, 
         }
 
         case "gold": {
-            submit_battle_deltas(battle, [ { type: Delta_Type.gold_change, player_id: player.id, change: 15 }]);
+            submit_battle_deltas(battle, [ { type: Delta_Type.gold_change, player_id: battle_player.id, change: 15 }]);
 
             break;
         }
@@ -2243,7 +2268,7 @@ export function cheat(battle: Battle_Record, player: Map_Player, cheat: string, 
 
             const delta: Delta_Rune_Spawn = {
                 type: Delta_Type.rune_spawn,
-                rune_id: get_next_entity_id(battle),
+                rune_id: get_next_entity_id(battle) as Rune_Id,
                 rune_type: rune_type(),
                 at: at
             };
