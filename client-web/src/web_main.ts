@@ -674,9 +674,11 @@ namespace clr {
         return "black";
     }
 
-    export function player_name(player: Battle_Player) {
-        // TODO handle NPC names
-        return txt(player_name_cache[player.id], player_color(player.id, 0.8))
+    export function player_name(player: Battle_Player): Colored_String {
+        switch (player.map_entity.type) {
+            case Map_Entity_Type.player: return txt(player_name_cache[player.id], player_color(player.id, 0.8));
+            case Map_Entity_Type.npc: return txt(enum_to_string(player.map_entity.npc_type), player_color(player.id, 0.8));
+        }
     }
 
     export function hero_type_by_name(type: Hero_Type, player_id: Battle_Player_Id) {
@@ -1437,13 +1439,12 @@ function draw_battle_list(global_map: Game_On_Global_Map) {
         battles.splice(0, battles.length - 10);
     }
 
-    function entity_name(participant: Battle_Participant_Info) {
+    function entity_name(participant: Battle_Participant_Info): string {
         const entity = participant.map_entity;
-        const entity_name = entity.type == Map_Entity_Type.npc ? enum_to_string(entity.npc_type) : get_or_request_player_name(game, entity.player_id);
+        return entity.type == Map_Entity_Type.npc ? enum_to_string(entity.npc_type) : get_or_request_player_name(game, entity.player_id);
     }
 
     for (const battle of battles) {
-        // TODO handle NPC names
         const top_left_x = 250, top_left_y = 70 + height_offset;
         const text = `Spectate ${entity_name(battle.participants[0])} vs ${entity_name(battle.participants[1])}`;
 
