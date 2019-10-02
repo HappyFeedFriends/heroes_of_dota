@@ -1957,19 +1957,19 @@ export function surrender_player_forces(battle: Battle_Record, player: Map_Playe
     }
 }
 
-export function start_battle(participants: Battle_Participant[], battleground: Battleground): Battle_Id {
+export function start_battle(participants: Battle_Participant[], battleground: Battleground): Battle_Record {
     function participant_to_map_entity(participant: Battle_Participant): Battle_Participant_Map_Entity {
         switch (participant.type) {
             case Map_Entity_Type.npc: return {
                 type: Map_Entity_Type.npc,
                 npc_id: participant.id,
                 npc_type: participant.npc_type
-            }
+            };
 
             case Map_Entity_Type.player: return {
                 type: Map_Entity_Type.player,
                 player_id: participant.id
-            }
+            };
         }
     }
     const battle_players: Battle_Participant_Info[] = participants.map(player => ({
@@ -2097,7 +2097,7 @@ export function start_battle(participants: Battle_Participant[], battleground: B
 
     battles.push(battle);
 
-    return battle.id;
+    return battle;
 }
 
 export function cheat(battle: Battle_Record, player: Map_Player, cheat: string, selected_unit_id: Unit_Id) {

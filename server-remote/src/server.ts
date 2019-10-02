@@ -15,9 +15,8 @@ import {pull_pending_chat_messages_for_player, submit_chat_message} from "./chat
 import {performance} from "perf_hooks"
 import {readFileSync} from "fs";
 import * as battleground from "./battleground";
-import {take_ai_action} from "./ai";
 import {get_debug_ai_data} from "./debug_draw";
-import {get_nearby_neutrals, Map_Npc, npc_by_id} from "./npc_controller";
+import {check_and_try_perform_ai_actions, get_nearby_neutrals, Map_Npc, npc_by_id} from "./npc_controller";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
@@ -97,19 +96,6 @@ export let random_seed: number;
 
 function generate_access_token() {
     return randomBytes(32).toString("hex");
-}
-
-function a(battle: Battle) {
-    const ai = test_player;
-
-    if (ai) {
-        // battle.turning_player;
-        // const battle_ai = battle.players.find(battle_player => battle_player.id == ai.id);
-
-        /*if (battle_ai && req.action.type == Action_Type.end_turn && battle.turning_player == battle_ai) {
-            take_ai_action(battle, battle_ai)
-        }*/
-    }
 }
 
 function make_new_player(steam_id: string, name: string): Map_Player {
@@ -376,25 +362,27 @@ function initiate_battle_between_player_and_npc(player: Map_Player, npc: Map_Npc
 
     // TODO change npc state
 
-    const battle_id = start_battle([
+    const battle = start_battle([
         player_to_battle_participant(player),
         npc_to_battle_participant(npc)
     ], battleground.forest());
 
-    player.current_battle_id = battle_id;
+    player.current_battle_id = battle.id;
+
+    check_and_try_perform_ai_actions(battle);
 }
 
 function initiate_battle_between_players(player_one: Map_Player, player_two: Map_Player) {
     player_one.state = Player_State.in_battle;
     player_two.state = Player_State.in_battle;
 
-    const battle_id = start_battle([
+    const battle = start_battle([
         player_to_battle_participant(player_one),
         player_to_battle_participant(player_two)
     ], battleground.forest());
 
-    player_one.current_battle_id = battle_id;
-    player_two.current_battle_id = battle_id;
+    player_one.current_battle_id = battle.id;
+    player_two.current_battle_id = battle.id;
 }
 
 function check_and_disconnect_offline_players() {
@@ -667,6 +655,8 @@ register_api_handler(Api_Request_Type.take_battle_action, req => {
 
         const previous_head = battle.deltas.length;
         const deltas = try_take_turn_action(battle, battle_player, req.action);
+
+        check_and_try_perform_ai_actions(battle);
 
         if (deltas) {
             return {
