@@ -1972,16 +1972,28 @@ export function start_battle(participants: Battle_Participant[], battleground: B
             };
         }
     }
-    const battle_players: Battle_Participant_Info[] = participants.map(player => ({
-        id: player.id,
-        deployment_zone: player == participants[0] ? battleground.deployment_zones[0] : battleground.deployment_zones[1],
-        map_entity: participant_to_map_entity(player)
-    }));
+
+    let entity_id_auto_increment = 0;
+
+    const battle_players: Battle_Participant_Info[] = [];
+    const participant_to_player_id = new Map<Battle_Participant, Battle_Player_Id>();
+
+    for (const participant of participants) {
+        const battle_player_id = entity_id_auto_increment++ as Battle_Player_Id;
+        const battle_player_info: Battle_Participant_Info = {
+            id: battle_player_id,
+            deployment_zone: participant == participants[0] ? battleground.deployment_zones[0] : battleground.deployment_zones[1],
+            map_entity: participant_to_map_entity(participant)
+        };
+
+        participant_to_player_id.set(participant, battle_player_id);
+        battle_players.push(battle_player_info);
+    }
 
     const battle: Battle_Record = {
         ...make_battle(battle_players, battleground.grid_size.x, battleground.grid_size.y),
         id: battle_id_auto_increment++ as Battle_Id,
-        entity_id_auto_increment: 0,
+        entity_id_auto_increment: entity_id_auto_increment,
         deferred_actions: [],
         random_seed: random_int_range(0, 65536),
         finished: false,
@@ -2076,7 +2088,10 @@ export function start_battle(participants: Battle_Participant[], battleground: B
     }
 
     for (const participant of participants) {
-        const player = battle.players.find(player => player.id == participant.id);
+        const participant_player_id = participant_to_player_id.get(participant);
+        if (participant_player_id == undefined) continue;
+
+        const player = find_player_by_id(battle, participant_player_id);
         if (!player) continue;
 
         const random_heroes = pick_n_random(participant.heroes.slice(), 3);
