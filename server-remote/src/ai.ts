@@ -1,7 +1,7 @@
 import {readFileSync} from "fs";
 import {
     Battle_Record,
-    find_unoccupied_cell_in_deployment_zone_for_player,
+    find_unoccupied_cells_in_deployment_zone_for_player,
     random_in_array,
     try_take_turn_action
 } from "./battle";
@@ -197,7 +197,7 @@ function try_use_any_card(battle: Battle_Record, ai: Battle_Player) {
     const random_hero_card = random_in_array(ai.hand.filter(card => card.type == Card_Type.hero));
 
     if (random_hero_card) {
-        const random_unoccupied_position = random_in_array(find_unoccupied_cell_in_deployment_zone_for_player(battle, ai));
+        const random_unoccupied_position = random_in_array(find_unoccupied_cells_in_deployment_zone_for_player(battle, ai));
 
         if (random_unoccupied_position) {
             try_take_turn_action(battle, ai, {

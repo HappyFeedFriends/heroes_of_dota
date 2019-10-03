@@ -1,39 +1,40 @@
 declare const enum Delta_Type {
     hero_spawn = 0,
     creep_spawn = 1,
-    tree_spawn = 2,
-    rune_spawn = 3,
-    shop_spawn = 4,
+    minion_spawn = 2,
+    tree_spawn = 3,
+    rune_spawn = 4,
+    shop_spawn = 5,
 
-    gold_change = 5,
-    health_change = 6,
-    level_change = 7,
+    gold_change = 6,
+    health_change = 7,
+    level_change = 8,
 
-    use_ground_target_spell = 8,
-    use_unit_target_spell = 9,
-    use_no_target_spell = 10,
+    use_ground_target_spell = 9,
+    use_unit_target_spell = 10,
+    use_no_target_spell = 11,
 
-    use_ground_target_ability = 11,
-    use_unit_target_ability = 12,
-    use_no_target_ability = 13,
+    use_ground_target_ability = 12,
+    use_unit_target_ability = 13,
+    use_no_target_ability = 14,
 
-    draw_hero_card = 14,
-    draw_spell_card = 15,
-    use_card = 16,
+    draw_hero_card = 15,
+    draw_spell_card = 16,
+    use_card = 17,
 
-    hero_spawn_from_hand = 17,
-    unit_move = 18,
-    modifier_removed = 19,
-    set_ability_charges_remaining = 20,
-    ability_effect_applied = 21,
-    item_effect_applied = 22,
-    rune_pick_up = 23,
-    purchase_item = 24,
-    equip_item = 25,
+    hero_spawn_from_hand = 18,
+    unit_move = 19,
+    modifier_removed = 20,
+    set_ability_charges_remaining = 21,
+    ability_effect_applied = 22,
+    item_effect_applied = 23,
+    rune_pick_up = 24,
+    purchase_item = 25,
+    equip_item = 26,
 
-    end_turn = 26,
-    game_start = 27,
-    game_over = 28,
+    end_turn = 27,
+    game_start = 28,
+    game_over = 29,
 }
 
 declare const enum Action_Type {
@@ -437,6 +438,17 @@ type Delta_Creep_Spawn = {
     }
 }
 
+type Delta_Minion_Spawn = {
+    type: Delta_Type.minion_spawn
+    minion_type: Minion_Type
+    unit_id: Unit_Id
+    owner_id: Battle_Player_Id
+    at_position: {
+        x: number
+        y: number
+    }
+}
+
 type Delta_Tree_Spawn = {
     type: Delta_Type.tree_spawn
     tree_id: Tree_Id
@@ -600,6 +612,7 @@ type Delta =
     Delta_Move |
     Delta_Hero_Spawn |
     Delta_Creep_Spawn |
+    Delta_Minion_Spawn |
     Delta_Tree_Spawn |
     Delta_Rune_Spawn |
     Delta_Shop_Spawn |

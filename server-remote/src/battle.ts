@@ -32,6 +32,7 @@ type Npc_Participant = {
     npc_type: Npc_Type
     heroes: Hero_Type[]
     spells: Spell_Id[]
+    minions: Minion_Type[]
 }
 
 const battles: Battle_Record[] = [];
@@ -269,7 +270,7 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
         }
 
         case Spell_Id.call_to_arms: {
-            const spawn_points = pick_n_random(find_unoccupied_cell_in_deployment_zone_for_player(battle, player), spell.minions_to_summon);
+            const spawn_points = pick_n_random(find_unoccupied_cells_in_deployment_zone_for_player(battle, player), spell.minions_to_summon);
 
             return {
                 ...base,
@@ -1458,6 +1459,18 @@ function spawn_hero(battle: Battle_Record, owner: Battle_Player, at_position: XY
     };
 }
 
+function spawn_minion(battle: Battle_Record, owner: Battle_Player, at_position: XY, type: Minion_Type) : Delta_Minion_Spawn {
+    const id = get_next_entity_id(battle) as Unit_Id;
+
+    return {
+        type: Delta_Type.minion_spawn,
+        at_position: at_position,
+        owner_id: owner.id,
+        minion_type: type,
+        unit_id: id
+    };
+}
+
 function spawn_creep(battle: Battle_Record, at_position: XY, facing: XY): Delta_Creep_Spawn {
     const id = get_next_entity_id(battle) as Unit_Id;
 
@@ -1921,7 +1934,7 @@ function submit_battle_deltas(battle: Battle_Record, battle_deltas: Delta[]) {
     }
 }
 
-export function find_unoccupied_cell_in_deployment_zone_for_player(battle: Battle_Record, player: Battle_Player) {
+export function find_unoccupied_cells_in_deployment_zone_for_player(battle: Battle_Record, player: Battle_Player) {
     return battle.cells.filter(cell => !cell.occupied && is_point_in_deployment_zone(battle, cell.position, player));
 }
 
@@ -2094,12 +2107,21 @@ export function start_battle(participants: Battle_Participant[], battleground: B
         const player = find_player_by_id(battle, participant_player_id);
         if (!player) continue;
 
-        const random_heroes = pick_n_random(participant.heroes.slice(), 3);
-        const free_cells = find_unoccupied_cell_in_deployment_zone_for_player(battle, player);
-        const spawn_points = pick_n_random(free_cells, 3);
+        const heroes = participant.heroes;
+        const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, player);
+        const spawn_points = pick_n_random(free_cells, heroes.length);
 
-        for (let index = 0; index < random_heroes.length; index++) {
-            spawn_deltas.push(spawn_hero(battle, player, spawn_points[index].position, random_heroes[index]));
+        for (let index = 0; index < heroes.length; index++) {
+            spawn_deltas.push(spawn_hero(battle, player, spawn_points[index].position, heroes[index]));
+        }
+
+        if (participant.type == Map_Entity_Type.npc) {
+            const minions = participant.minions;
+            const minion_spawn_points = pick_n_random(free_cells, minions.length);
+
+            for (let index = 0; index < minions.length; index++) {
+                spawn_deltas.push(spawn_minion(battle, player, minion_spawn_points[index].position, minions[index]));
+            }
         }
 
         spawn_deltas.push(get_starting_gold(player));

@@ -2547,32 +2547,44 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             const owner = array_find(battle.participants, player => player.id == delta.owner_id);
             if (!owner) break;
 
-            fx("particles/hero_spawn.vpcf")
-                .to_location(0, delta.at_position)
-                .release();
+            spawn_unit_with_fx(delta.at_position, () => {
+                const facing = { x: owner.deployment_zone.face_x, y: owner.deployment_zone.face_y };
+                const unit = spawn_hero_for_battle(delta.hero_type, delta.unit_id, delta.owner_id, delta.at_position, facing);
 
-            wait(0.25);
+                if (delta.hero_type == Hero_Type.mirana) {
+                    add_activity_translation(unit, Activity_Translation.ti8, 1.0);
+                }
 
-            shake_screen(delta.at_position, Shake.medium);
+                unit.handle.ForcePlayActivityOnce(GameActivity_t.ACT_DOTA_SPAWN);
 
-            const facing = { x: owner.deployment_zone.face_x, y: owner.deployment_zone.face_y };
-            const unit = spawn_hero_for_battle(delta.hero_type, delta.unit_id, delta.owner_id, delta.at_position, facing);
+                if (battle.has_started) {
+                    try_play_random_sound_for_hero(unit, sounds => sounds.spawn);
+                }
 
-            if (delta.hero_type == Hero_Type.mirana) {
-                add_activity_translation(unit, Activity_Translation.ti8, 1.0);
-            }
+                return unit;
+            });
 
-            unit.handle.ForcePlayActivityOnce(GameActivity_t.ACT_DOTA_SPAWN);
-
-            battle.units.push(unit);
+            update_player_state_net_table(main_player);
 
             if (battle.has_started) {
-                try_play_random_sound_for_hero(unit, sounds => sounds.spawn);
+                wait(1.5);
+            } else {
+                wait(0.25);
             }
 
-            unit_emit_sound(unit, "hero_spawn");
-            show_damage_effect_on_target(unit);
-            fx_by_unit("particles/dev/library/base_dust_hit.vpcf", unit).release();
+            break;
+        }
+
+        case Delta_Type.minion_spawn: {
+            const owner = array_find(battle.participants, player => player.id == delta.owner_id);
+            if (!owner) break;
+
+            spawn_unit_with_fx(delta.at_position, () => {
+                const facing = { x: owner.deployment_zone.face_x, y: owner.deployment_zone.face_y };
+                const unit = spawn_minion_for_battle(delta.minion_type, delta.unit_id, delta.owner_id, delta.at_position, facing);
+                unit.handle.ForcePlayActivityOnce(GameActivity_t.ACT_DOTA_SPAWN);
+                return unit;
+            });
 
             update_player_state_net_table(main_player);
 

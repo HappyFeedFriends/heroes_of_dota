@@ -352,8 +352,9 @@ function npc_to_battle_participant(npc: Map_Npc): Battle_Participant {
         type: Map_Entity_Type.npc,
         id: npc.id,
         npc_type: npc.type,
-        heroes: [ Hero_Type.ursa, Hero_Type.mirana, Hero_Type.vengeful_spirit ],
-        spells: []
+        heroes: [ Hero_Type.ursa ],
+        spells: [],
+        minions: [ Minion_Type.lane_minion, Minion_Type.lane_minion ]
     }
 }
 

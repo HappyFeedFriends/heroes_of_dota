@@ -891,7 +891,7 @@ function unit_spawn_event(unit: Unit, at: XY): Battle_Event {
     }
 }
 
-function spawn_minion(battle: Battle, owner: Battle_Player, unit_id: Unit_Id, type: Minion_Type, at: XY): Minion {
+function create_minion(battle: Battle, owner: Battle_Player, unit_id: Unit_Id, type: Minion_Type, at: XY): Minion {
     const minion: Minion = {
         ...unit_base(unit_id, minion_definition_by_type(type), at),
         supertype: Unit_Supertype.minion,
@@ -1326,7 +1326,7 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
 
         case Spell_Id.call_to_arms: {
             for (const summon of cast.summons) {
-                spawn_minion(battle, caster, summon.unit_id, summon.unit_type, summon.at);
+                create_minion(battle, caster, summon.unit_id, summon.unit_type, summon.at);
             }
 
             break;
@@ -1339,7 +1339,7 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
 function collapse_ground_target_spell_use(battle: Battle, caster: Battle_Player, at: XY, cast: Delta_Use_Ground_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.pocket_tower: {
-            spawn_minion(battle, caster, cast.new_unit_id, cast.new_unit_type, at);
+            create_minion(battle, caster, cast.new_unit_id, cast.new_unit_type, at);
 
             break;
         }
@@ -1609,6 +1609,15 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             occupy_cell(battle, delta.at_position);
 
             battle.receive_event(battle, unit_spawn_event(creep, delta.at_position));
+
+            break;
+        }
+
+        case Delta_Type.minion_spawn: {
+            const owner = find_player_by_id(battle, delta.owner_id);
+            if (!owner) break;
+
+            create_minion(battle, owner, delta.unit_id, delta.minion_type, delta.at_position);
 
             break;
         }
