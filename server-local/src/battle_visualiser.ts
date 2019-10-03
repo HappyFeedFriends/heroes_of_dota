@@ -239,6 +239,8 @@ function minion_type_to_dota_unit_name(minion_type: Minion_Type): string {
     switch (minion_type) {
         case Minion_Type.pocket_tower: return "hod_pocket_tower";
         case Minion_Type.lane_minion: return "hod_lane_minion";
+        case Minion_Type.monster_satyr_big: return "monster_satyr_big";
+        case Minion_Type.monster_satyr_small: return "monster_satyr_small";
     }
 }
 

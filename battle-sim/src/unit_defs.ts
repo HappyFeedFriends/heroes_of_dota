@@ -460,5 +460,27 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
                 ability_bench: []
             }
         }
+
+        case Minion_Type.monster_satyr_big: {
+            return {
+                attack_damage: 6,
+                health: 12,
+                move_points: 2,
+                attack: basic_attack(1),
+                abilities: [],
+                ability_bench: []
+            }
+        }
+
+        case Minion_Type.monster_satyr_small: {
+            return {
+                attack_damage: 3,
+                health: 6,
+                move_points: 3,
+                attack: basic_attack(1),
+                abilities: [],
+                ability_bench: []
+            }
+        }
     }
 }

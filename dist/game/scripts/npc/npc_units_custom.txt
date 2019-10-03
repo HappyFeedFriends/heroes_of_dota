@@ -68,4 +68,36 @@
             "CanRespawn"  "1"
         }
     }
+
+    "monster_satyr_big" {
+        "Model"  "models/creeps/neutral_creeps/n_creep_satyr_a/n_creep_satyr_a.mdl"
+        "BaseClass"  "npc_dota_creature"
+        "ModelScale"  "1"
+
+        "AttackCapabilities"  "DOTA_UNIT_CAP_NO_ATTACK"
+        "MovementCapabilities"  "DOTA_UNIT_CAP_MOVE_GROUND"
+
+        "VisionDaytimeRange"  "0"
+        "VisionNighttimeRange"  "0"
+
+        "Creature" {
+            "CanRespawn"  "1"
+        }
+    }
+
+    "monster_satyr_small" {
+        "Model"  "models/creeps/neutral_creeps/n_creep_satyr_c/n_creep_satyr_c.mdl"
+        "BaseClass"  "npc_dota_creature"
+        "ModelScale"  "0.8"
+
+        "AttackCapabilities"  "DOTA_UNIT_CAP_NO_ATTACK"
+        "MovementCapabilities"  "DOTA_UNIT_CAP_MOVE_GROUND"
+
+        "VisionDaytimeRange"  "0"
+        "VisionNighttimeRange"  "0"
+
+        "Creature" {
+            "CanRespawn"  "1"
+        }
+    }
 }
