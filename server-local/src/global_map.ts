@@ -119,7 +119,7 @@ function create_new_npc_from_movement_data(data: NPC_Movement_Data): Map_NPC {
         id: data.id,
         type: data.type,
         movement_history: data.movement_history,
-        unit: create_map_unit("hod_creep", data.current_location),
+        unit: create_map_unit("monster_satyr_big", data.current_location),
         last_recorded_x: data.current_location.x,
         last_recorded_y: data.current_location.y
     };
