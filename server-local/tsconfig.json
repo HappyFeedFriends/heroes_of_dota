@@ -14,8 +14,7 @@
     "rootDir": "src",
     "outDir": "../dist/game/scripts/vscripts",
     "plugins": [
-      { "transform": "../codegen/src/meta.ts" },
-      { "transform": "../codegen/src/lua_generator.ts", "after": true }
+      { "transform": "../codegen/src/meta.ts" }
     ]
   },
   "include": [
@@ -27,6 +26,9 @@
     "../api_definitions/spells.d.ts",
     "../api_definitions/items.d.ts"
   ],
-  "luaTarget": "JIT",
-  "luaLibImport": "require"
+  "tstl": {
+    "luaTarget": "JIT",
+    "luaLibImport": "require",
+    "noImplicitSelf": true
+  }
 }

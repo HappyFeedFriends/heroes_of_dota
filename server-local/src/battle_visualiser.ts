@@ -368,32 +368,35 @@ function unit_base(unit_id: Unit_Id, dota_unit_name: string, definition: Unit_De
 function spawn_creep_for_battle(unit_id: Unit_Id, definition: Unit_Definition, at: XY, facing: XY): Creep {
     const base = unit_base(unit_id, creep_type_to_dota_unit_name(), definition, at, facing);
 
-    return assign<Unit_Base, Creep>(base, {
+    return {
+        ...base,
         supertype: Unit_Supertype.creep
-    })
+    }
 }
 
 function spawn_hero_for_battle(hero_type: Hero_Type, unit_id: Unit_Id, owner_id: Battle_Player_Id, at: XY, facing: XY): Hero {
     const definition = hero_definition_by_type(hero_type);
     const base = unit_base(unit_id, hero_type_to_dota_unit_name(hero_type), definition, at, facing);
 
-    return assign<Unit_Base, Hero>(base, {
+    return {
+        ...base,
         supertype: Unit_Supertype.hero,
         type: hero_type,
         owner_remote_id: owner_id,
         level: 1
-    });
+    };
 }
 
-function spawn_minion_for_battle(type: Minion_Type, unit_id: Unit_Id, owner_id: Battle_Player_Id, at: XY, facing: XY) {
+function spawn_minion_for_battle(type: Minion_Type, unit_id: Unit_Id, owner_id: Battle_Player_Id, at: XY, facing: XY): Minion {
     const definition = minion_definition_by_type(type);
     const base = unit_base(unit_id, minion_type_to_dota_unit_name(type), definition, at, facing);
 
-    return assign<Unit_Base, Minion>(base, {
+    return {
+        ...base,
         supertype: Unit_Supertype.minion,
         type: type,
         owner_remote_id: owner_id,
-    });
+    };
 }
 
 function tracking_projectile_from_point_to_unit(world_point: Vector, target: Unit, particle_path: string, speed: number) {
@@ -3142,8 +3145,8 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
     }));
 
     battle.units = snapshot.units.map(unit => {
-        const stats = unit as Unit_Stats;
-        const base: Unit_Base = assign(stats, {
+        const base: Unit_Base = {
+            ...copy(unit as Unit_Stats),
             id: unit.id,
             dead: unit.health <= 0,
             position: unit.position,
@@ -3154,30 +3157,33 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
                 changes: from_client_array(modifier.changes)
             })),
             hidden: false // We will update it in update_state_visuals
-        });
+        };
 
         switch (unit.supertype) {
             case Unit_Supertype.hero: {
-                return assign<Unit_Base, Hero>(base, {
+                return {
+                    ...base,
                     supertype: Unit_Supertype.hero,
                     level: unit.level,
                     type: unit.type,
                     owner_remote_id: unit.owner_id
-                });
+                };
             }
 
             case Unit_Supertype.creep: {
-                return assign<Unit_Base, Creep>(base, {
+                return {
+                    ...base,
                     supertype: Unit_Supertype.creep
-                });
+                };
             }
 
             case Unit_Supertype.minion: {
-                return assign<Unit_Base, Minion>(base, {
+                return {
+                    ...base,
                     supertype: Unit_Supertype.minion,
                     type: unit.type,
                     owner_remote_id: unit.owner_id
-                });
+                };
             }
         }
     });

@@ -8,8 +8,8 @@
   "devDependencies": {
     "@types/node": "^12.6.9",
     "ttypescript": "^1.5.5",
-    "typescript": "3.3.3",
-    "typescript-to-lua": "^0.15.2"
+    "typescript": "3.6.3",
+    "typescript-to-lua": "0.28.0"
   },
   "author": "",
   "license": "ISC"

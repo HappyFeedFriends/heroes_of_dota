@@ -785,7 +785,6 @@ function end_turn(battle: Battle, next_turning_player: Battle_Player) {
 }
 
 function change_health(battle: Battle, source: Source, target: Unit, change: Health_Change) {
-    // @AsConst
     const event_base = {
         source: source,
         target: target,

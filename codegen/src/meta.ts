@@ -192,23 +192,6 @@ export default function run_transformer(program: ts.Program, options: Options): 
                     } else {
                         error_out(argument, "Only string literals are supported, " + type.kind + " given");
                     }
-                } else if (function_name == "assign") {
-                    const source = call.arguments[0];
-                    const type = resolve_alias(toSimpleType(source, checker));
-                    const assign_target = call.arguments[1];
-
-                    if (source.kind != ts.SyntaxKind.ObjectLiteralExpression && source.kind != ts.SyntaxKind.Identifier) {
-                        error_out(source, "Unsupported argument type, currently only identifiers and object literals are supported");
-                    }
-
-                    const result_properties: ts.PropertyAssignment[] = extract_members([ type ])
-                        .map(member => ts.createPropertyAssignment(member.name, ts.createPropertyAccess(source, member.name)));
-
-                    const argument_properties = object_to_property_assignments(assign_target as ts.ObjectLiteralExpression);
-
-                    result_properties.push(...argument_properties);
-
-                    return ts.createObjectLiteral(result_properties, true);
                 } else if (function_name == "spell" || function_name == "active_ability" || function_name == "passive_ability") {
                     const type = resolve_alias(toSimpleType(call.typeArguments[0], checker));
                     const argument = call.arguments[0];

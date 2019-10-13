@@ -51,7 +51,6 @@ function unreachable(x: never): never {
     throw "Didn't expect to get here";
 }
 
-// TODO array.find doesn't work in TSTL
 function array_find<T>(array: Array<T>, predicate: (element: T) => boolean): T | undefined {
     for (const element of array) {
         if (predicate(element)) {
@@ -93,31 +92,34 @@ function log_chat_debug_message(message: string) {
 
 function unit_to_visualizer_unit_data(unit: Unit): Visualizer_Unit_Data {
     // TODO some of those properties are not actually needed
-    const stats = unit as Unit_Stats;
-    const base: Visualizer_Unit_Data_Base = assign(stats, {
+    const base: Visualizer_Unit_Data_Base = {
+        ...copy(unit as Unit_Stats),
         id: unit.id,
         modifiers: unit.modifiers.map(data => data.modifier_id),
         hidden: unit.hidden
-    });
+    };
 
     switch (unit.supertype) {
         case Unit_Supertype.hero: {
-            return assign<Visualizer_Unit_Data_Base, Visualizer_Hero_Data>(base, {
+            return {
+                ...base,
                 supertype: Unit_Supertype.hero,
                 level: unit.level
-            })
+            }
         }
 
         case Unit_Supertype.creep: {
-            return assign<Visualizer_Unit_Data_Base, Visualizer_Creep_Data>(base, {
+            return {
+                ...base,
                 supertype: Unit_Supertype.creep
-            })
+            }
         }
 
         case Unit_Supertype.minion: {
-            return assign<Visualizer_Unit_Data_Base, Visualizer_Minion_Data>(base, {
+            return {
+                ...base,
                 supertype: Unit_Supertype.minion
-            })
+            }
         }
     }
 }
@@ -473,7 +475,7 @@ function game_loop() {
 
                         if (!delta) break;
 
-                        print(`Playing delta ${delta.type} (#${battle.delta_head})`);
+                        print(`Playing delta ${enum_to_string(delta.type)} (#${battle.delta_head})`);
 
                         play_delta(main_player, delta, battle.delta_head);
                         update_player_state_net_table(main_player);

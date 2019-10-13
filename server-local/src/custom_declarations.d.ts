@@ -39,9 +39,6 @@ declare namespace table {
     function maxn(array: any[]): number;
 }
 
-// See meta.ts
-declare function assign<Source, Target>(source: Source, params: Pick<Target, Exclude<keyof Target, keyof Source>>): Target;
-
 declare function SendOverheadEventMessage(player: CDOTAPlayer, messageType: Overhead_Event_Type, unit: CDOTA_BaseNPC, value: number, sourcePlayer: CDOTAPlayer): void;
 
 /** @CompileMembersOnly */

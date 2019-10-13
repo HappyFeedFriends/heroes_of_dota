@@ -1574,7 +1574,7 @@ function make_battle_snapshot(): Battle_Snapshot {
         units: battle.units
             .filter(unit => !unit.dead)
             .map(unit => {
-                const snapshot_base: Unit_Snapshot_Base = {
+                const snapshot_base = {
                     ...copy(unit as Unit_Stats),
                     id: unit.id,
                     position: unit.position,
@@ -1588,35 +1588,29 @@ function make_battle_snapshot(): Battle_Snapshot {
 
                 switch (unit.supertype) {
                     case Unit_Supertype.hero: {
-                        const hero: Hero_Snapshot = {
+                        return {
                             ...snapshot_base,
                             supertype: Unit_Supertype.hero,
                             type: unit.type,
                             level: unit.level,
                             owner_id: unit.owner.id
                         };
-
-                        return hero;
                     }
 
                     case Unit_Supertype.creep: {
-                        const creep: Creep_Snapshot = {
+                        return {
                             ...snapshot_base,
                             supertype: Unit_Supertype.creep
                         };
-
-                        return creep;
                     }
 
                     case Unit_Supertype.minion: {
-                        const minion: Minion_Snapshot = {
+                        return {
                             ...snapshot_base,
                             supertype: Unit_Supertype.minion,
                             type: unit.type,
                             owner_id: unit.owner.id
                         };
-
-                        return minion;
                     }
                 }
             }),

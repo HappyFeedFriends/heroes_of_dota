@@ -4,13 +4,13 @@ function get_dedicated_server_key() {
     return GetDedicatedServerKey("v1");
 }
 
-function remote_request_async<T extends Object, N extends Object>(endpoint: string, body: T, callback: (data: N) => void, error_callback?: (code: number) => void) {
+function remote_request_async(endpoint: string, body: any, callback: (data: any) => void, error_callback?: (code: number) => void) {
     const request = CreateHTTPRequestScriptVM("POST", remote_root + endpoint);
 
     request.SetHTTPRequestRawPostBody("application/json", json.encode(body));
     request.Send(response => {
         if (response.StatusCode == 200) {
-            callback(json.decode(response.Body) as N);
+            callback(json.decode(response.Body));
         } else {
             print(`Error executing request to ${endpoint}: code ${response.StatusCode}, ${response.Body}`);
 
@@ -25,7 +25,7 @@ function api_request<T extends Api_Request_Type>(type: T, data: Find_Request<T>)
     let request_completed = false;
     let result: Find_Response<T> | undefined = undefined;
 
-    remote_request_async<Find_Request<T>, Find_Response<T>>("/api" + type, data,
+    remote_request_async("/api" + type, data,
         response => {
             result = response;
             request_completed = true;
@@ -49,7 +49,7 @@ function api_request_with_retry_on_403<T extends Api_Request_Type>(type: T, main
 
         let unauthorized = false;
 
-        remote_request_async<Find_Request<T>, Find_Response<T>>("/api" + type, data,
+        remote_request_async("/api" + type, data,
             response => {
                 result = response;
                 request_completed = true;
