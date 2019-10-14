@@ -1,7 +1,8 @@
 declare const enum Player_State {
     on_global_map = 0,
     in_battle = 1,
-    not_logged_in = 2
+    on_adventure = 2,
+    not_logged_in = 3
 }
 
 declare const enum Api_Request_Type {
@@ -25,6 +26,8 @@ declare const enum Api_Request_Type {
     get_deck = 13,
     save_deck = 14,
 
+    start_adventure = 200,
+
     battle_cheat = 50,
     get_debug_ai_data = 100
 }
@@ -47,6 +50,13 @@ type Npc_Id = number & Npc_Id_Brand;
 declare const enum Battle_Id_Brand { _ = "" }
 type Battle_Id = number & Battle_Id_Brand;
 
+
+declare const enum Adventure_Id_Brand { _ = "" }
+type Adventure_Id = number & Adventure_Id_Brand;
+
+declare const enum Adventure_Room_Id_Brand { _ = "" }
+type Adventure_Room_Id = number & Adventure_Room_Id_Brand;
+
 type Movement_History_Entry = {
     order_x: number
     order_y: number
@@ -54,11 +64,11 @@ type Movement_History_Entry = {
     location_y: number
 }
 
-type Player_State_Not_Logged_In_Data = {
+type Player_State_Not_Logged_In = {
     state: Player_State.not_logged_in
 }
 
-type Player_State_On_Global_Map_Data = {
+type Player_State_On_Global_Map = {
     state: Player_State.on_global_map
     player_position: {
         x: number
@@ -66,7 +76,11 @@ type Player_State_On_Global_Map_Data = {
     }
 }
 
-type Player_State_In_Battle_Data = {
+type Player_State_On_Adventure = {
+    state: Player_State.on_adventure
+}
+
+type Player_State_In_Battle = {
     state: Player_State.in_battle
     battle_id: Battle_Id
     battle_player_id: Battle_Player_Id
@@ -78,7 +92,11 @@ type Player_State_In_Battle_Data = {
     participants: Battle_Participant_Info[]
 }
 
-type Player_State_Data = Player_State_Not_Logged_In_Data | Player_State_On_Global_Map_Data | Player_State_In_Battle_Data
+type Player_State_Data =
+    Player_State_Not_Logged_In |
+    Player_State_On_Global_Map |
+    Player_State_On_Adventure |
+    Player_State_In_Battle
 
 type With_Token = {
     access_token: string
@@ -228,6 +246,12 @@ type Api_Request = {
 
     request: {}
     response: Debug_AI_Data
+} | {
+    type: Api_Request_Type.start_adventure
+    request: {
+        adventure_id: Adventure_Id
+    } & With_Token & With_Private_Key
+    response: Player_State_Data
 }
 
 type Collection_Page = {

@@ -1,7 +1,7 @@
 import {createServer} from "http";
 import {randomBytes} from "crypto"
 import {
-    Battle_Participant,
+    Battle_Participant, Battle_Record,
     cheat,
     find_battle_by_id,
     get_all_battles,
@@ -36,14 +36,11 @@ const enum Right {
 }
 
 export type Map_Player = {
+    entity_type: Map_Entity_Type.player
     steam_id: string
     id: Player_Id;
     name: string;
-    current_location: XY;
-    movement_history: Movement_History_Entry[];
-    state: Player_State;
-    current_battle_id: Battle_Id; // TODO maybe we don't want to have current_battle_id in other states, but a union for 1 value? ehh
-    current_battle_player_id: Battle_Player_Id
+    online: Map_Player_State
     active_logins: number
     deck: Card_Deck
     collection: Card_Collection
@@ -54,6 +51,21 @@ export type Map_Player_Login = {
     chat_timestamp: number
     token: string
     last_used_at: number
+}
+
+type Map_Player_State = {
+    state: Player_State.on_global_map
+    current_location: XY
+    movement_history: Movement_History_Entry[]
+} | {
+    state: Player_State.in_battle
+    battle: Battle_Record
+    battle_player: Battle_Player
+    previous_state: Map_Player_State
+} | {
+    state: Player_State.on_adventure
+} | {
+    state: Player_State.not_logged_in
 }
 
 type Card_Deck = {
@@ -76,6 +88,21 @@ type Card_Collection = {
     spells: Collection_Spell_Card[]
 }
 
+const enum Adventure_Room_Type {
+    combat = 0,
+    rest = 1
+}
+
+type Adventure = {
+    id: Adventure_Id
+}
+
+type Adventure_Room = {
+    type: Adventure_Room_Type.combat
+} | {
+    type: Adventure_Room_Type.rest
+}
+
 let dev_mode = false;
 
 const players: Map_Player[] = [];
@@ -88,8 +115,6 @@ const heroes_in_deck = 3;
 const spells_in_deck = 5;
 
 let player_id_auto_increment: Player_Id = 0 as Player_Id;
-
-let test_player: Map_Player | undefined = undefined;
 
 export let random: () => number;
 export let random_seed: number;
@@ -128,19 +153,20 @@ function make_new_player(steam_id: string, name: string): Map_Player {
     };
 
     return {
+        entity_type: Map_Entity_Type.player,
         steam_id: steam_id,
         id: player_id_auto_increment++ as Player_Id,
         name: name,
-        state: Player_State.on_global_map,
-        current_location: xy(0, 0),
-        movement_history: [],
-        current_battle_id: 0 as Battle_Id, // TODO ugh
-        current_battle_player_id: 0 as Battle_Player_Id,
         active_logins: 0,
         deck: deck,
         collection: {
             heroes: heroes,
             spells: spells
+        },
+        online: {
+            state: Player_State.on_global_map,
+            current_location: xy(0, 0),
+            movement_history: [],
         }
     }
 }
@@ -241,28 +267,24 @@ type Result_Error = {
 }
 
 function player_to_player_state_object(player: Map_Player): Player_State_Data {
-    switch (player.state) {
+    switch (player.online.state) {
         case Player_State.on_global_map: {
             return {
-                state: player.state,
+                state: player.online.state,
                 player_position: {
-                    x: player.current_location.x,
-                    y: player.current_location.y
+                    x: player.online.current_location.x,
+                    y: player.online.current_location.y
                 }
             }
         }
 
         case Player_State.in_battle: {
-            const battle = find_battle_by_id(player.current_battle_id);
-
-            if (!battle) {
-                throw `Battle ${player.current_battle_id} not found for player ${player.id}`;
-            }
+            const battle = player.online.battle;
 
             return {
-                state: player.state,
-                battle_id: player.current_battle_id,
-                battle_player_id: player.current_battle_player_id,
+                state: player.online.state,
+                battle_id: battle.id,
+                battle_player_id: player.online.battle_player.id,
                 random_seed: battle.random_seed,
                 participants: battle.players.map(player => ({
                     id: player.id,
@@ -276,20 +298,16 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
             }
         }
 
-        case Player_State.not_logged_in: {
+        case Player_State.on_adventure: {
             return {
-                state: player.state
+                state: player.online.state
             }
         }
 
-        default: unreachable(player.state);
-    }
-
-    return {
-        state: player.state,
-        player_position: {
-            x: player.current_location.x,
-            y: player.current_location.y
+        case Player_State.not_logged_in: {
+            return {
+                state: player.online.state
+            }
         }
     }
 }
@@ -297,31 +315,31 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
 function can_player(player: Map_Player, right: Right) {
     switch (right) {
         case Right.log_in_with_character: {
-            return player.state == Player_State.not_logged_in;
+            return player.online.state == Player_State.not_logged_in;
         }
 
         case Right.attack_a_character: {
-            return player.state == Player_State.on_global_map;
+            return player.online.state == Player_State.on_global_map;
         }
 
         case Right.participate_in_a_battle: {
-            return player.state == Player_State.on_global_map;
+            return player.online.state == Player_State.on_global_map;
         }
 
         case Right.submit_movement: {
-            return player.state == Player_State.on_global_map;
+            return player.online.state == Player_State.on_global_map;
         }
 
         case Right.submit_battle_action: {
-            return player.state == Player_State.in_battle;
+            return player.online.state == Player_State.in_battle;
         }
 
         case Right.submit_chat_messages: {
-            return player.state != Player_State.not_logged_in;
+            return player.online.state != Player_State.not_logged_in;
         }
 
         case Right.query_battles: {
-            return player.state == Player_State.on_global_map;
+            return player.online.state == Player_State.on_global_map;
         }
     }
 
@@ -358,32 +376,27 @@ function npc_to_battle_participant(npc: Map_Npc): Battle_Participant {
     }
 }
 
-function initiate_battle_between_player_and_npc(player: Map_Player, npc: Map_Npc) {
-    player.state = Player_State.in_battle;
+function initiate_battle(participants: (Map_Player | Map_Npc)[]) {
+    // TODO why doesn't this error????
+    const battle = start_battle(participants.map(player_to_battle_participant), battleground.forest());
 
-    // TODO change npc state
+    for (const battle_player of battle.players) {
+        const entity = battle_player.map_entity;
+        if (entity.type == Map_Entity_Type.player) {
+            const map_player = participants.find(participant => participant.id == entity.player_id && participant.entity_type == entity.type);
 
-    const battle = start_battle([
-        player_to_battle_participant(player),
-        npc_to_battle_participant(npc)
-    ], battleground.forest());
-
-    player.current_battle_id = battle.id;
+            if (map_player && map_player.entity_type == Map_Entity_Type.player) {
+                map_player.online = {
+                    state: Player_State.in_battle,
+                    battle: battle,
+                    battle_player: battle_player,
+                    previous_state: map_player.online
+                };
+            }
+        }
+    }
 
     check_and_try_perform_ai_actions(battle);
-}
-
-function initiate_battle_between_players(player_one: Map_Player, player_two: Map_Player) {
-    player_one.state = Player_State.in_battle;
-    player_two.state = Player_State.in_battle;
-
-    const battle = start_battle([
-        player_to_battle_participant(player_one),
-        player_to_battle_participant(player_two)
-    ], battleground.forest());
-
-    player_one.current_battle_id = battle.id;
-    player_two.current_battle_id = battle.id;
 }
 
 function check_and_disconnect_offline_players() {
@@ -398,12 +411,8 @@ function check_and_disconnect_offline_players() {
             player.active_logins--;
 
             if (player.active_logins == 0) {
-                if (player.state == Player_State.in_battle) {
-                    const battle = find_battle_by_id(player.current_battle_id);
-
-                    if (battle) {
-                        surrender_player_forces(battle, player);
-                    }
+                if (player.online.state == Player_State.in_battle) {
+                    surrender_player_forces(player.online.battle, player.online.battle_player);
                 }
 
                 steam_id_to_player.delete(player.steam_id);
@@ -448,8 +457,8 @@ export function report_battle_over(battle: Battle, winner_entity: Battle_Partici
             case Map_Entity_Type.player: {
                 const player = player_by_id(entity.player_id);
 
-                if (player) {
-                    player.state = Player_State.on_global_map;
+                if (player && player.online.state == Player_State.in_battle) {
+                    player.online = player.online.previous_state;
 
                     if (entity == winner_entity) {
                         submit_chat_message(player, `Battle over! ${player.name} wins`);
@@ -494,23 +503,15 @@ register_api_handler(Api_Request_Type.submit_player_movement, req => {
             return;
         }
 
-        player.current_location = xy(req.current_location.x, req.current_location.y);
-        player.movement_history = req.movement_history.map(entry => ({
+        if (player.online.state != Player_State.on_global_map) return;
+
+        player.online.current_location = xy(req.current_location.x, req.current_location.y);
+        player.online.movement_history = req.movement_history.map(entry => ({
             order_x: entry.order_x,
             order_y: entry.order_y,
             location_x: entry.location_x,
             location_y: entry.location_y
         }));
-
-        if (test_player) {
-            test_player.current_location = xy(req.current_location.x + 800, req.current_location.y);
-            test_player.movement_history = req.movement_history.map(entry => ({
-                order_x: entry.order_x + 800,
-                order_y: entry.order_y,
-                location_x: entry.location_x + 800,
-                location_y: entry.location_y
-            }));
-        }
 
         return true;
     });
@@ -524,7 +525,6 @@ register_api_handler(Api_Request_Type.submit_player_movement, req => {
     return result;
 });
 
-// TODO not necessarily has to be trusted, right? It's just a read, though might be a heavy one
 register_api_handler(Api_Request_Type.query_entity_movement, req => {
     if (!validate_dedicated_server_key(req.dedicated_server_key)) {
         return make_error(403);
@@ -539,10 +539,12 @@ register_api_handler(Api_Request_Type.query_entity_movement, req => {
 
         for (const player of players) {
             if (player != requesting_player && can_player(player, Right.submit_movement)) {
+                if (player.online.state != Player_State.on_global_map) continue;
+
                 player_movement.push({
                     id: player.id,
-                    movement_history: player.movement_history,
-                    current_location: player.current_location
+                    movement_history: player.online.movement_history,
+                    current_location: player.online.current_location
                 });
             }
         }
@@ -584,7 +586,7 @@ register_api_handler(Api_Request_Type.attack_player, req => {
             return;
         }
 
-        initiate_battle_between_players(player, other_player);
+        initiate_battle([ player, other_player ]);
 
         return player_to_player_state_object(player);
     });
@@ -609,7 +611,7 @@ register_api_handler(Api_Request_Type.attack_npc, req => {
         }
 
         // TODO check if npc is already in battle
-        initiate_battle_between_player_and_npc(player, npc);
+        initiate_battle([ player, npc ]);
 
         return player_to_player_state_object(player);
     });
@@ -640,22 +642,11 @@ register_api_handler(Api_Request_Type.take_battle_action, req => {
             return;
         }
 
-        const battle = find_battle_by_id(player.current_battle_id);
+        if (player.online.state != Player_State.in_battle) return;
 
-        if (!battle) {
-            console.error(`Player ${player.id} is in battle, but battle was not found`);
-            return;
-        }
-
-        const battle_player = battle.players.find(battle_player => battle_player.id == player.current_battle_player_id);
-
-        if (!battle_player) {
-            console.error(`Player ${player.id} is in battle, but was not found in the list of players`);
-            return;
-        }
-
+        const battle = player.online.battle;
         const previous_head = battle.deltas.length;
-        const deltas = try_take_turn_action(battle, battle_player, req.action);
+        const deltas = try_take_turn_action(battle, player.online.battle_player, req.action);
 
         check_and_try_perform_ai_actions(battle);
 
@@ -700,11 +691,9 @@ register_api_handler(Api_Request_Type.battle_cheat, req => {
     // TODO validate admin profile
 
     const result = try_do_with_player<true>(req.access_token, player => {
-        const battle = find_battle_by_id(player.current_battle_id);
+        if (player.online.state != Player_State.in_battle) return;
 
-        if (!battle) return;
-
-        cheat(battle, player, req.cheat, req.selected_unit_id);
+        cheat(player.online.battle, player.online.battle_player, req.cheat, req.selected_unit_id);
 
         return true;
     });
@@ -822,6 +811,17 @@ register_api_handler(Api_Request_Type.save_deck, req => {
         player.deck.spells = req.spells;
 
         return {};
+    }));
+});
+
+register_api_handler(Api_Request_Type.start_adventure, req => {
+    if (!validate_dedicated_server_key(req.dedicated_server_key)) {
+        return make_error(403);
+    }
+
+    return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+
+        return player_to_player_state_object(player);
     }));
 });
 

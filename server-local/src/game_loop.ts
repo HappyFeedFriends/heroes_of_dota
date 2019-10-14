@@ -182,6 +182,14 @@ function player_state_to_player_net_table(main_player: Main_Player): Player_Net_
             };
         }
 
+        case Player_State.on_adventure: {
+            return {
+                state: main_player.state,
+                id: main_player.remote_id,
+                token: main_player.token
+            };
+        }
+
         default: return unreachable(main_player.state);
     }
 }

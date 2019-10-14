@@ -22,6 +22,10 @@ type Game_Not_Logged_In = Game_Base & {
     state: Player_State.not_logged_in
 }
 
+type Game_On_Adventure = Game_Base & {
+    state: Player_State.on_adventure
+}
+
 type Game_On_Global_Map = Game_Base & {
     state: Player_State.on_global_map
     nearby_entities: Map_Entity[]
@@ -43,7 +47,7 @@ type Game_In_Battle = Game_Base & {
     show_ai_data: boolean
 }
 
-type Game = Game_In_Battle | Game_On_Global_Map | Game_Not_Logged_In;
+type Game = Game_In_Battle | Game_On_Global_Map | Game_On_Adventure | Game_Not_Logged_In;
 
 declare const enum Selection_Type {
     none = 0,
@@ -1693,6 +1697,13 @@ function game_from_state(player_state: Player_State_Data, game_base: Game_Base):
                 battles: [],
                 refreshed_nearby_players_at: Number.MIN_SAFE_INTEGER,
                 refreshed_battles_at: Number.MIN_SAFE_INTEGER
+            };
+        }
+
+        case Player_State.on_adventure: {
+            return {
+                ...game_base,
+                state: player_state.state
             };
         }
 

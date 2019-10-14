@@ -1,4 +1,4 @@
-import {Map_Player, random, report_battle_over} from "./server";
+import {random, report_battle_over} from "./server";
 import {readFileSync} from "fs";
 import {Battleground, Spawn_Type} from "./battleground";
 import {XY} from "./common";
@@ -1950,24 +1950,20 @@ export function get_all_battles(): Battle_Record[] {
     return battles;
 }
 
-export function surrender_player_forces(battle: Battle_Record, player: Map_Player) {
-    const battle_player = battle.players.find(battle_player => battle_player.id == player.current_battle_player_id);
+export function surrender_player_forces(battle: Battle_Record, battle_player: Battle_Player) {
+    const player_units = battle.units.filter(unit => unit.supertype != Unit_Supertype.creep && unit.owner == battle_player);
 
-    if (battle_player) {
-        const player_units = battle.units.filter(unit => unit.supertype != Unit_Supertype.creep && unit.owner == battle_player);
+    submit_battle_deltas(battle, player_units.map(unit => {
+        const delta: Delta = {
+            type: Delta_Type.health_change,
+            source_unit_id: unit.id,
+            target_unit_id: unit.id,
+            new_value: 0,
+            value_delta: 0
+        };
 
-        submit_battle_deltas(battle, player_units.map(unit => {
-            const delta: Delta = {
-                type: Delta_Type.health_change,
-                source_unit_id: unit.id,
-                target_unit_id: unit.id,
-                new_value: 0,
-                value_delta: 0
-            };
-
-            return delta;
-        }));
-    }
+        return delta;
+    }));
 }
 
 export function start_battle(participants: Battle_Participant[], battleground: Battleground): Battle_Record {
@@ -2137,11 +2133,8 @@ export function start_battle(participants: Battle_Participant[], battleground: B
     return battle;
 }
 
-export function cheat(battle: Battle_Record, player: Map_Player, cheat: string, selected_unit_id: Unit_Id) {
+export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat: string, selected_unit_id: Unit_Id) {
     const parts = cheat.split(" ");
-    const battle_player = battle.players.find(battle_player => battle_player.id == player.current_battle_player_id);
-
-    if (!battle_player) return;
 
     function refresh_unit(battle: Battle_Record, unit: Unit) {
         const deltas: Delta[] = [
@@ -2345,7 +2338,7 @@ export function cheat(battle: Battle_Record, player: Map_Player, cheat: string, 
         }
 
         case "gg": {
-            surrender_player_forces(battle, player);
+            surrender_player_forces(battle, battle_player);
 
             break;
         }

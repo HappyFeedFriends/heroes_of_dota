@@ -15,18 +15,18 @@ type Map_Player = {
 } & Entity_With_Movement
 
 type Main_Player = {
-    token: string;
-    remote_id: Player_Id,
-    player_id: PlayerID;
-    hero_unit: CDOTA_BaseNPC_Hero;
+    token: string
+    remote_id: Player_Id
+    player_id: PlayerID
+    hero_unit: CDOTA_BaseNPC_Hero
     movement_history: Movement_History_Entry[]
-    current_order_x: number;
-    current_order_y: number;
-    state: Player_State;
+    current_order_x: number
+    current_order_y: number
+    state: Player_State
 }
 
 type Map_State = {
-    players: Record<number, Map_Player>,
+    players: Record<number, Map_Player>
     neutrals: Record<number, Map_NPC>
 }
 
