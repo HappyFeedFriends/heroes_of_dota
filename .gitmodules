@@ -3,4 +3,4 @@
 	url = https://github.com/TypeScriptToLua/Dota2Declarations
 [submodule "client-local/declarations"]
 	path = client-local/declarations
-	url = https://github.com/ModDota/TypescriptPanoramaDeclarations.git
+	url = https://github.com/DoctorGester/TypescriptPanoramaDeclarations.git
