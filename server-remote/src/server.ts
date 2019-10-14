@@ -17,6 +17,7 @@ import {readFileSync} from "fs";
 import * as battleground from "./battleground";
 import {get_debug_ai_data} from "./debug_draw";
 import {check_and_try_perform_ai_actions, get_nearby_neutrals, Map_Npc, npc_by_id} from "./npc_controller";
+import {Adventure, adventure_by_id, Adventure_Room, room_by_id} from "./adventures";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
@@ -32,7 +33,9 @@ const enum Right {
     participate_in_a_battle,
     submit_movement,
     submit_chat_messages,
-    query_battles
+    query_battles,
+    start_adventure,
+    enter_adventure_room
 }
 
 export type Map_Player = {
@@ -64,6 +67,8 @@ type Map_Player_State = {
     previous_state: Map_Player_State
 } | {
     state: Player_State.on_adventure
+    adventure: Adventure
+    current_room: Adventure_Room
 } | {
     state: Player_State.not_logged_in
 }
@@ -86,21 +91,6 @@ type Collection_Spell_Card = {
 type Card_Collection = {
     heroes: Collection_Hero_Card[]
     spells: Collection_Spell_Card[]
-}
-
-const enum Adventure_Room_Type {
-    combat = 0,
-    rest = 1
-}
-
-type Adventure = {
-    id: Adventure_Id
-}
-
-type Adventure_Room = {
-    type: Adventure_Room_Type.combat
-} | {
-    type: Adventure_Room_Type.rest
 }
 
 let dev_mode = false;
@@ -300,7 +290,9 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
 
         case Player_State.on_adventure: {
             return {
-                state: player.online.state
+                state: player.online.state,
+                adventure_id: player.online.adventure.id,
+                current_room_id: player.online.current_room.id
             }
         }
 
@@ -340,6 +332,15 @@ function can_player(player: Map_Player, right: Right) {
 
         case Right.query_battles: {
             return player.online.state == Player_State.on_global_map;
+        }
+
+        case Right.start_adventure: {
+            return player.online.state == Player_State.on_global_map;
+        }
+
+        case Right.enter_adventure_room: {
+            // TODO check if room belongs to adventure?
+            return player.online.state == Player_State.on_adventure;
         }
     }
 
@@ -824,10 +825,40 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
     }
 
     return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+        if (!can_player(player, Right.start_adventure)) return;
+
+        const adventure = adventure_by_id(req.adventure_id);
+
+        player.online = {
+            state: Player_State.on_adventure,
+            adventure: adventure,
+            current_room: adventure.rooms[0]
+        };
 
         return player_to_player_state_object(player);
     }));
 });
+
+register_api_handler(Api_Request_Type.enter_adventure_room, req => {
+    if (!validate_dedicated_server_key(req.dedicated_server_key)) {
+        return make_error(403);
+    }
+
+    return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+        if (!can_player(player, Right.enter_adventure_room)) return;
+        if (player.online.state != Player_State.on_adventure) return;
+
+        const room = room_by_id(player.online.adventure, req.room_id);
+
+        if (!room) return;
+
+        player.online.current_room = room;
+
+        return {};
+    }));
+});
+
+
 
 register_api_handler(Api_Request_Type.get_debug_ai_data, req => {
     return make_ok(get_debug_ai_data());

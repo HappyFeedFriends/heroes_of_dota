@@ -271,6 +271,30 @@ function process_state_transition(main_player: Main_Player, current_state: Playe
         PlayerResource.SetCameraTarget(main_player.player_id, battle.camera_dummy);
     }
 
+    if (next_state.state == Player_State.on_adventure) {
+        const room_start_entity = Entities.FindByName(undefined, `room_${next_state.current_room_id}_start`);
+
+        if (room_start_entity) {
+            const start = room_start_entity.GetAbsOrigin();
+
+            FindClearSpaceForUnit(main_player.hero_unit, start, true);
+            PlayerResource.SetCameraTarget(main_player.player_id, main_player.hero_unit);
+            wait_one_frame();
+            PlayerResource.SetCameraTarget(main_player.player_id, undefined);
+
+            main_player.current_order_x = start.x;
+            main_player.current_order_y = start.y;
+            main_player.movement_history = [{
+                location_x: start.x,
+                location_y: start.y,
+                order_x: start.x,
+                order_y: start.y
+            }];
+        } else {
+            print(`Wasn't able to find room ${next_state.current_room_id} for ${enum_to_string(next_state.adventure_id)}`);
+        }
+    }
+
     main_player.state = next_state.state;
 
     update_player_state_net_table(main_player);
@@ -335,7 +359,8 @@ function main() {
     const mode = GameRules.GetGameModeEntity();
 
     mode.SetCustomGameForceHero("npc_dota_hero_lina");
-    mode.SetFogOfWarDisabled(true);
+    mode.SetFogOfWarDisabled(false);
+    mode.SetUnseenFogOfWarEnabled(true);
 
     GameRules.SetPreGameTime(0);
     GameRules.SetCustomGameSetupAutoLaunchDelay(0);

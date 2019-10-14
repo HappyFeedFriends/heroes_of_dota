@@ -544,21 +544,10 @@ function filter_and_map_existing_units<T extends { target_unit_id: Unit_Id }>(ar
         const unit = find_unit_by_id(member.target_unit_id);
 
         if (unit) {
-            const replaced: table = {};
-            replaced.unit = unit;
-
-            for (const key in member) {
-                replaced[key] = member[key];
-            }
-
-            result.push(replaced as Replace_Target_Unit_Id<T>);
-
-            /* This would be enough AND typesafe if it worked in TSTL
             result.push({
                 ...member,
                 unit: unit
             });
-             */
         }
     }
 

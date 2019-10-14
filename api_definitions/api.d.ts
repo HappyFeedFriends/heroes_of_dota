@@ -27,6 +27,7 @@ declare const enum Api_Request_Type {
     save_deck = 14,
 
     start_adventure = 200,
+    enter_adventure_room = 201,
 
     battle_cheat = 50,
     get_debug_ai_data = 100
@@ -41,6 +42,10 @@ declare const enum Npc_Type {
     satyr = 0
 }
 
+declare const enum Adventure_Id {
+    forest = 0
+}
+
 declare const enum Player_Id_Brand { _ = "" }
 type Player_Id = number & Player_Id_Brand;
 
@@ -49,10 +54,6 @@ type Npc_Id = number & Npc_Id_Brand;
 
 declare const enum Battle_Id_Brand { _ = "" }
 type Battle_Id = number & Battle_Id_Brand;
-
-
-declare const enum Adventure_Id_Brand { _ = "" }
-type Adventure_Id = number & Adventure_Id_Brand;
 
 declare const enum Adventure_Room_Id_Brand { _ = "" }
 type Adventure_Room_Id = number & Adventure_Room_Id_Brand;
@@ -78,6 +79,8 @@ type Player_State_On_Global_Map = {
 
 type Player_State_On_Adventure = {
     state: Player_State.on_adventure
+    adventure_id: Adventure_Id
+    current_room_id: Adventure_Room_Id
 }
 
 type Player_State_In_Battle = {
@@ -252,6 +255,12 @@ type Api_Request = {
         adventure_id: Adventure_Id
     } & With_Token & With_Private_Key
     response: Player_State_Data
+} | {
+    type: Api_Request_Type.enter_adventure_room
+    request: {
+        room_id: Adventure_Room_Id
+    } & With_Token & With_Private_Key
+    response: {}
 }
 
 type Collection_Page = {
