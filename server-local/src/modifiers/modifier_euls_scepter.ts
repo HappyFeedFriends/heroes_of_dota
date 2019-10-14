@@ -1,5 +1,5 @@
 class Modifier_Euls_Scepter extends CDOTA_Modifier_Lua {
-    initial_forward: Vector;
+    initial_forward: Vector = Vector();
 
     DeclareFunctions(): modifierfunction[] {
         return [

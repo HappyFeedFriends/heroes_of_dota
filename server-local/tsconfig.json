@@ -1,10 +1,8 @@
 {
   "compilerOptions": {
-    "noImplicitAny": true,
-    "noImplicitThis": true,
+    "strict": true,
     "alwaysStrict": false,
     "noImplicitUseStrict": true,
-    "strictNullChecks": true,
     "sourceMap": false,
     "target": "es6",
     "lib": [

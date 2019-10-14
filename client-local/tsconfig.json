@@ -4,9 +4,8 @@
     "target": "es5",
     "rootDir": "src",
     "outDir": "../dist/content/panorama/scripts/custom_game",
-    "noImplicitAny": true,
     "alwaysStrict": true,
-    "strictNullChecks": true,
+    "strict": true,
     "sourceMap": false,
     "lib": [
       "es2016"

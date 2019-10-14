@@ -568,7 +568,7 @@ function process_state_transition(from: Player_State, new_state: Player_Net_Tabl
             outline_particles: [],
             shop_range_outline_particles: [],
             zone_highlight_particles: [],
-            receive_event: on_battle_event
+            receive_event: on_battle_event as (battle: Battle, event: Battle_Event) => void // TODO poorly typed
         };
 
         set_selection({

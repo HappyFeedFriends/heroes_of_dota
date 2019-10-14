@@ -4,11 +4,9 @@
     "module": "commonjs",
     "outDir": "dist",
     "sourceMap": true,
-    "noImplicitAny" : true,
-    "noImplicitThis" : true,
     "alwaysStrict" : false,
     "noImplicitUseStrict": true,
-    "strictNullChecks" : true,
+    "strict": true,
     "lib": [
       "es6"
     ],

@@ -376,14 +376,18 @@ function npc_to_battle_participant(npc: Map_Npc): Battle_Participant {
     }
 }
 
-function initiate_battle(participants: (Map_Player | Map_Npc)[]) {
-    // TODO why doesn't this error????
-    const battle = start_battle(participants.map(player_to_battle_participant), battleground.forest());
+function initiate_battle(entities: (Map_Player | Map_Npc)[]) {
+    const battle = start_battle(entities.map(entity => {
+        switch (entity.entity_type) {
+            case Map_Entity_Type.npc: return npc_to_battle_participant(entity);
+            case Map_Entity_Type.player: return player_to_battle_participant(entity);
+        }
+    }), battleground.forest());
 
     for (const battle_player of battle.players) {
         const entity = battle_player.map_entity;
         if (entity.type == Map_Entity_Type.player) {
-            const map_player = participants.find(participant => participant.id == entity.player_id && participant.entity_type == entity.type);
+            const map_player = entities.find(participant => participant.id == entity.player_id && participant.entity_type == entity.type);
 
             if (map_player && map_player.entity_type == Map_Entity_Type.player) {
                 map_player.online = {

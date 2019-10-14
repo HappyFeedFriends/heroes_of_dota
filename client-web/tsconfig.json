@@ -4,9 +4,8 @@
     "target": "es6",
     "rootDir": "src",
     "outDir": "dist",
-    "noImplicitAny": true,
     "alwaysStrict": true,
-    "strictNullChecks": true,
+    "strict": true,
     "plugins": [
       {
         "transform": "../codegen/src/meta.ts"

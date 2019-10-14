@@ -1652,7 +1652,10 @@ function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: 
     defer_move();
 }
 
-function on_battle_event(battle: Battle_Record, event: Battle_Event) {
+function on_battle_event(battle_base: Battle, event: Battle_Event) {
+    // TODO figure out how to make this properly typed
+    const battle: Battle_Record = battle_base as Battle_Record;
+
     if (event.type == Battle_Event_Type.health_changed && event.source.type == Source_Type.unit) {
         const { source, target, change, dead } = event;
 
