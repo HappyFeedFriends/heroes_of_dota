@@ -104,7 +104,7 @@ type UI_Unit_Data = UI_Hero_Data | UI_Creep_Data | UI_Minion_Data;
 
 type UI_Battle = Battle & {
     id: Battle_Id
-    world_origin: XY
+    world_origin: { x: number, y: number, z: number }
     entity_id_to_unit_data: Record<EntityId, UI_Unit_Data>
     entity_id_to_rune_id: Record<number, Rune_Id>
     entity_id_to_shop_id: Record<number, Shop_Id>
@@ -580,7 +580,7 @@ function process_state_transition(from: Player_State, new_state: Player_Net_Tabl
         const particle_bottom_left_origin: XYZ = [
             battle.world_origin.x + battle_cell_size / 2,
             battle.world_origin.y + battle_cell_size / 2,
-            128
+            battle.world_origin.z
         ];
 
         for (let x = 0; x < battle.grid_size.x; x++) {
@@ -1551,7 +1551,7 @@ function battle_position_to_world_position_center(position: XY): XYZ {
     return [
         battle.world_origin.x + position.x * battle_cell_size + battle_cell_size / 2,
         battle.world_origin.y + position.y * battle_cell_size + battle_cell_size / 2,
-        0
+        battle.world_origin.z - 128
     ]
 }
 
@@ -2501,6 +2501,14 @@ function filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll
 function setup_mouse_filter() {
     GameUI.SetMouseCallback((event, button) => {
         try {
+            if (in_editor_mode) {
+                const should_consume = editor_filter_mouse_click(event, button);
+
+                if (should_consume) {
+                    return true;
+                }
+            }
+
             return filter_mouse_click(event, button);
         } catch (e) {
             $.Msg(e);

@@ -21,74 +21,10 @@
         }
     }
 
-    "hod_creep" {
-        "Model"  "models/creeps/neutral_creeps/n_creep_centaur_lrg/n_creep_centaur_lrg.vmdl"
-        "BaseClass"  "npc_dota_creature"
-        "ModelScale"  "1"
-
-        "AttackCapabilities"  "DOTA_UNIT_CAP_NO_ATTACK"
-        "MovementCapabilities"  "DOTA_UNIT_CAP_MOVE_GROUND"
-
-        "VisionDaytimeRange"  "0"
-        "VisionNighttimeRange"  "0"
-
-        "Creature" {
-            "CanRespawn"  "1"
-        }
-    }
-
-    "hod_pocket_tower" {
-        "Model"  "models/props_structures/rock_golem/tower_radiant_rock_golem.vmdl"
-        "BaseClass"  "npc_dota_creature"
-        "ModelScale"  "1"
-
-        "AttackCapabilities"  "DOTA_UNIT_CAP_NO_ATTACK"
-        "MovementCapabilities"  "DOTA_UNIT_CAP_MOVE_GROUND"
-
-        "VisionDaytimeRange"  "0"
-        "VisionNighttimeRange"  "0"
-
-        "Creature" {
-            "CanRespawn"  "1"
-        }
-    }
-
-    "hod_lane_minion" {
+    "hod_unit" {
         "Model"  "models/creeps/lane_creeps/creep_radiant_melee/radiant_melee.mdl"
         "BaseClass"  "npc_dota_creature"
         "ModelScale"  "1"
-
-        "AttackCapabilities"  "DOTA_UNIT_CAP_NO_ATTACK"
-        "MovementCapabilities"  "DOTA_UNIT_CAP_MOVE_GROUND"
-
-        "VisionDaytimeRange"  "0"
-        "VisionNighttimeRange"  "0"
-
-        "Creature" {
-            "CanRespawn"  "1"
-        }
-    }
-
-    "monster_satyr_big" {
-        "Model"  "models/creeps/neutral_creeps/n_creep_satyr_a/n_creep_satyr_a.mdl"
-        "BaseClass"  "npc_dota_creature"
-        "ModelScale"  "1"
-
-        "AttackCapabilities"  "DOTA_UNIT_CAP_NO_ATTACK"
-        "MovementCapabilities"  "DOTA_UNIT_CAP_MOVE_GROUND"
-
-        "VisionDaytimeRange"  "0"
-        "VisionNighttimeRange"  "0"
-
-        "Creature" {
-            "CanRespawn"  "1"
-        }
-    }
-
-    "monster_satyr_small" {
-        "Model"  "models/creeps/neutral_creeps/n_creep_satyr_c/n_creep_satyr_c.mdl"
-        "BaseClass"  "npc_dota_creature"
-        "ModelScale"  "0.8"
 
         "AttackCapabilities"  "DOTA_UNIT_CAP_NO_ATTACK"
         "MovementCapabilities"  "DOTA_UNIT_CAP_MOVE_GROUND"

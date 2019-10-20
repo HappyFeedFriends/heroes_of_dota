@@ -157,7 +157,8 @@ function player_state_to_player_net_table(main_player: Main_Player): Player_Net_
                     })),
                     world_origin: {
                         x: battle.world_origin.x,
-                        y: battle.world_origin.y
+                        y: battle.world_origin.y,
+                        z: battle.world_origin.z
                     },
                     grid_size: battle.grid_size,
                     current_visual_head: battle.delta_head,
@@ -227,11 +228,11 @@ function on_custom_event_async<T>(event_name: string, callback: (data: T) => voi
 }
 
 function process_state_transition(main_player: Main_Player, current_state: Player_State, next_state: Player_State_Data) {
-    print(`State transition ${current_state} => ${next_state.state}`);
+    print(`State transition ${enum_to_string(current_state)} => ${enum_to_string(next_state.state)}`);
 
     if (next_state.state == Player_State.on_global_map) {
         FindClearSpaceForUnit(main_player.hero_unit, Vector(next_state.player_position.x, next_state.player_position.y), true);
-
+        main_player.hero_unit.Interrupt();
         main_player.current_order_x = next_state.player_position.x;
         main_player.current_order_y = next_state.player_position.y;
     }
@@ -241,7 +242,9 @@ function process_state_transition(main_player: Main_Player, current_state: Playe
 
         clean_battle_world_handles();
         reinitialize_battle(battle.world_origin, battle.camera_dummy);
+    }
 
+    if (next_state.state == Player_State.on_global_map) {
         PlayerResource.SetCameraTarget(main_player.player_id, main_player.hero_unit);
         wait_one_frame();
         PlayerResource.SetCameraTarget(main_player.player_id, undefined);
@@ -272,27 +275,21 @@ function process_state_transition(main_player: Main_Player, current_state: Playe
     }
 
     if (next_state.state == Player_State.on_adventure) {
-        const room_start_entity = Entities.FindByName(undefined, `room_${next_state.current_room_id}_start`);
+        const start = Vector(next_state.room_entrance.x, next_state.room_entrance.y);
 
-        if (room_start_entity) {
-            const start = room_start_entity.GetAbsOrigin();
+        FindClearSpaceForUnit(main_player.hero_unit, start, true);
+        main_player.hero_unit.Interrupt();
 
-            FindClearSpaceForUnit(main_player.hero_unit, start, true);
-            PlayerResource.SetCameraTarget(main_player.player_id, main_player.hero_unit);
-            wait_one_frame();
-            PlayerResource.SetCameraTarget(main_player.player_id, undefined);
+        PlayerResource.SetCameraTarget(main_player.player_id, main_player.hero_unit);
 
-            main_player.current_order_x = start.x;
-            main_player.current_order_y = start.y;
-            main_player.movement_history = [{
-                location_x: start.x,
-                location_y: start.y,
-                order_x: start.x,
-                order_y: start.y
-            }];
-        } else {
-            print(`Wasn't able to find room ${next_state.current_room_id} for ${enum_to_string(next_state.adventure_id)}`);
-        }
+        main_player.current_order_x = start.x;
+        main_player.current_order_y = start.y;
+        main_player.movement_history = [{
+            location_x: start.x,
+            location_y: start.y,
+            order_x: start.x,
+            order_y: start.y
+        }];
     }
 
     main_player.state = next_state.state;
@@ -302,7 +299,7 @@ function process_state_transition(main_player: Main_Player, current_state: Playe
 
 function try_submit_state_transition(main_player: Main_Player, new_state: Player_State_Data) {
     if (new_state.state != main_player.state) {
-        print(`Well I have a new state transition and it is ${main_player.state} -> ${new_state.state}`);
+        print(`Well I have a new state transition and it is ${enum_to_string(main_player.state)} -> ${enum_to_string(new_state.state)}`);
 
         state_transition = new_state;
     }
@@ -376,6 +373,10 @@ function main() {
     link_modifier("Modifier_Activity_Translation", "modifiers/modifier_activity_translation");
     link_modifier("Modifier_Activity_Override", "modifiers/modifier_activity_override");
 
+    if (IsInToolsMode()) {
+        link_modifier("Modifier_Editor_Npc_Type", "modifiers/modifier_editor_npc_type");
+    }
+
     mode.SetContextThink("scheduler_think", () => {
         update_scheduler();
         return 0;
@@ -426,7 +427,7 @@ function game_loop() {
     wait_until(() => main_player.state != Player_State.not_logged_in);
 
     on_player_order_async(order => {
-        if (main_player.state == Player_State.on_global_map) {
+        if (main_player.state == Player_State.on_global_map || main_player.state == Player_State.on_adventure) {
             return process_player_global_map_order(main_player, map, order);
         }
 
@@ -451,6 +452,8 @@ function game_loop() {
     });
 
     if (IsInToolsMode()) {
+        subscribe_to_editor_events(main_player, map);
+
         on_custom_event_async<Battle_Cheat_Event>("cheat", event => {
             use_cheat(event.message);
         });

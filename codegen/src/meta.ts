@@ -111,6 +111,24 @@ export default function run_transformer(program: ts.Program, options: Options): 
                     const type = resolve_alias(toSimpleType(argument, checker));
                     const enum_members: SimpleTypeEnumMember[] = resolve_enum_members(type);
 
+                    ok:
+                    if (type.kind == SimpleTypeKind.GENERIC_PARAMETER) {
+                        if (call.typeArguments) {
+                            const type_arg = call.typeArguments[0];
+
+                            if (type_arg) {
+                                const arg_type = resolve_alias(toSimpleType(type_arg, checker));
+
+                                enum_members.length = 0;
+                                enum_members.push(...resolve_enum_members(arg_type));
+
+                                break ok;
+                            }
+                        }
+
+                        error_out(argument, "Generic parameters not supported, specify the type in type arguments");
+                    }
+
                     if (type.kind == SimpleTypeKind.ENUM_MEMBER) {
                         return ts.createStringLiteral(type.name);
                     }

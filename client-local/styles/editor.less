@@ -1,0 +1,48 @@
+@import "shared";
+
+#editor_ui {
+  width: 100%;
+  height: 100%;
+
+  #editor_indicator {
+    width: 100%;
+    height: 100%;
+    border: 4px solid #6cd1ff;
+  }
+
+  #editor_buttons {
+    align: right top;
+    margin: 20px;
+    flow-children: down;
+
+    .editor_button {
+      margin: 6px;
+
+      width: 150px;
+      height: 40px;
+      background-color: #688bff;
+      box-shadow: #151515 0 0 8px 0;
+
+      &:hover {
+        background-color: #5f7ee9;
+
+        Label {
+          color: #e1e1e1;
+        }
+      }
+
+      &:active {
+        background-color: #5f7ee9;
+        transform: translateX(1px) translateY(1px);
+      }
+
+      Label {
+        font-family: @font-regular;
+        color: white;
+        align: center center;
+        text-align: center center;
+        font-size: 16px;
+      }
+    }
+  }
+}

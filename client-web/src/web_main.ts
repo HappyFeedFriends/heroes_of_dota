@@ -1464,6 +1464,12 @@ function draw_battle_list(global_map: Game_On_Global_Map) {
 
             if (game.state == Player_State.in_battle) {
                 game.spectating = true;
+
+                api_request(Api_Request_Type.get_debug_ai_data, {}).then(data => {
+                    if (game.state == Player_State.in_battle) {
+                        game.ai_data = data;
+                    }
+                })
             }
         }
 

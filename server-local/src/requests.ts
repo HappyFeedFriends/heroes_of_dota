@@ -12,8 +12,6 @@ function remote_request_async(endpoint: string, body: any, callback: (data: any)
         if (response.StatusCode == 200) {
             callback(json.decode(response.Body));
         } else {
-            print(`Error executing request to ${endpoint}: code ${response.StatusCode}, ${response.Body}`);
-
             if (error_callback) {
                 error_callback(response.StatusCode);
             }
@@ -30,7 +28,9 @@ function api_request<T extends Api_Request_Type>(type: T, data: Find_Request<T>)
             result = response;
             request_completed = true;
         },
-        () => {
+        (code) => {
+            print(`Error executing '${enum_to_string<Api_Request_Type>(type)}' request: code ${code}`);
+
             result = undefined;
             request_completed = true;
         });
@@ -55,6 +55,8 @@ function api_request_with_retry_on_403<T extends Api_Request_Type>(type: T, main
                 request_completed = true;
             },
             code => {
+                print(`Error executing '${enum_to_string<Api_Request_Type>(type)}' request: code ${code}`);
+
                 result = undefined;
                 request_completed = true;
 

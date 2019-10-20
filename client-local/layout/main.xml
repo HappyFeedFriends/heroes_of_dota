@@ -3,6 +3,7 @@
         <include src="file://{resources}/scripts/custom_game/battle_sim.js" />
         <include src="file://{resources}/scripts/custom_game/main_ui.js" />
         <include src="file://{resources}/scripts/custom_game/chat_ui.js" />
+        <include src="file://{resources}/scripts/custom_game/editor_ui.js" />
         <include src="file://{resources}/scripts/custom_game/collection_ui.js" />
         <include src="file://{resources}/scripts/custom_game/battle_ui.js" />
         <include src="file://{resources}/scripts/custom_game/battle_actions.js" />
@@ -12,6 +13,7 @@
     <styles>
         <include src="file://{resources}/styles/custom_game/global_map.css" />
         <include src="file://{resources}/styles/custom_game/battle.css" />
+        <include src="file://{resources}/styles/custom_game/editor.css" />
         <include src="file://{resources}/styles/custom_game/hand.css" />
     </styles>
     <Panel class="main_panel" hittest="false">
@@ -105,6 +107,10 @@
                     </Panel>
                 </Panel>
             </Panel>
+        </Panel>
+        <Panel id="editor_ui" style="visibility: collapse;">
+            <Panel id="editor_buttons"/>
+            <Panel id="editor_indicator"/>
         </Panel>
     </Panel>
 </root>

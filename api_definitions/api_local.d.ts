@@ -59,6 +59,7 @@ type Player_Net_Table_In_Battle = Player_Net_Table_Base & {
         world_origin: {
             x: number
             y: number
+            z: number
         }
         grid_size: {
             width: number
@@ -194,4 +195,32 @@ type Battle_Snapshot = {
     shops: Shop_Snapshot[]
     trees: Tree_Snapshot[]
     delta_head: number
+}
+
+declare const enum Editor_Event_Type {
+    toggle_map_vision = 0,
+    start_adventure = 1,
+    toggle_camera_lock = 2,
+    edit_npc = 3
+}
+
+type Editor_Event = {
+    type: Editor_Event_Type.toggle_map_vision
+} | {
+    type: Editor_Event_Type.start_adventure
+    adventure: Adventure_Id
+} | {
+    type: Editor_Event_Type.toggle_camera_lock
+} | {
+    type: Editor_Event_Type.edit_npc
+    entity_id: EntityID
+    npc_type: Npc_Type
+    position: {
+        x: number
+        y: number
+    }
+    facing: {
+        x: number
+        y: number
+    }
 }

@@ -8,10 +8,16 @@ require("unit_defs");
 require("particles");
 require("modifier_logic");
 require("hero_sounds");
+require("editor");
 
 function Activate() { main(); }
 function Precache(context: CScriptPrecacheContext) {
     const hero_types = enum_values<Hero_Type>();
+
+    function precache_model_and_log(model_scale: [string, number]) {
+        PrecacheModel(model_scale[0], context);
+        print("Preaching", model_scale[0])
+    }
 
     for (const hero_type of hero_types) {
         const hero_name = get_hero_dota_name(hero_type);
@@ -24,15 +30,15 @@ function Precache(context: CScriptPrecacheContext) {
         print("Precaching", unit_name);
     }
 
-    const minion_types = enum_values<Minion_Type>();
-
-    for (const minion_type of minion_types) {
-        PrecacheUnitByNameSync(minion_type_to_dota_unit_name(minion_type), context);
-
-        print("Precaching", minion_type_to_dota_unit_name(minion_type));
+    for (const minion_type of enum_values<Minion_Type>()) {
+        precache_model_and_log(minion_type_to_model_and_scale(minion_type));
     }
 
-    PrecacheUnitByNameSync(creep_type_to_dota_unit_name(), context);
+    for (const npc_type of enum_values<Npc_Type>()) {
+        precache_model_and_log(get_npc_model(npc_type));
+    }
+
+    precache_model_and_log(creep_type_to_model_and_scale());
 
     PrecacheResource("soundfile", "soundevents/custom_game/game_sounds.vsndevts", context);
     PrecacheResource("soundfile", "soundevents/game_sounds_creeps.vsndevts", context);

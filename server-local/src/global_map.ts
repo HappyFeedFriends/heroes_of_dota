@@ -53,6 +53,12 @@ function submit_player_movement(main_player: Main_Player) {
     api_request_with_retry_on_403(Api_Request_Type.submit_player_movement, main_player, request);
 }
 
+function get_npc_model(npc_type: Npc_Type): [string, number] {
+    switch (npc_type) {
+        case Npc_Type.satyr: return [ "models/creeps/neutral_creeps/n_creep_centaur_lrg/n_creep_centaur_lrg.vmdl", 1 ];
+    }
+}
+
 function process_player_global_map_order(main_player: Main_Player, map: Map_State, order: ExecuteOrderEvent): boolean {
     function try_find_entity_by_unit<T extends Entity_With_Movement>(entities: Record<number, T>, query: CBaseEntity): T | undefined {
         for (let entity_id in entities) {
@@ -115,11 +121,23 @@ function create_new_player_from_movement_data(data: Player_Movement_Data): Map_P
 }
 
 function create_new_npc_from_movement_data(data: NPC_Movement_Data): Map_NPC {
+    const unit = create_map_unit("hod_unit", data.current_location);
+    const [model, scale] = get_npc_model(data.type);
+
+    unit.SetOriginalModel(model);
+    unit.SetModel(model);
+    unit.SetModelScale(scale);
+    unit.SetForwardVector(Vector(data.spawn_facing.x, data.spawn_facing.y));
+
+    if (IsInToolsMode()) {
+        unit.AddNewModifier(unit, undefined, "Modifier_Editor_Npc_Type",  { stacks: data.type });
+    }
+
     return {
         id: data.id,
         type: data.type,
         movement_history: data.movement_history,
-        unit: create_map_unit("monster_satyr_big", data.current_location),
+        unit: unit,
         last_recorded_x: data.current_location.x,
         last_recorded_y: data.current_location.y
     };
@@ -232,8 +250,7 @@ function update_main_player_movement_history(main_player: Main_Player) {
 
 function submit_and_query_movement_loop(main_player: Main_Player, map: Map_State) {
     while (true) {
-        // TODO decide if we want to query other players movements even in battle
-        wait_until(() => main_player.state == Player_State.on_global_map);
+        wait_until(() => main_player.state == Player_State.on_global_map || main_player.state == Player_State.on_adventure);
         wait(movement_history_submit_rate);
 
         fork(() => submit_player_movement(main_player));

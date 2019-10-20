@@ -8,6 +8,7 @@ export type Map_Npc = {
     id: Npc_Id
     type: Npc_Type
     current_location: XY
+    spawn_facing: XY
     movement_history: Movement_History_Entry[]
 }
 
@@ -18,6 +19,10 @@ const test_npc: Map_Npc = {
     current_location: {
         x: 500,
         y: 100
+    },
+    spawn_facing: {
+        x: 1,
+        y: 0
     },
     movement_history: []
 };

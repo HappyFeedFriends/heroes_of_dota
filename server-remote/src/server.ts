@@ -1,7 +1,8 @@
 import {createServer} from "http";
 import {randomBytes} from "crypto"
 import {
-    Battle_Participant, Battle_Record,
+    Battle_Participant,
+    Battle_Record,
     cheat,
     find_battle_by_id,
     get_all_battles,
@@ -17,7 +18,14 @@ import {readFileSync} from "fs";
 import * as battleground from "./battleground";
 import {get_debug_ai_data} from "./debug_draw";
 import {check_and_try_perform_ai_actions, get_nearby_neutrals, Map_Npc, npc_by_id} from "./npc_controller";
-import {Adventure, adventure_by_id, Adventure_Room, room_by_id} from "./adventures";
+import {
+    adventure_by_id,
+    Adventure_Room_Type,
+    create_room_neutrals, edit_npc,
+    Ongoing_Adventure,
+    reload_adventures_from_file,
+    room_by_id
+} from "./adventures";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
@@ -67,8 +75,9 @@ type Map_Player_State = {
     previous_state: Map_Player_State
 } | {
     state: Player_State.on_adventure
-    adventure: Adventure
-    current_room: Adventure_Room
+    ongoing_adventure: Ongoing_Adventure
+    current_location: XY
+    movement_history: Movement_History_Entry[]
 } | {
     state: Player_State.not_logged_in
 }
@@ -289,10 +298,16 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
         }
 
         case Player_State.on_adventure: {
+            const ongoing_adventure = player.online.ongoing_adventure;
+
             return {
                 state: player.online.state,
-                adventure_id: player.online.adventure.id,
-                current_room_id: player.online.current_room.id
+                adventure_id: ongoing_adventure.adventure.id,
+                current_room_id: ongoing_adventure.current_room.id,
+                room_entrance: {
+                    x: ongoing_adventure.current_room.entrance_location.x,
+                    y: ongoing_adventure.current_room.entrance_location.y
+                }
             }
         }
 
@@ -319,7 +334,7 @@ function can_player(player: Map_Player, right: Right) {
         }
 
         case Right.submit_movement: {
-            return player.online.state == Player_State.on_global_map;
+            return player.online.state == Player_State.on_global_map || player.online.state == Player_State.on_adventure;
         }
 
         case Right.submit_battle_action: {
@@ -508,7 +523,7 @@ register_api_handler(Api_Request_Type.submit_player_movement, req => {
             return;
         }
 
-        if (player.online.state != Player_State.on_global_map) return;
+        if (player.online.state != Player_State.on_global_map && player.online.state != Player_State.on_adventure) return;
 
         player.online.current_location = xy(req.current_location.x, req.current_location.y);
         player.online.movement_history = req.movement_history.map(entry => ({
@@ -540,32 +555,59 @@ register_api_handler(Api_Request_Type.query_entity_movement, req => {
             return;
         }
 
-        const player_movement: Player_Movement_Data[] = [];
+        if (requesting_player.online.state == Player_State.on_adventure) {
+            const adventure = requesting_player.online.ongoing_adventure;
+            const player_movement: Player_Movement_Data[] = [];
 
-        for (const player of players) {
-            if (player != requesting_player && can_player(player, Right.submit_movement)) {
-                if (player.online.state != Player_State.on_global_map) continue;
+            if (adventure.current_room.type == Adventure_Room_Type.rest) {
+                for (const player of players) {
+                    if (player != requesting_player && can_player(player, Right.submit_movement)) {
+                        if (player.online.state != Player_State.on_adventure) continue;
 
-                player_movement.push({
-                    id: player.id,
-                    movement_history: player.online.movement_history,
-                    current_location: player.online.current_location
-                });
+                        if (player.online.ongoing_adventure.current_room == adventure.current_room) {
+                            player_movement.push({
+                                id: player.id,
+                                movement_history: player.online.movement_history,
+                                current_location: player.online.current_location
+                            });
+                        }
+                    }
+                }
             }
+
+            return {
+                players: [],
+                neutrals: adventure.neutrals
+            }
+        } else {
+            const player_movement: Player_Movement_Data[] = [];
+
+            for (const player of players) {
+                if (player != requesting_player && can_player(player, Right.submit_movement)) {
+                    if (player.online.state != Player_State.on_global_map) continue;
+
+                    player_movement.push({
+                        id: player.id,
+                        movement_history: player.online.movement_history,
+                        current_location: player.online.current_location
+                    });
+                }
+            }
+
+            const nearby_neutrals = get_nearby_neutrals(requesting_player);
+            const npc_movement: NPC_Movement_Data[] = nearby_neutrals.map(npc => ({
+                id: npc.id,
+                type: npc.type,
+                movement_history: npc.movement_history,
+                current_location: npc.current_location,
+                spawn_facing: npc.spawn_facing
+            }));
+
+            return {
+                players: player_movement,
+                neutrals: npc_movement
+            };
         }
-
-        const nearby_neutrals = get_nearby_neutrals(requesting_player);
-        const npc_movement: NPC_Movement_Data[] = nearby_neutrals.map(npc => ({
-            id: npc.id,
-            type: npc.type,
-            movement_history: npc.movement_history,
-            current_location: npc.current_location
-        }));
-
-        return {
-            players: player_movement,
-            neutrals: npc_movement
-        };
     });
 
     return action_on_player_to_result(player_locations);
@@ -828,11 +870,19 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
         if (!can_player(player, Right.start_adventure)) return;
 
         const adventure = adventure_by_id(req.adventure_id);
+        if (!adventure) return;
+
+        const starting_room = adventure.rooms[0];
 
         player.online = {
             state: Player_State.on_adventure,
-            adventure: adventure,
-            current_room: adventure.rooms[0]
+            ongoing_adventure: {
+                adventure: adventure,
+                current_room: starting_room,
+                neutrals: starting_room.type == Adventure_Room_Type.combat ? create_room_neutrals(starting_room) : [],
+            },
+            current_location: starting_room.entrance_location,
+            movement_history: []
         };
 
         return player_to_player_state_object(player);
@@ -848,21 +898,42 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         if (!can_player(player, Right.enter_adventure_room)) return;
         if (player.online.state != Player_State.on_adventure) return;
 
-        const room = room_by_id(player.online.adventure, req.room_id);
+        const ongoing_adventure = player.online.ongoing_adventure;
+        const room = room_by_id(ongoing_adventure.adventure, req.room_id);
 
         if (!room) return;
 
-        player.online.current_room = room;
+        ongoing_adventure.current_room = room;
+        ongoing_adventure.neutrals = room.type == Adventure_Room_Type.combat ? create_room_neutrals(room) : [];
+
+        player.online.movement_history = [];
+        player.online.current_location = room.entrance_location;
 
         return {};
     }));
 });
 
+function register_dev_handlers() {
+    register_api_handler(Api_Request_Type.get_debug_ai_data, req => {
+        return make_ok(get_debug_ai_data());
+    });
 
+    register_api_handler(Api_Request_Type.editor_edit_npc, req => {
+        validate_dedicated_server_key(req.dedicated_server_key);
 
-register_api_handler(Api_Request_Type.get_debug_ai_data, req => {
-    return make_ok(get_debug_ai_data());
-});
+        return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+            if (player.online.state != Player_State.on_adventure) return;
+
+            edit_npc(player.online.ongoing_adventure, req.npc_id, {
+                type: req.npc_type,
+                spawn_position: req.new_position,
+                facing: req.new_facing
+            });
+
+            return {};
+        }));
+    })
+}
 
 type Request_Result<T> = Result_Ok<T> | Result_Error;
 
@@ -933,6 +1004,12 @@ export function start_server(dev: boolean, seed: number) {
     const web_main = static_file("dist/web_main.js");
 
     setInterval(check_and_disconnect_offline_players, 1000);
+
+    reload_adventures_from_file();
+
+    if (dev_mode){
+        register_dev_handlers();
+    }
 
     const server = createServer((req, res) => {
         const url = req.url;

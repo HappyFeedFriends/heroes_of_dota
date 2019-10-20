@@ -112,6 +112,16 @@ type Started_Sound = {
     stop(): void
 }
 
+type Unit_Creation_Info = {
+    supertype: Unit_Supertype.hero
+    type: Hero_Type
+} | {
+    supertype: Unit_Supertype.minion
+    type: Minion_Type
+} | {
+    supertype: Unit_Supertype.creep
+}
+
 declare let battle: Battle;
 
 const battle_cell_size = 144;
@@ -231,29 +241,78 @@ function hero_type_to_dota_unit_name(hero_type: Hero_Type): string {
     return `npc_dota_hero_${get_hero_dota_name(hero_type)}`;
 }
 
-function creep_type_to_dota_unit_name(): string {
-    return "hod_creep";
-}
+function minion_type_to_model_and_scale(minion_type: Minion_Type): [string, number] {
+    const neutrals = "models/creeps/neutral_creeps";
 
-function minion_type_to_dota_unit_name(minion_type: Minion_Type): string {
     switch (minion_type) {
-        case Minion_Type.pocket_tower: return "hod_pocket_tower";
-        case Minion_Type.lane_minion: return "hod_lane_minion";
-        case Minion_Type.monster_satyr_big: return "monster_satyr_big";
-        case Minion_Type.monster_satyr_small: return "monster_satyr_small";
+        case Minion_Type.monster_satyr_small: return [
+            `${neutrals}/n_creep_satyr_c/n_creep_satyr_c.mdl`,
+            0.8
+        ];
+        case Minion_Type.monster_satyr_big: return [
+            `${neutrals}/n_creep_satyr_a/n_creep_satyr_a.mdl`,
+            1
+        ];
+        case Minion_Type.lane_minion: return [
+            "models/creeps/lane_creeps/creep_radiant_melee/radiant_melee.mdl",
+            1
+        ];
+        case Minion_Type.pocket_tower: return [
+            "models/props_structures/rock_golem/tower_radiant_rock_golem.vmdl",
+            1
+        ];
     }
 }
 
-function create_world_handle_for_battle_unit(dota_unit_name: string, at: XY, facing: XY): CDOTA_BaseNPC_Hero {
+function creep_type_to_model_and_scale(): [string, number] {
+    return ["models/creeps/neutral_creeps/n_creep_centaur_lrg/n_creep_centaur_lrg.vmdl", 1];
+}
+
+function create_world_handle_for_battle_unit(info: Unit_Creation_Info, at: XY, facing: XY): CDOTA_BaseNPC_Hero {
+    function get_dota_unit_name(): string {
+        if (info.supertype == Unit_Supertype.hero) {
+            return hero_type_to_dota_unit_name(info.type);
+        }
+
+        return "hod_unit";
+    }
+
     const world_location = battle_position_to_world_position_center(at);
-    const handle = CreateUnitByName(dota_unit_name, world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS) as CDOTA_BaseNPC_Hero;
+    const handle = CreateUnitByName(get_dota_unit_name(), world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS) as CDOTA_BaseNPC_Hero;
     handle.SetBaseMoveSpeed(500);
     handle.AddNewModifier(handle, undefined, "Modifier_Battle_Unit", {});
     handle.SetForwardVector(Vector(facing.x, facing.y));
     handle.SetUnitCanRespawn(true);
 
-    if (dota_unit_name == minion_type_to_dota_unit_name(Minion_Type.pocket_tower)) {
-        add_activity_override({ handle: handle }, GameActivity_t.ACT_DOTA_CUSTOM_TOWER_IDLE);
+    function set_model_and_scale(model_scale: [string, number]) {
+        const [model, scale] = model_scale;
+
+        handle.SetModel(model);
+        handle.SetOriginalModel(model);
+        handle.SetModelScale(scale);
+    }
+
+    switch (info.supertype) {
+        case Unit_Supertype.creep: {
+            set_model_and_scale(creep_type_to_model_and_scale());
+            break;
+        }
+
+        case Unit_Supertype.minion: {
+            set_model_and_scale(minion_type_to_model_and_scale(info.type));
+
+            if (info.type == Minion_Type.pocket_tower) {
+                add_activity_override({ handle: handle }, GameActivity_t.ACT_DOTA_CUSTOM_TOWER_IDLE);
+            }
+
+            break;
+        }
+
+        case Unit_Supertype.hero: {
+            break;
+        }
+
+        default: unreachable(info);
     }
 
     return handle;
@@ -342,9 +401,9 @@ function destroy_rune(rune: Rune, destroy_effects_instantly: boolean) {
     rune.rune_fx.destroy_and_release(destroy_effects_instantly);
 }
 
-function unit_base(unit_id: Unit_Id, dota_unit_name: string, definition: Unit_Definition, at: XY, facing: XY): Unit_Base {
+function unit_base(unit_id: Unit_Id, info: Unit_Creation_Info, definition: Unit_Definition, at: XY, facing: XY): Unit_Base {
     return {
-        handle: create_world_handle_for_battle_unit(dota_unit_name, at, facing),
+        handle: create_world_handle_for_battle_unit(info, at, facing),
         id: unit_id,
         position: at,
         health: definition.health,
@@ -366,7 +425,7 @@ function unit_base(unit_id: Unit_Id, dota_unit_name: string, definition: Unit_De
 }
 
 function spawn_creep_for_battle(unit_id: Unit_Id, definition: Unit_Definition, at: XY, facing: XY): Creep {
-    const base = unit_base(unit_id, creep_type_to_dota_unit_name(), definition, at, facing);
+    const base = unit_base(unit_id, { supertype: Unit_Supertype.creep }, definition, at, facing);
 
     return {
         ...base,
@@ -376,7 +435,7 @@ function spawn_creep_for_battle(unit_id: Unit_Id, definition: Unit_Definition, a
 
 function spawn_hero_for_battle(hero_type: Hero_Type, unit_id: Unit_Id, owner_id: Battle_Player_Id, at: XY, facing: XY): Hero {
     const definition = hero_definition_by_type(hero_type);
-    const base = unit_base(unit_id, hero_type_to_dota_unit_name(hero_type), definition, at, facing);
+    const base = unit_base(unit_id, { supertype: Unit_Supertype.hero, type: hero_type }, definition, at, facing);
 
     return {
         ...base,
@@ -389,7 +448,7 @@ function spawn_hero_for_battle(hero_type: Hero_Type, unit_id: Unit_Id, owner_id:
 
 function spawn_minion_for_battle(type: Minion_Type, unit_id: Unit_Id, owner_id: Battle_Player_Id, at: XY, facing: XY): Minion {
     const definition = minion_definition_by_type(type);
-    const base = unit_base(unit_id, minion_type_to_dota_unit_name(type), definition, at, facing);
+    const base = unit_base(unit_id, { supertype: Unit_Supertype.minion, type: type }, definition, at, facing);
 
     return {
         ...base,
@@ -3118,14 +3177,6 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
 
     clean_battle_world_handles();
 
-    function unit_snapshot_to_dota_unit_name(snapshot: Unit_Snapshot): string {
-        switch (snapshot.supertype) {
-            case Unit_Supertype.hero: return hero_type_to_dota_unit_name(snapshot.type);
-            case Unit_Supertype.creep: return creep_type_to_dota_unit_name();
-            case Unit_Supertype.minion: return minion_type_to_dota_unit_name(snapshot.type);
-        }
-    }
-
     battle.has_started = snapshot.has_started;
 
     battle.players = snapshot.players.map(player => ({
@@ -3139,7 +3190,7 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
             id: unit.id,
             dead: unit.health <= 0,
             position: unit.position,
-            handle: create_world_handle_for_battle_unit(unit_snapshot_to_dota_unit_name(unit), unit.position, unit.facing),
+            handle: create_world_handle_for_battle_unit(unit, unit.position, unit.facing),
             modifiers: from_client_array(unit.modifiers).map(modifier => ({
                 modifier_id: modifier.modifier_id,
                 modifier_handle_id: modifier.modifier_handle_id,

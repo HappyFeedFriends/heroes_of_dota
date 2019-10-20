@@ -30,7 +30,10 @@ declare const enum Api_Request_Type {
     enter_adventure_room = 201,
 
     battle_cheat = 50,
-    get_debug_ai_data = 100
+    map_cheat = 51,
+    get_debug_ai_data = 100,
+
+    editor_edit_npc = 1000,
 }
 
 declare const enum Map_Entity_Type {
@@ -81,6 +84,10 @@ type Player_State_On_Adventure = {
     state: Player_State.on_adventure
     adventure_id: Adventure_Id
     current_room_id: Adventure_Room_Id
+    room_entrance: {
+        x: number
+        y: number
+    }
 }
 
 type Player_State_In_Battle = {
@@ -261,6 +268,21 @@ type Api_Request = {
         room_id: Adventure_Room_Id
     } & With_Token & With_Private_Key
     response: {}
+} | {
+    type: Api_Request_Type.editor_edit_npc
+    request: {
+        npc_id: Npc_Id
+        npc_type: Npc_Type
+        new_position: {
+            x: number
+            y: number
+        }
+        new_facing: {
+            x: number
+            y: number
+        }
+    } & With_Token & With_Private_Key
+    response: {}
 }
 
 type Collection_Page = {
@@ -300,6 +322,7 @@ type Player_Movement_Data = Movement_Data & {
 type NPC_Movement_Data = Movement_Data & {
     id: Npc_Id
     type: Npc_Type
+    spawn_facing: XY
 }
 
 type Chat_Message = {
@@ -366,6 +389,6 @@ type Find_Request<T> = Find_By_Type<Api_Request, T>["request"]
 type Find_Response<T> = Find_By_Type<Api_Request, T>["response"]
 
 declare function copy<T>(arg: T): T;
-declare function enum_to_string(enum_member: any): string;
+declare function enum_to_string<T>(enum_member: T): string;
 declare function enum_values<T>(): T[];
 declare function enum_names_to_values<T>(): [string, T][];
