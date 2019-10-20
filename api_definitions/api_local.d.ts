@@ -227,4 +227,15 @@ type Editor_Event = {
 } | {
     type: Editor_Event_Type.delete_npc
     entity_id: EntityID
+} | {
+    type: Editor_Event_Type.add_npc
+    npc_type: Npc_Type
+    position: {
+        x: number
+        y: number
+    }
+    facing: {
+        x: number
+        y: number
+    }
 }

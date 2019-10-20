@@ -44,6 +44,20 @@ function on_editor_event(main_player: Main_Player, map: Map_State, state: Editor
                 dedicated_server_key: get_dedicated_server_key()
             });
 
+            query_other_entities_movement(main_player, map);
+
+            break;
+        }
+
+        case Editor_Event_Type.add_npc: {
+            api_request(Api_Request_Type.editor_add_npc, {
+                npc_type: event.npc_type,
+                position: event.position,
+                facing: event.facing,
+                access_token: main_player.token,
+                dedicated_server_key: get_dedicated_server_key()
+            });
+
             break;
         }
 

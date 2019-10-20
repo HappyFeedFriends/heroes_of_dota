@@ -112,6 +112,7 @@
             <Panel id="editor_buttons"/>
             <Panel id="editor_indicator">
                 <Panel id="editor_toolbar"/>
+                <Panel id="editor_context_menu"/>
             </Panel>
         </Panel>
     </Panel>

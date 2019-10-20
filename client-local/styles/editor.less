@@ -1,5 +1,31 @@
 @import "shared";
 
+#button(@color, @font-size) {
+  background-color: @color;
+  box-shadow: #151515 0 0 8px 0;
+
+  &:hover {
+    background-color: lighten(@color, 5%);
+
+    Label {
+      color: #e1e1e1;
+    }
+  }
+
+  &:active {
+    background-color: darken(@color, 5%);
+    transform: translateX(1px) translateY(1px);
+  }
+
+  Label {
+    font-family: @font-regular;
+    color: white;
+    align: center center;
+    text-align: center center;
+    font-size: @font-size;
+  }
+}
+
 #editor_ui {
   width: 100%;
   height: 100%;
@@ -8,6 +34,20 @@
     width: 100%;
     height: 100%;
     border: 4px solid #6cd1ff;
+
+    #editor_context_menu {
+      flow-children: down;
+      box-shadow: #151515 0 0 8px 0;
+
+      .context_menu_button {
+        width: 180px;
+        height: 30px;
+
+        #button(#688bff, 16px);
+        box-shadow: none;
+        border-bottom: 1px solid black;
+      }
+    }
 
     #editor_toolbar {
       margin: 40px;
@@ -24,34 +64,11 @@
 
       .editor_toolbar_button {
         vertical-align: center;
-
         margin: 6px;
-
         width: 180px;
         height: 40px;
-        background-color: #be5ee9;
-        box-shadow: #151515 0 0 8px 0;
 
-        &:hover {
-          background-color: #9b53c2;
-
-          Label {
-            color: #e1e1e1;
-          }
-        }
-
-        &:active {
-          background-color: #5f7ee9;
-          transform: translateX(1px) translateY(1px);
-        }
-
-        Label {
-          font-family: @font-regular;
-          color: white;
-          align: center center;
-          text-align: center center;
-          font-size: 24px;
-        }
+        #button(#be5ee9, 24px);
       }
     }
   }
@@ -63,32 +80,10 @@
 
     .editor_button {
       margin: 6px;
-
       width: 180px;
       height: 40px;
-      background-color: #688bff;
-      box-shadow: #151515 0 0 8px 0;
 
-      &:hover {
-        background-color: #5f7ee9;
-
-        Label {
-          color: #e1e1e1;
-        }
-      }
-
-      &:active {
-        background-color: #5f7ee9;
-        transform: translateX(1px) translateY(1px);
-      }
-
-      Label {
-        font-family: @font-regular;
-        color: white;
-        align: center center;
-        text-align: center center;
-        font-size: 16px;
-      }
+      #button(#688bff, 16px);
     }
   }
 }
