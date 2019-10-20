@@ -206,35 +206,63 @@ function find_npc_and_associated_enemy_indices(adventure: Ongoing_Adventure, id:
     }
 }
 
-export function add_npc(adventure: Ongoing_Adventure, enemy: Adventure_Enemy) {
-    if (adventure.current_room.type == Adventure_Room_Type.combat) {
-        adventure.current_room.enemies.push(enemy);
-        adventure.neutrals.push(adventure_enemy_to_npc(get_next_npc_id(), enemy));
+export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor_Action) {
+    switch (action.type) {
+        case Editor_Action_Type.set_entrance: {
+            adventure.current_room.entrance_location = action.entrance;
+            break;
+        }
 
-        save_adventures_to_file();
+        case Editor_Action_Type.add_npc: {
+            const enemy: Adventure_Enemy = {
+                type: action.npc_type,
+                facing: action.facing,
+                spawn_position: action.position
+            };
+
+            if (adventure.current_room.type == Adventure_Room_Type.combat) {
+                adventure.current_room.enemies.push(enemy);
+                adventure.neutrals.push(adventure_enemy_to_npc(get_next_npc_id(), enemy));
+
+                save_adventures_to_file();
+            }
+
+            break;
+        }
+
+        case Editor_Action_Type.delete_npc: {
+            const result = find_npc_and_associated_enemy_indices(adventure, action.npc_id);
+            if (!result) return;
+
+            const [npc_index, enemy_index, room] = result;
+
+            room.enemies.splice(enemy_index, 1);
+            adventure.neutrals.splice(npc_index, 1);
+            break;
+        }
+
+        case Editor_Action_Type.edit_npc: {
+            const result = find_npc_and_associated_enemy_indices(adventure, action.npc_id);
+            if (!result) return;
+
+            const enemy: Adventure_Enemy = {
+                type: action.npc_type,
+                facing: action.new_facing,
+                spawn_position: action.new_position
+            };
+
+            const [npc_index, enemy_index, room] = result;
+
+            room.enemies[enemy_index] = enemy;
+            adventure.neutrals[npc_index] = adventure_enemy_to_npc(action.npc_id, enemy);
+        }
+
+        case Editor_Action_Type.exit_adventure: {
+            break;
+        }
+
+        default: unreachable(action);
     }
-}
-
-export function delete_npc(adventure: Ongoing_Adventure, id: Npc_Id) {
-    const result = find_npc_and_associated_enemy_indices(adventure, id);
-    if (!result) return;
-
-    const [npc_index, enemy_index, room] = result;
-
-    room.enemies.splice(enemy_index, 1);
-    adventure.neutrals.splice(npc_index, 1);
-
-    save_adventures_to_file();
-}
-
-export function edit_npc(adventure: Ongoing_Adventure, id: Npc_Id, enemy: Adventure_Enemy) {
-    const result = find_npc_and_associated_enemy_indices(adventure, id);
-    if (!result) return;
-
-    const [npc_index, enemy_index, room] = result;
-
-    room.enemies[enemy_index] = enemy;
-    adventure.neutrals[npc_index] = adventure_enemy_to_npc(id, enemy);
 
     save_adventures_to_file();
 }

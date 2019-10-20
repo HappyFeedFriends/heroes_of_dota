@@ -33,9 +33,15 @@ declare const enum Api_Request_Type {
     map_cheat = 51,
     get_debug_ai_data = 100,
 
-    editor_edit_npc = 1000,
-    editor_delete_npc = 1001,
-    editor_add_npc = 1002
+    editor_action = 1000,
+}
+
+declare const enum Editor_Action_Type {
+    edit_npc = 0,
+    delete_npc = 1,
+    add_npc = 2,
+    set_entrance = 3,
+    exit_adventure = 4
 }
 
 declare const enum Map_Entity_Type {
@@ -271,40 +277,45 @@ type Api_Request = {
     } & With_Token & With_Private_Key
     response: {}
 } | {
-    type: Api_Request_Type.editor_edit_npc
-    request: {
-        npc_id: Npc_Id
-        npc_type: Npc_Type
-        new_position: {
-            x: number
-            y: number
-        }
-        new_facing: {
-            x: number
-            y: number
-        }
-    } & With_Token & With_Private_Key
+    type: Api_Request_Type.editor_action
+    request: Editor_Action & With_Token
     response: {}
+}
+
+type Editor_Action = {
+    type: Editor_Action_Type.set_entrance
+    entrance: {
+        x: number
+        y: number
+    }
 } | {
-    type: Api_Request_Type.editor_delete_npc
-    request: {
-        npc_id: Npc_Id
-    } & With_Token & With_Private_Key
-    response: {}
+    type: Editor_Action_Type.add_npc
+    npc_type: Npc_Type
+    position: {
+        x: number
+        y: number
+    }
+    facing: {
+        x: number
+        y: number
+    }
 } | {
-    type: Api_Request_Type.editor_add_npc
-    request: {
-        npc_type: Npc_Type
-        position: {
-            x: number
-            y: number
-        }
-        facing: {
-            x: number
-            y: number
-        }
-    } & With_Token & With_Private_Key
-    response: {}
+    type: Editor_Action_Type.delete_npc
+    npc_id: Npc_Id
+} | {
+    type: Editor_Action_Type.edit_npc
+    npc_id: Npc_Id
+    npc_type: Npc_Type
+    new_position: {
+        x: number
+        y: number
+    }
+    new_facing: {
+        x: number
+        y: number
+    }
+} | {
+    type: Editor_Action_Type.exit_adventure
 }
 
 type Collection_Page = {

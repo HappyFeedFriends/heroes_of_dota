@@ -7,6 +7,7 @@ const context_menu = indicator.FindChildTraverse("editor_context_menu");
 let in_editor_mode = false;
 let camera_height_index = 4;
 let pinned_context_menu_position: XYZ = [0, 0, 0];
+let context_menu_particle: ParticleId | undefined = undefined;
 
 let editor_selection: Editor_Selection = {
     selected: false
@@ -101,9 +102,19 @@ function editor_select_npc(entity: EntityId, npc_type: Npc_Type) {
     });
 }
 
+function hide_editor_context_menu() {
+    context_menu.style.visibility = "collapse";
+
+    if (context_menu_particle != undefined) {
+        Particles.DestroyParticleEffect(context_menu_particle, true);
+        Particles.ReleaseParticleIndex(context_menu_particle);
+    }
+}
+
 function context_menu_button(text: string, action: () => void) {
     return text_button(context_menu, "context_menu_button", text, () => {
-        context_menu.style.visibility = "collapse";
+        hide_editor_context_menu();
+
         action();
     });
 }
@@ -112,7 +123,7 @@ function context_menu_button(text: string, action: () => void) {
 function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
     if (event != "pressed") return false;
 
-    context_menu.style.visibility = "collapse";
+    hide_editor_context_menu();
 
     if (button == MouseButton.LEFT) {
         const entity_under_cursor = get_entity_under_cursor(GameUI.GetCursorPosition());
@@ -159,6 +170,9 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
             context_menu.style.visibility = "visible";
             context_menu.RemoveAndDeleteChildren();
 
+            context_menu_particle = Particles.CreateParticle("particles/ui_mouseactions/ping_waypoint.vpcf", ParticleAttachment_t.PATTACH_WORLDORIGIN, 0);
+            Particles.SetParticleControl(context_menu_particle, 0, click_world_position);
+
             for (const [npc_name, npc_type] of enum_names_to_values<Npc_Type>()) {
                 context_menu_button(`Create ${npc_name}`, () => {
                     dispatch_editor_event({
@@ -171,6 +185,11 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
             }
 
             context_menu_button(`Set start position`, () => {
+                api_request(Api_Request_Type.editor_action, {
+                    type: Editor_Action_Type.set_entrance,
+                    entrance: xy(pinned_context_menu_position[0], pinned_context_menu_position[1]),
+                    access_token: get_access_token()
+                }, () => {});
             });
 
             pinned_context_menu_position = click_world_position;
@@ -210,45 +229,63 @@ function periodically_update_editor_ui() {
     }
 }
 
-function init_editor_ui() {
-    editor_root.style.visibility = "visible";
+function update_editor_buttons(state: Player_State) {
+    buttons_root.RemoveAndDeleteChildren();
 
     const adventures = enum_names_to_values<Adventure_Id>();
 
-    for (const [name, id] of adventures) {
-        editor_button(`Adventure: ${name}`, () => dispatch_editor_event({
-            type: Editor_Event_Type.start_adventure,
-            adventure: id
-        }));
+    if (state == Player_State.on_global_map) {
+        for (const [name, id] of adventures) {
+            editor_button(`Adventure: ${name}`, () => dispatch_editor_event({
+                type: Editor_Event_Type.start_adventure,
+                adventure: id
+            }));
+        }
     }
 
-    editor_button("Toggle map vision", () => dispatch_editor_event({
-        type: Editor_Event_Type.toggle_map_vision
-    }));
+    if (state == Player_State.on_adventure) {
+        editor_button("Toggle editor", () => {
+            in_editor_mode = !in_editor_mode;
 
-    editor_button("Toggle camera lock", () => dispatch_editor_event({
-        type: Editor_Event_Type.toggle_camera_lock
-    }));
+            update_editor_indicator();
+            update_editor_camera_height();
 
-    editor_button("Toggle editor", () => {
-        in_editor_mode = !in_editor_mode;
+            if (!in_editor_mode) {
+                drop_editor_selection();
+                hide_editor_context_menu();
+            }
 
-        update_editor_indicator();
-        update_editor_camera_height();
+            update_editor_buttons(state);
+        });
 
-        if (!in_editor_mode) {
-            drop_editor_selection();
+        if (in_editor_mode) {
+            editor_button("Toggle map vision", () => dispatch_editor_event({
+                type: Editor_Event_Type.toggle_map_vision
+            }));
+
+            editor_button("Toggle camera lock", () => dispatch_editor_event({
+                type: Editor_Event_Type.toggle_camera_lock
+            }));
+
+            editor_button("Change camera height", () => {
+                camera_height_index = (camera_height_index + 1) % 5;
+
+                update_editor_camera_height();
+            });
         }
-    });
+    }
+}
 
-    editor_button("Change camera height", () => {
-        camera_height_index = (camera_height_index + 1) % 5;
+function init_editor_ui() {
+    editor_root.style.visibility = "visible";
 
-        update_editor_camera_height();
+    subscribe_to_net_table_key<Player_Net_Table>("main", "player", data => {
+        buttons_root.RemoveAndDeleteChildren();
+
+        update_editor_buttons(data.state);
     });
 
     update_editor_indicator();
-
     periodically_update_editor_ui();
 }
 

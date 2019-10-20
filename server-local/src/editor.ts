@@ -38,10 +38,10 @@ function on_editor_event(main_player: Main_Player, map: Map_State, state: Editor
             const npc = find_npc_by_entity_id(event.entity_id);
             if (!npc) break;
 
-            api_request(Api_Request_Type.editor_delete_npc, {
+            api_request(Api_Request_Type.editor_action, {
+                type: Editor_Action_Type.delete_npc,
                 npc_id: npc.id,
-                access_token: main_player.token,
-                dedicated_server_key: get_dedicated_server_key()
+                access_token: main_player.token
             });
 
             query_other_entities_movement(main_player, map);
@@ -50,12 +50,12 @@ function on_editor_event(main_player: Main_Player, map: Map_State, state: Editor
         }
 
         case Editor_Event_Type.add_npc: {
-            api_request(Api_Request_Type.editor_add_npc, {
+            api_request(Api_Request_Type.editor_action, {
+                type: Editor_Action_Type.add_npc,
                 npc_type: event.npc_type,
                 position: event.position,
                 facing: event.facing,
-                access_token: main_player.token,
-                dedicated_server_key: get_dedicated_server_key()
+                access_token: main_player.token
             });
 
             break;
@@ -68,13 +68,13 @@ function on_editor_event(main_player: Main_Player, map: Map_State, state: Editor
             FindClearSpaceForUnit(npc.unit, Vector(event.position.x, event.position.y), true);
             npc.unit.SetForwardVector(Vector(event.facing.x, event.facing.y));
 
-            api_request(Api_Request_Type.editor_edit_npc, {
+            api_request(Api_Request_Type.editor_action, {
+                type: Editor_Action_Type.edit_npc,
                 npc_id: npc.id,
                 npc_type: npc.type,
                 new_facing: event.facing,
                 new_position: event.position,
-                access_token: main_player.token,
-                dedicated_server_key: get_dedicated_server_key()
+                access_token: main_player.token
             });
 
             break;

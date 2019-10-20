@@ -19,11 +19,11 @@ import * as battleground from "./battleground";
 import {get_debug_ai_data} from "./debug_draw";
 import {check_and_try_perform_ai_actions, get_nearby_neutrals, Map_Npc, npc_by_id} from "./npc_controller";
 import {
-    add_npc,
-    adventure_by_id,
     Adventure_Room_Type,
-    create_room_neutrals, delete_npc, edit_npc,
     Ongoing_Adventure,
+    adventure_by_id,
+    apply_editor_action,
+    create_room_neutrals,
     reload_adventures_from_file,
     room_by_id
 } from "./adventures";
@@ -919,45 +919,11 @@ function register_dev_handlers() {
         return make_ok(get_debug_ai_data());
     });
 
-    register_api_handler(Api_Request_Type.editor_edit_npc, req => {
-        validate_dedicated_server_key(req.dedicated_server_key);
-
+    register_api_handler(Api_Request_Type.editor_action, req => {
         return action_on_player_to_result(try_do_with_player(req.access_token, player => {
             if (player.online.state != Player_State.on_adventure) return;
 
-            edit_npc(player.online.ongoing_adventure, req.npc_id, {
-                type: req.npc_type,
-                spawn_position: req.new_position,
-                facing: req.new_facing
-            });
-
-            return {};
-        }));
-    });
-
-    register_api_handler(Api_Request_Type.editor_add_npc, req => {
-        validate_dedicated_server_key(req.dedicated_server_key);
-
-        return action_on_player_to_result(try_do_with_player(req.access_token, player => {
-            if (player.online.state != Player_State.on_adventure) return;
-
-            add_npc(player.online.ongoing_adventure, {
-                type: req.npc_type,
-                spawn_position: req.position,
-                facing: req.facing
-            });
-
-            return {};
-        }));
-    });
-
-    register_api_handler(Api_Request_Type.editor_delete_npc, req => {
-        validate_dedicated_server_key(req.dedicated_server_key);
-
-        return action_on_player_to_result(try_do_with_player(req.access_token, player => {
-            if (player.online.state != Player_State.on_adventure) return;
-
-            delete_npc(player.online.ongoing_adventure, req.npc_id);
+            apply_editor_action(player.online.ongoing_adventure, req);
 
             return {};
         }));
