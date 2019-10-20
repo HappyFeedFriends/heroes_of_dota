@@ -79,6 +79,7 @@ type Map_Player_State = {
     ongoing_adventure: Ongoing_Adventure
     current_location: XY
     movement_history: Movement_History_Entry[]
+    previous_global_map_location: XY
 } | {
     state: Player_State.not_logged_in
 }
@@ -873,6 +874,8 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
         const adventure = adventure_by_id(req.adventure_id);
         if (!adventure) return;
 
+        if (player.online.state != Player_State.on_global_map) return;
+
         const starting_room = adventure.rooms[0];
 
         player.online = {
@@ -883,7 +886,8 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
                 neutrals: starting_room.type == Adventure_Room_Type.combat ? create_room_neutrals(starting_room) : [],
             },
             current_location: starting_room.entrance_location,
-            movement_history: []
+            movement_history: [],
+            previous_global_map_location: player.online.current_location
         };
 
         return player_to_player_state_object(player);
@@ -911,6 +915,24 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         player.online.current_location = room.entrance_location;
 
         return {};
+    }));
+});
+
+register_api_handler(Api_Request_Type.exit_adventure, req => {
+    if (!validate_dedicated_server_key(req.dedicated_server_key)) {
+        return make_error(403);
+    }
+
+    return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+        if (player.online.state != Player_State.on_adventure) return;
+
+        player.online = {
+            state: Player_State.on_global_map,
+            current_location: player.online.previous_global_map_location,
+            movement_history: []
+        };
+
+        return player_to_player_state_object(player);
     }));
 });
 

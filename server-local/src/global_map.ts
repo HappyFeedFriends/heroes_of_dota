@@ -55,7 +55,8 @@ function submit_player_movement(main_player: Main_Player) {
 
 function get_npc_model(npc_type: Npc_Type): [string, number] {
     switch (npc_type) {
-        case Npc_Type.satyr: return [ "models/creeps/neutral_creeps/n_creep_centaur_lrg/n_creep_centaur_lrg.vmdl", 1 ];
+        case Npc_Type.satyr: return [ "models/creeps/neutral_creeps/n_creep_satyr_a/n_creep_satyr_a.mdl", 1 ];
+        case Npc_Type.spider: return [ "models/heroes/broodmother/spiderling.vmdl", 0.7 ];
     }
 }
 
@@ -130,7 +131,7 @@ function create_new_npc_from_movement_data(data: NPC_Movement_Data): Map_NPC {
     unit.SetForwardVector(Vector(data.spawn_facing.x, data.spawn_facing.y));
 
     if (IsInToolsMode()) {
-        unit.AddNewModifier(unit, undefined, "Modifier_Editor_Npc_Type",  { stacks: data.type });
+        unit.AddNewModifier(unit, undefined, "Modifier_Editor_Npc_Type",  {}).SetStackCount(data.type);
     }
 
     return {

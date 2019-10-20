@@ -65,7 +65,6 @@ function on_editor_event(main_player: Main_Player, map: Map_State, state: Editor
             const npc = find_npc_by_entity_id(event.entity_id);
             if (!npc) break;
 
-            FindClearSpaceForUnit(npc.unit, Vector(event.position.x, event.position.y), true);
             npc.unit.SetForwardVector(Vector(event.facing.x, event.facing.y));
 
             api_request(Api_Request_Type.editor_action, {
@@ -77,6 +76,8 @@ function on_editor_event(main_player: Main_Player, map: Map_State, state: Editor
                 access_token: main_player.token
             });
 
+            FindClearSpaceForUnit(npc.unit, Vector(event.position.x, event.position.y), true);
+
             break;
         }
 
@@ -85,6 +86,24 @@ function on_editor_event(main_player: Main_Player, map: Map_State, state: Editor
                 access_token: main_player.token,
                 dedicated_server_key: get_dedicated_server_key(),
                 adventure_id: event.adventure
+            });
+
+            if (new_state) {
+                try_submit_state_transition(main_player, new_state);
+            }
+
+            break;
+        }
+
+        case Editor_Event_Type.teleport: {
+            FindClearSpaceForUnit(PlayerResource.GetSelectedHeroEntity(0), Vector(event.position.x, event.position.y), true);
+            break;
+        }
+
+        case Editor_Event_Type.exit_adventure: {
+            const new_state = api_request(Api_Request_Type.exit_adventure, {
+                access_token: main_player.token,
+                dedicated_server_key: get_dedicated_server_key()
             });
 
             if (new_state) {

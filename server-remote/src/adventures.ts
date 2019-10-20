@@ -1,5 +1,6 @@
 import {Map_Npc} from "./npc_controller";
 import {readFileSync, writeFileSync} from "fs";
+import {Map_Player} from "./server";
 
 const storage_file_path = "src/adventures.json";
 
@@ -255,9 +256,7 @@ export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor
 
             room.enemies[enemy_index] = enemy;
             adventure.neutrals[npc_index] = adventure_enemy_to_npc(action.npc_id, enemy);
-        }
 
-        case Editor_Action_Type.exit_adventure: {
             break;
         }
 

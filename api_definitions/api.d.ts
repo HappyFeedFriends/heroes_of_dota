@@ -28,6 +28,7 @@ declare const enum Api_Request_Type {
 
     start_adventure = 200,
     enter_adventure_room = 201,
+    exit_adventure = 202,
 
     battle_cheat = 50,
     map_cheat = 51,
@@ -40,8 +41,7 @@ declare const enum Editor_Action_Type {
     edit_npc = 0,
     delete_npc = 1,
     add_npc = 2,
-    set_entrance = 3,
-    exit_adventure = 4
+    set_entrance = 3
 }
 
 declare const enum Map_Entity_Type {
@@ -50,7 +50,8 @@ declare const enum Map_Entity_Type {
 }
 
 declare const enum Npc_Type {
-    satyr = 0
+    satyr = 0,
+    spider = 1
 }
 
 declare const enum Adventure_Id {
@@ -277,6 +278,10 @@ type Api_Request = {
     } & With_Token & With_Private_Key
     response: {}
 } | {
+    type: Api_Request_Type.exit_adventure
+    request: {} & With_Token & With_Private_Key
+    response: Player_State_Data
+} | {
     type: Api_Request_Type.editor_action
     request: Editor_Action & With_Token
     response: {}
@@ -314,8 +319,6 @@ type Editor_Action = {
         x: number
         y: number
     }
-} | {
-    type: Editor_Action_Type.exit_adventure
 }
 
 type Collection_Page = {

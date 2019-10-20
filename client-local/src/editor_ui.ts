@@ -121,7 +121,9 @@ function context_menu_button(text: string, action: () => void) {
 
 // Returns if event should be consumed or not
 function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
-    if (event != "pressed") return false;
+    if (event != "pressed") {
+        return true;
+    }
 
     hide_editor_context_menu();
 
@@ -184,7 +186,7 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
                 });
             }
 
-            context_menu_button(`Set start position`, () => {
+            context_menu_button(`Set entrance to here`, () => {
                 api_request(Api_Request_Type.editor_action, {
                     type: Editor_Action_Type.set_entrance,
                     entrance: xy(pinned_context_menu_position[0], pinned_context_menu_position[1]),
@@ -192,10 +194,15 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
                 }, () => {});
             });
 
+            context_menu_button(`Teleport here`, () => {
+                dispatch_editor_event({
+                    type: Editor_Event_Type.teleport,
+                    position: xy(click_world_position[0], click_world_position[1])
+                })
+            });
+
             pinned_context_menu_position = click_world_position;
         }
-
-        return true;
     }
 
     return true;
@@ -273,6 +280,12 @@ function update_editor_buttons(state: Player_State) {
                 update_editor_camera_height();
             });
         }
+
+        editor_button("Back to map", () => {
+            dispatch_editor_event({
+                type: Editor_Event_Type.exit_adventure
+            })
+        });
     }
 }
 

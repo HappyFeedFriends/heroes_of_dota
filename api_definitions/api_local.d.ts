@@ -203,7 +203,9 @@ declare const enum Editor_Event_Type {
     toggle_camera_lock = 2,
     edit_npc = 3,
     delete_npc = 4,
-    add_npc = 5
+    add_npc = 5,
+    teleport = 6,
+    exit_adventure = 7
 }
 
 type Editor_Event = {
@@ -238,4 +240,12 @@ type Editor_Event = {
         x: number
         y: number
     }
+} | {
+    type: Editor_Event_Type.teleport
+    position: {
+        x: number
+        y: number
+    }
+} | {
+    type: Editor_Event_Type.exit_adventure
 }
