@@ -452,6 +452,8 @@ function game_loop() {
     });
 
     if (IsInToolsMode()) {
+        SendToServerConsole("r_farz 10000");
+
         subscribe_to_editor_events(main_player, map);
 
         on_custom_event_async<Battle_Cheat_Event>("cheat", event => {

@@ -6,6 +6,7 @@ $.Msg("TS initialized");
 const remote_root = Game.IsInToolsMode() ? "http://127.0.0.1:3638" : "http://cia-is.moe:3638";
 const player_name_storage: Record<number, string> = {};
 const player_name_requests: Record<number, Player_Name_Callback[]> = {};
+const map_camera_height = 1300;
 
 function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>, callback: (response: Find_Response<T>) => void, fail?: () => void) {
     $.AsyncWebRequest(remote_root + "/api" + type, {
@@ -232,7 +233,7 @@ subscribe_to_net_table_key<Player_Net_Table>("main", "player", data => {
         GameUI.SetCameraPitchMin(60);
         GameUI.SetCameraPitchMax(60);
     } else {
-        GameUI.SetCameraDistance(1300);
+        GameUI.SetCameraDistance(map_camera_height);
         GameUI.SetCameraYaw(0);
         GameUI.SetCameraPitchMin(60);
         GameUI.SetCameraPitchMax(60);

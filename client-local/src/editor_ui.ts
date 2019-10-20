@@ -4,6 +4,7 @@ const indicator = editor_root.FindChildTraverse("editor_indicator");
 
 let in_editor_mode = false;
 let editor_entity: EntityId | undefined = undefined;
+let camera_height_index = 1;
 
 function editor_button(text: string, action: () => void) {
     const button = $.CreatePanel("Panel", buttons_root, "");
@@ -19,6 +20,10 @@ function dispatch_editor_event(event: Editor_Event) {
 
 function update_editor_indicator() {
     indicator.style.visibility = in_editor_mode ? "visible" : "collapse";
+}
+
+function update_editor_camera_height() {
+    GameUI.SetCameraDistance(in_editor_mode ? 1200 + 200 * camera_height_index : map_camera_height);
 }
 
 // Returns if event should be consumed or not
@@ -98,6 +103,13 @@ function init_editor_ui() {
         in_editor_mode = !in_editor_mode;
 
         update_editor_indicator();
+        update_editor_camera_height();
+    });
+
+    editor_button("Change camera height", () => {
+        camera_height_index = (camera_height_index + 1) % 5;
+
+        update_editor_camera_height();
     });
 
     update_editor_indicator();
