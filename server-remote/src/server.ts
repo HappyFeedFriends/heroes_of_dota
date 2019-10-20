@@ -19,9 +19,10 @@ import * as battleground from "./battleground";
 import {get_debug_ai_data} from "./debug_draw";
 import {check_and_try_perform_ai_actions, get_nearby_neutrals, Map_Npc, npc_by_id} from "./npc_controller";
 import {
+    add_npc,
     adventure_by_id,
     Adventure_Room_Type,
-    create_room_neutrals, edit_npc,
+    create_room_neutrals, delete_npc, edit_npc,
     Ongoing_Adventure,
     reload_adventures_from_file,
     room_by_id
@@ -932,7 +933,35 @@ function register_dev_handlers() {
 
             return {};
         }));
-    })
+    });
+
+    register_api_handler(Api_Request_Type.editor_add_npc, req => {
+        validate_dedicated_server_key(req.dedicated_server_key);
+
+        return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+            if (player.online.state != Player_State.on_adventure) return;
+
+            add_npc(player.online.ongoing_adventure, {
+                type: req.npc_type,
+                spawn_position: req.position,
+                facing: req.facing
+            });
+
+            return {};
+        }));
+    });
+
+    register_api_handler(Api_Request_Type.editor_delete_npc, req => {
+        validate_dedicated_server_key(req.dedicated_server_key);
+
+        return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+            if (player.online.state != Player_State.on_adventure) return;
+
+            delete_npc(player.online.ongoing_adventure, req.npc_id);
+
+            return {};
+        }));
+    });
 }
 
 type Request_Result<T> = Result_Ok<T> | Result_Error;

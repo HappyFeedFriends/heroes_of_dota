@@ -190,7 +190,7 @@ function save_adventures_to_file() {
     writeFileSync(storage_file_path, JSON.stringify(file, (key, value) => value, "    "));
 }
 
-export function edit_npc(adventure: Ongoing_Adventure, id: Npc_Id, enemy: Adventure_Enemy) {
+function find_npc_and_associated_enemy_indices(adventure: Ongoing_Adventure, id: Npc_Id): [number, number, Adventure_Room_Combat] | undefined {
     const npc_index = adventure.neutrals.findIndex(npc => npc.id == id);
     if (npc_index == -1) return;
 
@@ -201,11 +201,40 @@ export function edit_npc(adventure: Ongoing_Adventure, id: Npc_Id, enemy: Advent
         const enemy_index = adventure.current_room.enemies.findIndex(e => e.spawn_position.x == npc.current_location.x && e.spawn_position.y == npc.current_location.y);
 
         if (enemy_index != -1) {
-            adventure.current_room.enemies[enemy_index] = enemy;
-            adventure.neutrals[npc_index] = adventure_enemy_to_npc(id, enemy);
+            return [npc_index, enemy_index, adventure.current_room];
         }
     }
+}
+
+export function add_npc(adventure: Ongoing_Adventure, enemy: Adventure_Enemy) {
+    if (adventure.current_room.type == Adventure_Room_Type.combat) {
+        adventure.current_room.enemies.push(enemy);
+        adventure.neutrals.push(adventure_enemy_to_npc(get_next_npc_id(), enemy));
+
+        save_adventures_to_file();
+    }
+}
+
+export function delete_npc(adventure: Ongoing_Adventure, id: Npc_Id) {
+    const result = find_npc_and_associated_enemy_indices(adventure, id);
+    if (!result) return;
+
+    const [npc_index, enemy_index, room] = result;
+
+    room.enemies.splice(enemy_index, 1);
+    adventure.neutrals.splice(npc_index, 1);
 
     save_adventures_to_file();
+}
 
+export function edit_npc(adventure: Ongoing_Adventure, id: Npc_Id, enemy: Adventure_Enemy) {
+    const result = find_npc_and_associated_enemy_indices(adventure, id);
+    if (!result) return;
+
+    const [npc_index, enemy_index, room] = result;
+
+    room.enemies[enemy_index] = enemy;
+    adventure.neutrals[npc_index] = adventure_enemy_to_npc(id, enemy);
+
+    save_adventures_to_file();
 }

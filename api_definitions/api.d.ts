@@ -34,6 +34,8 @@ declare const enum Api_Request_Type {
     get_debug_ai_data = 100,
 
     editor_edit_npc = 1000,
+    editor_delete_npc = 1001,
+    editor_add_npc = 1002
 }
 
 declare const enum Map_Entity_Type {
@@ -278,6 +280,26 @@ type Api_Request = {
             y: number
         }
         new_facing: {
+            x: number
+            y: number
+        }
+    } & With_Token & With_Private_Key
+    response: {}
+} | {
+    type: Api_Request_Type.editor_delete_npc
+    request: {
+        npc_id: Npc_Id
+    } & With_Token & With_Private_Key
+    response: {}
+} | {
+    type: Api_Request_Type.editor_add_npc
+    request: {
+        npc_type: Npc_Type
+        position: {
+            x: number
+            y: number
+        }
+        facing: {
             x: number
             y: number
         }
