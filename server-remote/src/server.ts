@@ -950,6 +950,21 @@ function register_dev_handlers() {
             return {};
         }));
     });
+
+    register_api_handler(Api_Request_Type.editor_get_room_details, req => {
+        return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+            if (player.online.state != Player_State.on_adventure) return;
+
+            const current_room = player.online.ongoing_adventure.current_room;
+
+            return {
+                entrance_location: {
+                    x: current_room.entrance_location.x,
+                    y: current_room.entrance_location.y
+                }
+            };
+        }));
+    });
 }
 
 type Request_Result<T> = Result_Ok<T> | Result_Error;

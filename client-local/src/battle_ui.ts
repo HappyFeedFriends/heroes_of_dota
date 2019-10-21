@@ -2243,26 +2243,12 @@ function try_update_stat_bar_display(ui_data: UI_Unit_Data, force = false) {
     ui_data.stat_bar_panel.SetHasClass("dead", ui_data.stat_health.displayed_value == 0);
 }
 
-function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, offset_x: number, offset_z: number) {
-    const screen_ratio = Game.GetScreenHeight() / 1080;
-
-    const screen_x = Game.WorldToScreenX(position[0] + offset_x, position[1], position[2] + offset_z);
-    const screen_y = Game.WorldToScreenY(position[0] + offset_x, position[1], position[2] + offset_z);
-
-    if (screen_x == -1 || screen_y == -1) {
-        return;
-    }
-
-    panel.style.x = Math.floor(screen_x / screen_ratio - panel.actuallayoutwidth / 2.0) + "px";
-    panel.style.y = Math.floor(screen_y / screen_ratio) + "px";
-}
-
 function position_panel_over_entity_in_the_world(panel: Panel, entity_id: EntityId, offset_x: number, offset_z: number) {
     const entity_origin = Entities.GetAbsOrigin(entity_id);
 
     if (!entity_origin) return;
 
-    position_panel_over_position_in_the_world(panel, entity_origin, offset_x, offset_z);
+    position_panel_over_position_in_the_world(panel, [entity_origin[0] + offset_x, entity_origin[1], entity_origin[2] + offset_z], Align_H.center, Align_V.bottom);
 }
 
 function update_stat_bar_positions() {

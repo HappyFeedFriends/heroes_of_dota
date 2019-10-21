@@ -190,7 +190,31 @@ function clean_up_particles_after_reload() {
     }
 }
 
-// scheduled();
+const enum Align_H { left, center, right}
+const enum Align_V { top, center, bottom}
+
+function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, h: Align_H, v: Align_V) {
+    const screen_ratio = Game.GetScreenHeight() / 1080;
+
+    const screen_x = Game.WorldToScreenX(position[0], position[1], position[2]);
+    const screen_y = Game.WorldToScreenY(position[0], position[1], position[2]);
+
+    if (screen_x == -1 || screen_y == -1) {
+        return;
+    }
+
+    let panel_offset_x = 0;
+    let panel_offset_y = 0;
+
+    if (h == Align_H.center) panel_offset_x = panel.actuallayoutwidth / 2.0;
+    if (h == Align_H.left) panel_offset_x = panel.actuallayoutwidth;
+
+    if (v == Align_V.center) panel_offset_y = panel.actuallayoutheight / 2.0;
+    if (v == Align_V.top) panel_offset_y = panel.actuallayoutheight;
+
+    panel.style.x = Math.floor(screen_x / screen_ratio - panel_offset_x) + "px";
+    panel.style.y = Math.floor(screen_y / screen_ratio - panel_offset_y) + "px";
+}
 
 GameEvents.Subscribe("log_message", event => {
     // $.Msg(event.message);

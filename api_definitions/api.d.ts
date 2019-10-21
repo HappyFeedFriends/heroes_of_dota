@@ -35,6 +35,7 @@ declare const enum Api_Request_Type {
     get_debug_ai_data = 100,
 
     editor_action = 1000,
+    editor_get_room_details = 1001
 }
 
 declare const enum Editor_Action_Type {
@@ -285,6 +286,15 @@ type Api_Request = {
     type: Api_Request_Type.editor_action
     request: Editor_Action & With_Token
     response: {}
+} | {
+    type: Api_Request_Type.editor_get_room_details
+    request: {} & With_Token
+    response: {
+        entrance_location: {
+            x: number
+            y: number
+        }
+    }
 }
 
 type Editor_Action = {

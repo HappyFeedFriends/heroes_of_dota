@@ -71,6 +71,37 @@
         #button(#be5ee9, 24px);
       }
     }
+
+    #editor_entrance_indicator {
+      flow-children: down;
+
+      #editor_entrance_text {
+        font-family: @font-title;
+        color: white;
+        font-size: 24px;
+        text-shadow: 0px 0px 4px 3.0 #00000077;
+        letter-spacing: 1px;
+        text-align: center;
+      }
+
+      #editor_entrance_underline {
+        width: 100%;
+        height: 2px;
+        background-color: white;
+        opacity-mask: url("s2r://panorama/images/masks/softedge_circle_sharp_png.vtex");
+      }
+
+      #editor_entrance_marker {
+        margin-top: 8px;
+
+        horizontal-align: center;
+        width: 32px;
+        height: 32px;
+
+        background-size: 100% 100%;
+        background-image: url("s2r://panorama/images/hud/reborn/ping_icon_waypoint_psd.vtex");
+      }
+    }
   }
 
   #editor_buttons {

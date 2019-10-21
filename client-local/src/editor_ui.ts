@@ -3,11 +3,13 @@ const buttons_root = editor_root.FindChildTraverse("editor_buttons");
 const indicator = editor_root.FindChildTraverse("editor_indicator");
 const toolbar = indicator.FindChildTraverse("editor_toolbar");
 const context_menu = indicator.FindChildTraverse("editor_context_menu");
+const entrance_indicator = indicator.FindChildTraverse("editor_entrance_indicator");
 
 let in_editor_mode = false;
 let camera_height_index = 4;
 let pinned_context_menu_position: XYZ = [0, 0, 0];
 let context_menu_particle: ParticleId | undefined = undefined;
+let room_entrance_location: XY | undefined = undefined;
 
 let editor_selection: Editor_Selection = {
     selected: false
@@ -191,7 +193,9 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
                     type: Editor_Action_Type.set_entrance,
                     entrance: xy(pinned_context_menu_position[0], pinned_context_menu_position[1]),
                     access_token: get_access_token()
-                }, () => {});
+                }, () => {
+                    room_entrance_location = xy(pinned_context_menu_position[0], pinned_context_menu_position[1]);
+                });
             });
 
             context_menu_button(`Teleport here`, () => {
@@ -217,22 +221,14 @@ function periodically_update_editor_ui() {
         }
     }
 
-    function reposition_menu(panel: Panel, position: XYZ,) {
-        const screen_ratio = Game.GetScreenHeight() / 1080;
-
-        const screen_x = Game.WorldToScreenX(...position);
-        const screen_y = Game.WorldToScreenY(...position);
-
-        if (screen_x == -1 || screen_y == -1) {
-            return;
-        }
-
-        panel.style.x = Math.floor(screen_x / screen_ratio) + "px";
-        panel.style.y = Math.floor(screen_y / screen_ratio) + "px";
+    if (context_menu.style.visibility == "visible") {
+        position_panel_over_position_in_the_world(context_menu, pinned_context_menu_position, Align_H.right, Align_V.bottom);
     }
 
-    if (context_menu.style.visibility == "visible") {
-        reposition_menu(context_menu, pinned_context_menu_position);
+    if (room_entrance_location) {
+        const position_over: XYZ = [room_entrance_location.x, room_entrance_location.y, 256];
+
+        position_panel_over_position_in_the_world(entrance_indicator, position_over, Align_H.center, Align_V.top);
     }
 }
 
@@ -253,6 +249,16 @@ function update_editor_buttons(state: Player_State) {
     if (state == Player_State.on_adventure) {
         editor_button("Toggle editor", () => {
             in_editor_mode = !in_editor_mode;
+
+            if (in_editor_mode) {
+                api_request(Api_Request_Type.editor_get_room_details, {
+                    access_token: get_access_token()
+                }, response => {
+                    room_entrance_location = response.entrance_location;
+                });
+            } else {
+                room_entrance_location = undefined;
+            }
 
             update_editor_indicator();
             update_editor_camera_height();
