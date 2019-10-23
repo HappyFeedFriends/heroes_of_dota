@@ -135,8 +135,8 @@ function unit_to_visualizer_unit_data(unit: Unit): Visualizer_Unit_Data {
     }
 }
 
-function player_state_to_player_net_table(main_player: Main_Player): Player_Net_Table {
-    switch (main_player.state) {
+function game_net_table(game: Game): Game_Net_Table {
+    switch (game.state) {
         case Player_State.in_battle: {
             const entity_id_to_unit_data: Record<EntityID, Visualizer_Unit_Data> = {};
             const entity_id_to_rune_id: Record<number, Rune_Id> = {};
@@ -155,9 +155,9 @@ function player_state_to_player_net_table(main_player: Main_Player): Player_Net_
             }
 
             return {
-                state: main_player.state,
-                id: main_player.remote_id,
-                token: main_player.token,
+                state: game.state,
+                id: game.player.remote_id,
+                token: game.token,
                 battle: {
                     id: battle.id,
                     battle_player_id: battle.this_player_id,
@@ -182,33 +182,32 @@ function player_state_to_player_net_table(main_player: Main_Player): Player_Net_
 
         case Player_State.not_logged_in: {
             return {
-                state: main_player.state
+                state: game.state
             };
         }
 
         case Player_State.on_global_map: {
             return {
-                state: main_player.state,
-                id: main_player.remote_id,
-                token: main_player.token
+                state: game.state,
+                id: game.player.remote_id,
+                token: game.token
             };
         }
 
         case Player_State.on_adventure: {
             return {
-                state: main_player.state,
-                id: main_player.remote_id,
-                token: main_player.token
+                state: game.state,
+                id: game.player.remote_id,
+                token: game.token
             };
         }
 
-        default: return unreachable(main_player.state);
+        default: return unreachable(game.state);
     }
 }
 
-// TODO this looks more like game state table right now, rename?
-function update_player_state_net_table(main_player: Main_Player) {
-    CustomNetTables.SetTableValue("main", "player", player_state_to_player_net_table(main_player));
+function update_game_net_table(game: Game) {
+    CustomNetTables.SetTableValue("main", "game", game_net_table(game));
 }
 
 function on_player_connected_async(callback: (player_id: PlayerID) => void) {
@@ -238,37 +237,37 @@ function on_custom_event_async<T>(event_name: string, callback: (data: T) => voi
     CustomGameEventManager.RegisterListener(event_name, (user_id, event) => fork(() => callback(event as T)));
 }
 
-function process_state_transition(main_player: Main_Player, current_state: Player_State, next_state: Player_State_Data) {
+function process_state_transition(game: Game, current_state: Player_State, next_state: Player_State_Data) {
     print(`State transition ${enum_to_string(current_state)} => ${enum_to_string(next_state.state)}`);
 
     if (next_state.state == Player_State.on_global_map) {
-        FindClearSpaceForUnit(main_player.hero_unit, Vector(next_state.player_position.x, next_state.player_position.y), true);
-        main_player.hero_unit.Interrupt();
-        main_player.current_order_x = next_state.player_position.x;
-        main_player.current_order_y = next_state.player_position.y;
+        FindClearSpaceForUnit(game.player.hero_unit, Vector(next_state.player_position.x, next_state.player_position.y), true);
+        game.player.hero_unit.Interrupt();
+        game.player.current_order_x = next_state.player_position.x;
+        game.player.current_order_y = next_state.player_position.y;
     }
 
     if (current_state == Player_State.on_adventure) {
-        cleanup_adventure(main_player.adventure);
+        cleanup_adventure(game.adventure);
     }
 
     if (current_state == Player_State.in_battle) {
         print("Battle over");
 
-        clean_battle_world_handles();
+        clean_battle_world_handles(battle);
         reinitialize_battle(battle.world_origin, battle.camera_dummy);
     }
 
     if (next_state.state == Player_State.on_global_map) {
-        PlayerResource.SetCameraTarget(main_player.player_id, main_player.hero_unit);
+        PlayerResource.SetCameraTarget(game.player.player_id, game.player.hero_unit);
         wait_one_frame();
-        PlayerResource.SetCameraTarget(main_player.player_id, undefined);
+        PlayerResource.SetCameraTarget(game.player.player_id, undefined);
     }
 
     if (next_state.state == Player_State.in_battle) {
         print("Battle started");
 
-        clean_battle_world_handles();
+        clean_battle_world_handles(battle);
         reinitialize_battle(battle.world_origin, battle.camera_dummy);
 
         battle.id = next_state.battle_id;
@@ -286,20 +285,20 @@ function process_state_transition(main_player: Main_Player, current_state: Playe
 
         battle.camera_dummy.SetAbsOrigin(camera_look_at);
 
-        PlayerResource.SetCameraTarget(main_player.player_id, battle.camera_dummy);
+        PlayerResource.SetCameraTarget(game.player.player_id, battle.camera_dummy);
     }
 
     if (next_state.state == Player_State.on_adventure) {
         const start = Vector(next_state.room_entrance.x, next_state.room_entrance.y);
 
-        FindClearSpaceForUnit(main_player.hero_unit, start, true);
-        main_player.hero_unit.Interrupt();
+        FindClearSpaceForUnit(game.player.hero_unit, start, true);
+        game.player.hero_unit.Interrupt();
 
-        PlayerResource.SetCameraTarget(main_player.player_id, main_player.hero_unit);
+        PlayerResource.SetCameraTarget(game.player.player_id, game.player.hero_unit);
 
-        main_player.current_order_x = start.x;
-        main_player.current_order_y = start.y;
-        main_player.movement_history = [{
+        game.player.current_order_x = start.x;
+        game.player.current_order_y = start.y;
+        game.player.movement_history = [{
             location_x: start.x,
             location_y: start.y,
             order_x: start.x,
@@ -307,16 +306,16 @@ function process_state_transition(main_player: Main_Player, current_state: Playe
         }];
 
         for (const entity of next_state.entities) {
-            main_player.adventure.entities.push(create_adventure_entity(entity));
+            game.adventure.entities.push(create_adventure_entity(entity));
         }
     }
 
-    main_player.state = next_state.state;
+    game.state = next_state.state;
 
-    update_player_state_net_table(main_player);
+    update_game_net_table(game);
 }
 
-function try_submit_state_transition(main_player: Main_Player, new_state: Player_State_Data) {
+function try_submit_state_transition(main_player: Game, new_state: Player_State_Data) {
     if (new_state.state != main_player.state) {
         print(`Well I have a new state transition and it is ${enum_to_string(main_player.state)} -> ${enum_to_string(new_state.state)}`);
 
@@ -340,7 +339,7 @@ function get_default_battleground_data(): [Vector, CDOTA_BaseNPC] {
     return [origin, camera_entity];
 }
 
-function reconnect_loop(main_player: Main_Player) {
+function reconnect_loop(game: Game) {
     function try_authorize_user(id: PlayerID, dedicated_server_key: string) {
         const steam_id = PlayerResource.GetSteamID(id).toString();
 
@@ -360,22 +359,22 @@ function reconnect_loop(main_player: Main_Player) {
     }
 
     while (true) {
-        if (main_player.state == Player_State.not_logged_in) {
-            const auth = try_authorize_user(main_player.player_id, get_dedicated_server_key());
+        if (game.state == Player_State.not_logged_in) {
+            const auth = try_authorize_user(game.player.player_id, get_dedicated_server_key());
 
             if (auth) {
-                main_player.remote_id = auth.id;
-                main_player.token = auth.token;
+                game.player.remote_id = auth.id;
+                game.token = auth.token;
 
-                print(`Authorized with id ${main_player.remote_id}`);
+                print(`Authorized with id ${game.player.remote_id}`);
 
                 const player_state = try_with_delays_until_success(1, () => api_request(Api_Request_Type.get_player_state, {
-                    access_token: main_player.token
+                    access_token: game.token
                 }));
 
                 print(`State received`);
 
-                process_state_transition(main_player, Player_State.not_logged_in, player_state);
+                process_state_transition(game, Player_State.not_logged_in, player_state);
             } else {
                 wait(3);
             }
@@ -447,41 +446,45 @@ function game_loop() {
 
     print(`Hero handle found`);
 
-    const main_player: Main_Player = {
+    const player: Main_Player = {
         remote_id: -1 as Player_Id,
         player_id: player_id,
         hero_unit: player_unit,
-        token: "",
         movement_history: [],
         current_order_x: 0,
         current_order_y: 0,
+    };
+
+    const game: Game = {
+        player: player,
+        token: "",
         state: Player_State.not_logged_in,
         adventure: {
             entities: []
         }
     };
 
-    update_player_state_net_table(main_player);
+    update_game_net_table(game);
 
-    fork(() => reconnect_loop(main_player));
+    fork(() => reconnect_loop(game));
 
-    wait_until(() => main_player.state != Player_State.not_logged_in);
+    wait_until(() => game.state != Player_State.not_logged_in);
 
     on_player_order_async(order => {
-        if (main_player.state == Player_State.on_global_map || main_player.state == Player_State.on_adventure) {
-            return process_player_global_map_order(main_player, map, order);
+        if (game.state == Player_State.on_global_map || game.state == Player_State.on_adventure) {
+            return process_player_global_map_order(game, map, order);
         }
 
         return false;
     });
 
     on_custom_event_async<Put_Deltas_Event>("put_battle_deltas", event => {
-        merge_battle_deltas(event.from_head, from_client_array(event.deltas));
-        merge_delta_paths_from_client(event.delta_paths);
+        merge_battle_deltas(battle, event.from_head, from_client_array(event.deltas));
+        merge_delta_paths_from_client(battle, event.delta_paths);
     });
 
     on_custom_event_async<Fast_Forward_Event>("fast_forward", event => {
-        fast_forward_from_snapshot(main_player, {
+        fast_forward_from_snapshot(battle, {
             has_started: from_client_bool(event.has_started),
             players: from_client_array(event.players),
             units: from_client_array(event.units),
@@ -490,28 +493,30 @@ function game_loop() {
             trees: from_client_array(event.trees),
             delta_head: event.delta_head
         });
+
+        update_game_net_table(game);
     });
 
     if (IsInToolsMode()) {
         SendToServerConsole("r_farz 10000");
 
-        subscribe_to_editor_events(main_player);
+        subscribe_to_editor_events(game);
 
         on_custom_event_async<Battle_Cheat_Event>("cheat", event => {
-            use_cheat(event.message);
+            use_cheat(battle, event.message);
         });
     }
 
-    fork(() => adventure_enemy_movement_loop(main_player, main_player.adventure));
-    fork(() => submit_and_query_movement_loop(main_player, map));
+    fork(() => adventure_enemy_movement_loop(game));
+    fork(() => submit_and_query_movement_loop(game, map));
     fork(() => {
         while(true) {
             const state_data = api_request(Api_Request_Type.get_player_state, {
-                access_token: main_player.token
+                access_token: game.token
             });
 
             if (state_data) {
-                try_submit_state_transition(main_player, state_data);
+                try_submit_state_transition(game, state_data);
             }
 
             wait(2);
@@ -520,14 +525,14 @@ function game_loop() {
 
     fork(() => {
         while(true) {
-            update_main_player_movement_history(main_player);
+            update_main_player_movement_history(player);
             wait_one_frame();
         }
     });
 
     fork(() => {
         while(true) {
-            if (main_player.state == Player_State.in_battle) {
+            if (game.state == Player_State.in_battle) {
                 periodically_update_battle();
             }
 
@@ -537,13 +542,13 @@ function game_loop() {
 
     while (true) {
         if (state_transition) {
-            process_state_transition(main_player, main_player.state, state_transition);
+            process_state_transition(game, game.state, state_transition);
             state_transition = undefined;
         }
 
-        switch (main_player.state) {
+        switch (game.state) {
             case Player_State.on_global_map: {
-                update_main_player_movement_history(main_player);
+                update_main_player_movement_history(player);
 
                 break;
             }
@@ -559,8 +564,8 @@ function game_loop() {
 
                         print(`Playing delta ${enum_to_string(delta.type)} (#${battle.delta_head})`);
 
-                        play_delta(main_player, delta, battle.delta_head);
-                        update_player_state_net_table(main_player);
+                        play_delta(game, battle, delta, battle.delta_head);
+                        update_game_net_table(game);
                     }
 
                     wait_one_frame();

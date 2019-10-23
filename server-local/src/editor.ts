@@ -3,9 +3,9 @@ type Editor_State = {
     camera_unlocked: boolean
 }
 
-function on_editor_event(main_player: Main_Player, editor: Editor_State, event: Editor_Event) {
+function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) {
     function find_entity_by_entity_index(id: EntityID) {
-        return array_find(main_player.adventure.entities, entity => entity.unit.entindex() == id);
+        return array_find(game.adventure.entities, entity => entity.unit.entindex() == id);
     }
 
     switch (event.type) {
@@ -22,7 +22,7 @@ function on_editor_event(main_player: Main_Player, editor: Editor_State, event: 
             if (editor.camera_unlocked) {
                 PlayerResource.SetCameraTarget(0, undefined);
             } else {
-                PlayerResource.SetCameraTarget(0, main_player.hero_unit);
+                PlayerResource.SetCameraTarget(0, game.player.hero_unit);
             }
 
             break;
@@ -35,16 +35,16 @@ function on_editor_event(main_player: Main_Player, editor: Editor_State, event: 
             const ok = api_request(Api_Request_Type.editor_action, {
                 type: Editor_Action_Type.delete_entity,
                 entity_id: entity.id,
-                access_token: main_player.token
+                access_token: game.token
             });
 
             if (ok) {
-                const index = array_find_index(main_player.adventure.entities, candidate => candidate == entity);
+                const index = array_find_index(game.adventure.entities, candidate => candidate == entity);
 
                 if (index != -1) {
                     cleanup_adventure_entity(entity);
 
-                    main_player.adventure.entities.splice(index, 1);
+                    game.adventure.entities.splice(index, 1);
                 }
             }
 
@@ -54,11 +54,11 @@ function on_editor_event(main_player: Main_Player, editor: Editor_State, event: 
         case Editor_Event_Type.create_entity: {
             const created_entity = api_request(Api_Request_Type.editor_create_entity, {
                 definition: event.definition,
-                access_token: main_player.token
+                access_token: game.token
             });
 
             if (created_entity) {
-                main_player.adventure.entities.push(create_adventure_entity(created_entity));
+                game.adventure.entities.push(create_adventure_entity(created_entity));
             }
 
             break;
@@ -81,7 +81,7 @@ function on_editor_event(main_player: Main_Player, editor: Editor_State, event: 
                 npc_type: entity.npc_type,
                 new_facing: event.facing,
                 new_position: event.position,
-                access_token: main_player.token
+                access_token: game.token
             });
 
             FindClearSpaceForUnit(entity.unit, Vector(event.position.x, event.position.y), true);
@@ -91,13 +91,13 @@ function on_editor_event(main_player: Main_Player, editor: Editor_State, event: 
 
         case Editor_Event_Type.start_adventure: {
             const new_state = api_request(Api_Request_Type.start_adventure, {
-                access_token: main_player.token,
+                access_token: game.token,
                 dedicated_server_key: get_dedicated_server_key(),
                 adventure_id: event.adventure
             });
 
             if (new_state) {
-                try_submit_state_transition(main_player, new_state);
+                try_submit_state_transition(game, new_state);
             }
 
             break;
@@ -110,12 +110,12 @@ function on_editor_event(main_player: Main_Player, editor: Editor_State, event: 
 
         case Editor_Event_Type.exit_adventure: {
             const new_state = api_request(Api_Request_Type.exit_adventure, {
-                access_token: main_player.token,
+                access_token: game.token,
                 dedicated_server_key: get_dedicated_server_key()
             });
 
             if (new_state) {
-                try_submit_state_transition(main_player, new_state);
+                try_submit_state_transition(game, new_state);
             }
 
             break;
@@ -123,7 +123,7 @@ function on_editor_event(main_player: Main_Player, editor: Editor_State, event: 
     }
 }
 
-function subscribe_to_editor_events(main_player: Main_Player) {
+function subscribe_to_editor_events(main_player: Game) {
     const state: Editor_State =  {
         map_revealed: false,
         camera_unlocked: false

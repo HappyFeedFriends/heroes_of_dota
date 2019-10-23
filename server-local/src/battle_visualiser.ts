@@ -174,7 +174,7 @@ function manhattan(from: XY, to: XY) {
     return Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
 }
 
-function merge_battle_deltas(head_before_merge: number, deltas: Delta[]) {
+function merge_battle_deltas(battle: Battle, head_before_merge: number, deltas: Delta[]) {
     for (let index = 0; index < deltas.length; index++) {
         battle.deltas[head_before_merge + index] = deltas[index];
     }
@@ -182,7 +182,7 @@ function merge_battle_deltas(head_before_merge: number, deltas: Delta[]) {
     print("Merged", deltas.length, "deltas from head", head_before_merge, "new head", get_battle_remote_head());
 }
 
-function merge_delta_paths_from_client(delta_paths: Move_Delta_Paths) {
+function merge_delta_paths_from_client(battle: Battle, delta_paths: Move_Delta_Paths) {
     for (const delta_index_string in delta_paths) {
         const delta_index = tonumber(delta_index_string);
 
@@ -613,7 +613,7 @@ function filter_and_map_existing_units<T extends { target_unit_id: Unit_Id }>(ar
     return result;
 }
 
-function pudge_hook(main_player: Main_Player, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
+function pudge_hook(game: Game, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
     function is_hook_hit(cast: Pudge_Hook_Hit | Line_Ability_Miss): cast is Pudge_Hook_Hit {
         return from_client_bool(cast.hit); // @PanoramaBool
     }
@@ -670,7 +670,7 @@ function pudge_hook(main_player: Main_Player, pudge: Unit, cast: Delta_Ability_P
         }
 
         wait(time_to_travel);
-        change_health(main_player, pudge, target, cast.result.damage_dealt);
+        change_health(game, pudge, target, cast.result.damage_dealt);
 
         chain_sound.stop();
 
@@ -717,18 +717,18 @@ function pudge_hook(main_player: Main_Player, pudge: Unit, cast: Delta_Ability_P
     chain.release();
 }
 
-function starfall_drop_star_on_unit(main_player: Main_Player, caster: Unit, target: Unit, change: Health_Change) {
+function starfall_drop_star_on_unit(game: Game, caster: Unit, target: Unit, change: Health_Change) {
     const fx = fx_by_unit("particles/units/heroes/hero_mirana/mirana_starfall_attack.vpcf", target);
 
     wait(0.5);
 
     unit_emit_sound(caster, "Ability.StarfallImpact");
-    change_health(main_player, caster, target, change);
+    change_health(game, caster, target, change);
 
     fx.destroy_and_release(false);
 }
 
-function tide_ravage(main_player: Main_Player, caster: Unit, cast: Delta_Ability_Tide_Ravage) {
+function tide_ravage(game: Game, caster: Unit, cast: Delta_Ability_Tide_Ravage) {
     const caster_gesture = unit_start_gesture(caster, GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
 
     wait(0.1);
@@ -792,8 +792,8 @@ function tide_ravage(main_player: Main_Player, caster: Unit, cast: Delta_Ability
                 toss_target_up(target);
             }));
 
-            change_health(main_player, caster, target, target_data.change);
-            apply_modifier(main_player, target, target_data.modifier);
+            change_health(game, caster, target, target_data.change);
+            apply_modifier(game, target, target_data.modifier);
         }
 
         wait(particle_delay);
@@ -900,7 +900,7 @@ function highlight_grid_for_no_target_ability(unit: Unit, ability: Ability_Id) {
     CustomGameEventManager.Send_ServerToAllClients("grid_highlight_no_target_ability", event)
 }
 
-function perform_basic_attack(main_player: Main_Player, unit: Unit, cast: Delta_Ability_Basic_Attack) {
+function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_Attack) {
     const target = cast.target_position;
 
     function get_unit_pre_attack_sound(type: Hero_Type): string | undefined {
@@ -965,7 +965,7 @@ function perform_basic_attack(main_player: Main_Player, unit: Unit, cast: Delta_
             }
 
             tracking_projectile_to_unit(unit, target_unit, ranged_attack_spec.particle_path, ranged_attack_spec.projectile_speed);
-            change_health(main_player, unit, target_unit, cast.result.damage_dealt);
+            change_health(game, unit, target_unit, cast.result.damage_dealt);
             try_play_sound_for_hero(unit, get_unit_ranged_impact_sound, target_unit);
 
             if (ranged_attack_spec.shake_on_impact) {
@@ -987,7 +987,7 @@ function perform_basic_attack(main_player: Main_Player, unit: Unit, cast: Delta_
             const target_unit = find_unit_by_id(cast.result.target_unit_id);
 
             if (target_unit) {
-                change_health(main_player, unit, target_unit, cast.result.damage_dealt);
+                change_health(game, unit, target_unit, cast.result.damage_dealt);
             }
 
             shake_screen(target, Shake.weak);
@@ -1005,7 +1005,7 @@ function attachment_world_origin(unit: CDOTA_BaseNPC, attachment_name: string) {
     return unit.GetAttachmentOrigin(unit.ScriptLookupAttachment(attachment_name));
 }
 
-function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, cast: Delta_Ground_Target_Ability) {
+function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Ground_Target_Ability) {
     highlight_grid_for_targeted_ability(unit, cast.ability_id, cast.target_position);
 
     const world_from = battle_position_to_world_position_center(unit.position);
@@ -1017,12 +1017,12 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
 
     switch (cast.ability_id) {
         case Ability_Id.basic_attack: {
-            perform_basic_attack(main_player, unit, cast);
+            perform_basic_attack(game, unit, cast);
             break;
         }
 
         case Ability_Id.pudge_hook: {
-            pudge_hook(main_player, unit, cast);
+            pudge_hook(game, unit, cast);
             break;
         }
 
@@ -1069,7 +1069,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
                 if (target_unit) {
                     fx_by_unit("particles/units/heroes/hero_skywrath_mage/skywrath_mage_mystic_flare.vpcf", target_unit).release();
                     unit_emit_sound(target_unit, "Hero_SkywrathMage.MysticFlare.Target");
-                    change_health(main_player, unit, target_unit, { new_value: target_unit.health - 1, value_delta: -1 });
+                    change_health(game, unit, target_unit, { new_value: target_unit.health - 1, value_delta: -1 });
                 }
 
                 if (random_target.damage_remaining == 0) {
@@ -1119,7 +1119,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
                 const target_unit = find_unit_by_id(target.target_unit_id);
 
                 if (target_unit) {
-                    change_health(main_player, unit, target_unit, target.change);
+                    change_health(game, unit, target_unit, target.change);
                 }
             }
 
@@ -1154,7 +1154,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
                 const target_unit = find_unit_by_id(target.target_unit_id);
 
                 if (target_unit) {
-                    change_health(main_player, unit, target_unit, target.change);
+                    change_health(game, unit, target_unit, target.change);
                 }
             }
 
@@ -1183,8 +1183,8 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
             const to = cast.target_position;
 
             linear_projectile_with_targets(from, to, 1500, distance, fx, targets, target => target.unit.handle.GetAbsOrigin(), target => {
-                change_health(main_player, unit, target.unit, target.change);
-                apply_modifier(main_player, target.unit, target.modifier);
+                change_health(game, unit, target.unit, target.change);
+                apply_modifier(game, target.unit, target.modifier);
 
                 forks.push(fork(() => {
                     unit_emit_sound(target.unit, "Hero_Lion.ImpaleHitTarget");
@@ -1239,7 +1239,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
                 const target = find_unit_by_id(cast.result.stun.target_unit_id);
 
                 if (target) {
-                    apply_modifier(main_player, target, cast.result.stun.modifier);
+                    apply_modifier(game, target, cast.result.stun.modifier);
                 }
 
                 unit_emit_sound(unit, "Hero_Mirana.ArrowImpact");
@@ -1307,8 +1307,8 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
             const targets = filter_and_map_existing_units(from_client_array(cast.targets));
 
             linear_projectile_with_targets(from, to, 2000, distance, fx, targets, target => target.unit.handle.GetAbsOrigin(), target => {
-                change_health(main_player, unit, target.unit, target.change);
-                apply_modifier(main_player, target.unit, target.modifier);
+                change_health(game, unit, target.unit, target.change);
+                apply_modifier(game, target.unit, target.modifier);
             });
 
             break;
@@ -1361,7 +1361,7 @@ function play_ground_target_ability_delta(main_player: Main_Player, unit: Unit, 
     }
 }
 
-function apply_modifier_changes(main_player: Main_Player, target: Unit, changes: Modifier_Change[], invert: boolean) {
+function apply_modifier_changes(game: Game, target: Unit, changes: Modifier_Change[], invert: boolean) {
     for (const change of changes) {
         switch (change.type) {
             case Modifier_Change_Type.field_change: {
@@ -1453,7 +1453,7 @@ function try_apply_modifier_visuals(target: Unit, modifier_id: Modifier_Id) {
     }
 }
 
-function apply_modifier(main_player: Main_Player, target: Unit, modifier: Modifier_Application) {
+function apply_modifier(game: Game, target: Unit, modifier: Modifier_Application) {
     const modifier_changes = from_client_array(modifier.changes);
 
     print(`Apply and record ${modifier.modifier_handle_id} to ${target.handle.GetName()}`);
@@ -1466,8 +1466,8 @@ function apply_modifier(main_player: Main_Player, target: Unit, modifier: Modifi
         changes: modifier_changes
     });
 
-    apply_modifier_changes(main_player, target, modifier_changes, false);
-    update_player_state_net_table(main_player);
+    apply_modifier_changes(game, target, modifier_changes, false);
+    update_game_net_table(game);
 }
 
 function unit_emit_sound(unit: Handle_Provider, sound: string): Started_Sound {
@@ -1508,7 +1508,7 @@ function spawn_unit_with_fx<T extends Unit>(at: XY, supplier: () => T): T {
     return new_unit;
 }
 
-function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, cast: Delta_Unit_Target_Ability, target: Unit) {
+function play_unit_target_ability_delta(game: Game, caster: Unit, cast: Delta_Unit_Target_Ability, target: Unit) {
     turn_unit_towards_target(caster, target.position);
     highlight_grid_for_targeted_ability(caster, cast.ability_id, target.position);
 
@@ -1525,7 +1525,7 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
                 while (remaining != 0) {
                     const delta = (remaining > change_per_loop ? change_per_loop : remaining) * direction;
 
-                    change_health(main_player, caster, target, { new_value: target.health + delta, value_delta: delta });
+                    change_health(game, caster, target, { new_value: target.health + delta, value_delta: delta });
 
                     remaining = Math.max(0, remaining - change_per_loop);
 
@@ -1553,8 +1553,8 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
             tracking_projectile_to_unit(caster, target, fx, 3000, "attach_attack2");
             unit_emit_sound(caster, "Ability.GushImpact");
             shake_screen(target.position, Shake.medium);
-            apply_modifier(main_player, target, cast.modifier);
-            change_health(main_player, caster, target, cast.damage_dealt);
+            apply_modifier(game, target, cast.modifier);
+            change_health(game, caster, target, cast.damage_dealt);
 
             break;
         }
@@ -1572,7 +1572,7 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
 
             shake_screen(target.position, Shake.medium);
             unit_emit_sound(caster, "Hero_Luna.LucentBeam.Target");
-            change_health(main_player, caster, target, cast.damage_dealt);
+            change_health(game, caster, target, cast.damage_dealt);
 
             break;
         }
@@ -1580,7 +1580,7 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
         case Ability_Id.skywrath_ancient_seal: {
             unit_play_activity(caster, GameActivity_t.ACT_DOTA_CAST_ABILITY_3, 0.4);
             unit_emit_sound(target, "Hero_SkywrathMage.AncientSeal.Target");
-            apply_modifier(main_player, target, cast.modifier);
+            apply_modifier(game, target, cast.modifier);
 
             break;
         }
@@ -1594,8 +1594,8 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
 
             unit_play_activity(caster, GameActivity_t.ACT_DOTA_CAST_ABILITY_2, 0.4);
             unit_emit_sound(target, "Hero_DragonKnight.DragonTail.Target");
-            apply_modifier(main_player, target, cast.modifier);
-            change_health(main_player, caster, target, cast.damage_dealt);
+            apply_modifier(game, target, cast.modifier);
+            change_health(game, caster, target, cast.damage_dealt);
             shake_screen(target.position, Shake.medium);
 
             break;
@@ -1605,7 +1605,7 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
             unit_play_activity(caster, GameActivity_t.ACT_DOTA_CAST_ABILITY_2, 0.4);
             unit_emit_sound(target, "Hero_Lion.Voodoo");
             unit_emit_sound(target, "Hero_Lion.Hex.Target");
-            apply_modifier(main_player, target, cast.modifier);
+            apply_modifier(game, target, cast.modifier);
             shake_screen(target.position, Shake.weak);
             fx_by_unit("particles/units/heroes/hero_lion/lion_spell_voodoo.vpcf", target).release();
 
@@ -1625,7 +1625,7 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
             wait(0.1);
 
             unit_emit_sound(target, "Hero_Lion.FingerOfDeathImpact");
-            change_health(main_player, caster, target, cast.damage_dealt);
+            change_health(game, caster, target, cast.damage_dealt);
             shake_screen(target.position, Shake.medium);
 
             break;
@@ -1638,8 +1638,8 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
             unit_emit_sound(caster, "Hero_VengefulSpirit.MagicMissile");
             tracking_projectile_to_unit(caster, target, projectile_fx, 1400, "attach_attack2");
             unit_emit_sound(target, "Hero_VengefulSpirit.MagicMissileImpact");
-            change_health(main_player, caster, target, cast.damage_dealt);
-            apply_modifier(main_player, target, cast.modifier);
+            change_health(game, caster, target, cast.damage_dealt);
+            apply_modifier(game, target, cast.modifier);
             shake_screen(target.position, Shake.medium);
 
             break;
@@ -1681,7 +1681,7 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
         case Ability_Id.dark_seer_ion_shell: {
             unit_play_activity(caster, GameActivity_t.ACT_DOTA_CAST_ABILITY_2);
             unit_emit_sound(target, "Hero_Dark_Seer.Ion_Shield_Start");
-            apply_modifier(main_player, target, cast.modifier);
+            apply_modifier(game, target, cast.modifier);
 
             break;
         }
@@ -1689,7 +1689,7 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
         case Ability_Id.dark_seer_surge: {
             unit_play_activity(caster, GameActivity_t.ACT_DOTA_CAST_ABILITY_3);
             unit_emit_sound(caster, "Hero_Dark_Seer.Surge");
-            apply_modifier(main_player, target, cast.modifier);
+            apply_modifier(game, target, cast.modifier);
 
             break;
         }
@@ -1698,7 +1698,7 @@ function play_unit_target_ability_delta(main_player: Main_Player, caster: Unit, 
     }
 }
 
-function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast: Delta_Use_No_Target_Ability) {
+function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No_Target_Ability) {
     highlight_grid_for_no_target_ability(unit, cast.ability_id);
 
     switch (cast.ability_id) {
@@ -1713,7 +1713,7 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
                 const target = find_unit_by_id(target_data.target_unit_id);
 
                 if (target) {
-                    change_health(main_player, unit, target, target_data.change);
+                    change_health(game, unit, target, target_data.change);
                 }
             }
 
@@ -1741,8 +1741,8 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
                 const target = find_unit_by_id(effect.target_unit_id);
 
                 if (target) {
-                    change_health(main_player, unit, target, effect.change);
-                    apply_modifier(main_player, target, effect.modifier);
+                    change_health(game, unit, target, effect.change);
+                    apply_modifier(game, target, effect.modifier);
                 }
             }
 
@@ -1754,7 +1754,7 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
         }
 
         case Ability_Id.tide_ravage: {
-            tide_ravage(main_player, unit, cast);
+            tide_ravage(game, unit, cast);
 
             break;
         }
@@ -1797,7 +1797,7 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
                         .release();
 
                     unit_emit_sound(target_unit, "Hero_Luna.Eclipse.Target");
-                    change_health(main_player, unit, target_unit, { new_value: target_unit.health - 1, value_delta: -1 });
+                    change_health(game, unit, target_unit, { new_value: target_unit.health - 1, value_delta: -1 });
                     shake_screen(target_unit.position, Shake.weak);
                 }
 
@@ -1873,8 +1873,8 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
                 if (target) {
                     tracking_projectile_to_unit(unit, target, projectile_fx, 1200, "attach_attack2");
                     unit_emit_sound(target, "Hero_SkywrathMage.ConcussiveShot.Target");
-                    change_health(main_player, unit, target, cast.result.damage);
-                    apply_modifier(main_player, target, cast.result.modifier);
+                    change_health(game, unit, target, cast.result.damage);
+                    apply_modifier(game, target, cast.result.modifier);
                     shake_screen(target.position, Shake.weak);
                 }
             } else {
@@ -1891,7 +1891,7 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
             unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_1, 0.8);
             fx_by_unit("particles/units/heroes/hero_dragon_knight/dragon_knight_transform_red.vpcf", unit).release();
             unit_emit_sound(unit, "Hero_DragonKnight.ElderDragonForm");
-            apply_modifier(main_player, unit, cast.modifier);
+            apply_modifier(game, unit, cast.modifier);
 
             break;
         }
@@ -1905,7 +1905,7 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
                 const target_unit = find_unit_by_id(target.target_unit_id);
 
                 if (target_unit) {
-                    starfall_drop_star_on_unit(main_player, unit, target_unit, target.change);
+                    starfall_drop_star_on_unit(game, unit, target_unit, target.change);
                 }
             })));
 
@@ -1916,7 +1916,7 @@ function play_no_target_ability_delta(main_player: Main_Player, unit: Unit, cast
     }
 }
 
-function play_no_target_spell_delta(main_player: Main_Player, cast: Delta_Use_No_Target_Spell) {
+function play_no_target_spell_delta(game: Game, cast: Delta_Use_No_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.mekansm: {
             battle_emit_sound("DOTA_Item.Mekansm.Activate");
@@ -1924,7 +1924,7 @@ function play_no_target_spell_delta(main_player: Main_Player, cast: Delta_Use_No
             for (const target of filter_and_map_existing_units(from_client_array(cast.targets))) {
                 fx_follow_unit("particles/items2_fx/mekanism.vpcf", target.unit).release();
                 unit_emit_sound(target.unit, "DOTA_Item.Mekansm.Target");
-                change_health(main_player, target.unit, target.unit, target.change);
+                change_health(game, target.unit, target.unit, target.change);
             }
 
             break;
@@ -1934,7 +1934,7 @@ function play_no_target_spell_delta(main_player: Main_Player, cast: Delta_Use_No
             battle_emit_sound("DOTA_Item.Buckler.Activate");
 
             for (const target of filter_and_map_existing_units(from_client_array(cast.targets))) {
-                apply_modifier(main_player, target.unit, target.modifier);
+                apply_modifier(game, target.unit, target.modifier);
             }
 
             break;
@@ -1944,7 +1944,7 @@ function play_no_target_spell_delta(main_player: Main_Player, cast: Delta_Use_No
             battle_emit_sound("DOTA_Item.DoE.Activate");
 
             for (const target of filter_and_map_existing_units(from_client_array(cast.targets))) {
-                apply_modifier(main_player, target.unit, target.modifier);
+                apply_modifier(game, target.unit, target.modifier);
             }
 
             break;
@@ -1970,7 +1970,7 @@ function play_no_target_spell_delta(main_player: Main_Player, cast: Delta_Use_No
     }
 }
 
-function play_ground_target_spell_delta(main_player: Main_Player, cast: Delta_Use_Ground_Target_Spell) {
+function play_ground_target_spell_delta(game: Game, cast: Delta_Use_Ground_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.pocket_tower: {
             const facing = find_player_deployment_zone_facing(cast.player_id);
@@ -1986,15 +1986,15 @@ function play_ground_target_spell_delta(main_player: Main_Player, cast: Delta_Us
     }
 }
 
-function play_unit_target_spell_delta(main_player: Main_Player, caster: Battle_Player, target: Unit, cast: Delta_Use_Unit_Target_Spell) {
+function play_unit_target_spell_delta(game: Game, caster: Battle_Player, target: Unit, cast: Delta_Use_Unit_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.buyback: {
             target.dead = false;
 
             battle_emit_sound("buyback_use");
-            change_gold(main_player, caster, cast.gold_change);
-            change_health(main_player, target, target, cast.heal);
-            apply_modifier(main_player, target, cast.modifier);
+            change_gold(game, caster, cast.gold_change);
+            change_health(game, target, target, cast.heal);
+            apply_modifier(game, target, cast.modifier);
 
             break;
         }
@@ -2010,8 +2010,8 @@ function play_unit_target_spell_delta(main_player: Main_Player, caster: Battle_P
             wait(3);
 
             unit_emit_sound(target, "Portal.Hero_Disappear");
-            change_health(main_player, target, target, cast.heal);
-            apply_modifier(main_player, target, cast.modifier);
+            change_health(game, target, target, cast.heal);
+            apply_modifier(game, target, cast.modifier);
 
             loop_sound.stop();
             teleport_gesture.fade();
@@ -2022,7 +2022,7 @@ function play_unit_target_spell_delta(main_player: Main_Player, caster: Battle_P
 
         case Spell_Id.euls_scepter: {
             unit_emit_sound(target, "DOTA_Item.Cyclone.Activate");
-            apply_modifier(main_player, target, cast.modifier);
+            apply_modifier(game, target, cast.modifier);
 
             break;
         }
@@ -2038,14 +2038,14 @@ function play_unit_target_spell_delta(main_player: Main_Player, caster: Battle_P
     }
 }
 
-function play_item_effect_delta(main_player: Main_Player, delta: Delta_Item_Effect_Applied) {
+function play_item_effect_delta(game: Game, delta: Delta_Item_Effect_Applied) {
     switch (delta.item_id) {
         case Item_Id.morbid_mask:
         case Item_Id.satanic: {
             const target = find_unit_by_id(delta.heal.target_unit_id);
             if (!target) break;
 
-            change_health(main_player, target, target, delta.heal.change);
+            change_health(game, target, target, delta.heal.change);
             fx_by_unit("particles/generic_gameplay/generic_lifesteal.vpcf", target).release();
 
             break;
@@ -2054,7 +2054,7 @@ function play_item_effect_delta(main_player: Main_Player, delta: Delta_Item_Effe
             const target = find_unit_by_id(delta.heal.target_unit_id);
             if (!target) break;
 
-            change_health(main_player, target, target, delta.heal.change);
+            change_health(game, target, target, delta.heal.change);
             fx_by_unit("particles/items3_fx/octarine_core_lifesteal.vpcf", target).release();
 
             break;
@@ -2064,7 +2064,7 @@ function play_item_effect_delta(main_player: Main_Player, delta: Delta_Item_Effe
             const target = find_unit_by_id(delta.heal.target_unit_id);
             if (!target) break;
 
-            change_health(main_player, target, target, delta.heal.change);
+            change_health(game, target, target, delta.heal.change);
 
             break;
         }
@@ -2074,7 +2074,7 @@ function play_item_effect_delta(main_player: Main_Player, delta: Delta_Item_Effe
             if (!target) break;
 
             unit_emit_sound(target, "DOTA_Item.SkullBasher");
-            apply_modifier(main_player, target, delta.modifier);
+            apply_modifier(game, target, delta.modifier);
 
             break;
         }
@@ -2085,7 +2085,7 @@ function play_item_effect_delta(main_player: Main_Player, delta: Delta_Item_Effe
     wait(0.2);
 }
 
-function play_ability_effect_delta(main_player: Main_Player, effect: Ability_Effect) {
+function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
     switch (effect.ability_id) {
         case Ability_Id.luna_moon_glaive: {
             const source = find_unit_by_id(effect.source_unit_id);
@@ -2100,7 +2100,7 @@ function play_ability_effect_delta(main_player: Main_Player, effect: Ability_Eff
                     unit_emit_sound(target, "Hero_Luna.MoonGlaive.Impact");
                 }
 
-                change_health(main_player, source, target, effect.damage_dealt);
+                change_health(game, source, target, effect.damage_dealt);
             }
 
             break;
@@ -2112,7 +2112,7 @@ function play_ability_effect_delta(main_player: Main_Player, effect: Ability_Eff
 
             if (source && target) {
                 wait(0.25);
-                starfall_drop_star_on_unit(main_player, source, target, effect.damage_dealt);
+                starfall_drop_star_on_unit(game, source, target, effect.damage_dealt);
             }
 
             break;
@@ -2124,7 +2124,7 @@ function play_ability_effect_delta(main_player: Main_Player, effect: Ability_Eff
 
             if (source) {
                 for (const target of targets) {
-                    change_health(main_player, source, target.unit, target.change);
+                    change_health(game, source, target.unit, target.change);
                     fx("particles/units/heroes/hero_dark_seer/dark_seer_ion_shell_damage.vpcf")
                         .follow_unit_origin(0, source)
                         .to_unit_attach_point(1, target.unit, "attach_hitloc")
@@ -2153,7 +2153,7 @@ function play_ability_effect_delta(main_player: Main_Player, effect: Ability_Eff
                 tracking_projectile_from_point_to_unit(source.handle.GetAbsOrigin() + Vector(0, 0, 200) as Vector, target, attack_particle, 1600);
                 shake_screen(target.position, Shake.medium);
                 add_activity_override(source, GameActivity_t.ACT_DOTA_CUSTOM_TOWER_IDLE);
-                change_health(main_player, source, target, effect.damage_dealt);
+                change_health(game, source, target, effect.damage_dealt);
                 unit_emit_sound(target, "Tower.HeroImpact");
             }
 
@@ -2164,7 +2164,7 @@ function play_ability_effect_delta(main_player: Main_Player, effect: Ability_Eff
     }
 }
 
-function play_rune_pickup_delta(main_player: Main_Player, unit: Hero, delta: Delta_Rune_Pick_Up) {
+function play_rune_pickup_delta(game: Game, unit: Hero, delta: Delta_Rune_Pick_Up) {
     switch (delta.rune_type) {
         case Rune_Type.bounty: {
             fx("particles/generic_gameplay/rune_bounty_owner.vpcf")
@@ -2175,7 +2175,7 @@ function play_rune_pickup_delta(main_player: Main_Player, unit: Hero, delta: Del
             const player = array_find(battle.players, player => player.id == unit.owner_remote_id);
 
             if (player) {
-                change_gold(main_player, player, delta.gold_gained);
+                change_gold(game, player, delta.gold_gained);
             }
 
             unit_emit_sound(unit, "Rune.Bounty");
@@ -2186,7 +2186,7 @@ function play_rune_pickup_delta(main_player: Main_Player, unit: Hero, delta: Del
 
         case Rune_Type.double_damage: {
             unit_emit_sound(unit, "Rune.DD");
-            apply_modifier(main_player, unit, delta.modifier);
+            apply_modifier(game, unit, delta.modifier);
             wait(0.5);
 
             break;
@@ -2194,7 +2194,7 @@ function play_rune_pickup_delta(main_player: Main_Player, unit: Hero, delta: Del
 
         case Rune_Type.haste: {
             unit_emit_sound(unit, "Rune.Haste");
-            apply_modifier(main_player, unit, delta.modifier);
+            apply_modifier(game, unit, delta.modifier);
             wait(0.5);
 
             break;
@@ -2210,7 +2210,7 @@ function play_rune_pickup_delta(main_player: Main_Player, unit: Hero, delta: Del
             unit_emit_sound(unit, "Rune.Regen");
 
             while (unit.health != target) {
-                change_health(main_player, unit, unit, { value_delta: direction, new_value: unit.health + direction });
+                change_health(game, unit, unit, { value_delta: direction, new_value: unit.health + direction });
 
                 wait(0.25);
             }
@@ -2224,7 +2224,7 @@ function play_rune_pickup_delta(main_player: Main_Player, unit: Hero, delta: Del
     }
 }
 
-function play_item_equip_delta(main_player: Main_Player, hero: Hero, delta: Delta_Equip_Item) {
+function play_item_equip_delta(game: Game, hero: Hero, delta: Delta_Equip_Item) {
     wait(0.3);
 
     unit_emit_sound(hero, "Item.PickUpShop");
@@ -2232,43 +2232,43 @@ function play_item_equip_delta(main_player: Main_Player, hero: Hero, delta: Delt
 
     switch (delta.item_id) {
         case Item_Id.assault_cuirass: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             break;
         }
 
         case Item_Id.boots_of_travel: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             break;
         }
 
         case Item_Id.boots_of_speed: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             break;
         }
 
         case Item_Id.blades_of_attack: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             break;
         }
 
         case Item_Id.divine_rapier: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             break;
         }
 
         case Item_Id.heart_of_tarrasque: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             break;
         }
 
         case Item_Id.satanic: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             unit_emit_sound(hero, "equip_satanic");
             break;
         }
 
         case Item_Id.tome_of_knowledge: {
-            change_hero_level(main_player, hero, delta.new_level);
+            change_hero_level(game, hero, delta.new_level);
             break;
         }
 
@@ -2280,43 +2280,43 @@ function play_item_equip_delta(main_player: Main_Player, hero: Hero, delta: Delt
         }
 
         case Item_Id.mask_of_madness: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             unit_emit_sound(hero, "DOTA_Item.MaskOfMadness.Activate");
 
             break;
         }
 
         case Item_Id.armlet: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             unit_emit_sound(hero, "DOTA_Item.Armlet.Activate");
 
             break;
         }
 
         case Item_Id.belt_of_strength: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
 
             break;
         }
 
         case Item_Id.morbid_mask: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
 
             break;
         }
 
         case Item_Id.chainmail: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             break;
         }
 
         case Item_Id.octarine_core: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             break;
         }
 
         case Item_Id.basher: {
-            apply_modifier(main_player, hero, delta.modifier);
+            apply_modifier(game, hero, delta.modifier);
             break;
         }
 
@@ -2410,7 +2410,7 @@ function unit_play_activity(unit: Unit, activity: GameActivity_t, wait_up_to = 0
     return sequence_duration - time_passed;
 }
 
-function change_health(main_player: Main_Player, source: Unit, target: Unit, change: Health_Change) {
+function change_health(game: Game, source: Unit, target: Unit, change: Health_Change) {
     function number_particle(amount: number, r: number, g: number, b: number) {
         fx("particles/msg_damage.vpcf")
             .to_unit_origin(0, target)
@@ -2439,7 +2439,7 @@ function change_health(main_player: Main_Player, source: Unit, target: Unit, cha
 
     target.health = Math.max(0, Math.min(target.max_health, change.new_value));
 
-    update_player_state_net_table(main_player);
+    update_game_net_table(game);
 
     if (target.health == 0 && !target.dead) {
         // TODO gold earning could have an actual source, it's probably where we should spawn the particle
@@ -2475,7 +2475,7 @@ function change_health(main_player: Main_Player, source: Unit, target: Unit, cha
     }
 }
 
-function move_unit(main_player: Main_Player, unit: Unit, path: XY[]) {
+function move_unit(game: Game, unit: Unit, path: XY[]) {
     for (const cell of path) {
         const world_position = battle_position_to_world_position_center(cell);
 
@@ -2487,28 +2487,28 @@ function move_unit(main_player: Main_Player, unit: Unit, path: XY[]) {
 
         unit.move_points = unit.move_points - 1;
 
-        update_player_state_net_table(main_player);
+        update_game_net_table(game);
     }
 }
 
-function change_hero_level(main_player: Main_Player, hero: Hero, new_level: number) {
+function change_hero_level(game: Game, hero: Hero, new_level: number) {
     hero.level = new_level;
 
     unit_emit_sound(hero, "hero_level_up");
     fx_by_unit("particles/generic_hero_status/hero_levelup.vpcf", hero).release();
     try_play_random_sound_for_hero(hero, sounds => sounds.level_up);
 
-    update_player_state_net_table(main_player);
+    update_game_net_table(game);
 }
 
-function change_gold(main_player: Main_Player, player: Battle_Player, change: number) {
+function change_gold(game: Game, player: Battle_Player, change: number) {
     if (player.id == battle.this_player_id && battle.has_started) {
         battle_emit_sound("General.Coins");
     }
 
     player.gold += change;
 
-    update_player_state_net_table(main_player);
+    update_game_net_table(game);
 }
 
 function on_modifier_removed(unit: Unit, modifier_id: Modifier_Id) {
@@ -2537,7 +2537,7 @@ function on_modifier_removed(unit: Unit, modifier_id: Modifier_Id) {
     }
 }
 
-function remove_modifier(main_player: Main_Player, unit: Unit, modifier: Modifier_Data, array_index: number) {
+function remove_modifier(game: Game, unit: Unit, modifier: Modifier_Data, array_index: number) {
     const modifier_visuals = modifier_id_to_visuals(modifier.modifier_id);
 
     if (modifier_visuals) {
@@ -2565,7 +2565,7 @@ function remove_modifier(main_player: Main_Player, unit: Unit, modifier: Modifie
 
     unit.modifiers.splice(array_index, 1);
 
-    apply_modifier_changes(main_player, unit, modifier.changes, true);
+    apply_modifier_changes(game, unit, modifier.changes, true);
 }
 
 function add_activity_translation(target: Unit, translation: Activity_Translation, duration: number) {
@@ -2594,7 +2594,7 @@ function show_damage_effect_on_target(target: Handle_Provider) {
     target.handle.AddNewModifier(target.handle, undefined, "Modifier_Damage_Effect", { duration: 0.2 });
 }
 
-function play_delta(main_player: Main_Player, delta: Delta, head: number) {
+function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
     switch (delta.type) {
         case Delta_Type.hero_spawn: {
             const owner = array_find(battle.participants, player => player.id == delta.owner_id);
@@ -2617,7 +2617,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
                 return unit;
             });
 
-            update_player_state_net_table(main_player);
+            update_game_net_table(game);
 
             if (battle.has_started) {
                 wait(1.5);
@@ -2639,7 +2639,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
                 return unit;
             });
 
-            update_player_state_net_table(main_player);
+            update_game_net_table(game);
 
             if (battle.has_started) {
                 wait(1.5);
@@ -2762,12 +2762,12 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
                 particle.destroy_and_release(false);
             }
 
-            remove_modifier(main_player, unit, unit.modifiers[in_hand_modifier], in_hand_modifier);
+            remove_modifier(game, unit, unit.modifiers[in_hand_modifier], in_hand_modifier);
 
             FindClearSpaceForUnit(unit.handle, world_at, true);
             unit.handle.FaceTowards(unit.handle.GetAbsOrigin() + Vector(facing.x, facing.y) * 100 as Vector);
 
-            update_player_state_net_table(main_player);
+            update_game_net_table(game);
 
             const gesture = (() => {
                 if (delta.source_spell_id == Spell_Id.town_portal_scroll) return GameActivity_t.ACT_DOTA_TELEPORT_END;
@@ -2792,7 +2792,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
 
             unit.position = delta.to_position;
 
-            move_unit(main_player, unit, path);
+            move_unit(game, unit, path);
 
             break;
         }
@@ -2810,12 +2810,12 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
 
             unit.position = rune.position;
 
-            move_unit(main_player, unit, path);
+            move_unit(game, unit, path);
             destroy_rune(rune, false);
 
             battle.runes.splice(rune_index, 1);
 
-            play_rune_pickup_delta(main_player, unit, delta);
+            play_rune_pickup_delta(game, unit, delta);
 
             break;
         }
@@ -2824,7 +2824,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             const player = array_find(battle.players, player => player.id == delta.player_id);
 
             if (player) {
-                change_gold(main_player, player, delta.change);
+                change_gold(game, player, delta.change);
             }
 
             break;
@@ -2848,7 +2848,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             const hero = find_hero_by_id(delta.unit_id);
 
             if (hero) {
-                play_item_equip_delta(main_player, hero, delta);
+                play_item_equip_delta(game, hero, delta);
             }
 
             break;
@@ -2858,7 +2858,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             const attacker = find_unit_by_id(delta.unit_id);
 
             if (attacker) {
-                play_ground_target_ability_delta(main_player, attacker, delta);
+                play_ground_target_ability_delta(game, attacker, delta);
             }
 
             break;
@@ -2869,7 +2869,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             const target = find_unit_by_id(delta.target_unit_id);
 
             if (attacker && target) {
-                play_unit_target_ability_delta(main_player, attacker, delta, target);
+                play_unit_target_ability_delta(game, attacker, delta, target);
             }
 
             break;
@@ -2879,7 +2879,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             const attacker = find_unit_by_id(delta.unit_id);
 
             if (attacker) {
-                play_no_target_ability_delta(main_player, attacker, delta);
+                play_no_target_ability_delta(game, attacker, delta);
             }
 
             break;
@@ -2890,20 +2890,20 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             const target = find_unit_by_id(delta.target_id);
 
             if (player && target) {
-                play_unit_target_spell_delta(main_player, player, target, delta);
+                play_unit_target_spell_delta(game, player, target, delta);
             }
 
             break;
         }
 
         case Delta_Type.use_no_target_spell: {
-            play_no_target_spell_delta(main_player, delta);
+            play_no_target_spell_delta(game, delta);
 
             break;
         }
 
         case Delta_Type.use_ground_target_spell: {
-            play_ground_target_spell_delta(main_player, delta);
+            play_ground_target_spell_delta(game, delta);
 
             break;
         }
@@ -2913,7 +2913,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
                 unit.move_points = unit.max_move_points + unit.move_points_bonus;
             }
 
-            update_player_state_net_table(main_player);
+            update_game_net_table(game);
 
             if (delta.start_turn_of_player_id == battle.this_player_id) {
                 CustomGameEventManager.Send_ServerToAllClients("show_start_turn_ui", {});
@@ -2926,8 +2926,8 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             const hero = find_hero_by_id(delta.unit_id);
 
             if (hero) {
-                change_hero_level(main_player, hero, delta.new_level);
-                update_player_state_net_table(main_player);
+                change_hero_level(game, hero, delta.new_level);
+                update_game_net_table(game);
                 wait(1);
             }
 
@@ -2939,7 +2939,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
             const target = find_unit_by_id(delta.target_unit_id);
 
             if (source && target) {
-                change_health(main_player, source, target, delta); // TODO use Health_Change
+                change_health(game, source, target, delta); // TODO use Health_Change
             }
 
             break;
@@ -2953,7 +2953,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
                         const modifier = unit.modifiers[index];
 
                         if (modifier.modifier_handle_id == delta.modifier_handle_id) {
-                            remove_modifier(main_player, unit, modifier, index);
+                            remove_modifier(game, unit, modifier, index);
 
                             // break modifier_search;
                         }
@@ -2965,13 +2965,13 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
         }
 
         case Delta_Type.ability_effect_applied: {
-            play_ability_effect_delta(main_player, delta.effect);
+            play_ability_effect_delta(game, delta.effect);
 
             break;
         }
 
         case Delta_Type.item_effect_applied: {
-            play_item_effect_delta(main_player, delta);
+            play_item_effect_delta(game, delta);
 
             break;
         }
@@ -3004,7 +3004,7 @@ function play_delta(main_player: Main_Player, delta: Delta, head: number) {
     }
 }
 
-function use_cheat(cheat: string) {
+function use_cheat(battle: Battle, cheat: string) {
     const parts = cheat.split(" ");
 
     function create_or_destroy<T extends { position: XY, handle: CBaseEntity }>(things: T[], at: XY, supplier: () => T) {
@@ -3118,7 +3118,7 @@ function periodically_update_battle() {
     }
 }
 
-function clean_battle_world_handles() {
+function clean_battle_world_handles(battle: Battle) {
     for (const unit of battle.units) {
         unit.handle.RemoveSelf();
     }
@@ -3172,10 +3172,10 @@ function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC)
     };
 }
 
-function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_Snapshot) {
+function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
     print("Fast forwarding from snapshot, new head", snapshot.delta_head);
 
-    clean_battle_world_handles();
+    clean_battle_world_handles(battle);
 
     battle.has_started = snapshot.has_started;
 
@@ -3267,6 +3267,4 @@ function fast_forward_from_snapshot(main_player: Main_Player, snapshot: Battle_S
             try_apply_modifier_visuals(unit, modifier.modifier_id);
         }
     }
-
-    update_player_state_net_table(main_player);
 }

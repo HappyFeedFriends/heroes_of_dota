@@ -532,7 +532,7 @@ function on_battle_event(battle: UI_Battle, event: Battle_Event) {
     }
 }
 
-function process_state_transition(from: Player_State, new_state: Player_Net_Table) {
+function process_state_transition(from: Player_State, new_state: Game_Net_Table) {
     $.Msg(`Transition from ${from} to ${new_state.state}`);
 
     if (from == Player_State.in_battle) {
@@ -1468,7 +1468,7 @@ function dispose_of_unit_stat_bar_data(data: UI_Unit_Data) {
     data.stat_bar_panel.DeleteAsync(0);
 }
 
-function process_state_update(state: Player_Net_Table) {
+function process_state_update(state: Game_Net_Table) {
     if (state.state == Player_State.not_logged_in) {
         return;
     }
@@ -2939,7 +2939,7 @@ function subscribe_to_custom_event<T extends object>(event_name: string, handler
     })
 }
 
-subscribe_to_net_table_key<Player_Net_Table>("main", "player", data => {
+subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
     if (current_state != data.state) {
         process_state_transition(current_state, data);
 

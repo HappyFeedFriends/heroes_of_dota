@@ -301,7 +301,7 @@ function update_editor_buttons(state: Player_State) {
 function init_editor_ui() {
     editor_root.style.visibility = "visible";
 
-    subscribe_to_net_table_key<Player_Net_Table>("main", "player", data => {
+    subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
         buttons_root.RemoveAndDeleteChildren();
 
         update_editor_buttons(data.state);

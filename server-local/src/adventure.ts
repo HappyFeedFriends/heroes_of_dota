@@ -55,19 +55,19 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
     }
 }
 
-function adventure_enemy_movement_loop(main_player: Main_Player, adventure: Adventure_State) {
+function adventure_enemy_movement_loop(game: Game) {
     while (true) {
-        wait_until(() => main_player.state == Player_State.on_adventure);
+        wait_until(() => game.state == Player_State.on_adventure);
 
-        for (const enemy of adventure.entities) {
+        for (const enemy of game.adventure.entities) {
             if (enemy.type != Adventure_Entity_Type.enemy) continue;
 
             const enemy_handle = enemy.unit;
 
             const enemy_spawn_location = Vector(enemy.spawn_position.x, enemy.spawn_position.y);
             const enemy_actual_location = enemy_handle.GetAbsOrigin();
-            const player_location = main_player.hero_unit.GetAbsOrigin();
-            const player_can_see_enemy = main_player.hero_unit.CanEntityBeSeenByMyTeam(enemy_handle);
+            const player_location = game.player.hero_unit.GetAbsOrigin();
+            const player_can_see_enemy = game.player.hero_unit.CanEntityBeSeenByMyTeam(enemy_handle);
             const distance_to_player = (enemy_spawn_location - player_location as Vector).Length2D();
 
             if (distance_to_player <= 500 && player_can_see_enemy) {

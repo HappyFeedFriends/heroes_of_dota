@@ -503,7 +503,7 @@ register_api_handler(Api_Request_Type.get_player_state, req => {
 });
 
 register_api_handler(Api_Request_Type.get_player_name, req => {
-    const player_state = try_do_with_player(req.access_token, requesting_player => {
+    const player_state = try_do_with_player(req.access_token, () => {
         const player = player_by_id(req.player_id);
 
         if (player) {

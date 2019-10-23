@@ -15,17 +15,20 @@ type Map_Player = {
     id: Player_Id
 } & Entity_With_Movement
 
-// TODO rename to Game_State
-type Main_Player = {
+type Game = {
     token: string
+    state: Player_State
+    player: Main_Player
+    adventure: Adventure_State
+}
+
+type Main_Player = {
     remote_id: Player_Id
     player_id: PlayerID
     hero_unit: CDOTA_BaseNPC_Hero
-    movement_history: Movement_History_Entry[]
     current_order_x: number
     current_order_y: number
-    state: Player_State
-    adventure: Adventure_State
+    movement_history: Movement_History_Entry[]
 }
 
 type Map_State = {
@@ -36,15 +39,15 @@ type Map_State = {
 const movement_history_submit_rate = 0.7;
 const movement_history_length = 30;
 
-function submit_player_movement(main_player: Main_Player) {
-    const current_location = main_player.hero_unit.GetAbsOrigin();
+function submit_player_movement(game: Game) {
+    const current_location = game.player.hero_unit.GetAbsOrigin();
     const request = {
-        access_token: main_player.token,
+        access_token: game.token,
         current_location: {
             x: current_location.x,
             y: current_location.y
         },
-        movement_history: main_player.movement_history.map(entry => ({
+        movement_history: game.player.movement_history.map(entry => ({
             order_x: entry.order_x,
             order_y: entry.order_y,
             location_x: entry.location_x,
@@ -53,7 +56,7 @@ function submit_player_movement(main_player: Main_Player) {
         dedicated_server_key: get_dedicated_server_key()
     };
 
-    api_request_with_retry_on_403(Api_Request_Type.submit_player_movement, main_player, request);
+    api_request_with_retry_on_403(Api_Request_Type.submit_player_movement, game, request);
 }
 
 function get_npc_model(npc_type: Npc_Type): [string, number] {
@@ -63,7 +66,7 @@ function get_npc_model(npc_type: Npc_Type): [string, number] {
     }
 }
 
-function process_player_global_map_order(main_player: Main_Player, map: Map_State, order: ExecuteOrderEvent): boolean {
+function process_player_global_map_order(game: Game, map: Map_State, order: ExecuteOrderEvent): boolean {
     function try_find_entity_by_unit<T extends Entity_With_Movement>(entities: Record<number, T>, query: CBaseEntity): T | undefined {
         for (let entity_id in entities) {
             const entity = entities[entity_id];
@@ -75,10 +78,10 @@ function process_player_global_map_order(main_player: Main_Player, map: Map_Stat
     }
 
     for (let index in order.units) {
-        if (order.units[index] == main_player.hero_unit.entindex()) {
+        if (order.units[index] == game.player.hero_unit.entindex()) {
             if (order.order_type == DotaUnitOrder_t.DOTA_UNIT_ORDER_MOVE_TO_POSITION) {
-                main_player.current_order_x = order.position_x;
-                main_player.current_order_y = order.position_y;
+                game.player.current_order_x = order.position_x;
+                game.player.current_order_y = order.position_y;
             } else if (order.order_type == DotaUnitOrder_t.DOTA_UNIT_ORDER_ATTACK_TARGET) {
                 const clicked_entity = EntIndexToHScript(order.entindex_target);
 
@@ -86,9 +89,9 @@ function process_player_global_map_order(main_player: Main_Player, map: Map_Stat
                 const attacked_npc = try_find_entity_by_unit(map.neutrals, clicked_entity);
 
                 if (attacked_player) {
-                    fork(() => attack_player(main_player, attacked_player));
+                    fork(() => attack_player(game, attacked_player));
                 } else if (attacked_npc) {
-                    fork(() => attack_npc(main_player, attacked_npc));
+                    fork(() => attack_npc(game, attacked_npc));
                 }
 
                 return false;
@@ -183,7 +186,7 @@ function update_entity_from_movement_history(entity: Entity_With_Movement) {
     }
 }
 
-function query_other_entities_movement(main_player: Main_Player, map: Map_State) {
+function query_other_entities_movement(main_player: Game, map: Map_State) {
     const response = api_request_with_retry_on_403(Api_Request_Type.query_entity_movement, main_player, {
         access_token: main_player.token,
         dedicated_server_key: get_dedicated_server_key()
@@ -253,36 +256,36 @@ function update_main_player_movement_history(main_player: Main_Player) {
     }
 }
 
-function submit_and_query_movement_loop(main_player: Main_Player, map: Map_State) {
+function submit_and_query_movement_loop(game: Game, map: Map_State) {
     while (true) {
-        wait_until(() => main_player.state == Player_State.on_global_map || main_player.state == Player_State.on_adventure);
+        wait_until(() => game.state == Player_State.on_global_map || game.state == Player_State.on_adventure);
         wait(movement_history_submit_rate);
 
-        fork(() => submit_player_movement(main_player));
-        fork(() => query_other_entities_movement(main_player, map));
+        fork(() => submit_player_movement(game));
+        fork(() => query_other_entities_movement(game, map));
     }
 }
 
-function attack_player(main_player: Main_Player, player: Map_Player) {
+function attack_player(game: Game, player: Map_Player) {
     const new_player_state = api_request(Api_Request_Type.attack_player, {
-        access_token: main_player.token,
+        access_token: game.token,
         dedicated_server_key: get_dedicated_server_key(),
         target_player_id: player.id
     });
 
     if (new_player_state) {
-        try_submit_state_transition(main_player, new_player_state);
+        try_submit_state_transition(game, new_player_state);
     }
 }
 
-function attack_npc(main_player: Main_Player, npc: Map_NPC) {
+function attack_npc(game: Game, npc: Map_NPC) {
     const new_player_state = api_request(Api_Request_Type.attack_npc, {
-        access_token: main_player.token,
+        access_token: game.token,
         dedicated_server_key: get_dedicated_server_key(),
         target_npc_id: npc.id
     });
 
     if (new_player_state) {
-        try_submit_state_transition(main_player, new_player_state);
+        try_submit_state_transition(game, new_player_state);
     }
 }

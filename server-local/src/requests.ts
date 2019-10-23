@@ -40,7 +40,7 @@ function api_request<T extends Api_Request_Type>(type: T, data: Find_Request<T>)
     return result;
 }
 
-function api_request_with_retry_on_403<T extends Api_Request_Type>(type: T, main_player: Main_Player, data: Find_Request<T>): Find_Response<T> | undefined {
+function api_request_with_retry_on_403<T extends Api_Request_Type>(type: T, main_player: Game, data: Find_Request<T>): Find_Response<T> | undefined {
     let request_completed = false;
     let result: Find_Response<T> | undefined = undefined;
 

@@ -135,7 +135,7 @@ function subscribe_to_debug_message_event() {
 
 let chat_initialized = false;
 
-subscribe_to_net_table_key<Player_Net_Table>("main", "player", () => {
+subscribe_to_net_table_key<Game_Net_Table>("main", "game", () => {
     if (!chat_initialized) {
         hack_into_game_chat();
         periodically_pull_chat_messages();

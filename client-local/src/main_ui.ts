@@ -64,7 +64,7 @@ function get_net_table<T>(table_name: string, key: string): T {
 }
 
 function get_access_token() {
-    const net_table = get_net_table<Player_Net_Table>("main", "player");
+    const net_table = get_net_table<Game_Net_Table>("main", "game");
 
     if (net_table.state == Player_State.not_logged_in) {
         return "";
@@ -74,7 +74,7 @@ function get_access_token() {
 }
 
 function get_visualiser_delta_head(): number | undefined {
-    const net_table = get_net_table<Player_Net_Table>("main", "player");
+    const net_table = get_net_table<Game_Net_Table>("main", "game");
 
     if (net_table.state == Player_State.in_battle) {
         return net_table.battle.current_visual_head;
@@ -246,7 +246,7 @@ function hide_default_ui() {
 clean_up_particles_after_reload();
 hide_default_ui();
 
-subscribe_to_net_table_key<Player_Net_Table>("main", "player", data => {
+subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
     $("#global_map_ui").style.visibility = data.state == Player_State.on_global_map ? "visible" : "collapse";
     $("#battle_ui").style.visibility = data.state == Player_State.in_battle ? "visible" : "collapse";
     $("#disconnected_ui").style.visibility = data.state == Player_State.not_logged_in ? "visible" : "collapse";

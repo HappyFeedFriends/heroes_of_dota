@@ -12,14 +12,12 @@ require("editor");
 
 function Activate() { main(); }
 function Precache(context: CScriptPrecacheContext) {
-    const hero_types = enum_values<Hero_Type>();
-
     function precache_model_and_log(model_scale: [string, number]) {
         PrecacheModel(model_scale[0], context);
         print("Preaching", model_scale[0])
     }
 
-    for (const hero_type of hero_types) {
+    for (const hero_type of enum_values<Hero_Type>()) {
         const hero_name = get_hero_dota_name(hero_type);
         const unit_name = hero_type_to_dota_unit_name(hero_type);
 

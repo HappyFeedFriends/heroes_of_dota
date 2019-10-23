@@ -37,19 +37,19 @@ type Player_Net_Table_Base = {
     token: string
 }
 
-type Player_Net_Table_Not_Logged_In = {
+type Game_Net_Table_Not_Logged_In = {
     state: Player_State.not_logged_in
 }
 
-type Player_Net_Table_On_Global_Map = Player_Net_Table_Base & {
+type Game_Net_Table_On_Global_Map = Player_Net_Table_Base & {
     state: Player_State.on_global_map
 }
 
-type Player_Net_Table_On_Adventure = Player_Net_Table_Base & {
+type Game_Net_Table_On_Adventure = Player_Net_Table_Base & {
     state: Player_State.on_adventure
 }
 
-type Player_Net_Table_In_Battle = Player_Net_Table_Base & {
+type Game_Net_Table_In_Battle = Player_Net_Table_Base & {
     state: Player_State.in_battle
     battle: {
         id: Battle_Id
@@ -72,11 +72,11 @@ type Player_Net_Table_In_Battle = Player_Net_Table_Base & {
     }
 }
 
-type Player_Net_Table =
-    Player_Net_Table_On_Global_Map |
-    Player_Net_Table_On_Adventure |
-    Player_Net_Table_In_Battle |
-    Player_Net_Table_Not_Logged_In
+type Game_Net_Table =
+    Game_Net_Table_On_Global_Map |
+    Game_Net_Table_On_Adventure |
+    Game_Net_Table_In_Battle |
+    Game_Net_Table_Not_Logged_In
 
 type Put_Deltas_Event = {
     deltas: Delta[]
