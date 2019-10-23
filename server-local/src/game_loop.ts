@@ -341,6 +341,24 @@ function get_default_battleground_data(): [Vector, CDOTA_BaseNPC] {
 }
 
 function reconnect_loop(main_player: Main_Player) {
+    function try_authorize_user(id: PlayerID, dedicated_server_key: string) {
+        const steam_id = PlayerResource.GetSteamID(id).toString();
+
+        return api_request(Api_Request_Type.authorize_steam_user, {
+            steam_id: steam_id,
+            steam_user_name: PlayerResource.GetPlayerName(id),
+            dedicated_server_key: dedicated_server_key
+        });
+    }
+
+    function try_with_delays_until_success<T>(delay: number, producer: () => T | undefined): T {
+        let result: T | undefined;
+
+        while((result = producer()) == undefined) wait(delay);
+
+        return result;
+    }
+
     while (true) {
         if (main_player.state == Player_State.not_logged_in) {
             const auth = try_authorize_user(main_player.player_id, get_dedicated_server_key());
@@ -488,7 +506,9 @@ function game_loop() {
     fork(() => submit_and_query_movement_loop(main_player, map));
     fork(() => {
         while(true) {
-            const state_data = try_get_player_state(main_player);
+            const state_data = api_request(Api_Request_Type.get_player_state, {
+                access_token: main_player.token
+            });
 
             if (state_data) {
                 try_submit_state_transition(main_player, state_data);

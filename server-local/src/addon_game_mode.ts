@@ -4,7 +4,6 @@ require("adventure");
 require("battle_visualiser");
 require("scheduler");
 require("requests");
-require("calls");
 require("unit_defs");
 require("particles");
 require("modifier_logic");
