@@ -32,26 +32,34 @@ function on_editor_event(main_player: Main_Player, editor: Editor_State, event: 
             const entity = find_entity_by_entity_index(event.entity_id);
             if (!entity) break;
 
-            api_request(Api_Request_Type.editor_action, {
+            const ok = api_request(Api_Request_Type.editor_action, {
                 type: Editor_Action_Type.delete_entity,
                 entity_id: entity.id,
                 access_token: main_player.token
             });
 
-            // TODO
-            // query_other_entities_movement(main_player, map);
+            if (ok) {
+                const index = array_find_index(main_player.adventure.entities, candidate => candidate == entity);
+
+                if (index != -1) {
+                    cleanup_adventure_entity(entity);
+
+                    main_player.adventure.entities.splice(index, 1);
+                }
+            }
 
             break;
         }
 
-        case Editor_Event_Type.add_enemy: {
-            api_request(Api_Request_Type.editor_action, {
-                type: Editor_Action_Type.add_enemy,
-                npc_type: event.npc_type,
-                position: event.position,
-                facing: event.facing,
+        case Editor_Event_Type.create_entity: {
+            const created_entity = api_request(Api_Request_Type.editor_create_entity, {
+                definition: event.definition,
                 access_token: main_player.token
             });
+
+            if (created_entity) {
+                main_player.adventure.entities.push(create_adventure_entity(created_entity));
+            }
 
             break;
         }
@@ -63,6 +71,9 @@ function on_editor_event(main_player: Main_Player, editor: Editor_State, event: 
             if (entity.type != Adventure_Entity_Type.enemy) break;
 
             entity.unit.SetForwardVector(Vector(event.facing.x, event.facing.y));
+
+            entity.spawn_facing = event.facing;
+            entity.spawn_position = event.position;
 
             api_request(Api_Request_Type.editor_action, {
                 type: Editor_Action_Type.edit_enemy,

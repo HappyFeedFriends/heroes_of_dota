@@ -36,7 +36,8 @@ declare const enum Api_Request_Type {
     get_debug_ai_data = 100,
 
     editor_action = 1000,
-    editor_get_room_details = 1001
+    editor_get_room_details = 1001,
+    editor_create_entity = 1002
 }
 
 declare const enum Editor_Action_Type {
@@ -98,7 +99,7 @@ type Player_State_On_Adventure = {
         x: number
         y: number
     }
-    entities: Adventure_Entity_Data[]
+    entities: Adventure_Entity[]
 }
 
 type Player_State_In_Battle = {
@@ -305,22 +306,17 @@ type Api_Request = {
             y: number
         }
     }
+} | {
+    type: Api_Request_Type.editor_create_entity
+    request: {
+        definition: Adventure_Entity_Definition
+    } & With_Token
+    response: Adventure_Entity
 }
 
 type Editor_Action = {
     type: Editor_Action_Type.set_entrance
     entrance: {
-        x: number
-        y: number
-    }
-} | {
-    type: Editor_Action_Type.add_enemy
-    npc_type: Npc_Type
-    position: {
-        x: number
-        y: number
-    }
-    facing: {
         x: number
         y: number
     }
@@ -397,24 +393,32 @@ type Battle_Info = {
     participants: Battle_Participant_Info[]
 }
 
-type Adventure_Entity_Data_Base = {
+type Adventure_Entity = {
     id: Adventure_Entity_Id
+    definition: Adventure_Entity_Definition
+}
+
+type Adventure_Entity_Definition_Base = {
     spawn_position: {
         x: number
         y: number
     }
-    spawn_facing:  {
+    spawn_facing: {
         x: number
         y: number
     }
 }
 
-type Adventure_Entity_Data = Adventure_Entity_Data_Base & ({
+type Adventure_Enemy_Definition = Adventure_Entity_Definition_Base & {
     type: Adventure_Entity_Type.enemy
     npc_type: Npc_Type
-} | {
+}
+
+type Adventure_Lost_Creep_Definition = Adventure_Entity_Definition_Base & {
     type: Adventure_Entity_Type.lost_creep
-})
+}
+
+type Adventure_Entity_Definition = Adventure_Enemy_Definition | Adventure_Lost_Creep_Definition
 
 type Debug_AI_Data = {
     unit_debug: {

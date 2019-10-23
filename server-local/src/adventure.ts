@@ -4,7 +4,7 @@ type Adventure_Entity_Base = {
     spawn_facing: XY
 }
 
-type Adventure_Entity = Adventure_Entity_Base & ({
+type Adventure_Materialized_Entity = Adventure_Entity_Base & ({
     type: Adventure_Entity_Type.enemy
     unit: CDOTA_BaseNPC
     npc_type: Npc_Type
@@ -15,12 +15,13 @@ type Adventure_Entity = Adventure_Entity_Base & ({
 })
 
 type Adventure_State = {
-    entities: Adventure_Entity[]
+    entities: Adventure_Materialized_Entity[]
 }
 
-function create_adventure_entity(data: Adventure_Entity_Data): Adventure_Entity {
+function create_adventure_entity(entity: Adventure_Entity): Adventure_Materialized_Entity {
+    const data = entity.definition;
     const base = {
-        id: data.id,
+        id: entity.id,
         spawn_facing: data.spawn_facing,
         spawn_position: data.spawn_position
     };
@@ -92,9 +93,13 @@ function adventure_enemy_movement_loop(main_player: Main_Player, adventure: Adve
     }
 }
 
+function cleanup_adventure_entity(entity: Adventure_Materialized_Entity) {
+    entity.unit.RemoveSelf();
+}
+
 function cleanup_adventure(adventure: Adventure_State) {
     for (const entity of adventure.entities) {
-        entity.unit.RemoveSelf();
+        cleanup_adventure_entity(entity);
     }
 
     adventure.entities = [];

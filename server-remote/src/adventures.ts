@@ -12,47 +12,17 @@ export type Adventure = {
     rooms: Adventure_Room[]
 }
 
-type Adventure_Room_Base = {
+type Adventure_Room = {
+    type: Adventure_Room_Type
     id: Adventure_Room_Id
     entrance_location: XY
+    entities: Adventure_Entity_Definition[]
 }
-
-type Adventure_Room_Combat = Adventure_Room_Base & {
-    type: Adventure_Room_Type.combat
-    enemies: Adventure_Enemy_Definition[]
-}
-
-type Adventure_Room_Rest = Adventure_Room_Base & {
-    type: Adventure_Room_Type.rest
-}
-
-type Adventure_Enemy_Definition = Adventure_Entity_Definition_Base & {
-    type: Npc_Type
-}
-
-type Adventure_Entity_Definition_Base = {
-    spawn_position: XY
-    spawn_facing: XY
-}
-
-type Adventure_Enemy = {
-    type: Adventure_Entity_Type.enemy
-    id: Adventure_Entity_Id
-    definition: Adventure_Enemy_Definition
-}
-
-type Adventure_Lost_Creep = {
-    type: Adventure_Entity_Type.lost_creep
-    id: Adventure_Entity_Id
-    definition: Adventure_Entity_Definition_Base
-}
-
-type Adventure_Entity = Adventure_Enemy | Adventure_Lost_Creep
 
 type Adventures_File = {
     adventures: Array<{
         id: string
-        combat_rooms: Array<{
+        rooms: Array<{
             id: number
             entrance: [number, number]
             enemies: Array<{
@@ -63,8 +33,6 @@ type Adventures_File = {
         }>
     }>
 }
-
-export type Adventure_Room = Adventure_Room_Combat | Adventure_Room_Rest
 
 export type Ongoing_Adventure = {
     adventure: Adventure
@@ -80,20 +48,19 @@ function get_next_entity_id(): Adventure_Entity_Id {
     return entity_id_auto_increment++ as Adventure_Entity_Id;
 }
 
-function combat_room(id: number, entrance: XY, enemies: Adventure_Enemy_Definition[]): Adventure_Room {
+function room(id: number, type: Adventure_Room_Type, entrance: XY, entities: Adventure_Entity_Definition[]): Adventure_Room {
     return {
         id: id as Adventure_Room_Id,
-        type: Adventure_Room_Type.combat,
+        type: type,
         entrance_location: entrance,
-        enemies: enemies
+        entities: entities
     }
 }
 
-function adventure_enemy_from_definition(id: Adventure_Entity_Id, enemy: Adventure_Enemy_Definition): Adventure_Enemy {
+function adventure_entity_from_definition(id: Adventure_Entity_Id, definition: Adventure_Entity_Definition): Adventure_Entity {
     return {
         id: id,
-        type: Adventure_Entity_Type.enemy,
-        definition: enemy
+        definition: definition
     };
 }
 
@@ -105,8 +72,8 @@ export function room_by_id(adventure: Adventure, room_id: Adventure_Room_Id): Ad
     return adventure.rooms.find(room => room.id == room_id);
 }
 
-export function create_room_entities(room: Adventure_Room_Combat): Adventure_Entity[] {
-    return room.enemies.map(enemy => adventure_enemy_from_definition(get_next_entity_id(), enemy));
+export function create_room_entities(room: Adventure_Room): Adventure_Entity[] {
+    return room.entities.map(enemy => adventure_entity_from_definition(get_next_entity_id(), enemy));
 }
 
 export function reload_adventures_from_file() {
@@ -128,13 +95,13 @@ export function reload_adventures_from_file() {
 
         const rooms: Adventure_Room[] = [];
 
-        for (const source_room of adventure.combat_rooms) {
+        for (const source_room of adventure.rooms) {
             const entrance = {
                 x: source_room.entrance[0],
                 y: source_room.entrance[1]
             };
 
-            const enemies: Adventure_Enemy_Definition[] = [];
+            const entities: Adventure_Entity_Definition[] = [];
 
             for (const source_enemy of source_room.enemies) {
                 const result = npc_enum.find(([name]) => source_enemy.type == name);
@@ -146,8 +113,9 @@ export function reload_adventures_from_file() {
 
                 const [, npc_type] = result;
 
-                enemies.push({
-                    type: npc_type,
+                entities.push({
+                    type: Adventure_Entity_Type.enemy,
+                    npc_type: npc_type,
                     spawn_position: {
                         x: source_enemy.position[0],
                         y: source_enemy.position[1]
@@ -159,7 +127,7 @@ export function reload_adventures_from_file() {
                 })
             }
 
-            rooms.push(combat_room(source_room.id, entrance, enemies));
+            rooms.push(room(source_room.id, Adventure_Room_Type.combat, entrance, entities));
         }
 
         new_adventures.push({
@@ -177,25 +145,31 @@ export function reload_adventures_from_file() {
 function save_adventures_to_file() {
     const file: Adventures_File = {
         adventures: adventures.map(adventure => {
-            const combat_rooms: Adventures_File["adventures"][0]["combat_rooms"] = [];
+            const rooms: Adventures_File["adventures"][0]["rooms"] = [];
 
             for (const room of adventure.rooms) {
-                if (room.type == Adventure_Room_Type.combat) {
-                    combat_rooms.push({
-                        id: room.id,
-                        entrance: [room.entrance_location.x, room.entrance_location.y],
-                        enemies: room.enemies.map(enemy => ({
-                            type: enum_to_string(enemy.type),
-                            position: [enemy.spawn_position.x, enemy.spawn_position.y],
-                            facing: [enemy.spawn_facing.x, enemy.spawn_facing.y]
-                        }))
-                    });
+                const enemies: Adventures_File["adventures"][0]["rooms"][0]["enemies"] = [];
+
+                for (const entity of room.entities) {
+                    if (entity.type == Adventure_Entity_Type.enemy) {
+                        enemies.push({
+                            type: enum_to_string(entity.npc_type),
+                            position: [entity.spawn_position.x, entity.spawn_position.y],
+                            facing: [entity.spawn_facing.x, entity.spawn_facing.y]
+                        })
+                    }
                 }
+
+                rooms.push({
+                    id: room.id,
+                    entrance: [room.entrance_location.x, room.entrance_location.y],
+                    enemies: enemies
+                });
             }
 
             return ({
                 id: enum_to_string(adventure.id),
-                combat_rooms: combat_rooms
+                rooms: rooms
             });
         })
     };
@@ -203,19 +177,15 @@ function save_adventures_to_file() {
     writeFileSync(storage_file_path, JSON.stringify(file, (key, value) => value, "    "));
 }
 
-function find_enemy_and_associated_definition_indices(adventure: Ongoing_Adventure, id: Adventure_Entity_Id): [number, number, Adventure_Room_Combat] | undefined {
-    if (adventure.current_room.type != Adventure_Room_Type.combat) return;
+export function editor_create_entity(adventure: Ongoing_Adventure, definition: Adventure_Entity_Definition): Adventure_Entity {
+    const new_entity = adventure_entity_from_definition(get_next_entity_id(), definition);
 
-    const entity_index = adventure.entities.findIndex(entity => entity.id == id);
-    if (entity_index == -1) return;
+    adventure.current_room.entities.push(definition);
+    adventure.entities.push(new_entity);
 
-    const entity = adventure.entities[entity_index];
-    if (entity.type != Adventure_Entity_Type.enemy) return;
+    save_adventures_to_file();
 
-    const definition_index = adventure.current_room.enemies.indexOf(entity.definition);
-    if (definition_index == -1) return;
-
-    return [entity_index, definition_index, adventure.current_room];
+    return new_entity;
 }
 
 export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor_Action) {
@@ -225,41 +195,24 @@ export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor
             break;
         }
 
-        case Editor_Action_Type.add_enemy: {
-            const enemy: Adventure_Enemy_Definition = {
-                type: action.npc_type,
-                spawn_facing: action.facing,
-                spawn_position: action.position
-            };
-
-            if (adventure.current_room.type == Adventure_Room_Type.combat) {
-                adventure.current_room.enemies.push(enemy);
-                adventure.entities.push(adventure_enemy_from_definition(get_next_entity_id(), enemy));
-
-                save_adventures_to_file();
-            }
-
-            break;
-        }
-
         case Editor_Action_Type.delete_entity: {
-            // TODO try to inline this gnarly method
-            const result = find_enemy_and_associated_definition_indices(adventure, action.entity_id);
-            if (!result) return;
+            const entity_index = adventure.entities.findIndex(entity => entity.id == action.entity_id);
+            if (entity_index == -1) return;
 
-            const [enemy_index, definition_index, room] = result;
+            const definition_index = adventure.current_room.entities.indexOf(adventure.entities[entity_index].definition);
+            if (definition_index == -1) return;
 
-            room.enemies.splice(definition_index, 1);
-            adventure.entities.splice(enemy_index, 1);
+            adventure.current_room.entities.splice(entity_index, 1);
+            adventure.entities.splice(definition_index, 1);
             break;
         }
 
         case Editor_Action_Type.edit_enemy: {
             const enemy = adventure.entities.find(entity => entity.id == action.entity_id);
             if (!enemy) return;
-            if (enemy.type != Adventure_Entity_Type.enemy) return;
+            if (enemy.definition.type != Adventure_Entity_Type.enemy) return;
 
-            enemy.definition.type = action.npc_type;
+            enemy.definition.npc_type = action.npc_type;
             enemy.definition.spawn_position = action.new_position;
             enemy.definition.spawn_facing = action.new_facing;
 

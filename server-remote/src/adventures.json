@@ -2,7 +2,7 @@
     "adventures": [
         {
             "id": "forest",
-            "combat_rooms": [
+            "rooms": [
                 {
                     "entrance": [
                         -13878.25,

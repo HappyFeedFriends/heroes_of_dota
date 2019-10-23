@@ -25,7 +25,7 @@ import {
     apply_editor_action,
     create_room_entities,
     reload_adventures_from_file,
-    room_by_id
+    room_by_id, editor_create_entity
 } from "./adventures";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
@@ -310,26 +310,7 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                     x: ongoing_adventure.current_room.entrance_location.x,
                     y: ongoing_adventure.current_room.entrance_location.y
                 },
-                entities: ongoing_adventure.entities.map(entity => {
-                    const base = {
-                        id: entity.id,
-                        spawn_facing: entity.definition.spawn_facing,
-                        spawn_position: entity.definition.spawn_position
-                    };
-
-                    switch (entity.type) {
-                        case Adventure_Entity_Type.enemy: return {
-                            ...base,
-                            type: entity.type,
-                            npc_type: entity.definition.type
-                        };
-
-                        case Adventure_Entity_Type.lost_creep: return {
-                            ...base,
-                            type: entity.type
-                        }
-                    }
-                })
+                entities: ongoing_adventure.entities
             }
         }
 
@@ -983,6 +964,14 @@ function register_dev_handlers() {
                     y: current_room.entrance_location.y
                 }
             };
+        }));
+    });
+
+    register_api_handler(Api_Request_Type.editor_create_entity, req => {
+        return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+            if (player.online.state != Player_State.on_adventure) return;
+
+            return editor_create_entity(player.online.ongoing_adventure, req.definition);
         }));
     });
 }

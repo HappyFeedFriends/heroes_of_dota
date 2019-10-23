@@ -203,7 +203,7 @@ declare const enum Editor_Event_Type {
     toggle_camera_lock = 2,
     edit_enemy = 3,
     delete_entity = 4,
-    add_enemy = 5,
+    create_entity = 5,
     teleport = 6,
     exit_adventure = 7
 }
@@ -230,16 +230,8 @@ type Editor_Event = {
     type: Editor_Event_Type.delete_entity
     entity_id: EntityID
 } | {
-    type: Editor_Event_Type.add_enemy
-    npc_type: Npc_Type
-    position: {
-        x: number
-        y: number
-    }
-    facing: {
-        x: number
-        y: number
-    }
+    type: Editor_Event_Type.create_entity
+    definition: Adventure_Entity_Definition
 } | {
     type: Editor_Event_Type.teleport
     position: {

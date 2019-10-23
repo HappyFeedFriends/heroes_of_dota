@@ -180,10 +180,13 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
             for (const [npc_name, npc_type] of enum_names_to_values<Npc_Type>()) {
                 context_menu_button(`Create ${npc_name}`, () => {
                     dispatch_editor_event({
-                        type: Editor_Event_Type.add_enemy,
-                        npc_type: npc_type,
-                        position: xy(click_world_position[0], click_world_position[1]),
-                        facing: xy(1, 0)
+                        type: Editor_Event_Type.create_entity,
+                        definition: {
+                            type: Adventure_Entity_Type.enemy,
+                            npc_type: npc_type,
+                            spawn_position: xy(click_world_position[0], click_world_position[1]),
+                            spawn_facing: xy(1, 0)
+                        }
                     })
                 });
             }
