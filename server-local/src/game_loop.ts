@@ -90,6 +90,17 @@ function log_chat_debug_message(message: string) {
     CustomGameEventManager.Send_ServerToAllClients("log_chat_debug_message", event);
 }
 
+function create_unit_with_model(at: XY, facing: XY, model: string, scale: number) {
+    const unit = create_unit("hod_unit", at);
+
+    unit.SetOriginalModel(model);
+    unit.SetModel(model);
+    unit.SetModelScale(scale);
+    unit.SetForwardVector(Vector(facing.x, facing.y));
+
+    return unit;
+}
+
 function unit_to_visualizer_unit_data(unit: Unit): Visualizer_Unit_Data {
     // TODO some of those properties are not actually needed
     const base: Visualizer_Unit_Data_Base = {
@@ -237,6 +248,10 @@ function process_state_transition(main_player: Main_Player, current_state: Playe
         main_player.current_order_y = next_state.player_position.y;
     }
 
+    if (current_state == Player_State.on_adventure) {
+        cleanup_adventure(main_player.adventure);
+    }
+
     if (current_state == Player_State.in_battle) {
         print("Battle over");
 
@@ -290,6 +305,10 @@ function process_state_transition(main_player: Main_Player, current_state: Playe
             order_x: start.x,
             order_y: start.y
         }];
+
+        for (const entity of next_state.entities) {
+            main_player.adventure.entities.push(create_adventure_entity(entity));
+        }
     }
 
     main_player.state = next_state.state;
@@ -388,7 +407,8 @@ function main() {
 function game_loop() {
     let player_id: PlayerID | undefined = undefined;
     let player_unit: CDOTA_BaseNPC_Hero | undefined = undefined;
-    let map: Map_State = {
+
+    const map: Map_State = {
         players: {},
         neutrals: {}
     };
@@ -417,7 +437,10 @@ function game_loop() {
         movement_history: [],
         current_order_x: 0,
         current_order_y: 0,
-        state: Player_State.not_logged_in
+        state: Player_State.not_logged_in,
+        adventure: {
+            entities: []
+        }
     };
 
     update_player_state_net_table(main_player);
@@ -454,13 +477,14 @@ function game_loop() {
     if (IsInToolsMode()) {
         SendToServerConsole("r_farz 10000");
 
-        subscribe_to_editor_events(main_player, map);
+        subscribe_to_editor_events(main_player);
 
         on_custom_event_async<Battle_Cheat_Event>("cheat", event => {
             use_cheat(event.message);
         });
     }
 
+    fork(() => adventure_enemy_movement_loop(main_player, main_player.adventure));
     fork(() => submit_and_query_movement_loop(main_player, map));
     fork(() => {
         while(true) {

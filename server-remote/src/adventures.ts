@@ -1,10 +1,6 @@
-import {Map_Npc} from "./npc_controller";
 import {readFileSync, writeFileSync} from "fs";
-import {Map_Player} from "./server";
 
 const storage_file_path = "src/adventures.json";
-
-let npc_id_auto_increment = 0;
 
 export const enum Adventure_Room_Type {
     combat = 0,
@@ -23,18 +19,35 @@ type Adventure_Room_Base = {
 
 type Adventure_Room_Combat = Adventure_Room_Base & {
     type: Adventure_Room_Type.combat
-    enemies: Adventure_Enemy[]
+    enemies: Adventure_Enemy_Definition[]
 }
 
 type Adventure_Room_Rest = Adventure_Room_Base & {
     type: Adventure_Room_Type.rest
 }
 
-type Adventure_Enemy = {
+type Adventure_Enemy_Definition = Adventure_Entity_Definition_Base & {
     type: Npc_Type
-    spawn_position: XY
-    facing: XY
 }
+
+type Adventure_Entity_Definition_Base = {
+    spawn_position: XY
+    spawn_facing: XY
+}
+
+type Adventure_Enemy = {
+    type: Adventure_Entity_Type.enemy
+    id: Adventure_Entity_Id
+    definition: Adventure_Enemy_Definition
+}
+
+type Adventure_Lost_Creep = {
+    type: Adventure_Entity_Type.lost_creep
+    id: Adventure_Entity_Id
+    definition: Adventure_Entity_Definition_Base
+}
+
+type Adventure_Entity = Adventure_Enemy | Adventure_Lost_Creep
 
 type Adventures_File = {
     adventures: Array<{
@@ -56,16 +69,18 @@ export type Adventure_Room = Adventure_Room_Combat | Adventure_Room_Rest
 export type Ongoing_Adventure = {
     adventure: Adventure
     current_room: Adventure_Room
-    neutrals: Map_Npc[]
+    entities: Adventure_Entity[]
 }
 
 const adventures: Adventure[] = [];
 
-function get_next_npc_id(): Npc_Id {
-    return npc_id_auto_increment++ as Npc_Id;
+let entity_id_auto_increment = 0;
+
+function get_next_entity_id(): Adventure_Entity_Id {
+    return entity_id_auto_increment++ as Adventure_Entity_Id;
 }
 
-function combat_room(id: number, entrance: XY, enemies: Adventure_Enemy[]): Adventure_Room {
+function combat_room(id: number, entrance: XY, enemies: Adventure_Enemy_Definition[]): Adventure_Room {
     return {
         id: id as Adventure_Room_Id,
         type: Adventure_Room_Type.combat,
@@ -74,15 +89,12 @@ function combat_room(id: number, entrance: XY, enemies: Adventure_Enemy[]): Adve
     }
 }
 
-function adventure_enemy_to_npc(id: Npc_Id, enemy: Adventure_Enemy): Map_Npc {
+function adventure_enemy_from_definition(id: Adventure_Entity_Id, enemy: Adventure_Enemy_Definition): Adventure_Enemy {
     return {
-        entity_type: Map_Entity_Type.npc,
         id: id,
-        type: enemy.type,
-        current_location: enemy.spawn_position,
-        spawn_facing: enemy.facing,
-        movement_history: []
-    }
+        type: Adventure_Entity_Type.enemy,
+        definition: enemy
+    };
 }
 
 export function adventure_by_id(adventure_id: Adventure_Id): Adventure | undefined {
@@ -93,8 +105,8 @@ export function room_by_id(adventure: Adventure, room_id: Adventure_Room_Id): Ad
     return adventure.rooms.find(room => room.id == room_id);
 }
 
-export function create_room_neutrals(room: Adventure_Room_Combat): Map_Npc[] {
-    return room.enemies.map(enemy => adventure_enemy_to_npc(get_next_npc_id(), enemy));
+export function create_room_entities(room: Adventure_Room_Combat): Adventure_Entity[] {
+    return room.enemies.map(enemy => adventure_enemy_from_definition(get_next_entity_id(), enemy));
 }
 
 export function reload_adventures_from_file() {
@@ -122,7 +134,7 @@ export function reload_adventures_from_file() {
                 y: source_room.entrance[1]
             };
 
-            const enemies: Adventure_Enemy[] = [];
+            const enemies: Adventure_Enemy_Definition[] = [];
 
             for (const source_enemy of source_room.enemies) {
                 const result = npc_enum.find(([name]) => source_enemy.type == name);
@@ -140,7 +152,7 @@ export function reload_adventures_from_file() {
                         x: source_enemy.position[0],
                         y: source_enemy.position[1]
                     },
-                    facing: {
+                    spawn_facing: {
                         x: source_enemy.facing[0],
                         y: source_enemy.facing[1]
                     }
@@ -175,7 +187,7 @@ function save_adventures_to_file() {
                         enemies: room.enemies.map(enemy => ({
                             type: enum_to_string(enemy.type),
                             position: [enemy.spawn_position.x, enemy.spawn_position.y],
-                            facing: [enemy.facing.x, enemy.facing.y]
+                            facing: [enemy.spawn_facing.x, enemy.spawn_facing.y]
                         }))
                     });
                 }
@@ -191,20 +203,19 @@ function save_adventures_to_file() {
     writeFileSync(storage_file_path, JSON.stringify(file, (key, value) => value, "    "));
 }
 
-function find_npc_and_associated_enemy_indices(adventure: Ongoing_Adventure, id: Npc_Id): [number, number, Adventure_Room_Combat] | undefined {
-    const npc_index = adventure.neutrals.findIndex(npc => npc.id == id);
-    if (npc_index == -1) return;
+function find_enemy_and_associated_definition_indices(adventure: Ongoing_Adventure, id: Adventure_Entity_Id): [number, number, Adventure_Room_Combat] | undefined {
+    if (adventure.current_room.type != Adventure_Room_Type.combat) return;
 
-    const npc = adventure.neutrals[npc_index];
+    const entity_index = adventure.entities.findIndex(entity => entity.id == id);
+    if (entity_index == -1) return;
 
-    if (adventure.current_room.type == Adventure_Room_Type.combat) {
-        // Weird and brittle, but works for now for Map_Npc <-> Adventure_Enemy association
-        const enemy_index = adventure.current_room.enemies.findIndex(e => e.spawn_position.x == npc.current_location.x && e.spawn_position.y == npc.current_location.y);
+    const entity = adventure.entities[entity_index];
+    if (entity.type != Adventure_Entity_Type.enemy) return;
 
-        if (enemy_index != -1) {
-            return [npc_index, enemy_index, adventure.current_room];
-        }
-    }
+    const definition_index = adventure.current_room.enemies.indexOf(entity.definition);
+    if (definition_index == -1) return;
+
+    return [entity_index, definition_index, adventure.current_room];
 }
 
 export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor_Action) {
@@ -214,16 +225,16 @@ export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor
             break;
         }
 
-        case Editor_Action_Type.add_npc: {
-            const enemy: Adventure_Enemy = {
+        case Editor_Action_Type.add_enemy: {
+            const enemy: Adventure_Enemy_Definition = {
                 type: action.npc_type,
-                facing: action.facing,
+                spawn_facing: action.facing,
                 spawn_position: action.position
             };
 
             if (adventure.current_room.type == Adventure_Room_Type.combat) {
                 adventure.current_room.enemies.push(enemy);
-                adventure.neutrals.push(adventure_enemy_to_npc(get_next_npc_id(), enemy));
+                adventure.entities.push(adventure_enemy_from_definition(get_next_entity_id(), enemy));
 
                 save_adventures_to_file();
             }
@@ -231,31 +242,26 @@ export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor
             break;
         }
 
-        case Editor_Action_Type.delete_npc: {
-            const result = find_npc_and_associated_enemy_indices(adventure, action.npc_id);
+        case Editor_Action_Type.delete_entity: {
+            // TODO try to inline this gnarly method
+            const result = find_enemy_and_associated_definition_indices(adventure, action.entity_id);
             if (!result) return;
 
-            const [npc_index, enemy_index, room] = result;
+            const [enemy_index, definition_index, room] = result;
 
-            room.enemies.splice(enemy_index, 1);
-            adventure.neutrals.splice(npc_index, 1);
+            room.enemies.splice(definition_index, 1);
+            adventure.entities.splice(enemy_index, 1);
             break;
         }
 
-        case Editor_Action_Type.edit_npc: {
-            const result = find_npc_and_associated_enemy_indices(adventure, action.npc_id);
-            if (!result) return;
+        case Editor_Action_Type.edit_enemy: {
+            const enemy = adventure.entities.find(entity => entity.id == action.entity_id);
+            if (!enemy) return;
+            if (enemy.type != Adventure_Entity_Type.enemy) return;
 
-            const enemy: Adventure_Enemy = {
-                type: action.npc_type,
-                facing: action.new_facing,
-                spawn_position: action.new_position
-            };
-
-            const [npc_index, enemy_index, room] = result;
-
-            room.enemies[enemy_index] = enemy;
-            adventure.neutrals[npc_index] = adventure_enemy_to_npc(action.npc_id, enemy);
+            enemy.definition.type = action.npc_type;
+            enemy.definition.spawn_position = action.new_position;
+            enemy.definition.spawn_facing = action.new_facing;
 
             break;
         }

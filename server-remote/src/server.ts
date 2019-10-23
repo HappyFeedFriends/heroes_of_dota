@@ -23,7 +23,7 @@ import {
     Ongoing_Adventure,
     adventure_by_id,
     apply_editor_action,
-    create_room_neutrals,
+    create_room_entities,
     reload_adventures_from_file,
     room_by_id
 } from "./adventures";
@@ -309,7 +309,27 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                 room_entrance: {
                     x: ongoing_adventure.current_room.entrance_location.x,
                     y: ongoing_adventure.current_room.entrance_location.y
-                }
+                },
+                entities: ongoing_adventure.entities.map(entity => {
+                    const base = {
+                        id: entity.id,
+                        spawn_facing: entity.definition.spawn_facing,
+                        spawn_position: entity.definition.spawn_position
+                    };
+
+                    switch (entity.type) {
+                        case Adventure_Entity_Type.enemy: return {
+                            ...base,
+                            type: entity.type,
+                            npc_type: entity.definition.type
+                        };
+
+                        case Adventure_Entity_Type.lost_creep: return {
+                            ...base,
+                            type: entity.type
+                        }
+                    }
+                })
             }
         }
 
@@ -578,8 +598,8 @@ register_api_handler(Api_Request_Type.query_entity_movement, req => {
             }
 
             return {
-                players: [],
-                neutrals: adventure.neutrals
+                players: player_movement,
+                neutrals: []
             }
         } else {
             const player_movement: Player_Movement_Data[] = [];
@@ -883,7 +903,7 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
             ongoing_adventure: {
                 adventure: adventure,
                 current_room: starting_room,
-                neutrals: starting_room.type == Adventure_Room_Type.combat ? create_room_neutrals(starting_room) : [],
+                entities: starting_room.type == Adventure_Room_Type.combat ? create_room_entities(starting_room) : [],
             },
             current_location: starting_room.entrance_location,
             movement_history: [],
@@ -909,7 +929,7 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         if (!room) return;
 
         ongoing_adventure.current_room = room;
-        ongoing_adventure.neutrals = room.type == Adventure_Room_Type.combat ? create_room_neutrals(room) : [];
+        ongoing_adventure.entities = room.type == Adventure_Room_Type.combat ? create_room_entities(room) : [];
 
         player.online.movement_history = [];
         player.online.current_location = room.entrance_location;

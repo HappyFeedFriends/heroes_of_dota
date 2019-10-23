@@ -8,12 +8,14 @@ type Entity_With_Movement = {
 type Map_NPC = {
     id: Npc_Id
     type: Npc_Type
+    spawn_facing: XY
 } & Entity_With_Movement
 
 type Map_Player = {
     id: Player_Id
 } & Entity_With_Movement
 
+// TODO rename to Game_State
 type Main_Player = {
     token: string
     remote_id: Player_Id
@@ -23,6 +25,7 @@ type Main_Player = {
     current_order_x: number
     current_order_y: number
     state: Player_State
+    adventure: Adventure_State
 }
 
 type Map_State = {
@@ -100,7 +103,7 @@ function process_player_global_map_order(main_player: Main_Player, map: Map_Stat
     return true;
 }
 
-function create_map_unit(dota_name: string, location: XY) {
+function create_unit(dota_name: string, location: XY) {
     return CreateUnitByName(
         dota_name,
         Vector(location.x, location.y),
@@ -115,14 +118,14 @@ function create_new_player_from_movement_data(data: Player_Movement_Data): Map_P
     return {
         id: data.id,
         movement_history: data.movement_history,
-        unit: create_map_unit("npc_dota_hero_lina", data.current_location),
+        unit: create_unit("npc_dota_hero_lina", data.current_location),
         last_recorded_x: data.current_location.x,
         last_recorded_y: data.current_location.y
     };
 }
 
 function create_new_npc_from_movement_data(data: NPC_Movement_Data): Map_NPC {
-    const unit = create_map_unit("hod_unit", data.current_location);
+    const unit = create_unit("hod_unit", data.current_location);
     const [model, scale] = get_npc_model(data.type);
 
     unit.SetOriginalModel(model);
@@ -140,7 +143,8 @@ function create_new_npc_from_movement_data(data: NPC_Movement_Data): Map_NPC {
         movement_history: data.movement_history,
         unit: unit,
         last_recorded_x: data.current_location.x,
-        last_recorded_y: data.current_location.y
+        last_recorded_y: data.current_location.y,
+        spawn_facing: data.spawn_facing
     };
 }
 

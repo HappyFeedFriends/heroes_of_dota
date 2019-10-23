@@ -98,7 +98,7 @@ function editor_select_npc(entity: EntityId, npc_type: Npc_Type) {
 
     toolbar_button("Delete", () => {
         dispatch_editor_event({
-            type: Editor_Event_Type.delete_npc,
+            type: Editor_Event_Type.delete_entity,
             entity_id: entity
         })
     });
@@ -165,7 +165,7 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
             }
 
             dispatch_editor_event({
-                type: Editor_Event_Type.edit_npc,
+                type: Editor_Event_Type.edit_enemy,
                 entity_id: editor_selection.entity,
                 position: xy(new_position[0], new_position[1]),
                 facing: xy(facing[0], facing[1])
@@ -180,7 +180,7 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
             for (const [npc_name, npc_type] of enum_names_to_values<Npc_Type>()) {
                 context_menu_button(`Create ${npc_name}`, () => {
                     dispatch_editor_event({
-                        type: Editor_Event_Type.add_npc,
+                        type: Editor_Event_Type.add_enemy,
                         npc_type: npc_type,
                         position: xy(click_world_position[0], click_world_position[1]),
                         facing: xy(1, 0)

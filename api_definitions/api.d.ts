@@ -29,6 +29,7 @@ declare const enum Api_Request_Type {
     start_adventure = 200,
     enter_adventure_room = 201,
     exit_adventure = 202,
+    query_adventure_entity_states = 203,
 
     battle_cheat = 50,
     map_cheat = 51,
@@ -39,9 +40,9 @@ declare const enum Api_Request_Type {
 }
 
 declare const enum Editor_Action_Type {
-    edit_npc = 0,
-    delete_npc = 1,
-    add_npc = 2,
+    edit_enemy = 0,
+    delete_entity = 1,
+    add_enemy = 2,
     set_entrance = 3
 }
 
@@ -59,17 +60,16 @@ declare const enum Adventure_Id {
     forest = 0
 }
 
-declare const enum Player_Id_Brand { _ = "" }
-type Player_Id = number & Player_Id_Brand;
+declare const enum Adventure_Entity_Type {
+    enemy = 0,
+    lost_creep = 1
+}
 
-declare const enum Npc_Id_Brand { _ = "" }
-type Npc_Id = number & Npc_Id_Brand;
-
-declare const enum Battle_Id_Brand { _ = "" }
-type Battle_Id = number & Battle_Id_Brand;
-
-declare const enum Adventure_Room_Id_Brand { _ = "" }
-type Adventure_Room_Id = number & Adventure_Room_Id_Brand;
+type Player_Id = number & { _player_id_brand: any };
+type Npc_Id = number & { _npc_id_brand: any };
+type Battle_Id = number & { _battle_id_brand: any };
+type Adventure_Room_Id = number & { _adventure_room_id_brand: any };
+type Adventure_Entity_Id = number & { _adventure_entity_id_brand: any };
 
 type Movement_History_Entry = {
     order_x: number
@@ -98,6 +98,7 @@ type Player_State_On_Adventure = {
         x: number
         y: number
     }
+    entities: Adventure_Entity_Data[]
 }
 
 type Player_State_In_Battle = {
@@ -283,6 +284,15 @@ type Api_Request = {
     request: {} & With_Token & With_Private_Key
     response: Player_State_Data
 } | {
+    type: Api_Request_Type.query_adventure_entity_states
+    request: {} & With_Token & With_Private_Key
+    response: {
+        states: {
+            id: Adventure_Entity_Id
+            alive: boolean
+        }[]
+    }
+} | {
     type: Api_Request_Type.editor_action
     request: Editor_Action & With_Token
     response: {}
@@ -304,7 +314,7 @@ type Editor_Action = {
         y: number
     }
 } | {
-    type: Editor_Action_Type.add_npc
+    type: Editor_Action_Type.add_enemy
     npc_type: Npc_Type
     position: {
         x: number
@@ -315,11 +325,11 @@ type Editor_Action = {
         y: number
     }
 } | {
-    type: Editor_Action_Type.delete_npc
-    npc_id: Npc_Id
+    type: Editor_Action_Type.delete_entity
+    entity_id: Adventure_Entity_Id
 } | {
-    type: Editor_Action_Type.edit_npc
-    npc_id: Npc_Id
+    type: Editor_Action_Type.edit_enemy
+    entity_id: Adventure_Entity_Id
     npc_type: Npc_Type
     new_position: {
         x: number
@@ -386,6 +396,25 @@ type Battle_Info = {
     random_seed: number
     participants: Battle_Participant_Info[]
 }
+
+type Adventure_Entity_Data_Base = {
+    id: Adventure_Entity_Id
+    spawn_position: {
+        x: number
+        y: number
+    }
+    spawn_facing:  {
+        x: number
+        y: number
+    }
+}
+
+type Adventure_Entity_Data = Adventure_Entity_Data_Base & ({
+    type: Adventure_Entity_Type.enemy
+    npc_type: Npc_Type
+} | {
+    type: Adventure_Entity_Type.lost_creep
+})
 
 type Debug_AI_Data = {
     unit_debug: {

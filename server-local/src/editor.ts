@@ -3,29 +3,23 @@ type Editor_State = {
     camera_unlocked: boolean
 }
 
-function on_editor_event(main_player: Main_Player, map: Map_State, state: Editor_State, event: Editor_Event) {
-    function find_npc_by_entity_id(id: EntityID) {
-        for (const npc_id in map.neutrals) {
-            const npc = map.neutrals[npc_id as Npc_Id];
-
-            if (npc.unit.entindex() == id) {
-                return npc;
-            }
-        }
+function on_editor_event(main_player: Main_Player, editor: Editor_State, event: Editor_Event) {
+    function find_entity_by_entity_index(id: EntityID) {
+        return array_find(main_player.adventure.entities, entity => entity.unit.entindex() == id);
     }
 
     switch (event.type) {
         case Editor_Event_Type.toggle_map_vision: {
-            state.map_revealed = !state.map_revealed;
-            GameRules.GetGameModeEntity().SetUnseenFogOfWarEnabled(!state.map_revealed);
+            editor.map_revealed = !editor.map_revealed;
+            GameRules.GetGameModeEntity().SetUnseenFogOfWarEnabled(!editor.map_revealed);
 
             break;
         }
 
         case Editor_Event_Type.toggle_camera_lock: {
-            state.camera_unlocked = !state.camera_unlocked;
+            editor.camera_unlocked = !editor.camera_unlocked;
 
-            if (state.camera_unlocked) {
+            if (editor.camera_unlocked) {
                 PlayerResource.SetCameraTarget(0, undefined);
             } else {
                 PlayerResource.SetCameraTarget(0, main_player.hero_unit);
@@ -34,24 +28,25 @@ function on_editor_event(main_player: Main_Player, map: Map_State, state: Editor
             break;
         }
 
-        case Editor_Event_Type.delete_npc: {
-            const npc = find_npc_by_entity_id(event.entity_id);
-            if (!npc) break;
+        case Editor_Event_Type.delete_entity: {
+            const entity = find_entity_by_entity_index(event.entity_id);
+            if (!entity) break;
 
             api_request(Api_Request_Type.editor_action, {
-                type: Editor_Action_Type.delete_npc,
-                npc_id: npc.id,
+                type: Editor_Action_Type.delete_entity,
+                entity_id: entity.id,
                 access_token: main_player.token
             });
 
-            query_other_entities_movement(main_player, map);
+            // TODO
+            // query_other_entities_movement(main_player, map);
 
             break;
         }
 
-        case Editor_Event_Type.add_npc: {
+        case Editor_Event_Type.add_enemy: {
             api_request(Api_Request_Type.editor_action, {
-                type: Editor_Action_Type.add_npc,
+                type: Editor_Action_Type.add_enemy,
                 npc_type: event.npc_type,
                 position: event.position,
                 facing: event.facing,
@@ -61,22 +56,24 @@ function on_editor_event(main_player: Main_Player, map: Map_State, state: Editor
             break;
         }
 
-        case Editor_Event_Type.edit_npc: {
-            const npc = find_npc_by_entity_id(event.entity_id);
-            if (!npc) break;
+        case Editor_Event_Type.edit_enemy: {
+            const entity = find_entity_by_entity_index(event.entity_id);
+            if (!entity) break;
 
-            npc.unit.SetForwardVector(Vector(event.facing.x, event.facing.y));
+            if (entity.type != Adventure_Entity_Type.enemy) break;
+
+            entity.unit.SetForwardVector(Vector(event.facing.x, event.facing.y));
 
             api_request(Api_Request_Type.editor_action, {
-                type: Editor_Action_Type.edit_npc,
-                npc_id: npc.id,
-                npc_type: npc.type,
+                type: Editor_Action_Type.edit_enemy,
+                entity_id: entity.id,
+                npc_type: entity.npc_type,
                 new_facing: event.facing,
                 new_position: event.position,
                 access_token: main_player.token
             });
 
-            FindClearSpaceForUnit(npc.unit, Vector(event.position.x, event.position.y), true);
+            FindClearSpaceForUnit(entity.unit, Vector(event.position.x, event.position.y), true);
 
             break;
         }
@@ -115,13 +112,13 @@ function on_editor_event(main_player: Main_Player, map: Map_State, state: Editor
     }
 }
 
-function subscribe_to_editor_events(main_player: Main_Player, map: Map_State) {
+function subscribe_to_editor_events(main_player: Main_Player) {
     const state: Editor_State =  {
         map_revealed: false,
         camera_unlocked: false
     };
 
-    on_custom_event_async<Editor_Event>("editor_event", event => on_editor_event(main_player, map, state, event));
+    on_custom_event_async<Editor_Event>("editor_event", event => on_editor_event(main_player, state, event));
 
     fork(() => {
         while (true) {
