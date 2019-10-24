@@ -30,6 +30,7 @@ declare const enum Api_Request_Type {
     enter_adventure_room = 201,
     exit_adventure = 202,
     query_adventure_entity_states = 203,
+    start_adventure_enemy_fight = 204,
 
     battle_cheat = 50,
     map_cheat = 51,
@@ -49,7 +50,8 @@ declare const enum Editor_Action_Type {
 
 declare const enum Map_Entity_Type {
     player = 0,
-    npc = 1
+    npc = 1,
+    adventure_enemy = 2
 }
 
 declare const enum Npc_Type {
@@ -293,6 +295,12 @@ type Api_Request = {
             alive: boolean
         }[]
     }
+} | {
+    type: Api_Request_Type.start_adventure_enemy_fight
+    request: {
+        enemy_entity_id: Adventure_Entity_Id
+    } & With_Token & With_Private_Key
+    response: Player_State_Data
 } | {
     type: Api_Request_Type.editor_action
     request: Editor_Action & With_Token

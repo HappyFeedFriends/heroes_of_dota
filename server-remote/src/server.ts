@@ -17,7 +17,7 @@ import {performance} from "perf_hooks"
 import {readFileSync} from "fs";
 import * as battleground from "./battleground";
 import {get_debug_ai_data} from "./debug_draw";
-import {check_and_try_perform_ai_actions, get_nearby_neutrals, Map_Npc, npc_by_id} from "./npc_controller";
+import {get_nearby_neutrals, Map_Npc, npc_by_id} from "./npc_controller";
 import {
     Adventure_Room_Type,
     Ongoing_Adventure,
@@ -27,6 +27,7 @@ import {
     reload_adventures_from_file,
     room_by_id, editor_create_entity
 } from "./adventures";
+import {check_and_try_perform_ai_actions} from "./ai";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
@@ -384,42 +385,42 @@ function player_to_battle_participant(player: Map_Player): Battle_Participant {
     }
 }
 
+function adventure_enemy_to_battle_participant(id: Adventure_Entity_Id, definition: Adventure_Enemy_Definition): Battle_Participant {
+    return {
+        type: Map_Entity_Type.adventure_enemy,
+        id: id,
+        npc_type: definition.npc_type,
+        minions: [ Minion_Type.monster_satyr_small, Minion_Type.monster_satyr_small, Minion_Type.monster_satyr_small ],
+        heroes: [],
+        spells: []
+    }
+}
+
 function npc_to_battle_participant(npc: Map_Npc): Battle_Participant {
     return {
         type: Map_Entity_Type.npc,
         id: npc.id,
         npc_type: npc.type,
-        heroes: [ ],
+        heroes: [],
         spells: [],
         minions: [ Minion_Type.monster_satyr_big, Minion_Type.monster_satyr_small, Minion_Type.monster_satyr_small ]
     }
 }
 
-function initiate_battle(entities: (Map_Player | Map_Npc)[]) {
-    const battle = start_battle(entities.map(entity => {
-        switch (entity.entity_type) {
-            case Map_Entity_Type.npc: return npc_to_battle_participant(entity);
-            case Map_Entity_Type.player: return player_to_battle_participant(entity);
-        }
-    }), battleground.forest());
-
+function transition_player_to_battle(player: Map_Player, battle: Battle_Record) {
     for (const battle_player of battle.players) {
         const entity = battle_player.map_entity;
         if (entity.type == Map_Entity_Type.player) {
-            const map_player = entities.find(participant => participant.id == entity.player_id && participant.entity_type == entity.type);
-
-            if (map_player && map_player.entity_type == Map_Entity_Type.player) {
-                map_player.online = {
+            if (player.entity_type == Map_Entity_Type.player) {
+                player.online = {
                     state: Player_State.in_battle,
                     battle: battle,
                     battle_player: battle_player,
-                    previous_state: map_player.online
+                    previous_state: player.online
                 };
             }
         }
     }
-
-    check_and_try_perform_ai_actions(battle);
 }
 
 function check_and_disconnect_offline_players() {
@@ -474,6 +475,10 @@ export function report_battle_over(battle: Battle, winner_entity: Battle_Partici
                     // TODO handle NPC state change
                 }
 
+                break;
+            }
+
+            case Map_Entity_Type.adventure_enemy: {
                 break;
             }
 
@@ -636,32 +641,13 @@ register_api_handler(Api_Request_Type.attack_player, req => {
             return;
         }
 
-        initiate_battle([ player, other_player ]);
+        const battle = start_battle([
+            player_to_battle_participant(player),
+            player_to_battle_participant(other_player)
+        ], battleground.forest());
 
-        return player_to_player_state_object(player);
-    });
-
-    return action_on_player_to_result(player_state);
-});
-
-register_api_handler(Api_Request_Type.attack_npc, req => {
-    if (!validate_dedicated_server_key(req.dedicated_server_key)) {
-        return make_error(403);
-    }
-
-    const player_state = try_do_with_player(req.access_token, player => {
-        if (!can_player(player, Right.attack_a_character)) {
-            return;
-        }
-
-        const npc = npc_by_id(req.target_npc_id);
-
-        if (!npc) {
-            return;
-        }
-
-        // TODO check if npc is already in battle
-        initiate_battle([ player, npc ]);
+        transition_player_to_battle(player, battle);
+        transition_player_to_battle(other_player, battle);
 
         return player_to_player_state_object(player);
     });
@@ -916,6 +902,30 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         player.online.current_location = room.entrance_location;
 
         return {};
+    }));
+});
+
+register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
+    if (!validate_dedicated_server_key(req.dedicated_server_key)) {
+        return make_error(403);
+    }
+    return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+        if (player.online.state != Player_State.on_adventure) return;
+
+        const entity = player.online.ongoing_adventure.entities.find(entity => entity.id == req.enemy_entity_id);
+
+        if (!entity) return;
+        if (entity.definition.type != Adventure_Entity_Type.enemy) return;
+
+
+        const battle = start_battle([
+            player_to_battle_participant(player),
+            adventure_enemy_to_battle_participant(entity.id, entity.definition)
+        ], battleground.forest());
+
+        transition_player_to_battle(player, battle);
+
+        return player_to_player_state_object(player);
     }));
 });
 

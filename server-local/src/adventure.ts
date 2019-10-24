@@ -68,12 +68,25 @@ function adventure_enemy_movement_loop(game: Game) {
             const enemy_actual_location = enemy_handle.GetAbsOrigin();
             const player_location = game.player.hero_unit.GetAbsOrigin();
             const player_can_see_enemy = game.player.hero_unit.CanEntityBeSeenByMyTeam(enemy_handle);
-            const distance_to_player = (enemy_spawn_location - player_location as Vector).Length2D();
+            const from_spawn_to_player = (enemy_spawn_location - player_location as Vector).Length2D();
+            const from_enemy_to_player = (enemy_actual_location - player_location as Vector).Length2D();
 
-            if (distance_to_player <= 500 && player_can_see_enemy) {
-                enemy_handle.MoveToPosition(player_location);
+            if (from_spawn_to_player <= 500 && player_can_see_enemy) {
+                if (from_enemy_to_player <= 64) {
+                    const new_state = api_request(Api_Request_Type.start_adventure_enemy_fight, {
+                        enemy_entity_id: enemy.id,
+                        access_token: game.token,
+                        dedicated_server_key: get_dedicated_server_key()
+                    });
 
-                wait(0.1);
+                    if (new_state) {
+                        try_submit_state_transition(game, new_state);
+                    }
+                } else {
+                    enemy_handle.MoveToPosition(player_location);
+
+                    wait(0.1);
+                }
             } else {
                 if ((enemy_actual_location - enemy_spawn_location as Vector).Length2D() >= 32) {
                     enemy_handle.MoveToPosition(enemy_spawn_location);

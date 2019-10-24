@@ -40,12 +40,12 @@ function api_request<T extends Api_Request_Type>(type: T, data: Find_Request<T>)
     return result;
 }
 
-function api_request_with_retry_on_403<T extends Api_Request_Type>(type: T, main_player: Game, data: Find_Request<T>): Find_Response<T> | undefined {
+function api_request_with_retry_on_403<T extends Api_Request_Type>(type: T, game: Game, data: Find_Request<T>): Find_Response<T> | undefined {
     let request_completed = false;
     let result: Find_Response<T> | undefined = undefined;
 
     while (true) {
-        wait_until(() => main_player.state != Player_State.not_logged_in);
+        wait_until(() => game.state != Player_State.not_logged_in);
 
         let unauthorized = false;
 
@@ -69,8 +69,8 @@ function api_request_with_retry_on_403<T extends Api_Request_Type>(type: T, main
         wait_until(() => request_completed);
 
         if (unauthorized) {
-            const previous_state = main_player.state;
-            process_state_transition(main_player, previous_state, { state: Player_State.not_logged_in });
+            const previous_state = game.state;
+            process_state_transition(game, previous_state, { state: Player_State.not_logged_in });
         } else {
             return result;
         }

@@ -186,9 +186,9 @@ function update_entity_from_movement_history(entity: Entity_With_Movement) {
     }
 }
 
-function query_other_entities_movement(main_player: Game, map: Map_State) {
-    const response = api_request_with_retry_on_403(Api_Request_Type.query_entity_movement, main_player, {
-        access_token: main_player.token,
+function query_other_entities_movement(game: Game, map: Map_State) {
+    const response = api_request_with_retry_on_403(Api_Request_Type.query_entity_movement, game, {
+        access_token: game.token,
         dedicated_server_key: get_dedicated_server_key()
     });
 

@@ -17,7 +17,7 @@ export type Battle_Record = Battle & {
     end_turn_queued: boolean
 }
 
-export type Battle_Participant = Player_Participant | Npc_Participant
+export type Battle_Participant = Player_Participant | Npc_Participant | Adventure_Enemy_Participant
 
 type Player_Participant = {
     type: Map_Entity_Type.player
@@ -29,6 +29,15 @@ type Player_Participant = {
 type Npc_Participant = {
     type: Map_Entity_Type.npc
     id: Npc_Id
+    npc_type: Npc_Type
+    heroes: Hero_Type[]
+    spells: Spell_Id[]
+    minions: Minion_Type[]
+}
+
+type Adventure_Enemy_Participant = {
+    type: Map_Entity_Type.adventure_enemy
+    id: Adventure_Entity_Id
     npc_type: Npc_Type
     heroes: Hero_Type[]
     spells: Spell_Id[]
@@ -1982,6 +1991,12 @@ export function start_battle(participants: Battle_Participant[], battleground: B
                 type: Map_Entity_Type.player,
                 player_id: participant.id
             };
+
+            case Map_Entity_Type.adventure_enemy: return {
+                type: Map_Entity_Type.adventure_enemy,
+                entity_id: participant.id,
+                npc_type: participant.npc_type
+            }
         }
     }
 
@@ -2114,7 +2129,7 @@ export function start_battle(participants: Battle_Participant[], battleground: B
             spawn_deltas.push(spawn_hero(battle, player, spawn_points[index].position, heroes[index]));
         }
 
-        if (participant.type == Map_Entity_Type.npc) {
+        if (participant.type == Map_Entity_Type.npc || participant.type == Map_Entity_Type.adventure_enemy) {
             const minions = participant.minions;
             const minion_spawn_points = pick_n_random(free_cells, minions.length);
 

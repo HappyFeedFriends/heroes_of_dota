@@ -315,9 +315,9 @@ function process_state_transition(game: Game, current_state: Player_State, next_
     update_game_net_table(game);
 }
 
-function try_submit_state_transition(main_player: Game, new_state: Player_State_Data) {
-    if (new_state.state != main_player.state) {
-        print(`Well I have a new state transition and it is ${enum_to_string(main_player.state)} -> ${enum_to_string(new_state.state)}`);
+function try_submit_state_transition(game: Game, new_state: Player_State_Data) {
+    if (new_state.state != game.state) {
+        print(`Well I have a new state transition and it is ${enum_to_string(game.state)} -> ${enum_to_string(new_state.state)}`);
 
         state_transition = new_state;
     }
@@ -511,7 +511,7 @@ function game_loop() {
     fork(() => submit_and_query_movement_loop(game, map));
     fork(() => {
         while(true) {
-            const state_data = api_request(Api_Request_Type.get_player_state, {
+            const state_data = api_request_with_retry_on_403(Api_Request_Type.get_player_state, game, {
                 access_token: game.token
             });
 

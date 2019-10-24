@@ -123,13 +123,13 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
     }
 }
 
-function subscribe_to_editor_events(main_player: Game) {
+function subscribe_to_editor_events(game: Game) {
     const state: Editor_State =  {
         map_revealed: false,
         camera_unlocked: false
     };
 
-    on_custom_event_async<Editor_Event>("editor_event", event => on_editor_event(main_player, state, event));
+    on_custom_event_async<Editor_Event>("editor_event", event => on_editor_event(game, state, event));
 
     fork(() => {
         while (true) {

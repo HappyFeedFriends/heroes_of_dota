@@ -209,7 +209,7 @@ function try_use_any_card(battle: Battle_Record, ai: Battle_Player) {
     }
 }
 
-export function take_ai_action(battle: Battle_Record, player: Battle_Player) {
+function take_ai_action(battle: Battle_Record, player: Battle_Player) {
     const act_permission = authorize_action_by_player(battle, player);
     if (!act_permission.ok) return;
 
@@ -247,4 +247,10 @@ export function take_ai_action(battle: Battle_Record, player: Battle_Player) {
     });
 
     console.log(`take_ai_action: ${performance.now() - start_time}ms`);
+}
+
+export function check_and_try_perform_ai_actions(battle: Battle_Record) {
+    if (battle.turning_player.map_entity.type != Map_Entity_Type.player) {
+        take_ai_action(battle, battle.turning_player)
+    }
 }

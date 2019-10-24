@@ -381,6 +381,10 @@ type Battle_Participant_Map_Entity = {
     type: Map_Entity_Type.npc
     npc_id: Npc_Id
     npc_type: Npc_Type
+} | {
+    type: Map_Entity_Type.adventure_enemy
+    entity_id: Adventure_Entity_Id
+    npc_type: Npc_Type
 }
 
 type Battle_Participant_Info = {
