@@ -15,22 +15,6 @@ type Map_Player = {
     id: Player_Id
 } & Entity_With_Movement
 
-type Game = {
-    token: string
-    state: Player_State
-    player: Main_Player
-    adventure: Adventure_State
-}
-
-type Main_Player = {
-    remote_id: Player_Id
-    player_id: PlayerID
-    hero_unit: CDOTA_BaseNPC_Hero
-    current_order_x: number
-    current_order_y: number
-    movement_history: Movement_History_Entry[]
-}
-
 type Map_State = {
     players: Record<number, Map_Player>
     neutrals: Record<number, Map_NPC>
@@ -39,20 +23,10 @@ type Map_State = {
 const movement_history_submit_rate = 0.7;
 const movement_history_length = 30;
 
-function submit_player_movement(game: Game) {
-    const current_location = game.player.hero_unit.GetAbsOrigin();
+function submit_player_global_map_movement(game: Game) {
     const request = {
+        ...get_player_movement(game.player),
         access_token: game.token,
-        current_location: {
-            x: current_location.x,
-            y: current_location.y
-        },
-        movement_history: game.player.movement_history.map(entry => ({
-            order_x: entry.order_x,
-            order_y: entry.order_y,
-            location_x: entry.location_x,
-            location_y: entry.location_y
-        })),
         dedicated_server_key: get_dedicated_server_key()
     };
 
@@ -258,10 +232,10 @@ function update_main_player_movement_history(main_player: Main_Player) {
 
 function submit_and_query_movement_loop(game: Game, map: Map_State) {
     while (true) {
-        wait_until(() => game.state == Player_State.on_global_map || game.state == Player_State.on_adventure);
+        wait_until(() => game.state == Player_State.on_global_map);
         wait(movement_history_submit_rate);
 
-        fork(() => submit_player_movement(game));
+        fork(() => submit_player_global_map_movement(game));
         fork(() => query_other_entities_movement(game, map));
     }
 }

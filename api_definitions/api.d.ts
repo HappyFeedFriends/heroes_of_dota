@@ -31,6 +31,7 @@ declare const enum Api_Request_Type {
     exit_adventure = 202,
     query_adventure_entity_states = 203,
     start_adventure_enemy_fight = 204,
+    submit_adventure_player_movement = 205,
 
     battle_cheat = 50,
     map_cheat = 51,
@@ -97,7 +98,7 @@ type Player_State_On_Adventure = {
     state: Player_State.on_adventure
     adventure_id: Adventure_Id
     current_room_id: Adventure_Room_Id
-    room_entrance: {
+    player_position: {
         x: number
         y: number
     }
@@ -301,6 +302,16 @@ type Api_Request = {
         enemy_entity_id: Adventure_Entity_Id
     } & With_Token & With_Private_Key
     response: Player_State_Data
+} | {
+    type: Api_Request_Type.submit_adventure_player_movement
+    request: {
+        current_location: {
+            x: number
+            y: number
+        }
+        movement_history: Movement_History_Entry[]
+    } & With_Token & With_Private_Key
+    response: {}
 } | {
     type: Api_Request_Type.editor_action
     request: Editor_Action & With_Token

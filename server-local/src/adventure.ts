@@ -106,6 +106,21 @@ function adventure_enemy_movement_loop(game: Game) {
     }
 }
 
+function submit_adventure_movement_loop(game: Game) {
+    while (true) {
+        wait_until(() => game.state == Player_State.on_adventure);
+        wait(0.7);
+
+        const request = {
+            ...get_player_movement(game.player),
+            access_token: game.token,
+            dedicated_server_key: get_dedicated_server_key()
+        };
+
+        api_request_with_retry_on_403(Api_Request_Type.submit_adventure_player_movement, game, request);
+    }
+}
+
 function cleanup_adventure_entity(entity: Adventure_Materialized_Entity) {
     entity.unit.RemoveSelf();
 }

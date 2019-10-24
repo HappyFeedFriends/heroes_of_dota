@@ -1,3 +1,19 @@
+type Game = {
+    token: string
+    state: Player_State
+    player: Main_Player
+    adventure: Adventure_State
+}
+
+type Main_Player = {
+    remote_id: Player_Id
+    player_id: PlayerID
+    hero_unit: CDOTA_BaseNPC_Hero
+    current_order_x: number
+    current_order_y: number
+    movement_history: Movement_History_Entry[]
+}
+
 let state_transition: Player_State_Data | undefined = undefined;
 
 function print_table(a: object, indent: string = "") {
@@ -289,7 +305,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
     }
 
     if (next_state.state == Player_State.on_adventure) {
-        const start = Vector(next_state.room_entrance.x, next_state.room_entrance.y);
+        const start = Vector(next_state.player_position.x, next_state.player_position.y);
 
         FindClearSpaceForUnit(game.player.hero_unit, start, true);
         game.player.hero_unit.Interrupt();
@@ -337,6 +353,17 @@ function get_default_battleground_data(): [Vector, CDOTA_BaseNPC] {
     ) as CDOTA_BaseNPC;
 
     return [origin, camera_entity];
+}
+
+function get_player_movement(player: Main_Player) {
+    const current_location = player.hero_unit.GetAbsOrigin();
+    return {
+        current_location: {
+            x: current_location.x,
+            y: current_location.y
+        },
+        movement_history: player.movement_history,
+    };
 }
 
 function reconnect_loop(game: Game) {
@@ -507,6 +534,7 @@ function game_loop() {
         });
     }
 
+    fork(() => submit_adventure_movement_loop(game));
     fork(() => adventure_enemy_movement_loop(game));
     fork(() => submit_and_query_movement_loop(game, map));
     fork(() => {

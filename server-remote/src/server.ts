@@ -179,20 +179,14 @@ const enum Do_With_Player_Result_Type {
     unauthorized
 }
 
-type Do_With_Player_Ok<T> = {
+type Do_With_Player_Result<T> ={
     type: Do_With_Player_Result_Type.ok,
     data: T;
-};
-
-type Do_With_Player_Unauthorized = {
-    type: Do_With_Player_Result_Type.unauthorized;
-}
-
-type Do_With_Player_Error = {
+} | {
     type: Do_With_Player_Result_Type.error;
-}
-
-type Do_With_Player_Result<T> = Do_With_Player_Ok<T> | Do_With_Player_Error | Do_With_Player_Unauthorized;
+} | {
+    type: Do_With_Player_Result_Type.unauthorized;
+};
 
 function try_do_with_player<T>(access_token: string, do_what: (player: Map_Player, login: Map_Player_Login) => T | undefined): Do_With_Player_Result<T> {
     const player_login = token_to_player_login.get(access_token);
@@ -227,6 +221,10 @@ function action_on_player_to_result<N>(result: Do_With_Player_Result<N>): Reques
             return make_error(403);
         }
     }
+}
+
+function with_player_in_request<T>(req: With_Token, do_what: (player: Map_Player, login: Map_Player_Login) => T | undefined): Request_Result<T> {
+    return action_on_player_to_result(try_do_with_player(req.access_token, do_what))
 }
 
 function player_by_id(player_id: Player_Id) {
@@ -307,9 +305,9 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                 state: player.online.state,
                 adventure_id: ongoing_adventure.adventure.id,
                 current_room_id: ongoing_adventure.current_room.id,
-                room_entrance: {
-                    x: ongoing_adventure.current_room.entrance_location.x,
-                    y: ongoing_adventure.current_room.entrance_location.y
+                player_position: {
+                    x: player.online.current_location.x,
+                    y: player.online.current_location.y
                 },
                 entities: ongoing_adventure.entities
             }
@@ -338,7 +336,7 @@ function can_player(player: Map_Player, right: Right) {
         }
 
         case Right.submit_movement: {
-            return player.online.state == Player_State.on_global_map || player.online.state == Player_State.on_adventure;
+            return player.online.state == Player_State.on_global_map;
         }
 
         case Right.submit_battle_action: {
@@ -502,13 +500,11 @@ export function report_battle_over(battle: Battle, winner_entity: Battle_Partici
 }
 
 register_api_handler(Api_Request_Type.get_player_state, req => {
-    const player_state = try_do_with_player(req.access_token, player_to_player_state_object);
-
-    return action_on_player_to_result(player_state);
+    return with_player_in_request(req, player_to_player_state_object);
 });
 
 register_api_handler(Api_Request_Type.get_player_name, req => {
-    const player_state = try_do_with_player(req.access_token, () => {
+    return with_player_in_request(req, () => {
         const player = player_by_id(req.player_id);
 
         if (player) {
@@ -517,8 +513,6 @@ register_api_handler(Api_Request_Type.get_player_name, req => {
             }
         }
     });
-
-    return action_on_player_to_result(player_state);
 });
 
 register_api_handler(Api_Request_Type.submit_player_movement, req => {
@@ -526,31 +520,33 @@ register_api_handler(Api_Request_Type.submit_player_movement, req => {
         return make_error(403);
     }
 
-    const ok = try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, player => {
         if (!can_player(player, Right.submit_movement)) {
             return;
         }
 
-        if (player.online.state != Player_State.on_global_map && player.online.state != Player_State.on_adventure) return;
+        if (player.online.state != Player_State.on_global_map) return;
 
-        player.online.current_location = xy(req.current_location.x, req.current_location.y);
-        player.online.movement_history = req.movement_history.map(entry => ({
-            order_x: entry.order_x,
-            order_y: entry.order_y,
-            location_x: entry.location_x,
-            location_y: entry.location_y
-        }));
+        player.online.current_location = req.current_location;
+        player.online.movement_history = req.movement_history;
 
-        return true;
+        return {};
     });
+});
 
-    const result = action_on_player_to_result(ok);
-
-    if (result.type == Result_Type.ok) {
-        return make_ok({});
+register_api_handler(Api_Request_Type.submit_adventure_player_movement, req => {
+    if (!validate_dedicated_server_key(req.dedicated_server_key)) {
+        return make_error(403);
     }
 
-    return result;
+    return with_player_in_request(req, player => {
+        if (player.online.state != Player_State.on_adventure) return;
+
+        player.online.current_location = req.current_location;
+        player.online.movement_history = req.movement_history;
+
+        return {};
+    });
 });
 
 register_api_handler(Api_Request_Type.query_entity_movement, req => {
@@ -558,7 +554,7 @@ register_api_handler(Api_Request_Type.query_entity_movement, req => {
         return make_error(403);
     }
 
-    const player_locations = try_do_with_player(req.access_token, requesting_player => {
+    return with_player_in_request(req, requesting_player => {
         if (!can_player(requesting_player, Right.submit_movement)) {
             return;
         }
@@ -617,8 +613,6 @@ register_api_handler(Api_Request_Type.query_entity_movement, req => {
             };
         }
     });
-
-    return action_on_player_to_result(player_locations);
 });
 
 register_api_handler(Api_Request_Type.attack_player, req => {
@@ -626,7 +620,7 @@ register_api_handler(Api_Request_Type.attack_player, req => {
         return make_error(403);
     }
 
-    const player_state = try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, player => {
         if (!can_player(player, Right.attack_a_character)) {
             return;
         }
@@ -651,12 +645,10 @@ register_api_handler(Api_Request_Type.attack_player, req => {
 
         return player_to_player_state_object(player);
     });
-
-    return action_on_player_to_result(player_state);
 });
 
 register_api_handler(Api_Request_Type.query_battle_deltas, req => {
-    const result = try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, () => {
         const battle = find_battle_by_id(req.battle_id);
 
         if (!battle) {
@@ -668,12 +660,10 @@ register_api_handler(Api_Request_Type.query_battle_deltas, req => {
             deltas: get_battle_deltas_after(battle, req.since_delta),
         };
     });
-
-    return action_on_player_to_result(result);
 });
 
 register_api_handler(Api_Request_Type.take_battle_action, req => {
-    const result = try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, player => {
         if (!can_player(player, Right.submit_battle_action)) {
             return;
         }
@@ -693,12 +683,10 @@ register_api_handler(Api_Request_Type.take_battle_action, req => {
             }
         }
     });
-
-    return action_on_player_to_result(result);
 });
 
 register_api_handler(Api_Request_Type.query_battles, req => {
-    const result = try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, player => {
         if (!can_player(player, Right.query_battles)) {
             return;
         }
@@ -719,26 +707,22 @@ register_api_handler(Api_Request_Type.query_battles, req => {
             }))
         };
     });
-
-    return action_on_player_to_result(result);
 });
 
 register_api_handler(Api_Request_Type.battle_cheat, req => {
     // TODO validate admin profile
 
-    const result = try_do_with_player<true>(req.access_token, player => {
+    return with_player_in_request(req, player => {
         if (player.online.state != Player_State.in_battle) return;
 
         cheat(player.online.battle, player.online.battle_player, req.cheat, req.selected_unit_id);
 
         return true;
     });
-
-    return action_on_player_to_result(result);
 });
 
 register_api_handler(Api_Request_Type.submit_chat_message, req => {
-    const result = try_do_with_player(req.access_token, (player, login) => {
+    return with_player_in_request(req, (player, login) => {
         if (!can_player(player, Right.submit_chat_messages)) {
             return;
         }
@@ -751,18 +735,14 @@ register_api_handler(Api_Request_Type.submit_chat_message, req => {
             messages: pull_pending_chat_messages_for_player(login)
         }
     });
-
-    return action_on_player_to_result(result);
 });
 
 register_api_handler(Api_Request_Type.pull_chat_messages, req => {
-    const result = try_do_with_player(req.access_token, (player, login) => {
+    return with_player_in_request(req, (player, login) => {
         return {
             messages: pull_pending_chat_messages_for_player(login)
         };
     });
-
-    return action_on_player_to_result(result);
 });
 
 function get_array_page<T>(array: T[], page: number, elements_per_page: number) {
@@ -771,7 +751,7 @@ function get_array_page<T>(array: T[], page: number, elements_per_page: number) 
 }
 
 register_api_handler(Api_Request_Type.get_collection_page, req => {
-    const collection = try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, player => {
         const heroes = player.collection.heroes;
         const spells = player.collection.spells;
 
@@ -810,23 +790,19 @@ register_api_handler(Api_Request_Type.get_collection_page, req => {
 
         return result;
     });
-
-    return action_on_player_to_result(collection);
 });
 
 register_api_handler(Api_Request_Type.get_deck, req => {
-    const deck = try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, player => {
         return {
             heroes: player.deck.heroes,
             spells: player.deck.spells
         }
     });
-
-    return action_on_player_to_result(deck);
 });
 
 register_api_handler(Api_Request_Type.save_deck, req => {
-    return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, player => {
         if (req.heroes.length != heroes_in_deck) {
             return;
         }
@@ -847,7 +823,7 @@ register_api_handler(Api_Request_Type.save_deck, req => {
         player.deck.spells = req.spells;
 
         return {};
-    }));
+    });
 });
 
 register_api_handler(Api_Request_Type.start_adventure, req => {
@@ -855,7 +831,7 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
         return make_error(403);
     }
 
-    return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, player => {
         if (!can_player(player, Right.start_adventure)) return;
 
         const adventure = adventure_by_id(req.adventure_id);
@@ -878,7 +854,7 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
         };
 
         return player_to_player_state_object(player);
-    }));
+    });
 });
 
 register_api_handler(Api_Request_Type.enter_adventure_room, req => {
@@ -886,7 +862,7 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         return make_error(403);
     }
 
-    return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, player => {
         if (!can_player(player, Right.enter_adventure_room)) return;
         if (player.online.state != Player_State.on_adventure) return;
 
@@ -902,14 +878,14 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         player.online.current_location = room.entrance_location;
 
         return {};
-    }));
+    });
 });
 
 register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
     if (!validate_dedicated_server_key(req.dedicated_server_key)) {
         return make_error(403);
     }
-    return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, player => {
         if (player.online.state != Player_State.on_adventure) return;
 
         const entity = player.online.ongoing_adventure.entities.find(entity => entity.id == req.enemy_entity_id);
@@ -926,7 +902,7 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
         transition_player_to_battle(player, battle);
 
         return player_to_player_state_object(player);
-    }));
+    });
 });
 
 register_api_handler(Api_Request_Type.exit_adventure, req => {
@@ -934,7 +910,7 @@ register_api_handler(Api_Request_Type.exit_adventure, req => {
         return make_error(403);
     }
 
-    return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+    return with_player_in_request(req, player => {
         if (player.online.state != Player_State.on_adventure) return;
 
         player.online = {
@@ -944,7 +920,7 @@ register_api_handler(Api_Request_Type.exit_adventure, req => {
         };
 
         return player_to_player_state_object(player);
-    }));
+    });
 });
 
 function register_dev_handlers() {
@@ -953,17 +929,17 @@ function register_dev_handlers() {
     });
 
     register_api_handler(Api_Request_Type.editor_action, req => {
-        return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+        return with_player_in_request(req, player => {
             if (player.online.state != Player_State.on_adventure) return;
 
             apply_editor_action(player.online.ongoing_adventure, req);
 
             return {};
-        }));
+        });
     });
 
     register_api_handler(Api_Request_Type.editor_get_room_details, req => {
-        return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+        return with_player_in_request(req, player => {
             if (player.online.state != Player_State.on_adventure) return;
 
             const current_room = player.online.ongoing_adventure.current_room;
@@ -974,15 +950,15 @@ function register_dev_handlers() {
                     y: current_room.entrance_location.y
                 }
             };
-        }));
+        });
     });
 
     register_api_handler(Api_Request_Type.editor_create_entity, req => {
-        return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+        return with_player_in_request(req, player => {
             if (player.online.state != Player_State.on_adventure) return;
 
             return editor_create_entity(player.online.ongoing_adventure, req.definition);
-        }));
+        });
     });
 }
 
