@@ -116,10 +116,11 @@ function editor_select_npc(entity: EntityId, adventure_entity_id: Adventure_Enti
         const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
         selection_label.text = `Selected: ${enum_to_string(npc_type)}`;
 
-        for (let index = 0; index < data.minions.length; index++) {
+        for (let index = 0; index < data.minions.length + 1; index++) {
             const minion = data.minions[index];
+            const text = index < data.minions.length ? enum_to_string(minion) : "Add a minion";
 
-            entity_button(enum_to_string(minion), (button) => {
+            entity_button(text, (button) => {
                 entity_buttons_dropdown.RemoveAndDeleteChildren();
 
                 let show_dropdown = true;
