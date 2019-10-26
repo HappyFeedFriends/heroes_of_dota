@@ -19,9 +19,11 @@ type Editor_Selection = {
     selected: false
 } | {
     selected: true
+    id: Adventure_Entity_Id
     npc_type: Npc_Type
     entity: EntityId
     particle: ParticleId
+    minions: Minion_Type[]
 }
 
 function text_button(parent: Panel, css_class: string, text: string, action: () => void) {
@@ -48,14 +50,14 @@ function update_editor_camera_height() {
     GameUI.SetCameraDistance(in_editor_mode ? 1200 + 200 * camera_height_index : map_camera_height);
 }
 
-function npc_type_from_entity(entity: EntityId): Npc_Type | undefined {
+function enum_value_from_modifier<T extends number>(entity: EntityId, modifier_name: string): T | undefined {
     const num_buffs = Entities.GetNumBuffs(entity);
 
     for (let index = 0; index < num_buffs; index++) {
         const buff = Entities.GetBuff(entity, index);
 
-        if (Buffs.GetName(entity, buff) == "Modifier_Editor_Npc_Type") {
-            return Buffs.GetStackCount(entity, buff) as Npc_Type;
+        if (Buffs.GetName(entity, buff) == modifier_name) {
+            return Buffs.GetStackCount(entity, buff) as T;
         }
     }
 }
@@ -73,34 +75,45 @@ function drop_editor_selection() {
     toolbar.RemoveAndDeleteChildren();
 }
 
-function editor_select_npc(entity: EntityId, npc_type: Npc_Type) {
+function editor_select_npc(entity: EntityId, adventure_entity_id: Adventure_Entity_Id, npc_type: Npc_Type) {
     if (editor_selection.selected) {
         drop_editor_selection();
     }
 
-    function toolbar_button(text: string, action: () => void) {
-        return text_button(toolbar, "editor_toolbar_button", text, action);
+    function toolbar_button(text: string, action: () => void, css_class: string = "editor_toolbar_button") {
+        return text_button(toolbar, css_class, text, action);
     }
 
-    const fx = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_OVERHEAD_FOLLOW, entity);
+    api_request(Api_Request_Type.editor_get_enemy_deck, {
+        entity_id: adventure_entity_id,
+        access_token: get_access_token()
+    }, data => {
+        const fx = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_OVERHEAD_FOLLOW, entity);
 
-    register_particle_for_reload(fx);
+        register_particle_for_reload(fx);
 
-    editor_selection = {
-        selected: true,
-        entity: entity,
-        particle: fx,
-        npc_type: npc_type
-    };
+        editor_selection = {
+            selected: true,
+            id: adventure_entity_id,
+            entity: entity,
+            particle: fx,
+            npc_type: npc_type,
+            minions: data.minions
+        };
 
-    const selection_label = $.CreatePanel("Label", toolbar, "editor_selected_entity");
-    selection_label.text = `Selected: ${enum_to_string(npc_type)}`;
+        const selection_label = $.CreatePanel("Label", toolbar, "editor_selected_entity");
+        selection_label.text = `Selected: ${enum_to_string(npc_type)}`;
 
-    toolbar_button("Delete", () => {
-        dispatch_editor_event({
-            type: Editor_Event_Type.delete_entity,
-            entity_id: entity
-        })
+        for (const minion of data.minions) {
+            toolbar_button(enum_to_string(minion), () => {});
+        }
+
+        toolbar_button("Delete", () => {
+            dispatch_editor_event({
+                type: Editor_Event_Type.delete_entity,
+                entity_id: entity
+            })
+        }, "editor_toolbar_delete_button");
     });
 }
 
@@ -133,10 +146,11 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
         const entity_under_cursor = get_entity_under_cursor(GameUI.GetCursorPosition());
 
         if (entity_under_cursor != undefined) {
-            const npc_type = npc_type_from_entity(entity_under_cursor);
+            const entity_id = enum_value_from_modifier<Adventure_Entity_Id>(entity_under_cursor, "Modifier_Editor_Adventure_Entity_Id");
+            const npc_type = enum_value_from_modifier<Npc_Type>(entity_under_cursor, "Modifier_Editor_Npc_Type");
 
-            if (npc_type != undefined) {
-                editor_select_npc(entity_under_cursor, npc_type);
+            if (npc_type != undefined && entity_id != undefined) {
+                editor_select_npc(entity_under_cursor, entity_id, npc_type);
             }
         } else {
             drop_editor_selection();
@@ -148,35 +162,42 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
     if (button == MouseButton.RIGHT) {
         const click_world_position = Game.ScreenXYToWorld(...GameUI.GetCursorPosition());
 
+        context_menu.style.visibility = "visible";
+        context_menu.RemoveAndDeleteChildren();
+
+        context_menu_particle = Particles.CreateParticle("particles/ui_mouseactions/ping_waypoint.vpcf", ParticleAttachment_t.PATTACH_WORLDORIGIN, 0);
+        Particles.SetParticleControl(context_menu_particle, 0, click_world_position);
+
         if (editor_selection.selected) {
-            let new_position: XYZ;
-            let facing: XYZ;
+            context_menu_button(`Move here`, () => {
+                if (!editor_selection.selected) return;
 
-            if (GameUI.IsShiftDown()) {
-                new_position = Entities.GetAbsOrigin(editor_selection.entity);
+                const facing = Entities.GetForward(editor_selection.entity);
 
-                const delta = [click_world_position[0] - new_position[0], click_world_position[1] - new_position[1]];
+                dispatch_editor_event({
+                    type: Editor_Event_Type.edit_enemy,
+                    entity_id: editor_selection.entity,
+                    position: xy(click_world_position[0], click_world_position[1]),
+                    facing: xy(facing[0], facing[1])
+                });
+            });
+
+            context_menu_button(`Look here`, () => {
+                if (!editor_selection.selected) return;
+
+                const position = Entities.GetAbsOrigin(editor_selection.entity);
+                const delta = [click_world_position[0] - position[0], click_world_position[1] - position[1]];
                 const length = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
+                const facing = length > 0 ? [delta[0] / length, delta[1] / length, 0] : [1, 0, 0];
 
-                facing = length > 0 ? [delta[0] / length, delta[1] / length, 0] : [1, 0, 0];
-            } else {
-                new_position = click_world_position;
-                facing = Entities.GetForward(editor_selection.entity);
-            }
-
-            dispatch_editor_event({
-                type: Editor_Event_Type.edit_enemy,
-                entity_id: editor_selection.entity,
-                position: xy(new_position[0], new_position[1]),
-                facing: xy(facing[0], facing[1])
+                dispatch_editor_event({
+                    type: Editor_Event_Type.edit_enemy,
+                    entity_id: editor_selection.entity,
+                    position: xy(position[0], position[1]),
+                    facing: xy(facing[0], facing[1])
+                });
             });
         } else {
-            context_menu.style.visibility = "visible";
-            context_menu.RemoveAndDeleteChildren();
-
-            context_menu_particle = Particles.CreateParticle("particles/ui_mouseactions/ping_waypoint.vpcf", ParticleAttachment_t.PATTACH_WORLDORIGIN, 0);
-            Particles.SetParticleControl(context_menu_particle, 0, click_world_position);
-
             for (const [npc_name, npc_type] of enum_names_to_values<Npc_Type>()) {
                 context_menu_button(`Create ${npc_name}`, () => {
                     dispatch_editor_event({
@@ -185,7 +206,8 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
                             type: Adventure_Entity_Type.enemy,
                             npc_type: npc_type,
                             spawn_position: xy(click_world_position[0], click_world_position[1]),
-                            spawn_facing: xy(1, 0)
+                            spawn_facing: xy(1, 0),
+                            minions: []
                         }
                     })
                 });
@@ -194,10 +216,10 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
             context_menu_button(`Set entrance to here`, () => {
                 api_request(Api_Request_Type.editor_action, {
                     type: Adventure_Editor_Action_Type.set_entrance,
-                    entrance: xy(pinned_context_menu_position[0], pinned_context_menu_position[1]),
+                    entrance: xy(click_world_position[0], click_world_position[1]),
                     access_token: get_access_token()
                 }, () => {
-                    room_entrance_location = xy(pinned_context_menu_position[0], pinned_context_menu_position[1]);
+                    room_entrance_location = xy(click_world_position[0], click_world_position[1]);
                 });
             });
 
@@ -207,9 +229,9 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
                     position: xy(click_world_position[0], click_world_position[1])
                 })
             });
-
-            pinned_context_menu_position = click_world_position;
         }
+
+        pinned_context_menu_position = click_world_position;
     }
 
     return true;
@@ -269,9 +291,7 @@ function update_editor_buttons(state: Player_State) {
                 adventure: id
             }));
         }
-    }
-
-    if (state == Player_State.on_adventure) {
+    } else if (state == Player_State.on_adventure) {
         editor_button("Toggle editor", () => {
             in_editor_mode = !in_editor_mode;
 
@@ -303,6 +323,10 @@ function update_editor_buttons(state: Player_State) {
                 type: Editor_Event_Type.exit_adventure
             })
         });
+    } else {
+        in_editor_mode = false;
+
+        update_state_from_editor_mode(state);
     }
 }
 

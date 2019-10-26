@@ -470,7 +470,8 @@ function main() {
     link_modifier("Modifier_Activity_Override", "modifiers/modifier_activity_override");
 
     if (IsInToolsMode()) {
-        link_modifier("Modifier_Editor_Npc_Type", "modifiers/modifier_editor_npc_type");
+        link_modifier("Modifier_Editor_Npc_Type", "modifiers/modifier_editor");
+        link_modifier("Modifier_Editor_Adventure_Entity_Id", "modifiers/modifier_editor");
     }
 
     mode.SetContextThink("scheduler_think", () => {

@@ -54,21 +54,31 @@
       align: left bottom;
       flow-children: down;
 
+      &>Panel, &>Label {
+        horizontal-align: center;
+      }
+
       #editor_selected_entity {
-        vertical-align: center;
         color: white;
         font-family: @font-regular;
         font-size: 32px;
-        margin-right: 40px;
+        margin-bottom: 20px;
       }
 
-      .editor_toolbar_button {
-        vertical-align: center;
+      .editor_toolbar_delete_button {
         margin: 6px;
-        width: 180px;
+        width: 220px;
         height: 40px;
 
         #button(#be5ee9, 24px);
+      }
+
+      .editor_toolbar_button {
+        margin: 6px;
+        width: 220px;
+        height: 40px;
+
+        #button(#7278e9, 18px);
       }
     }
 

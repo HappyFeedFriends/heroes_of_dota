@@ -39,13 +39,15 @@ declare const enum Api_Request_Type {
 
     editor_action = 1000,
     editor_get_room_details = 1001,
-    editor_create_entity = 1002
+    editor_create_entity = 1002,
+    editor_get_enemy_deck = 1003
 }
 
 declare const enum Adventure_Editor_Action_Type {
     edit_enemy = 0,
     delete_entity = 1,
     set_entrance = 2,
+    edit_enemy_deck = 3
 }
 
 declare const enum Map_Entity_Type {
@@ -330,6 +332,14 @@ type Api_Request = {
         definition: Adventure_Entity_Definition
     } & With_Token
     response: Adventure_Entity
+} | {
+    type: Api_Request_Type.editor_get_enemy_deck
+    request: {
+        entity_id: Adventure_Entity_Id
+    } & With_Token
+    response: {
+        minions: Minion_Type[]
+    }
 }
 
 type Editor_Action = {
@@ -353,6 +363,10 @@ type Editor_Action = {
         x: number
         y: number
     }
+} | {
+    type: Adventure_Editor_Action_Type.edit_enemy_deck
+    entity_id: Adventure_Entity_Id
+    minions: Minion_Type[]
 }
 
 type Collection_Page = {
@@ -430,6 +444,7 @@ type Adventure_Entity_Definition_Base = {
 type Adventure_Enemy_Definition = Adventure_Entity_Definition_Base & {
     type: Adventure_Entity_Type.enemy
     npc_type: Npc_Type
+    minions: Minion_Type[]
 }
 
 type Adventure_Lost_Creep_Definition = Adventure_Entity_Definition_Base & {

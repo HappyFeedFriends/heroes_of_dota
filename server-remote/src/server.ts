@@ -388,7 +388,7 @@ function adventure_enemy_to_battle_participant(id: Adventure_Entity_Id, definiti
         type: Map_Entity_Type.adventure_enemy,
         id: id,
         npc_type: definition.npc_type,
-        minions: [ Minion_Type.monster_small_spider, Minion_Type.monster_large_spider, Minion_Type.monster_spider_matriarch ],
+        minions: definition.minions,
         heroes: [],
         spells: []
     }
@@ -958,6 +958,20 @@ function register_dev_handlers() {
             if (player.online.state != Player_State.on_adventure) return;
 
             return editor_create_entity(player.online.ongoing_adventure, req.definition);
+        });
+    });
+
+    register_api_handler(Api_Request_Type.editor_get_enemy_deck, req => {
+        return with_player_in_request(req, player => {
+            if (player.online.state != Player_State.on_adventure) return;
+
+            const entity = player.online.ongoing_adventure.entities.find(entity => entity.id == req.entity_id);
+            if (!entity) return;
+            if (entity.definition.type != Adventure_Entity_Type.enemy) return;
+
+            return {
+                minions: entity.definition.minions
+            };
         });
     });
 }

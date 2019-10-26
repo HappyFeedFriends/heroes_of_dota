@@ -115,10 +115,6 @@ function create_new_npc_from_movement_data(data: NPC_Movement_Data): Map_Npc {
     const definition = get_npc_definition(data.type);
     const unit = create_map_unit_with_model(data.current_location, data.spawn_facing, definition.model, definition.scale);
 
-    if (IsInToolsMode()) {
-        unit.AddNewModifier(unit, undefined, "Modifier_Editor_Npc_Type",  {}).SetStackCount(data.type);
-    }
-
     return {
         id: data.id,
         type: data.type,

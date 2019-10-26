@@ -18,6 +18,11 @@
                             "facing": [
                                 0.19509035348892,
                                 -0.98078525066376
+                            ],
+                            "minions": [
+                                "monster_small_spider",
+                                "monster_small_spider",
+                                "monster_small_spider"
                             ]
                         }
                     ]
