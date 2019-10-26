@@ -70,11 +70,12 @@ function adventure_enemy_movement_loop(game: Game) {
         for (const enemy of game.adventure.entities) {
             if (enemy.type != Adventure_Entity_Type.enemy) continue;
 
+            const player_handle = game.player.hero_unit;
             const enemy_handle = enemy.handle;
             const enemy_spawn_location = Vector(enemy.spawn_position.x, enemy.spawn_position.y);
             const enemy_actual_location = enemy_handle.GetAbsOrigin();
-            const player_location = game.player.hero_unit.GetAbsOrigin();
-            const player_can_see_enemy = game.player.hero_unit.CanEntityBeSeenByMyTeam(enemy_handle);
+            const player_location = player_handle.GetAbsOrigin();
+            const player_can_see_enemy = player_handle.CanEntityBeSeenByMyTeam(enemy_handle);
             const from_spawn_to_player = (enemy_spawn_location - player_location as Vector).Length2D();
             const from_enemy_to_player = (enemy_actual_location - player_location as Vector).Length2D();
             const now = GameRules.GetGameTime();
@@ -93,6 +94,7 @@ function adventure_enemy_movement_loop(game: Game) {
                     lock_state_transition(() => {
                         enemy_handle.Stop();
 
+                        const stun = player_handle.AddNewModifier(player_handle, undefined, "modifier_stunned", {});
                         const animation = fork(() => {
                             enemy_handle.EmitSound(get_npc_definition(enemy.npc_type).attack_sound);
                             enemy_handle.StartGestureWithPlaybackRate(GameActivity_t.ACT_DOTA_ATTACK, 1);
@@ -113,6 +115,8 @@ function adventure_enemy_movement_loop(game: Game) {
 
                             try_submit_state_transition(game, new_state);
                         }
+
+                        stun.Destroy();
                     });
                 } else if (now - enemy.issued_movement_order_at > 0.1) {
                     if (now - enemy.noticed_player_at > 0.25) {

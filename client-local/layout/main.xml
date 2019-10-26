@@ -108,7 +108,7 @@
                 </Panel>
             </Panel>
         </Panel>
-        <Panel id="editor_ui" style="visibility: collapse;">
+        <Panel id="editor_ui" hittest="false" style="visibility: collapse;">
             <Panel id="editor_buttons"/>
             <Panel id="editor_indicator">
                 <Panel id="editor_toolbar"/>
