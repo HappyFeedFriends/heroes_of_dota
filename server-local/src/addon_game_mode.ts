@@ -33,7 +33,8 @@ function Precache(context: CScriptPrecacheContext) {
     }
 
     for (const npc_type of enum_values<Npc_Type>()) {
-        precache_model_and_log(get_npc_model(npc_type));
+        const definition = get_npc_definition(npc_type);
+        precache_model_and_log([definition.model, definition.scale]);
     }
 
     precache_model_and_log(creep_type_to_model_and_scale());

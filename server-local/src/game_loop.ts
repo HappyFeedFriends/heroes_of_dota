@@ -16,6 +16,8 @@ type Main_Player = {
 
 let state_transition: Player_State_Data | undefined = undefined;
 
+declare let can_transition_into_next_state: boolean;
+
 function print_table(a: object, indent: string = "") {
     let [index, value] = next(a, undefined);
 
@@ -106,8 +108,34 @@ function log_chat_debug_message(message: string) {
     CustomGameEventManager.Send_ServerToAllClients("log_chat_debug_message", event);
 }
 
-function create_unit_with_model(at: XY, facing: XY, model: string, scale: number) {
-    const unit = create_unit("hod_unit", at);
+function lock_state_transition(code: () => void) {
+    if (!can_transition_into_next_state) {
+        print("Failed to lock state transition");
+        return;
+    }
+
+    can_transition_into_next_state = false;
+    code();
+    can_transition_into_next_state = true;
+}
+
+function create_map_unit(dota_name: string, location: XY) {
+    const unit = CreateUnitByName(
+        dota_name,
+        Vector(location.x, location.y),
+        true,
+        null,
+        null,
+        DOTATeam_t.DOTA_TEAM_GOODGUYS
+    );
+
+    unit.AddNewModifier(unit, undefined, "Modifier_Map_Unit", {});
+
+    return unit;
+}
+
+function create_map_unit_with_model(at: XY, facing: XY, model: string, scale: number) {
+    const unit = create_map_unit("hod_unit", at);
 
     unit.SetOriginalModel(model);
     unit.SetModel(model);
@@ -235,6 +263,8 @@ function on_player_hero_spawned_async(player_id: PlayerID, callback: (entity: CD
         const entity = EntIndexToHScript(event.entindex) as CDOTA_BaseNPC;
 
         if (entity.IsRealHero() && entity.GetPlayerID() == player_id) {
+            entity.AddNewModifier(entity, undefined, "Modifier_Map_Unit", {});
+
             callback(entity);
         }
 
@@ -427,6 +457,7 @@ function main() {
     GameRules.SetCustomGameSetupTimeout(0);
     GameRules.SetCustomGameSetupRemainingTime(0);
 
+    link_modifier("Modifier_Map_Unit", "modifiers/modifier_map_unit");
     link_modifier("Modifier_Battle_Unit", "modifiers/modifier_battle_unit");
     link_modifier("Modifier_Tide_Gush", "modifiers/modifier_tide_gush");
     link_modifier("Modifier_Damage_Effect", "modifiers/modifier_damage_effect");
@@ -451,6 +482,8 @@ function main() {
 function game_loop() {
     let player_id: PlayerID | undefined = undefined;
     let player_unit: CDOTA_BaseNPC_Hero | undefined = undefined;
+
+    can_transition_into_next_state = true;
 
     const map: Map_State = {
         players: {},
@@ -570,6 +603,7 @@ function game_loop() {
 
     while (true) {
         if (state_transition) {
+            wait_until(() => can_transition_into_next_state);
             process_state_transition(game, game.state, state_transition);
             state_transition = undefined;
         }

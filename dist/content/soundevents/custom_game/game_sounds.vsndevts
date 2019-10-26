@@ -195,4 +195,36 @@
             "sounds/vo/dragon_knight/dragon_ability_eldrag_06.vsnd",
         ]
     }
+
+    map_spider_notice = {
+        type = "dota_update_default"
+        pitch_rand_min = -0.05
+        pitch_rand_max = 0.05
+        vsnd_files =
+        [
+            "sounds/physics/deaths/specials/broodmother_death_lastbreath.vsnd"
+        ]
+    }
+
+    map_spider_attack = {
+        type = "dota_update_default"
+        pitch_rand_min = -0.05
+        pitch_rand_max = 0.05
+        vsnd_files =
+        [
+            "sounds/weapons/hero/broodmother/preattack01.vsnd",
+            "sounds/weapons/hero/broodmother/preattack02.vsnd"
+        ]
+    }
+
+    map_spider_hit = {
+        type = "dota_update_default"
+        pitch_rand_min = -0.05
+        pitch_rand_max = 0.05
+        vsnd_files =
+        [
+            "sounds/weapons/hero/broodmother/attack01.vsnd",
+            "sounds/weapons/hero/broodmother/attack02.vsnd"
+        ]
+    }
 }

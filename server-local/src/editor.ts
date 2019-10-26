@@ -5,7 +5,7 @@ type Editor_State = {
 
 function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) {
     function find_entity_by_entity_index(id: EntityID) {
-        return array_find(game.adventure.entities, entity => entity.unit.entindex() == id);
+        return array_find(game.adventure.entities, entity => entity.handle.entindex() == id);
     }
 
     switch (event.type) {
@@ -70,7 +70,7 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
 
             if (entity.type != Adventure_Entity_Type.enemy) break;
 
-            entity.unit.SetForwardVector(Vector(event.facing.x, event.facing.y));
+            entity.handle.SetForwardVector(Vector(event.facing.x, event.facing.y));
 
             entity.spawn_facing = event.facing;
             entity.spawn_position = event.position;
@@ -84,7 +84,7 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
                 access_token: game.token
             });
 
-            FindClearSpaceForUnit(entity.unit, Vector(event.position.x, event.position.y), true);
+            FindClearSpaceForUnit(entity.handle, Vector(event.position.x, event.position.y), true);
 
             break;
         }

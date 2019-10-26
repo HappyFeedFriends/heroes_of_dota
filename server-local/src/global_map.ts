@@ -5,7 +5,7 @@ type Entity_With_Movement = {
     unit: CDOTA_BaseNPC
 }
 
-type Map_NPC = {
+type Map_Npc = {
     id: Npc_Id
     type: Npc_Type
     spawn_facing: XY
@@ -17,7 +17,15 @@ type Map_Player = {
 
 type Map_State = {
     players: Record<number, Map_Player>
-    neutrals: Record<number, Map_NPC>
+    neutrals: Record<number, Map_Npc>
+}
+
+type Npc_Definition = {
+    model: string
+    scale: number
+    notice_sound: string
+    attack_sound: string
+    hit_sound: string
 }
 
 const movement_history_submit_rate = 0.7;
@@ -33,10 +41,23 @@ function submit_player_global_map_movement(game: Game) {
     api_request_with_retry_on_403(Api_Request_Type.submit_player_movement, game, request);
 }
 
-function get_npc_model(npc_type: Npc_Type): [string, number] {
+function get_npc_definition(npc_type: Npc_Type): Npc_Definition {
     switch (npc_type) {
-        case Npc_Type.satyr: return [ "models/creeps/neutral_creeps/n_creep_satyr_a/n_creep_satyr_a.mdl", 1 ];
-        case Npc_Type.spider: return [ "models/heroes/broodmother/spiderling.vmdl", 0.7 ];
+        case Npc_Type.satyr: return {
+            model: "models/creeps/neutral_creeps/n_creep_satyr_a/n_creep_satyr_a.mdl",
+            scale: 1,
+            notice_sound: "",
+            attack_sound: "",
+            hit_sound: ""
+        };
+
+        case Npc_Type.spider: return {
+            model: "models/heroes/broodmother/spiderling.vmdl",
+            scale: 0.7,
+            notice_sound: "map_spider_notice",
+            attack_sound: "map_spider_attack",
+            hit_sound: "map_spider_hit"
+        };
     }
 }
 
@@ -80,35 +101,19 @@ function process_player_global_map_order(game: Game, map: Map_State, order: Exec
     return true;
 }
 
-function create_unit(dota_name: string, location: XY) {
-    return CreateUnitByName(
-        dota_name,
-        Vector(location.x, location.y),
-        true,
-        null,
-        null,
-        DOTATeam_t.DOTA_TEAM_GOODGUYS
-    );
-}
-
 function create_new_player_from_movement_data(data: Player_Movement_Data): Map_Player {
     return {
         id: data.id,
         movement_history: data.movement_history,
-        unit: create_unit("npc_dota_hero_lina", data.current_location),
+        unit: create_map_unit("npc_dota_hero_lina", data.current_location),
         last_recorded_x: data.current_location.x,
         last_recorded_y: data.current_location.y
     };
 }
 
-function create_new_npc_from_movement_data(data: NPC_Movement_Data): Map_NPC {
-    const unit = create_unit("hod_unit", data.current_location);
-    const [model, scale] = get_npc_model(data.type);
-
-    unit.SetOriginalModel(model);
-    unit.SetModel(model);
-    unit.SetModelScale(scale);
-    unit.SetForwardVector(Vector(data.spawn_facing.x, data.spawn_facing.y));
+function create_new_npc_from_movement_data(data: NPC_Movement_Data): Map_Npc {
+    const definition = get_npc_definition(data.type);
+    const unit = create_map_unit_with_model(data.current_location, data.spawn_facing, definition.model, definition.scale);
 
     if (IsInToolsMode()) {
         unit.AddNewModifier(unit, undefined, "Modifier_Editor_Npc_Type",  {}).SetStackCount(data.type);
@@ -252,7 +257,7 @@ function attack_player(game: Game, player: Map_Player) {
     }
 }
 
-function attack_npc(game: Game, npc: Map_NPC) {
+function attack_npc(game: Game, npc: Map_Npc) {
     const new_player_state = api_request(Api_Request_Type.attack_npc, {
         access_token: game.token,
         dedicated_server_key: get_dedicated_server_key(),
