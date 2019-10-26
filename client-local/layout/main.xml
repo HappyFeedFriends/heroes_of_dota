@@ -111,7 +111,10 @@
         <Panel id="editor_ui" hittest="false" style="visibility: collapse;">
             <Panel id="editor_buttons"/>
             <Panel id="editor_indicator">
-                <Panel id="editor_toolbar"/>
+                <Panel id="editor_entity_panel" hittest="true">
+                    <Panel id="editor_entity_buttons"/>
+                    <Panel id="editor_entity_dropdown"/>
+                </Panel>
                 <Panel id="editor_entrance_indicator">
                     <Label id="editor_entrance_text" text="START"/>
                     <Panel id="editor_entrance_underline"/>

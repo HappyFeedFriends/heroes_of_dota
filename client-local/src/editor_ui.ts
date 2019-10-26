@@ -1,9 +1,15 @@
 const editor_root = $("#editor_ui");
 const buttons_root = editor_root.FindChildTraverse("editor_buttons");
 const indicator = editor_root.FindChildTraverse("editor_indicator");
-const toolbar = indicator.FindChildTraverse("editor_toolbar");
+const entity_panel = indicator.FindChildTraverse("editor_entity_panel");
 const context_menu = indicator.FindChildTraverse("editor_context_menu");
 const entrance_indicator = indicator.FindChildTraverse("editor_entrance_indicator");
+
+const entity_buttons = entity_panel.FindChildTraverse("editor_entity_buttons");
+const entity_buttons_dropdown = entity_panel.FindChildTraverse("editor_entity_dropdown");
+
+// To prevent click-through
+entity_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
 
 let in_editor_mode = false;
 let camera_height_index = 4;
@@ -24,12 +30,13 @@ type Editor_Selection = {
     entity: EntityId
     particle: ParticleId
     minions: Minion_Type[]
+    highlighted_minion_button?: Panel
 }
 
-function text_button(parent: Panel, css_class: string, text: string, action: () => void) {
+function text_button(parent: Panel, css_class: string, text: string, action: (button: Panel) => void) {
     const button = $.CreatePanel("Panel", parent, "");
     button.AddClass(css_class);
-    button.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, action);
+    button.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => action(button));
 
     $.CreatePanel("Label", button, "").text = text;
 }
@@ -72,7 +79,8 @@ function drop_editor_selection() {
         selected: false
     };
 
-    toolbar.RemoveAndDeleteChildren();
+    entity_buttons.RemoveAndDeleteChildren();
+    entity_buttons_dropdown.RemoveAndDeleteChildren();
 }
 
 function editor_select_npc(entity: EntityId, adventure_entity_id: Adventure_Entity_Id, npc_type: Npc_Type) {
@@ -80,8 +88,12 @@ function editor_select_npc(entity: EntityId, adventure_entity_id: Adventure_Enti
         drop_editor_selection();
     }
 
-    function toolbar_button(text: string, action: () => void, css_class: string = "editor_toolbar_button") {
-        return text_button(toolbar, css_class, text, action);
+    function entity_button(text: string, action: (button: Panel) => void, css_class: string = "editor_entity_button") {
+        return text_button(entity_buttons, css_class, text, action);
+    }
+
+    function dropdown_button(text: string, action: () => void) {
+        return text_button(entity_buttons_dropdown, "editor_entity_dropdown_button", text, action);
     }
 
     api_request(Api_Request_Type.editor_get_enemy_deck, {
@@ -101,19 +113,56 @@ function editor_select_npc(entity: EntityId, adventure_entity_id: Adventure_Enti
             minions: data.minions
         };
 
-        const selection_label = $.CreatePanel("Label", toolbar, "editor_selected_entity");
+        const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
         selection_label.text = `Selected: ${enum_to_string(npc_type)}`;
 
-        for (const minion of data.minions) {
-            toolbar_button(enum_to_string(minion), () => {});
+        for (let index = 0; index < data.minions.length; index++) {
+            const minion = data.minions[index];
+
+            entity_button(enum_to_string(minion), (button) => {
+                entity_buttons_dropdown.RemoveAndDeleteChildren();
+
+                let show_dropdown = true;
+
+                if (editor_selection.selected) {
+                    if (editor_selection.highlighted_minion_button) {
+                        editor_selection.highlighted_minion_button.RemoveClass("selected");
+                    }
+
+                    if (editor_selection.highlighted_minion_button != button) {
+                        editor_selection.highlighted_minion_button = button;
+                        editor_selection.highlighted_minion_button.AddClass("selected");
+                    } else {
+                        editor_selection.highlighted_minion_button = undefined;
+                        show_dropdown = false;
+                    }
+                }
+
+                if (!show_dropdown) return;
+
+                for (const [name, type] of enum_names_to_values<Minion_Type>()) {
+                    dropdown_button(name, () => {
+                        data.minions[index] = type;
+
+                        api_request(Api_Request_Type.editor_action, {
+                            type: Adventure_Editor_Action_Type.edit_enemy_deck,
+                            entity_id: adventure_entity_id,
+                            minions: data.minions,
+                            access_token: get_access_token()
+                        }, () => {
+                            editor_select_npc(entity, adventure_entity_id, npc_type);
+                        });
+                    });
+                }
+            });
         }
 
-        toolbar_button("Delete", () => {
+        entity_button("Delete", () => {
             dispatch_editor_event({
                 type: Editor_Event_Type.delete_entity,
                 entity_id: entity
             })
-        }, "editor_toolbar_delete_button");
+        }, "editor_entity_delete_button");
     });
 }
 
