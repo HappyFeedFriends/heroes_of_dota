@@ -42,11 +42,10 @@ declare const enum Api_Request_Type {
     editor_create_entity = 1002
 }
 
-declare const enum Editor_Action_Type {
+declare const enum Adventure_Editor_Action_Type {
     edit_enemy = 0,
     delete_entity = 1,
-    add_enemy = 2,
-    set_entrance = 3
+    set_entrance = 2,
 }
 
 declare const enum Map_Entity_Type {
@@ -334,16 +333,16 @@ type Api_Request = {
 }
 
 type Editor_Action = {
-    type: Editor_Action_Type.set_entrance
+    type: Adventure_Editor_Action_Type.set_entrance
     entrance: {
         x: number
         y: number
     }
 } | {
-    type: Editor_Action_Type.delete_entity
+    type: Adventure_Editor_Action_Type.delete_entity
     entity_id: Adventure_Entity_Id
 } | {
-    type: Editor_Action_Type.edit_enemy
+    type: Adventure_Editor_Action_Type.edit_enemy
     entity_id: Adventure_Entity_Id
     npc_type: Npc_Type
     new_position: {

@@ -193,7 +193,7 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
 
             context_menu_button(`Set entrance to here`, () => {
                 api_request(Api_Request_Type.editor_action, {
-                    type: Editor_Action_Type.set_entrance,
+                    type: Adventure_Editor_Action_Type.set_entrance,
                     entrance: xy(pinned_context_menu_position[0], pinned_context_menu_position[1]),
                     access_token: get_access_token()
                 }, () => {

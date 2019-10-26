@@ -71,7 +71,11 @@ declare const enum Minion_Type {
     lane_minion = 1,
 
     monster_satyr_big = 100,
-    monster_satyr_small = 101
+    monster_satyr_small = 101,
+    monster_small_spider = 102,
+    monster_large_spider = 103,
+    monster_spider_matriarch = 104,
+    monster_spiderling = 105
 }
 
 declare const enum Shop_Type {
@@ -178,8 +182,8 @@ type Unit_Definition = {
     attack_damage: number
     move_points: number
     attack?: Ability_Definition_Active
-    abilities: Ability_Definition[]
-    ability_bench: Ability_Definition[]
+    abilities?: Ability_Definition[]
+    ability_bench?: Ability_Definition[]
 }
 
 type Ability_Targeting_Line = {

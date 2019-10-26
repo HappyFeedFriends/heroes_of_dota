@@ -33,7 +33,7 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
             if (!entity) break;
 
             const ok = api_request(Api_Request_Type.editor_action, {
-                type: Editor_Action_Type.delete_entity,
+                type: Adventure_Editor_Action_Type.delete_entity,
                 entity_id: entity.id,
                 access_token: game.token
             });
@@ -76,7 +76,7 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
             entity.spawn_position = event.position;
 
             api_request(Api_Request_Type.editor_action, {
-                type: Editor_Action_Type.edit_enemy,
+                type: Adventure_Editor_Action_Type.edit_enemy,
                 entity_id: entity.id,
                 npc_type: entity.npc_type,
                 new_facing: event.facing,

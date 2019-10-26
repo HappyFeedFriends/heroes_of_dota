@@ -218,4 +218,11 @@
             "sounds/weapons/hero/broodmother/attack02.vsnd"
         ]
     }
+
+    spawn_spiderlings = {
+        type = "dota_update_default"
+        pitch_rand_min = -0.05
+        pitch_rand_max = 0.05
+        vsnd_files = "sounds/weapons/hero/broodmother/spiderling_hatch.vsnd"
+    }
 }

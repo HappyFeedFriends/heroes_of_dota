@@ -32,6 +32,9 @@ declare const enum Ability_Id {
     pocket_tower_attack = 1000,
     deployment_zone = 1001,
 
+    monster_lifesteal = 2000,
+    monster_spawn_spiderlings = 2001,
+
     sniper_shrapnel = 99
 }
 
@@ -283,6 +286,15 @@ type Ability_Deployment_Zone = Ability_Definition_Passive_Base & {
     radius: number
 }
 
+type Ability_Monster_Lifesteal = Ability_Definition_Passive_Base & {
+    id: Ability_Id.monster_lifesteal
+}
+
+type Ability_Monster_Spawn_Spiderlings = Ability_Definition_Passive_Base & {
+    id: Ability_Id.monster_spawn_spiderlings
+    how_many: number
+}
+
 type Ability_Ground_Target =
     Ability_Basic_Attack |
     Ability_Pudge_Hook |
@@ -322,7 +334,9 @@ type Ability_Definition_Active = Ability_Ground_Target | Ability_Unit_Target | A
 type Ability_Definition_Passive =
     Ability_Luna_Moon_Glaive |
     Ability_Pocket_Tower_Attack |
-    Ability_Deployment_Zone
+    Ability_Deployment_Zone |
+    Ability_Monster_Lifesteal |
+    Ability_Monster_Spawn_Spiderlings
 
 type Ability_Definition = Ability_Definition_Active | Ability_Definition_Passive
 
@@ -330,7 +344,9 @@ type Ability_Effect =
     Ability_Effect_Luna_Moon_Glaive |
     Ability_Effect_Mirana_Starfall |
     Ability_Effect_Dark_Seer_Ion_Shell |
-    Ability_Effect_Pocket_Tower_Attack
+    Ability_Effect_Pocket_Tower_Attack |
+    Ablity_Effect_Monster_Lifesteal |
+    Ablity_Effect_Monster_Spawn_Spiderlings
 
 type Delta_Ground_Target_Ability =
     Delta_Ability_Basic_Attack |
@@ -501,6 +517,27 @@ type Ability_Effect_Pocket_Tower_Attack = {
     source_unit_id: Unit_Id
     target_unit_id: Unit_Id
     damage_dealt: Health_Change
+}
+
+type Ablity_Effect_Monster_Lifesteal = {
+    ability_id: Ability_Id.monster_lifesteal
+    source_unit_id: Unit_Id
+    target_unit_id: Unit_Id
+    heal: Health_Change
+}
+
+type Ablity_Effect_Monster_Spawn_Spiderlings = {
+    ability_id: Ability_Id.monster_spawn_spiderlings
+    source_unit_id: Unit_Id
+    summons: {
+        owner_id: Battle_Player_Id
+        unit_id: Unit_Id
+        minion_type: Minion_Type,
+        at: {
+            x: number
+            y: number
+        }
+    }[]
 }
 
 type Delta_Ability_Luna_Eclipse = Delta_Use_No_Target_Ability_Base & {

@@ -388,7 +388,7 @@ function adventure_enemy_to_battle_participant(id: Adventure_Entity_Id, definiti
         type: Map_Entity_Type.adventure_enemy,
         id: id,
         npc_type: definition.npc_type,
-        minions: [ Minion_Type.monster_satyr_small, Minion_Type.monster_satyr_small, Minion_Type.monster_satyr_small ],
+        minions: [ Minion_Type.monster_small_spider, Minion_Type.monster_large_spider, Minion_Type.monster_spider_matriarch ],
         heroes: [],
         spells: []
     }

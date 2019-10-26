@@ -1144,9 +1144,9 @@ function on_target_dealt_damage_by_ability(battle: Battle_Record, source: Unit, 
 }
 
 function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, target: Unit, damage: number): void {
-    if (source.supertype == Unit_Supertype.hero) {
-        const damage_only = Math.max(0, damage); // In case we have a healing attack, I guess;
+    const damage_only = Math.max(0, damage); // In case we have a healing attack, I guess;
 
+    if (source.supertype == Unit_Supertype.hero) {
         defer_delta(battle, () => {
             for (const item of source.items) {
                 if (item.id == Item_Id.satanic) {
@@ -1213,7 +1213,18 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
                             damage_dealt: health_change(glaive_target, -damage)
                         });
                     }
-                })
+                });
+
+                break;
+            }
+
+            case Ability_Id.monster_lifesteal: {
+                defer_delta(battle, () => apply_ability_effect_delta({
+                    ability_id: Ability_Id.monster_lifesteal,
+                    source_unit_id: source.id,
+                    target_unit_id: source.id,
+                    heal: health_change(source, damage_only)
+                }));
             }
         }
     }
@@ -1665,42 +1676,90 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
     // TODO figure out how to make this properly typed
     const battle: Battle_Record = battle_base as Battle_Record;
 
-    if (event.type == Battle_Event_Type.health_changed && event.source.type == Source_Type.unit) {
+    if (event.type == Battle_Event_Type.health_changed) {
         const { source, target, change, dead } = event;
 
-        const attacker = source.unit;
+        if (source.type == Source_Type.unit) {
+            const attacker = source.unit;
 
-        if (attacker.attack && source.ability_id == attacker.attack.id) {
-            on_target_dealt_damage_by_attack(battle, attacker, target, -change.value_delta);
-        } else if (change.value_delta < 0) {
-            on_target_dealt_damage_by_ability(battle, attacker, target, -change.value_delta);
+            if (attacker.attack && source.ability_id == attacker.attack.id) {
+                on_target_dealt_damage_by_attack(battle, attacker, target, -change.value_delta);
+            } else if (change.value_delta < 0) {
+                on_target_dealt_damage_by_ability(battle, attacker, target, -change.value_delta);
+            }
+
+            if (dead) {
+                if (!are_units_allies(attacker, target) && attacker.supertype != Unit_Supertype.creep) {
+                    const bounty = get_gold_for_killing(target);
+
+                    defer_delta(battle, () => ({
+                        type: Delta_Type.gold_change,
+                        player_id: attacker.owner.id,
+                        change: bounty
+                    }));
+
+                    if (attacker.supertype == Unit_Supertype.hero) {
+                        defer_delta(battle, () => {
+                            if (attacker.level < max_unit_level) {
+                                return {
+                                    type: Delta_Type.level_change,
+                                    unit_id: attacker.id,
+                                    new_level: attacker.level + 1
+                                };
+                            }
+                        });
+                    }
+                }
+            } else {
+                if (target.supertype == Unit_Supertype.creep) {
+                    defer_creep_try_retaliate(battle, target, attacker);
+                }
+            }
         }
 
         if (dead) {
-            if (!are_units_allies(attacker, target) && attacker.supertype != Unit_Supertype.creep) {
-                const bounty = get_gold_for_killing(target);
+            if (target.supertype != Unit_Supertype.creep) {
+                for (const ability of target.abilities) {
+                    switch (ability.id) {
+                        case Ability_Id.monster_spawn_spiderlings: {
+                            defer_delta(battle, () => {
+                                const center = target.position;
+                                const from_x = Math.max(0, center.x - 2);
+                                const from_y = Math.max(0, center.y - 2);
+                                const to_x = Math.min(battle.grid_size.x, center.x + 2);
+                                const to_y = Math.min(battle.grid_size.y, center.y + 2);
+                                const free_cells: XY[] = [];
 
-                defer_delta(battle, () => ({
-                    type: Delta_Type.gold_change,
-                    player_id: attacker.owner.id,
-                    change: bounty
-                }));
+                                for (let x = from_x; x < to_x; x++) {
+                                    for (let y = from_y; y < to_y; y++) {
+                                        const cell = grid_cell_at_unchecked(battle, xy(x, y));
 
-                if (attacker.supertype == Unit_Supertype.hero) {
-                    defer_delta(battle, () => {
-                        if (attacker.level < max_unit_level) {
-                            return {
-                                type: Delta_Type.level_change,
-                                unit_id: attacker.id,
-                                new_level: attacker.level + 1
-                            };
+                                        if (!cell.occupied) {
+                                            free_cells.push(cell.position);
+                                        }
+                                    }
+                                }
+
+                                const target_cell = random_in_array(free_cells);
+
+                                if (target_cell) {
+                                    return apply_ability_effect_delta({
+                                        ability_id: Ability_Id.monster_spawn_spiderlings,
+                                        source_unit_id: target.id,
+                                        summons: pick_n_random(free_cells, ability.how_many).map(cell => ({
+                                            owner_id: target.owner.id,
+                                            unit_id: get_next_entity_id(battle) as Unit_Id,
+                                            minion_type: Minion_Type.monster_spiderling,
+                                            at: cell
+                                        }))
+                                    })
+                                }
+                            });
+
+                            break;
                         }
-                    });
+                    }
                 }
-            }
-        } else {
-            if (target.supertype == Unit_Supertype.creep) {
-                defer_creep_try_retaliate(battle, target, attacker);
             }
         }
     }
@@ -2338,6 +2397,24 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
             const heroes = parse_enum_query(parts[1], enum_names_to_values<Hero_Type>());
 
             submit_battle_deltas(battle, heroes.map(type => draw_hero_card(battle, battle_player, type)));
+
+            break;
+        }
+
+        case "minion": {
+            const minions = parse_enum_query(parts[1], enum_names_to_values<Minion_Type>());
+            const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, battle_player);
+            const deltas: Delta[] = [];
+
+            for (const minion of minions) {
+                const random_cell = pick_n_random(free_cells, 1);
+
+                if (random_cell) {
+                    deltas.push(spawn_minion(battle, battle_player, random_cell[0].position, minion));
+                }
+            }
+
+            submit_battle_deltas(battle, deltas);
 
             break;
         }

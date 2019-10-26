@@ -261,6 +261,22 @@ function minion_type_to_model_and_scale(minion_type: Minion_Type): [string, numb
             "models/props_structures/rock_golem/tower_radiant_rock_golem.vmdl",
             1
         ];
+        case Minion_Type.monster_small_spider: return [
+            "models/heroes/broodmother/spiderling.vmdl",
+            0.6
+        ];
+        case Minion_Type.monster_spider_matriarch: return [
+            "models/items/broodmother/spiderling/virulent_matriarchs_spiderling/virulent_matriarchs_spiderling.vmdl",
+            0.6
+        ];
+        case Minion_Type.monster_large_spider: return [
+            "models/items/broodmother/spiderling/elder_blood_heir_of_elder_blood/elder_blood_heir_of_elder_blood.vmdl",
+            0.6
+        ];
+        case Minion_Type.monster_spiderling: return [
+            "models/heroes/broodmother/spiderling.vmdl",
+            0.4
+        ];
     }
 }
 
@@ -2160,6 +2176,66 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
             break;
         }
 
+        case Ability_Id.monster_lifesteal: {
+            const target = find_unit_by_id(effect.target_unit_id);
+            if (!target) break;
+
+            change_health(game, target, target, effect.heal);
+            fx_by_unit("particles/generic_gameplay/generic_lifesteal.vpcf", target).release();
+
+            break;
+        }
+
+        case Ability_Id.monster_spawn_spiderlings: {
+            const source = find_unit_by_id(effect.source_unit_id);
+            if (!source) break;
+
+            unit_emit_sound(source, "spawn_spiderlings");
+
+            fx("particles/units/heroes/hero_broodmother/broodmother_spiderlings_spawn.vpcf")
+                .with_vector_value(0, battle_position_to_world_position_center(source.position))
+                .release();
+
+            const spawn_at = source.position;
+            const forks: Fork[] = [];
+
+            for (const summon of from_client_array(effect.summons)) {
+                forks.push(fork(() => {
+                    const direction = (Vector(summon.at.x, summon.at.y) - Vector(spawn_at.x, spawn_at.y) as Vector).Normalized();
+
+                    if (direction.Length2D() == 0) {
+                        const minion = spawn_minion_for_battle(summon.minion_type, summon.unit_id, summon.owner_id, spawn_at, RandomVector(1));
+                        battle.units.push(minion);
+
+                        return;
+                    }
+
+                    const minion = spawn_minion_for_battle(summon.minion_type, summon.unit_id, summon.owner_id, spawn_at, { x: direction.x, y: direction.y });
+                    const world_target = battle_position_to_world_position_center(summon.at);
+
+                    battle.units.push(minion);
+
+                    while (true) {
+                        minion.handle.MoveToPosition(world_target);
+
+                        wait(0.1);
+
+                        if ((minion.handle.GetAbsOrigin() - world_target as Vector).Length2D() <= 32) {
+                            wait(0.1);
+                            break;
+                        }
+                    }
+
+                    minion.position = summon.at;
+                }));
+            }
+
+            update_game_net_table(game);
+            wait_for_all_forks(forks);
+
+            break;
+        }
+
         default: unreachable(effect);
     }
 }
@@ -2410,6 +2486,26 @@ function unit_play_activity(unit: Unit, activity: GameActivity_t, wait_up_to = 0
     return sequence_duration - time_passed;
 }
 
+function apply_special_death_effects(target: Unit) {
+    if (target.supertype == Unit_Supertype.minion && target.type == Minion_Type.pocket_tower) {
+        target.handle.AddNoDraw();
+
+        unit_emit_sound(target, "Building_RadiantTower.Destruction");
+
+        fx("particles/econ/world/towers/rock_golem/radiant_rock_golem_destruction.vpcf")
+            .with_vector_value(0, target.handle.GetAbsOrigin())
+            .with_forward_vector(1, target.handle.GetForwardVector())
+            .release();
+    }
+
+    if (target.supertype == Unit_Supertype.minion && target.type == Minion_Type.monster_spider_matriarch) {
+        fork(() => {
+            wait(1);
+            target.handle.AddNoDraw();
+        })
+    }
+}
+
 function change_health(game: Game, source: Unit, target: Unit, change: Health_Change) {
     function number_particle(amount: number, r: number, g: number, b: number) {
         fx("particles/msg_damage.vpcf")
@@ -2458,17 +2554,7 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
         }
 
         try_play_random_sound_for_hero(source, sounds => sounds.kill);
-
-        if (target.supertype == Unit_Supertype.minion && target.type == Minion_Type.pocket_tower) {
-            target.handle.AddNoDraw();
-
-            unit_emit_sound(target, "Building_RadiantTower.Destruction");
-
-            fx("particles/econ/world/towers/rock_golem/radiant_rock_golem_destruction.vpcf")
-                .with_vector_value(0, target.handle.GetAbsOrigin())
-                .with_forward_vector(1, target.handle.GetForwardVector())
-                .release();
-        }
+        apply_special_death_effects(target);
 
         target.handle.ForceKill(false);
         target.dead = true;

@@ -867,8 +867,8 @@ function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base 
         health: definition.health,
         dead: false,
         has_taken_an_action_this_turn: false,
-        abilities: definition.abilities.map(ability_definition_to_ability),
-        ability_bench: definition.ability_bench.map(ability_definition_to_ability),
+        abilities: definition.abilities ? definition.abilities.map(ability_definition_to_ability) : [],
+        ability_bench: definition.ability_bench ? definition.ability_bench.map(ability_definition_to_ability) : [],
         modifiers: [],
         attack_bonus: 0,
         max_health: definition.health,
@@ -1045,6 +1045,30 @@ function collapse_ability_effect(battle: Battle, effect: Ability_Effect) {
 
             break;
         }
+
+        case Ability_Id.monster_lifesteal: {
+            const source = find_unit_by_id(battle, effect.source_unit_id);
+            const target = find_unit_by_id(battle, effect.target_unit_id);
+
+            if (source && target) {
+                change_health(battle, unit_source(source, effect.ability_id), target, effect.heal);
+            }
+
+            break;
+        }
+
+        case Ability_Id.monster_spawn_spiderlings: {
+            for (const summon of effect.summons) {
+                const owner = find_player_by_id(battle, summon.owner_id);
+
+                if (owner) {
+                    create_minion(battle, owner, summon.unit_id, summon.minion_type, summon.at);
+                }
+            }
+
+            break;
+        }
+
 
         default: unreachable(effect);
     }

@@ -1753,6 +1753,8 @@ function get_ability_tooltip(a: Ability): string {
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
         case Ability_Id.deployment_zone: return "";
+        case Ability_Id.monster_lifesteal: return "";
+        case Ability_Id.monster_spawn_spiderlings: return "";
     }
 }
 
@@ -1792,6 +1794,8 @@ function get_ability_icon(ability_id: Ability_Id): string {
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
         case Ability_Id.deployment_zone: return "";
+        case Ability_Id.monster_lifesteal: return "";
+        case Ability_Id.monster_spawn_spiderlings: return "";
     }
 }
 

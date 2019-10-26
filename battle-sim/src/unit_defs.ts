@@ -84,8 +84,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 move_points: 4,
                 attack: basic_attack(1),
                 abilities: [
-                ],
-                ability_bench: []
+                ]
             }
         }
 
@@ -96,8 +95,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 attack_damage: 4,
                 attack: basic_attack(4),
                 abilities: [
-                ],
-                ability_bench: []
+                ]
             }
         }
 
@@ -129,8 +127,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         charges: 1,
                         damage: 10
                     })
-                ],
-                ability_bench: []
+                ]
             }
         }
 
@@ -164,8 +161,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         damage: 5,
                         charges: 1,
                     })
-                ],
-                ability_bench: []
+                ]
             }
         }
 
@@ -194,8 +190,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         total_beams: 14,
                         charges: 1,
                     })
-                ],
-                ability_bench: []
+                ]
             }
         }
 
@@ -229,8 +224,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         charges: 1,
                         damage: 10
                     })
-                ],
-                ability_bench: []
+                ]
             }
         }
 
@@ -307,8 +301,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         charges: 1,
                         damage: 8
                     })
-                ],
-                ability_bench: []
+                ]
             }
         }
 
@@ -341,8 +334,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         flags: [ Ability_Flag.does_not_consume_action ],
                         charges: 1
                     })
-                ],
-                ability_bench: []
+                ]
             }
         }
 
@@ -375,8 +367,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         flags: [],
                         charges: 1
                     })
-                ],
-                ability_bench: []
+                ]
             }
         }
 
@@ -409,8 +400,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         flags: [ ],
                         charges: 1,
                     }),
-                ],
-                ability_bench: []
+                ]
             }
         }
 
@@ -423,9 +413,7 @@ function creep_definition(): Unit_Definition {
         attack: basic_attack(1),
         attack_damage: 3,
         health: 6,
-        move_points: 3,
-        abilities: [],
-        ability_bench: []
+        move_points: 3
     }
 }
 
@@ -445,8 +433,7 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
                         available_since_level: 0,
                         radius: 1
                     }),
-                ],
-                ability_bench: []
+                ]
             }
         }
 
@@ -455,9 +442,7 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
                 attack_damage: 3,
                 health: 3,
                 move_points: 3,
-                attack: basic_attack(1),
-                abilities: [],
-                ability_bench: []
+                attack: basic_attack(1)
             }
         }
 
@@ -466,9 +451,7 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
                 attack_damage: 6,
                 health: 12,
                 move_points: 2,
-                attack: basic_attack(1),
-                abilities: [],
-                ability_bench: []
+                attack: basic_attack(1)
             }
         }
 
@@ -477,9 +460,55 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
                 attack_damage: 3,
                 health: 6,
                 move_points: 3,
+                attack: basic_attack(1)
+            }
+        }
+
+        case Minion_Type.monster_small_spider: {
+            return {
+                attack_damage: 3,
+                health: 5,
+                move_points: 3,
+                attack: basic_attack(1)
+            }
+        }
+
+        case Minion_Type.monster_large_spider: {
+            return {
+                attack_damage: 4,
+                health: 10,
+                move_points: 3,
                 attack: basic_attack(1),
-                abilities: [],
-                ability_bench: []
+                abilities: [
+                    passive_ability<Ability_Monster_Lifesteal>({
+                        available_since_level: 0
+                    }),
+                ]
+            }
+        }
+
+        case Minion_Type.monster_spider_matriarch: {
+            return {
+                attack_damage: 2,
+                health: 10,
+                move_points: 2,
+                attack: basic_attack(1),
+                abilities: [
+                    passive_ability<Ability_Monster_Spawn_Spiderlings>({
+                        available_since_level: 0,
+                        how_many: 3
+                    })
+                ]
+            }
+        }
+
+        case Minion_Type.monster_spiderling: {
+            return {
+                attack_damage: 2,
+                health: 2,
+                move_points: 3,
+                attack: basic_attack(1),
+                abilities: []
             }
         }
     }

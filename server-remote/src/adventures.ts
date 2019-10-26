@@ -190,12 +190,12 @@ export function editor_create_entity(adventure: Ongoing_Adventure, definition: A
 
 export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor_Action) {
     switch (action.type) {
-        case Editor_Action_Type.set_entrance: {
+        case Adventure_Editor_Action_Type.set_entrance: {
             adventure.current_room.entrance_location = action.entrance;
             break;
         }
 
-        case Editor_Action_Type.delete_entity: {
+        case Adventure_Editor_Action_Type.delete_entity: {
             const entity_index = adventure.entities.findIndex(entity => entity.id == action.entity_id);
             if (entity_index == -1) return;
 
@@ -207,7 +207,7 @@ export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor
             break;
         }
 
-        case Editor_Action_Type.edit_enemy: {
+        case Adventure_Editor_Action_Type.edit_enemy: {
             const enemy = adventure.entities.find(entity => entity.id == action.entity_id);
             if (!enemy) return;
             if (enemy.definition.type != Adventure_Entity_Type.enemy) return;
