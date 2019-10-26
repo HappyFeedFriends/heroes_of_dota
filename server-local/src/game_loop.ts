@@ -332,6 +332,8 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         battle.camera_dummy.SetAbsOrigin(camera_look_at);
 
         PlayerResource.SetCameraTarget(game.player.player_id, battle.camera_dummy);
+
+        battle_emit_sound("combat_start");
     }
 
     if (next_state.state == Player_State.on_adventure) {
@@ -448,7 +450,7 @@ function main() {
 
     const mode = GameRules.GetGameModeEntity();
 
-    mode.SetCustomGameForceHero("npc_dota_hero_lina");
+    mode.SetCustomGameForceHero("npc_dota_hero_chaos_knight");
     mode.SetFogOfWarDisabled(false);
     mode.SetUnseenFogOfWarEnabled(true);
 
