@@ -235,6 +235,28 @@ function periodically_update_editor_ui() {
     }
 }
 
+function update_state_from_editor_mode(state: Player_State) {
+    if (in_editor_mode) {
+        api_request(Api_Request_Type.editor_get_room_details, {
+            access_token: get_access_token()
+        }, response => {
+            room_entrance_location = response.entrance_location;
+        });
+    } else {
+        room_entrance_location = undefined;
+    }
+
+    update_editor_indicator();
+    update_editor_camera_height();
+
+    if (!in_editor_mode) {
+        drop_editor_selection();
+        hide_editor_context_menu();
+    }
+
+    update_editor_buttons(state);
+}
+
 function update_editor_buttons(state: Player_State) {
     buttons_root.RemoveAndDeleteChildren();
 
@@ -253,25 +275,7 @@ function update_editor_buttons(state: Player_State) {
         editor_button("Toggle editor", () => {
             in_editor_mode = !in_editor_mode;
 
-            if (in_editor_mode) {
-                api_request(Api_Request_Type.editor_get_room_details, {
-                    access_token: get_access_token()
-                }, response => {
-                    room_entrance_location = response.entrance_location;
-                });
-            } else {
-                room_entrance_location = undefined;
-            }
-
-            update_editor_indicator();
-            update_editor_camera_height();
-
-            if (!in_editor_mode) {
-                drop_editor_selection();
-                hide_editor_context_menu();
-            }
-
-            update_editor_buttons(state);
+            update_state_from_editor_mode(state);
         });
 
         if (in_editor_mode) {
@@ -291,6 +295,10 @@ function update_editor_buttons(state: Player_State) {
         }
 
         editor_button("Back to map", () => {
+            in_editor_mode = !in_editor_mode;
+
+            update_state_from_editor_mode(state);
+
             dispatch_editor_event({
                 type: Editor_Event_Type.exit_adventure
             })
