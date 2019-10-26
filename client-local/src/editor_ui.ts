@@ -308,6 +308,10 @@ function periodically_update_editor_ui() {
 }
 
 function update_state_from_editor_mode(state: Player_State) {
+    if (state != Player_State.on_adventure) {
+        in_editor_mode = false;
+    }
+
     if (in_editor_mode) {
         api_request(Api_Request_Type.editor_get_room_details, {
             access_token: get_access_token()
@@ -373,10 +377,6 @@ function update_editor_buttons(state: Player_State) {
                 type: Editor_Event_Type.exit_adventure
             })
         });
-    } else {
-        in_editor_mode = false;
-
-        update_state_from_editor_mode(state);
     }
 }
 
@@ -386,7 +386,7 @@ function init_editor_ui() {
     subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
         buttons_root.RemoveAndDeleteChildren();
 
-        update_editor_buttons(data.state);
+        update_state_from_editor_mode(data.state);
     });
 
     update_editor_indicator();
