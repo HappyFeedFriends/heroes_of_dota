@@ -462,6 +462,20 @@ register_api_handler(Api_Request_Type.authorize_steam_user, req => {
 });
 
 export function report_battle_over(battle: Battle, winner_entity: Battle_Participant_Map_Entity) {
+    function defeat_adventure_enemies(adventure: Ongoing_Adventure) {
+        for (const defeated_player of battle.players) {
+            const defeated_entity = defeated_player.map_entity;
+
+            if (defeated_entity != winner_entity && defeated_entity.type == Map_Entity_Type.adventure_enemy) {
+                const defeated_adventure_entity = adventure.entities.find(adventure_entity => adventure_entity.id == defeated_entity.entity_id);
+
+                if (defeated_adventure_entity && defeated_adventure_entity.definition.type == Adventure_Entity_Type.enemy) {
+                    defeated_adventure_entity.alive = false;
+                }
+            }
+        }
+    }
+
     for (const battle_player of battle.players) {
         const entity = battle_player.map_entity;
 
@@ -482,9 +496,24 @@ export function report_battle_over(battle: Battle, winner_entity: Battle_Partici
 
             case Map_Entity_Type.player: {
                 const player = player_by_id(entity.player_id);
+                const player_won = entity == winner_entity;
 
                 if (player && player.online.state == Player_State.in_battle) {
                     player.online = player.online.previous_state;
+
+                    if (player.online.state == Player_State.on_adventure) {
+                        if (player_won) {
+                            defeat_adventure_enemies(player.online.ongoing_adventure);
+                        } else {
+                            submit_chat_message(player, `${player.name} lost, their adventure is over`);
+
+                            player.online = {
+                                state: Player_State.on_global_map,
+                                current_location: player.online.previous_global_map_location,
+                                movement_history: []
+                            }
+                        }
+                    }
 
                     if (entity == winner_entity) {
                         submit_chat_message(player, `Battle over! ${player.name} wins`);

@@ -61,7 +61,8 @@ function room(id: number, type: Adventure_Room_Type, entrance: XY, entities: Adv
 function adventure_entity_from_definition(id: Adventure_Entity_Id, definition: Adventure_Entity_Definition): Adventure_Entity {
     return {
         id: id,
-        definition: definition
+        definition: definition,
+        alive: true
     };
 }
 

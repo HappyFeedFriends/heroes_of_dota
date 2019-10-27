@@ -217,7 +217,7 @@ type Editor_Event = {
     type: Editor_Event_Type.toggle_camera_lock
 } | {
     type: Editor_Event_Type.edit_enemy
-    entity_id: EntityID
+    entity_id: Adventure_Entity_Id
     position: {
         x: number
         y: number
@@ -228,7 +228,7 @@ type Editor_Event = {
     }
 } | {
     type: Editor_Event_Type.delete_entity
-    entity_id: EntityID
+    entity_id: Adventure_Entity_Id
 } | {
     type: Editor_Event_Type.create_entity
     definition: Adventure_Entity_Definition

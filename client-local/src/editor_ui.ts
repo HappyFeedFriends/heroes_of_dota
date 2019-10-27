@@ -161,7 +161,7 @@ function editor_select_npc(entity: EntityId, adventure_entity_id: Adventure_Enti
         entity_button("Delete", () => {
             dispatch_editor_event({
                 type: Editor_Event_Type.delete_entity,
-                entity_id: entity
+                entity_id: adventure_entity_id
             })
         }, "editor_entity_delete_button");
     });
@@ -226,7 +226,7 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
 
                 dispatch_editor_event({
                     type: Editor_Event_Type.edit_enemy,
-                    entity_id: editor_selection.entity,
+                    entity_id: editor_selection.id,
                     position: xy(click_world_position[0], click_world_position[1]),
                     facing: xy(facing[0], facing[1])
                 });
@@ -242,7 +242,7 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
 
                 dispatch_editor_event({
                     type: Editor_Event_Type.edit_enemy,
-                    entity_id: editor_selection.entity,
+                    entity_id: editor_selection.id,
                     position: xy(position[0], position[1]),
                     facing: xy(facing[0], facing[1])
                 });
@@ -369,10 +369,6 @@ function update_editor_buttons(state: Player_State) {
         }
 
         editor_button("Back to map", () => {
-            in_editor_mode = !in_editor_mode;
-
-            update_state_from_editor_mode(state);
-
             dispatch_editor_event({
                 type: Editor_Event_Type.exit_adventure
             })

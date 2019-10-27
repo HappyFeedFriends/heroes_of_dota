@@ -4,8 +4,8 @@ type Editor_State = {
 }
 
 function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) {
-    function find_entity_by_entity_index(id: EntityID) {
-        return array_find(game.adventure.entities, entity => entity.handle.entindex() == id);
+    function find_entity_by_id(id: Adventure_Entity_Id) {
+        return array_find(game.adventure.entities, entity => entity.id == id);
     }
 
     switch (event.type) {
@@ -29,7 +29,7 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
         }
 
         case Editor_Event_Type.delete_entity: {
-            const entity = find_entity_by_entity_index(event.entity_id);
+            const entity = find_entity_by_id(event.entity_id);
             if (!entity) break;
 
             const ok = api_request(Api_Request_Type.editor_action, {
@@ -65,10 +65,11 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
         }
 
         case Editor_Event_Type.edit_enemy: {
-            const entity = find_entity_by_entity_index(event.entity_id);
+            const entity = find_entity_by_id(event.entity_id);
             if (!entity) break;
 
             if (entity.type != Adventure_Entity_Type.enemy) break;
+            if (!entity.alive) break;
 
             entity.handle.SetForwardVector(Vector(event.facing.x, event.facing.y));
 

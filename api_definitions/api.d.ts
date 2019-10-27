@@ -292,10 +292,7 @@ type Api_Request = {
     type: Api_Request_Type.query_adventure_entity_states
     request: {} & With_Token & With_Private_Key
     response: {
-        states: {
-            id: Adventure_Entity_Id
-            alive: boolean
-        }[]
+        states: Adventure_Entity_State[]
     }
 } | {
     type: Api_Request_Type.start_adventure_enemy_fight
@@ -425,8 +422,7 @@ type Battle_Info = {
     participants: Battle_Participant_Info[]
 }
 
-type Adventure_Entity = {
-    id: Adventure_Entity_Id
+type Adventure_Entity = Adventure_Entity_State & {
     definition: Adventure_Entity_Definition
 }
 
@@ -452,6 +448,11 @@ type Adventure_Lost_Creep_Definition = Adventure_Entity_Definition_Base & {
 }
 
 type Adventure_Entity_Definition = Adventure_Enemy_Definition | Adventure_Lost_Creep_Definition
+
+type Adventure_Entity_State = {
+    id: Adventure_Entity_Id
+    alive: boolean
+}
 
 type Debug_AI_Data = {
     unit_debug: {

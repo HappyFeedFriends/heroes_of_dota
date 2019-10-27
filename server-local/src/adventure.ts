@@ -4,8 +4,9 @@ type Adventure_Entity_Base = {
     spawn_facing: XY
 }
 
-type Adventure_Materialized_Entity = Adventure_Entity_Base & ({
+type Adventure_Materialized_Enemy = {
     type: Adventure_Entity_Type.enemy
+    alive: true
     handle: CDOTA_BaseNPC
     npc_type: Npc_Type
     has_noticed_player: boolean
@@ -13,6 +14,11 @@ type Adventure_Materialized_Entity = Adventure_Entity_Base & ({
     issued_movement_order_at: number
     noticed_player_at: number
 } | {
+    type: Adventure_Entity_Type.enemy
+    alive: false
+};
+
+type Adventure_Materialized_Entity = Adventure_Entity_Base & (Adventure_Materialized_Enemy | {
     type: Adventure_Entity_Type.lost_creep
     id: Adventure_Entity_Id
     handle: CDOTA_BaseNPC
@@ -32,23 +38,32 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
 
     switch (data.type) {
         case Adventure_Entity_Type.enemy: {
-            const definition = get_npc_definition(data.npc_type);
-            const unit = create_map_unit_with_model(data.spawn_position, data.spawn_facing, definition.model, definition.scale);
+            if (entity.alive) {
+                const definition = get_npc_definition(data.npc_type);
+                const unit = create_map_unit_with_model(data.spawn_position, data.spawn_facing, definition.model, definition.scale);
 
-            if (IsInToolsMode()) {
-                unit.AddNewModifier(unit, undefined, "Modifier_Editor_Npc_Type",  {}).SetStackCount(data.npc_type);
-                unit.AddNewModifier(unit, undefined, "Modifier_Editor_Adventure_Entity_Id",  {}).SetStackCount(entity.id);
-            }
+                if (IsInToolsMode()) {
+                    unit.AddNewModifier(unit, undefined, "Modifier_Editor_Npc_Type",  {}).SetStackCount(data.npc_type);
+                    unit.AddNewModifier(unit, undefined, "Modifier_Editor_Adventure_Entity_Id",  {}).SetStackCount(entity.id);
+                }
 
-            return {
-                ...base,
-                type: Adventure_Entity_Type.enemy,
-                handle: unit,
-                npc_type: data.npc_type,
-                has_noticed_player: false,
-                noticed_particle: undefined,
-                issued_movement_order_at: 0,
-                noticed_player_at: 0
+                return {
+                    ...base,
+                    type: Adventure_Entity_Type.enemy,
+                    alive: true,
+                    handle: unit,
+                    npc_type: data.npc_type,
+                    has_noticed_player: false,
+                    noticed_particle: undefined,
+                    issued_movement_order_at: 0,
+                    noticed_player_at: 0
+                }
+            } else {
+                return {
+                    ...base,
+                    type: Adventure_Entity_Type.enemy,
+                    alive: false
+                }
             }
         }
 
@@ -75,6 +90,7 @@ function adventure_enemy_movement_loop(game: Game) {
 
         for (const enemy of game.adventure.entities) {
             if (enemy.type != Adventure_Entity_Type.enemy) continue;
+            if (!enemy.alive) continue;
 
             const player_handle = game.player.hero_unit;
             const enemy_handle = enemy.handle;
@@ -178,10 +194,24 @@ function submit_adventure_movement_loop(game: Game) {
 }
 
 function cleanup_adventure_entity(entity: Adventure_Materialized_Entity) {
-    entity.handle.RemoveSelf();
+    switch (entity.type) {
+        case Adventure_Entity_Type.lost_creep: {
+            entity.handle.RemoveSelf();
 
-    if (entity.type == Adventure_Entity_Type.enemy && entity.noticed_particle) {
-        entity.noticed_particle.destroy_and_release(true);
+            break;
+        }
+
+        case Adventure_Entity_Type.enemy: {
+            if (entity.alive) {
+                entity.handle.RemoveSelf();
+
+                if (entity.noticed_particle) {
+                    entity.noticed_particle.destroy_and_release(true);
+                }
+            }
+
+            break;
+        }
     }
 }
 
