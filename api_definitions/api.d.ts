@@ -32,6 +32,7 @@ declare const enum Api_Request_Type {
     query_adventure_entity_states = 203,
     start_adventure_enemy_fight = 204,
     submit_adventure_player_movement = 205,
+    get_player_adventure_party_state = 206,
 
     battle_cheat = 50,
     map_cheat = 51,
@@ -311,6 +312,10 @@ type Api_Request = {
     } & With_Token & With_Private_Key
     response: {}
 } | {
+    type: Api_Request_Type.get_player_adventure_party_state
+    request: {} & With_Token
+    response: Adventure_Party_State
+} | {
     type: Api_Request_Type.editor_action
     request: Editor_Action & With_Token
     response: {}
@@ -452,6 +457,18 @@ type Adventure_Entity_Definition = Adventure_Enemy_Definition | Adventure_Lost_C
 type Adventure_Entity_State = {
     id: Adventure_Entity_Id
     alive: boolean
+}
+
+type Adventure_Party_State = {
+    spells: Spell_Id[]
+    heroes: {
+        type: Hero_Type
+        health: number
+    }[]
+    minions: {
+        type: Minion_Type
+        health: number
+    }[]
 }
 
 type Debug_AI_Data = {

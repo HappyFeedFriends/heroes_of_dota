@@ -425,16 +425,18 @@ function item_source(item_id: Item_Id): Source_Item {
     }
 }
 
-function make_battle(participants: Battle_Participant_Info[], grid_width: number, grid_height: number): Battle {
-    const players = participants.map(participant => ({
+function make_battle_player(participant: Battle_Participant_Info) {
+    return {
         id: participant.id,
         deployment_zone: participant.deployment_zone,
         gold: 0,
         has_used_a_card_this_turn: false,
         hand: [],
         map_entity: participant.map_entity
-    }));
+    }
+}
 
+function make_battle(players: Battle_Player[], grid_width: number, grid_height: number): Battle {
     return {
         has_started: false,
         delta_head: 0,
@@ -1612,6 +1614,8 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                 items: []
             };
 
+            hero.health = delta.health;
+
             battle.units.push(hero);
 
             occupy_cell(battle, delta.at_position);
@@ -1640,7 +1644,8 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             const owner = find_player_by_id(battle, delta.owner_id);
             if (!owner) break;
 
-            create_minion(battle, owner, delta.unit_id, delta.minion_type, delta.at_position);
+            const minion = create_minion(battle, owner, delta.unit_id, delta.minion_type, delta.at_position);
+            minion.health = delta.health;
 
             break;
         }

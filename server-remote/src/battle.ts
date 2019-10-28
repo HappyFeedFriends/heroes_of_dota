@@ -1,4 +1,4 @@
-import {random, report_battle_over} from "./server";
+import {Id_Generator, random, report_battle_over} from "./server";
 import {readFileSync} from "fs";
 import {Battleground, Spawn_Type} from "./battleground";
 import {XY} from "./common";
@@ -9,7 +9,7 @@ let battle_id_auto_increment = 0;
 
 export type Battle_Record = Battle & {
     id: Battle_Id
-    entity_id_auto_increment: number
+    id_generator: Id_Generator
     finished: boolean
     random_seed: number
     deferred_actions: Deferred_Action[]
@@ -17,31 +17,23 @@ export type Battle_Record = Battle & {
     end_turn_queued: boolean
 }
 
-export type Battle_Participant = Player_Participant | Npc_Participant | Adventure_Enemy_Participant
-
-type Player_Participant = {
-    type: Map_Entity_Type.player
-    id: Player_Id
-    heroes: Hero_Type[]
+export type Battle_Participant = {
+    heroes: Hero_Spawn[]
+    minions: Minion_Spawn[]
     spells: Spell_Id[]
+    map_entity: Battle_Participant_Map_Entity
 }
 
-type Npc_Participant = {
-    type: Map_Entity_Type.npc
-    id: Npc_Id
-    npc_type: Npc_Type
-    heroes: Hero_Type[]
-    spells: Spell_Id[]
-    minions: Minion_Type[]
+export type Hero_Spawn = {
+    id: Unit_Id
+    type: Hero_Type
+    health: number
 }
 
-type Adventure_Enemy_Participant = {
-    type: Map_Entity_Type.adventure_enemy
-    id: Adventure_Entity_Id
-    npc_type: Npc_Type
-    heroes: Hero_Type[]
-    spells: Spell_Id[]
-    minions: Minion_Type[]
+export type Minion_Spawn = {
+    id: Unit_Id
+    type: Minion_Type
+    health: number
 }
 
 const battles: Battle_Record[] = [];
@@ -1334,7 +1326,7 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
 
             return [
                 use_card(player, card),
-                spawn_hero(battle, player, action.at, card.hero_type)
+                spawn_hero(get_next_entity_id(battle) as Unit_Id, player, action.at, card.hero_type, hero_definition_by_type(card.hero_type).health)
             ]
         }
 
@@ -1467,27 +1459,25 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
     }
 }
 
-function spawn_hero(battle: Battle_Record, owner: Battle_Player, at_position: XY, type: Hero_Type) : Delta_Hero_Spawn {
-    const id = get_next_entity_id(battle) as Unit_Id;
-
+function spawn_hero(id: Unit_Id, owner: Battle_Player, at_position: XY, type: Hero_Type, health: number) : Delta_Hero_Spawn {
     return {
         type: Delta_Type.hero_spawn,
         at_position: at_position,
         owner_id: owner.id,
         hero_type: type,
-        unit_id: id
+        unit_id: id,
+        health: health
     };
 }
 
-function spawn_minion(battle: Battle_Record, owner: Battle_Player, at_position: XY, type: Minion_Type) : Delta_Minion_Spawn {
-    const id = get_next_entity_id(battle) as Unit_Id;
-
+function spawn_minion(id: Unit_Id, owner: Battle_Player, at_position: XY, type: Minion_Type, health: number) : Delta_Minion_Spawn {
     return {
         type: Delta_Type.minion_spawn,
         at_position: at_position,
         owner_id: owner.id,
         minion_type: type,
-        unit_id: id
+        unit_id: id,
+        health: health
     };
 }
 
@@ -1539,7 +1529,7 @@ function use_card(player: Battle_Player, card: Card): Delta_Use_Card {
 }
 
 function get_next_entity_id(battle: Battle_Record) {
-    return battle.entity_id_auto_increment++;
+    return battle.id_generator();
 }
 
 function try_compute_battle_winner(battle: Battle_Record): Battle_Player | undefined {
@@ -2037,49 +2027,27 @@ export function surrender_player_forces(battle: Battle_Record, battle_player: Ba
     }));
 }
 
-export function start_battle(participants: Battle_Participant[], battleground: Battleground): Battle_Record {
-    function participant_to_map_entity(participant: Battle_Participant): Battle_Participant_Map_Entity {
-        switch (participant.type) {
-            case Map_Entity_Type.npc: return {
-                type: Map_Entity_Type.npc,
-                npc_id: participant.id,
-                npc_type: participant.npc_type
-            };
-
-            case Map_Entity_Type.player: return {
-                type: Map_Entity_Type.player,
-                player_id: participant.id
-            };
-
-            case Map_Entity_Type.adventure_enemy: return {
-                type: Map_Entity_Type.adventure_enemy,
-                entity_id: participant.id,
-                npc_type: participant.npc_type
-            }
-        }
-    }
-
+export function start_battle(id_generator: Id_Generator, participants: Battle_Participant[], battleground: Battleground): Battle_Record {
     let entity_id_auto_increment = 0;
 
-    const battle_players: Battle_Participant_Info[] = [];
-    const participant_to_player_id = new Map<Battle_Participant, Battle_Player_Id>();
+    const battle_players: Battle_Player[] = [];
+    const battle_player_and_participant_pairs: [Battle_Player, Battle_Participant][] = [];
 
     for (const participant of participants) {
-        const battle_player_id = entity_id_auto_increment++ as Battle_Player_Id;
-        const battle_player_info: Battle_Participant_Info = {
-            id: battle_player_id,
+        const battle_player = make_battle_player({
+            id: entity_id_auto_increment++ as Battle_Player_Id,
             deployment_zone: participant == participants[0] ? battleground.deployment_zones[0] : battleground.deployment_zones[1],
-            map_entity: participant_to_map_entity(participant)
-        };
+            map_entity: participant.map_entity
+        });
 
-        participant_to_player_id.set(participant, battle_player_id);
-        battle_players.push(battle_player_info);
+        battle_player_and_participant_pairs.push([battle_player, participant]);
+        battle_players.push(battle_player);
     }
 
     const battle: Battle_Record = {
         ...make_battle(battle_players, battleground.grid_size.x, battleground.grid_size.y),
         id: battle_id_auto_increment++ as Battle_Id,
-        entity_id_auto_increment: entity_id_auto_increment,
+        id_generator: id_generator,
         deferred_actions: [],
         random_seed: random_int_range(0, 65536),
         finished: false,
@@ -2173,28 +2141,22 @@ export function start_battle(participants: Battle_Participant[], battleground: B
         }
     }
 
-    for (const participant of participants) {
-        const participant_player_id = participant_to_player_id.get(participant);
-        if (participant_player_id == undefined) continue;
-
-        const player = find_player_by_id(battle, participant_player_id);
-        if (!player) continue;
+    for (const [player, participant] of battle_player_and_participant_pairs) {
+        const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, player);
+        const hero_spawn_points = pick_n_random(free_cells, participant.heroes.length);
+        const minion_spawn_points = pick_n_random(free_cells, participant.minions.length);
 
         const heroes = participant.heroes;
-        const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, player);
-        const spawn_points = pick_n_random(free_cells, heroes.length);
+        const minions = participant.minions;
 
         for (let index = 0; index < heroes.length; index++) {
-            spawn_deltas.push(spawn_hero(battle, player, spawn_points[index].position, heroes[index]));
+            const hero = heroes[index];
+            spawn_deltas.push(spawn_hero(hero.id, player, hero_spawn_points[index].position, hero.type, hero.health));
         }
 
-        if (participant.type == Map_Entity_Type.npc || participant.type == Map_Entity_Type.adventure_enemy) {
-            const minions = participant.minions;
-            const minion_spawn_points = pick_n_random(free_cells, minions.length);
-
-            for (let index = 0; index < minions.length; index++) {
-                spawn_deltas.push(spawn_minion(battle, player, minion_spawn_points[index].position, minions[index]));
-            }
+        for (let index = 0; index < minions.length; index++) {
+            const minion = minions[index];
+            spawn_deltas.push(spawn_minion(minion.id, player, minion_spawn_points[index].position, minion.type, minion.health));
         }
 
         spawn_deltas.push(get_starting_gold(player));
@@ -2410,7 +2372,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
                 const random_cell = pick_n_random(free_cells, 1);
 
                 if (random_cell) {
-                    deltas.push(spawn_minion(battle, battle_player, random_cell[0].position, minion));
+                    deltas.push(spawn_minion(get_next_entity_id(battle) as Unit_Id, battle_player, random_cell[0].position, minion, minion_definition_by_type(minion).health));
                 }
             }
 

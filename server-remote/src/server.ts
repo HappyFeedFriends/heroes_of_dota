@@ -49,7 +49,6 @@ const enum Right {
 }
 
 export type Map_Player = {
-    entity_type: Map_Entity_Type.player
     steam_id: string
     id: Player_Id;
     name: string;
@@ -76,13 +75,26 @@ type Map_Player_State = {
     battle_player: Battle_Player
     previous_state: Map_Player_State
 } | {
+    state: Player_State.not_logged_in
+} | Map_Player_On_Adventure
+
+type Map_Player_On_Adventure = {
     state: Player_State.on_adventure
     ongoing_adventure: Ongoing_Adventure
     current_location: XY
     movement_history: Movement_History_Entry[]
     previous_global_map_location: XY
-} | {
-    state: Player_State.not_logged_in
+    heroes: {
+        battle_unit_id: Unit_Id
+        type: Hero_Type
+        health: number
+    }[]
+    minions: {
+        battle_unit_id: Unit_Id
+        type: Minion_Type
+        health: number
+    }[]
+    spells: Spell_Id[]
 }
 
 type Card_Deck = {
@@ -104,6 +116,8 @@ type Card_Collection = {
     heroes: Collection_Hero_Card[]
     spells: Collection_Spell_Card[]
 }
+
+export type Id_Generator = () => number;
 
 let dev_mode = false;
 
@@ -155,7 +169,6 @@ function make_new_player(steam_id: string, name: string): Map_Player {
     };
 
     return {
-        entity_type: Map_Entity_Type.player,
         steam_id: steam_id,
         id: player_id_auto_increment++ as Player_Id,
         name: name,
@@ -229,6 +242,12 @@ function with_player_in_request<T>(req: With_Token, do_what: (player: Map_Player
 
 function player_by_id(player_id: Player_Id) {
     return players.find(player => player.id == player_id);
+}
+
+function sequential_id_generator(): Id_Generator {
+    let id = 0;
+
+    return () => id++;
 }
 
 function try_authorize_steam_player_from_dedicated_server(steam_id: string, steam_name: string): [Player_Id, string] {
@@ -374,34 +393,67 @@ function validate_dedicated_server_key(key: string) {
     return true;
 }
 
-function player_to_battle_participant(player: Map_Player): Battle_Participant {
+function player_to_battle_participant(next_id: Id_Generator, player: Map_Player): Battle_Participant {
     return {
-        type: Map_Entity_Type.player,
-        id: player.id,
-        heroes: player.deck.heroes,
-        spells: player.deck.spells
+        map_entity: {
+            type: Map_Entity_Type.player,
+            player_id: player.id
+        },
+        heroes: player.deck.heroes.map(type => ({
+            id: next_id() as Unit_Id,
+            type: type,
+            health: hero_definition_by_type(type).health
+        })),
+        spells: player.deck.spells,
+        minions: []
     }
 }
 
-function adventure_enemy_to_battle_participant(id: Adventure_Entity_Id, definition: Adventure_Enemy_Definition): Battle_Participant {
+function player_to_adventure_battle_participant(next_id: Id_Generator, id: Player_Id, player_on_adventure: Map_Player_On_Adventure): Battle_Participant {
+    const alive_heroes = player_on_adventure.heroes.filter(hero => hero.health > 0);
+    const alive_minions = player_on_adventure.minions.filter(minion => minion.health > 0);
+
+    for (const hero of alive_heroes) {
+        hero.battle_unit_id = next_id() as Unit_Id;
+    }
+
+    for (const minion of alive_minions) {
+        minion.battle_unit_id = next_id() as Unit_Id;
+    }
+
     return {
-        type: Map_Entity_Type.adventure_enemy,
-        id: id,
-        npc_type: definition.npc_type,
-        minions: definition.minions,
+        map_entity: {
+            type: Map_Entity_Type.player,
+            player_id: id
+        },
+        spells: player_on_adventure.spells,
+        heroes: alive_heroes.map(hero => ({
+            id: hero.battle_unit_id,
+            type: hero.type,
+            health: hero.health
+        })),
+        minions: alive_minions.map(minion => ({
+            id: minion.battle_unit_id,
+            type: minion.type,
+            health: minion.health
+        }))
+    }
+}
+
+function adventure_enemy_to_battle_participant(next_id: Id_Generator, id: Adventure_Entity_Id, definition: Adventure_Enemy_Definition): Battle_Participant {
+    return {
+        map_entity: {
+            type: Map_Entity_Type.adventure_enemy,
+            entity_id: id,
+            npc_type: definition.npc_type
+        },
         heroes: [],
+        minions: definition.minions.map(minion => ({
+            id: next_id() as Unit_Id,
+            type: minion,
+            health: minion_definition_by_type(minion).health
+        })),
         spells: []
-    }
-}
-
-function npc_to_battle_participant(npc: Map_Npc): Battle_Participant {
-    return {
-        type: Map_Entity_Type.npc,
-        id: npc.id,
-        npc_type: npc.type,
-        heroes: [],
-        spells: [],
-        minions: [ Minion_Type.monster_satyr_big, Minion_Type.monster_satyr_small, Minion_Type.monster_satyr_small ]
     }
 }
 
@@ -409,14 +461,12 @@ function transition_player_to_battle(player: Map_Player, battle: Battle_Record) 
     for (const battle_player of battle.players) {
         const entity = battle_player.map_entity;
         if (entity.type == Map_Entity_Type.player) {
-            if (player.entity_type == Map_Entity_Type.player) {
-                player.online = {
-                    state: Player_State.in_battle,
-                    battle: battle,
-                    battle_player: battle_player,
-                    previous_state: player.online
-                };
-            }
+            player.online = {
+                state: Player_State.in_battle,
+                battle: battle,
+                battle_player: battle_player,
+                previous_state: player.online
+            };
         }
     }
 }
@@ -461,7 +511,7 @@ register_api_handler(Api_Request_Type.authorize_steam_user, req => {
     });
 });
 
-export function report_battle_over(battle: Battle, winner_entity: Battle_Participant_Map_Entity) {
+export function report_battle_over(battle: Battle_Record, winner_entity: Battle_Participant_Map_Entity) {
     function defeat_adventure_enemies(adventure: Ongoing_Adventure) {
         for (const defeated_player of battle.players) {
             const defeated_entity = defeated_player.map_entity;
@@ -476,17 +526,39 @@ export function report_battle_over(battle: Battle, winner_entity: Battle_Partici
         }
     }
 
+    function update_player_adventure_state_from_battle(player: Map_Player_On_Adventure, battle_counterpart: Battle_Player) {
+        for (const hero of player.heroes) {
+            const source_unit = battle.units.find(unit => unit.id == hero.battle_unit_id);
+
+            if (source_unit) {
+                hero.health = Math.min(source_unit.health, hero_definition_by_type(hero.type).health);
+                hero.battle_unit_id = -1 as Unit_Id;
+            }
+        }
+
+        for (const minion of player.minions) {
+            const source_unit = battle.units.find(unit => unit.id == minion.battle_unit_id);
+
+            if (source_unit) {
+                minion.health = Math.min(source_unit.health, minion_definition_by_type(minion.type).health);
+                minion.battle_unit_id = -1 as Unit_Id;
+            }
+        }
+
+        player.spells = [];
+
+        for (const card of battle_counterpart.hand) {
+            if (card.type == Card_Type.spell) {
+                player.spells.push(card.spell_id);
+            }
+        }
+    }
+
     for (const battle_player of battle.players) {
         const entity = battle_player.map_entity;
 
         switch (entity.type) {
             case Map_Entity_Type.npc: {
-                const npc = npc_by_id(entity.npc_id);
-
-                if (npc) {
-                    // TODO handle NPC state change
-                }
-
                 break;
             }
 
@@ -504,6 +576,7 @@ export function report_battle_over(battle: Battle, winner_entity: Battle_Partici
                     if (player.online.state == Player_State.on_adventure) {
                         if (player_won) {
                             defeat_adventure_enemies(player.online.ongoing_adventure);
+                            update_player_adventure_state_from_battle(player.online, battle_player);
                         } else {
                             submit_chat_message(player, `${player.name} lost, their adventure is over`);
 
@@ -664,9 +737,11 @@ register_api_handler(Api_Request_Type.attack_player, req => {
             return;
         }
 
-        const battle = start_battle([
-            player_to_battle_participant(player),
-            player_to_battle_participant(other_player)
+        const id_generator = sequential_id_generator();
+
+        const battle = start_battle(id_generator, [
+            player_to_battle_participant(id_generator, player),
+            player_to_battle_participant(id_generator, other_player)
         ], battleground.forest());
 
         transition_player_to_battle(player, battle);
@@ -879,7 +954,22 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
             },
             current_location: starting_room.entrance_location,
             movement_history: [],
-            previous_global_map_location: player.online.current_location
+            previous_global_map_location: player.online.current_location,
+            heroes: [
+                Hero_Type.dragon_knight,
+                Hero_Type.vengeful_spirit,
+                Hero_Type.mirana
+            ].map(type => ({
+                type: type,
+                battle_unit_id: -1 as Unit_Id, // TODO ugh
+                health: hero_definition_by_type(type).health
+            })),
+            minions: [],
+            spells: [
+                Spell_Id.mekansm,
+                Spell_Id.town_portal_scroll,
+                Spell_Id.euls_scepter
+            ]
         };
 
         return player_to_player_state_object(player);
@@ -922,10 +1012,11 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
         if (!entity) return;
         if (entity.definition.type != Adventure_Entity_Type.enemy) return;
 
+        const id_generator = sequential_id_generator();
 
-        const battle = start_battle([
-            player_to_battle_participant(player),
-            adventure_enemy_to_battle_participant(entity.id, entity.definition)
+        const battle = start_battle(id_generator, [
+            player_to_adventure_battle_participant(id_generator, player.id, player.online),
+            adventure_enemy_to_battle_participant(id_generator, entity.id, entity.definition)
         ], battleground.forest());
 
         transition_player_to_battle(player, battle);
@@ -949,6 +1040,18 @@ register_api_handler(Api_Request_Type.exit_adventure, req => {
         };
 
         return player_to_player_state_object(player);
+    });
+});
+
+register_api_handler(Api_Request_Type.get_player_adventure_party_state, req => {
+    return with_player_in_request(req, player => {
+        if (player.online.state != Player_State.on_adventure) return;
+
+        return {
+            heroes: player.online.heroes,
+            minions: player.online.minions,
+            spells: player.online.spells
+        }
     });
 });
 

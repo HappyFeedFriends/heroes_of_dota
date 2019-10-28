@@ -1676,7 +1676,7 @@ function game_from_state(player_state: Player_State_Data, game_base: Game_Base):
         case Player_State.in_battle: {
             const battle_log: Colored_Line[] = [];
             const battle: Battle = {
-                ...make_battle(player_state.participants, player_state.grid_size.width, player_state.grid_size.height),
+                ...make_battle(player_state.participants.map(make_battle_player), player_state.grid_size.width, player_state.grid_size.height),
                 receive_event: (battle: Battle, event: Battle_Event) => {
                     process_battle_events_to_log(battle_log, event);
                 },

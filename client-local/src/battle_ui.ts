@@ -544,7 +544,7 @@ function process_state_transition(from: Player_State, new_state: Game_Net_Table)
 
     if (new_state.state == Player_State.in_battle) {
         const new_data = new_state.battle;
-        const base = make_battle(from_server_array(new_data.participants), new_data.grid_size.width, new_data.grid_size.height);
+        const base = make_battle(from_server_array(new_data.participants).map(make_battle_player), new_data.grid_size.width, new_data.grid_size.height);
         const this_player = find_player_by_id(base, new_state.battle.battle_player_id);
 
         if (!this_player) {

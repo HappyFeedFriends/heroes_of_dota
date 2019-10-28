@@ -2689,6 +2689,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             spawn_unit_with_fx(delta.at_position, () => {
                 const facing = { x: owner.deployment_zone.face_x, y: owner.deployment_zone.face_y };
                 const unit = spawn_hero_for_battle(delta.hero_type, delta.unit_id, delta.owner_id, delta.at_position, facing);
+                unit.health = delta.health;
 
                 if (delta.hero_type == Hero_Type.mirana) {
                     add_activity_translation(unit, Activity_Translation.ti8, 1.0);
@@ -2721,6 +2722,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             spawn_unit_with_fx(delta.at_position, () => {
                 const facing = { x: owner.deployment_zone.face_x, y: owner.deployment_zone.face_y };
                 const unit = spawn_minion_for_battle(delta.minion_type, delta.unit_id, delta.owner_id, delta.at_position, facing);
+                unit.health = delta.health;
                 unit.handle.ForcePlayActivityOnce(GameActivity_t.ACT_DOTA_SPAWN);
                 return unit;
             });

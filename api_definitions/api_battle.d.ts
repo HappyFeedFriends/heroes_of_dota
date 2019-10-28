@@ -420,6 +420,7 @@ type Delta_Hero_Spawn = {
     hero_type: Hero_Type
     unit_id: Unit_Id
     owner_id: Battle_Player_Id
+    health: number
     at_position: {
         x: number
         y: number
@@ -454,6 +455,7 @@ type Delta_Minion_Spawn = {
     minion_type: Minion_Type
     unit_id: Unit_Id
     owner_id: Battle_Player_Id
+    health: number
     at_position: {
         x: number
         y: number

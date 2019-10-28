@@ -2,7 +2,6 @@ import {Map_Player} from "./server";
 import {XY} from "./common";
 
 export type Map_Npc = {
-    entity_type: Map_Entity_Type.npc
     id: Npc_Id
     type: Npc_Type
     current_location: XY
@@ -11,7 +10,6 @@ export type Map_Npc = {
 }
 
 const test_npc: Map_Npc = {
-    entity_type: Map_Entity_Type.npc,
     id: 10000 as Npc_Id,
     type: Npc_Type.satyr,
     current_location: {
