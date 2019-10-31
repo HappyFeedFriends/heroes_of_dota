@@ -248,6 +248,7 @@ hide_default_ui();
 
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
     $("#global_map_ui").style.visibility = data.state == Player_State.on_global_map ? "visible" : "collapse";
+    $("#adventure_ui").style.visibility = data.state == Player_State.on_adventure ? "visible" : "collapse";
     $("#battle_ui").style.visibility = data.state == Player_State.in_battle ? "visible" : "collapse";
     $("#disconnected_ui").style.visibility = data.state == Player_State.not_logged_in ? "visible" : "collapse";
 

@@ -5,6 +5,7 @@
         <include src="file://{resources}/scripts/custom_game/chat_ui.js" />
         <include src="file://{resources}/scripts/custom_game/editor_ui.js" />
         <include src="file://{resources}/scripts/custom_game/collection_ui.js" />
+        <include src="file://{resources}/scripts/custom_game/adventure_ui.js" />
         <include src="file://{resources}/scripts/custom_game/battle_ui.js" />
         <include src="file://{resources}/scripts/custom_game/battle_actions.js" />
         <include src="file://{resources}/scripts/custom_game/unit_defs.js" />
@@ -12,6 +13,7 @@
     </scripts>
     <styles>
         <include src="file://{resources}/styles/custom_game/global_map.css" />
+        <include src="file://{resources}/styles/custom_game/adventure.css" />
         <include src="file://{resources}/styles/custom_game/battle.css" />
         <include src="file://{resources}/styles/custom_game/editor.css" />
         <include src="file://{resources}/styles/custom_game/hand.css" />
@@ -69,7 +71,7 @@
             </Panel>
         </Panel>
 
-        <Panel id="global_map_ui" style="visibility: collapse;">
+        <Panel id="global_map_ui" hittest="false" style="visibility: collapse;">
             <Panel id="action_bar">
                 <Button id="collection_button" onactivate="ui_toggle_collection();">
                     <Label text="Collection"/>
@@ -108,6 +110,27 @@
                 </Panel>
             </Panel>
         </Panel>
+
+        <Panel id="adventure_ui" hittest="false" style="visibility: collapse;">
+            <Panel id="adventure_party_container">
+                <Panel id="left_flare"/>
+                <Panel id="adventure_party">
+                    <Panel id="adventure_party_header">
+                        <Label id="adventure_party_label" text="Party status"/>
+                        <Panel id="adventure_gold">
+                            <Panel id="gold_icon"/>
+                            <Label id="gold_remaining" text="100"/>
+                        </Panel>
+                    </Panel>
+                    <Panel id="adventure_party_row">
+                        <Panel id="adventure_cards"/>
+                    </Panel>
+                </Panel>
+                <Panel id="right_flare"/>
+            </Panel>
+            <Panel hittest="false" id="adventure_card_tooltips"/>
+        </Panel>
+
         <Panel id="editor_ui" hittest="false" style="visibility: collapse;">
             <Panel id="editor_buttons"/>
             <Panel id="editor_indicator">

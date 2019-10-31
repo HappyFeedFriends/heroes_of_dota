@@ -236,7 +236,7 @@ function create_deck_hero_card_panel(hero: Hero_Type) {
 }
 
 function create_deck_spell_card_panel(spell: Spell_Id) {
-    return create_deck_card_panel("spell", get_spell_name(spell), `file://{images}/${get_spell_card_art(spell)}`, panel => ({
+    return create_deck_card_panel("spell", get_spell_name(spell), get_spell_card_art(spell), panel => ({
         id: spell,
         panel: panel
     }), deck_ui.spells);

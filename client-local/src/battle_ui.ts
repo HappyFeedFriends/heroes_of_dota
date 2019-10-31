@@ -1654,7 +1654,15 @@ function drop_card_selection() {
     }
 }
 
+function get_hero_card_art(hero_type: Hero_Type) {
+    return `file://{images}/custom_game/heroes/${get_hero_dota_name(hero_type)}.jpg`;
+}
+
 function get_spell_card_art(spell_id: Spell_Id): string {
+    return `file://{images}/${get_spell_card_art_file(spell_id)}`;
+}
+
+function get_spell_card_art_file(spell_id: Spell_Id): string {
     switch (spell_id) {
         case Spell_Id.buyback: return "profile_badges/level_46.png";
         case Spell_Id.euls_scepter: return "profile_badges/level_71.png";
@@ -2527,7 +2535,7 @@ function create_hero_card_ui_base(container: Panel, hero_type: Hero_Type, health
 
     const art = $.CreatePanel("Image", container, "card_art");
     art.SetScaling(ScalingFunction.STRETCH_TO_FIT_Y_PRESERVE_ASPECT);
-    art.SetImage(`file://{images}/custom_game/heroes/${get_hero_dota_name(hero_type)}.jpg`);
+    art.SetImage(get_hero_card_art(hero_type));
 
     const name_panel = $.CreatePanel("Panel", container, "name_panel");
     const hero_name = $.CreatePanel("Label", name_panel, "");
@@ -2548,7 +2556,7 @@ function create_spell_card_ui_base(container: Panel, spell: Spell_Id, spell_text
 
     const art = $.CreatePanel("Image", container, "card_art");
     art.SetScaling(ScalingFunction.STRETCH_TO_FIT_X_PRESERVE_ASPECT);
-    art.SetImage(`file://{images}/${get_spell_card_art(spell)}`);
+    art.SetImage(get_spell_card_art(spell));
 
     const text_container = $.CreatePanel("Panel", container, "card_text");
     const text = $.CreatePanel("Label", text_container, "");

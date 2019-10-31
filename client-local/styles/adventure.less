@@ -1,0 +1,166 @@
+@import "shared";
+
+#ui_flare() {
+  vertical-align: bottom;
+  background-image: url("s2r://panorama/images/hud/reborn/side_flare_tall_psd.vtex");
+  background-size: 100%;
+  width: 52px;
+  height: 138px;
+}
+
+#adventure_ui {
+  width: 100%;
+  height: 100%;
+
+  #adventure_party_container {
+    align: center bottom;
+    flow-children: right;
+
+    #left_flare {
+      #ui_flare()
+    }
+
+    #right_flare {
+      transform: scaleX(-1);
+      #ui_flare()
+    }
+
+    #adventure_party {
+      flow-children: down;
+      vertical-align: bottom;
+
+      #adventure_party_header {
+        width: 100%;
+        margin-bottom: 8px;
+
+        #adventure_party_label {
+          font-family: @font-title;
+          font-size: 24px;
+          vertical-align: bottom;
+          color: white;
+          text-shadow: 0px 0px 2px 3 black;
+          white-space: nowrap;
+        }
+
+        #adventure_gold {
+          flow-children: right;
+          align: right bottom;
+
+          #gold_icon {
+            vertical-align: center;
+            width: 32px;
+            height: 32px;
+            margin-right: 4px;
+            background-size: 100% auto;
+            background-position: center center;
+            background-repeat: no-repeat no-repeat;
+            background-image: url("s2r://panorama/images/hud/reborn/gold_small_psd.vtex");
+          }
+
+          #gold_remaining {
+            color: white;
+            font-family: @font-mono;
+            align: center bottom;
+            font-size: 30px;
+            text-shadow: 0px 0px 2px 3 black;
+          }
+        }
+      }
+
+      #adventure_party_row {
+        flow-children: right;
+        //background-image: url("s2r://panorama/images/hud/reborn/ability_bg_psd.vtex");
+        //background-size: 100%;
+
+        #adventure_cards {
+          flow-children: right;
+
+          .adventure_card_container {
+            vertical-align: bottom;
+            flow-children: down;
+
+            #adventure_card {
+              height: 130px;
+              width: 80px;
+
+              border-top: 1px solid #424242;
+              border-right: 1px solid black;
+              box-shadow: inset 0px 0px 8px black;
+
+              &.dead {
+                #banned_overlay {
+                  width: 100%;
+                  height: 100%;
+                  background-image: url("s2r://panorama/images/hero_selection/banned_overlay_psd.vtex");
+                  background-size: 120% 120%;
+                  background-position: center center;
+                  wash-color: #bf0000;
+                }
+
+                #health_number {
+                  visibility: collapse;
+                }
+
+                #adventure_card_art {
+                  saturation: 0.1;
+                  brightness: 0.3;
+                }
+              }
+
+              #health_number {
+                margin: 0 10px 4px 0;
+                text-shadow: 0px 0px 2px 2.5 rgb(9, 136, 0);
+                text-align: right;
+                align: right bottom;
+                color: white;
+                font-size: 28px;
+                font-family: @font-mono;
+              }
+
+              #adventure_card_art {
+                width: 100%;
+                height: 100%;
+
+                background-image: url("s2r://panorama/images/backgrounds/dashboard_vignette_png.vtex");
+                background-size: 100% 100%;
+                background-color: #3d4c4d;
+
+                &.spell {
+                  background-color: @spell-card-header-color;
+                  background-size: auto 160%;
+                  background-repeat: no-repeat no-repeat;
+                  background-position: center center;
+                }
+
+                &.hero {
+                  align: center center;
+                  background-size: auto 230%;
+                  background-position: center 30%;
+                  background-color: black;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  #adventure_card_tooltips {
+    width: 100%;
+    height: 100%;
+
+    #card_tooltip {
+      flow-children: down;
+
+      #arrow {
+        horizontal-align: center;
+        width: 48px;
+        height: 32px;
+        background-image: url("s2r://panorama/images/tooltips/tooltip_arrow_top_customgames_psd.vtex");
+        background-size: 100% 100%;
+        transform: scaleY(-1);
+      }
+    }
+  }
+}
