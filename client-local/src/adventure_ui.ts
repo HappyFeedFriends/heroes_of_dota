@@ -63,7 +63,8 @@ function show_and_prepare_adventure_tooltip(slot: Adventure_Cart_Slot, css_class
 
     tooltip.style.opacity = "1";
 
-    card.SwitchClass(adventure_ui.tooltip.css_class, css_class);
+    card.RemoveClass(adventure_ui.tooltip.css_class);
+    card.AddClass(css_class);
     card.RemoveAndDeleteChildren();
 
     adventure_ui.tooltip.css_class = css_class;
