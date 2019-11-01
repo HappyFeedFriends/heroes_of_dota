@@ -1,6 +1,7 @@
 const adventure_ui = {
     game_state: Player_State.not_logged_in,
     card_container: $("#adventure_cards"),
+    currency_label: $("#currency_remaining") as LabelPanel,
     tooltip: {
         ...create_adventure_card_tooltip($("#adventure_card_tooltips")),
         css_class: ""
@@ -135,6 +136,8 @@ function create_adventure_ui(party: Adventure_Party_State) {
     for (; empty_slots >= 0; empty_slots--) {
         create_adventure_card_slot(card_container);
     }
+
+    adventure_ui.currency_label.text = party.currency.toString(10);
 }
 
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {

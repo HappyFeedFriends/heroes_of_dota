@@ -84,6 +84,7 @@ type Map_Player_On_Adventure = {
     current_location: XY
     movement_history: Movement_History_Entry[]
     previous_global_map_location: XY
+    amount_of_currency: number
     heroes: {
         battle_unit_id: Unit_Id
         type: Hero_Type
@@ -955,6 +956,7 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
             current_location: starting_room.entrance_location,
             movement_history: [],
             previous_global_map_location: player.online.current_location,
+            amount_of_currency: 0,
             heroes: [
                 Hero_Type.dragon_knight,
                 Hero_Type.vengeful_spirit,
@@ -1050,7 +1052,8 @@ register_api_handler(Api_Request_Type.get_player_adventure_party_state, req => {
         return {
             heroes: player.online.heroes,
             minions: player.online.minions,
-            spells: player.online.spells
+            spells: player.online.spells,
+            currency: player.online.amount_of_currency
         }
     });
 });

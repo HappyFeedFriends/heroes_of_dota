@@ -460,6 +460,7 @@ type Adventure_Entity_State = {
 }
 
 type Adventure_Party_State = {
+    currency: number
     spells: Spell_Id[]
     heroes: {
         type: Hero_Type
