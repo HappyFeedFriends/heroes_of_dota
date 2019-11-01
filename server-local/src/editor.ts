@@ -64,28 +64,40 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
             break;
         }
 
-        case Editor_Event_Type.edit_enemy: {
+        case Editor_Event_Type.set_entity_position: {
             const entity = find_entity_by_id(event.entity_id);
             if (!entity) break;
-
-            if (entity.type != Adventure_Entity_Type.enemy) break;
             if (!entity.alive) break;
 
-            entity.handle.SetForwardVector(Vector(event.facing.x, event.facing.y));
-
-            entity.spawn_facing = event.facing;
             entity.spawn_position = event.position;
 
+            FindClearSpaceForUnit(entity.handle, Vector(event.position.x, event.position.y), true);
+
             api_request(Api_Request_Type.editor_action, {
-                type: Adventure_Editor_Action_Type.edit_enemy,
+                type: Adventure_Editor_Action_Type.set_entity_position,
                 entity_id: entity.id,
-                npc_type: entity.npc_type,
-                new_facing: event.facing,
                 new_position: event.position,
                 access_token: game.token
             });
 
-            FindClearSpaceForUnit(entity.handle, Vector(event.position.x, event.position.y), true);
+            break;
+        }
+
+        case Editor_Event_Type.set_entity_facing: {
+            const entity = find_entity_by_id(event.entity_id);
+            if (!entity) break;
+            if (!entity.alive) break;
+
+            entity.spawn_facing = event.facing;
+
+            entity.handle.SetForwardVector(Vector(event.facing.x, event.facing.y));
+
+            api_request(Api_Request_Type.editor_action, {
+                type: Adventure_Editor_Action_Type.set_entity_facing,
+                entity_id: entity.id,
+                new_facing: event.facing,
+                access_token: game.token
+            });
 
             break;
         }

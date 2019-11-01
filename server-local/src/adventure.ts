@@ -4,7 +4,12 @@ type Adventure_Entity_Base = {
     spawn_facing: XY
 }
 
-type Adventure_Materialized_Enemy = {
+type Dead_Or_Alive<T extends { type: Adventure_Entity_Type }> = (T & { alive: true }) | {
+    type: T["type"]
+    alive: false
+}
+
+type Adventure_Materialized_Enemy = Dead_Or_Alive<{
     type: Adventure_Entity_Type.enemy
     alive: true
     handle: CDOTA_BaseNPC
@@ -13,16 +18,14 @@ type Adventure_Materialized_Enemy = {
     noticed_particle?: FX
     issued_movement_order_at: number
     noticed_player_at: number
-} | {
-    type: Adventure_Entity_Type.enemy
-    alive: false
-};
+}>;
 
-type Adventure_Materialized_Entity = Adventure_Entity_Base & (Adventure_Materialized_Enemy | {
-    type: Adventure_Entity_Type.lost_creep
-    id: Adventure_Entity_Id
-    handle: CDOTA_BaseNPC
-})
+type Adventure_Materialized_Entity = Adventure_Entity_Base & (
+    Adventure_Materialized_Enemy | Dead_Or_Alive<{
+        type: Adventure_Entity_Type.lost_creep
+        handle: CDOTA_BaseNPC
+    }>
+)
 
 type Adventure_State = {
     entities: Adventure_Materialized_Entity[]
@@ -36,47 +39,62 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
         spawn_position: data.spawn_position
     };
 
+    function transfer_editor_data(unit: CDOTA_BaseNPC) {
+        unit.AddNewModifier(unit, undefined, "Modifier_Editor_Adventure_Entity_Id",  {}).SetStackCount(entity.id);
+        unit.AddNewModifier(unit, undefined, "Modifier_Editor_Adventure_Entity_Type",  {}).SetStackCount(entity.definition.type);
+    }
+
     switch (data.type) {
         case Adventure_Entity_Type.enemy: {
-            if (entity.alive) {
-                const definition = get_npc_definition(data.npc_type);
-                const unit = create_map_unit_with_model(data.spawn_position, data.spawn_facing, definition.model, definition.scale);
-
-                if (IsInToolsMode()) {
-                    unit.AddNewModifier(unit, undefined, "Modifier_Editor_Npc_Type",  {}).SetStackCount(data.npc_type);
-                    unit.AddNewModifier(unit, undefined, "Modifier_Editor_Adventure_Entity_Id",  {}).SetStackCount(entity.id);
-                }
-
+            if (!entity.alive) {
                 return {
                     ...base,
-                    type: Adventure_Entity_Type.enemy,
-                    alive: true,
-                    handle: unit,
-                    npc_type: data.npc_type,
-                    has_noticed_player: false,
-                    noticed_particle: undefined,
-                    issued_movement_order_at: 0,
-                    noticed_player_at: 0
-                }
-            } else {
-                return {
-                    ...base,
-                    type: Adventure_Entity_Type.enemy,
+                    type: data.type,
                     alive: false
                 }
             }
-        }
 
-        case Adventure_Entity_Type.lost_creep: {
-            const [model, scale] = minion_type_to_model_and_scale(Minion_Type.lane_minion);
-            const unit = create_map_unit_with_model(data.spawn_position, data.spawn_facing, model, scale);
+            const definition = get_npc_definition(data.npc_type);
+            const unit = create_map_unit_with_model(data.spawn_position, data.spawn_facing, definition.model, definition.scale);
 
             if (IsInToolsMode()) {
-                unit.AddNewModifier(unit, undefined, "Modifier_Editor_Adventure_Entity_Id",  {}).SetStackCount(entity.id);
+                unit.AddNewModifier(unit, undefined, "Modifier_Editor_Npc_Type",  {}).SetStackCount(data.npc_type);
+
+                transfer_editor_data(unit);
             }
 
             return {
                 ...base,
+                type: Adventure_Entity_Type.enemy,
+                alive: true,
+                handle: unit,
+                npc_type: data.npc_type,
+                has_noticed_player: false,
+                noticed_particle: undefined,
+                issued_movement_order_at: 0,
+                noticed_player_at: 0
+            }
+        }
+
+        case Adventure_Entity_Type.lost_creep: {
+            if (!entity.alive) {
+                return {
+                    ...base,
+                    type: data.type,
+                    alive: false
+                }
+            }
+
+            const [model, scale] = minion_type_to_model_and_scale(Minion_Type.lane_minion);
+            const unit = create_map_unit_with_model(data.spawn_position, data.spawn_facing, model, scale);
+
+            if (IsInToolsMode()) {
+                transfer_editor_data(unit);
+            }
+
+            return {
+                ...base,
+                alive: true,
                 type: Adventure_Entity_Type.lost_creep,
                 handle: unit
             }
@@ -194,6 +212,8 @@ function submit_adventure_movement_loop(game: Game) {
 }
 
 function cleanup_adventure_entity(entity: Adventure_Materialized_Entity) {
+    if (!entity.alive) return;
+
     switch (entity.type) {
         case Adventure_Entity_Type.lost_creep: {
             entity.handle.RemoveSelf();
@@ -202,12 +222,10 @@ function cleanup_adventure_entity(entity: Adventure_Materialized_Entity) {
         }
 
         case Adventure_Entity_Type.enemy: {
-            if (entity.alive) {
-                entity.handle.RemoveSelf();
+            entity.handle.RemoveSelf();
 
-                if (entity.noticed_particle) {
-                    entity.noticed_particle.destroy_and_release(true);
-                }
+            if (entity.noticed_particle) {
+                entity.noticed_particle.destroy_and_release(true);
             }
 
             break;

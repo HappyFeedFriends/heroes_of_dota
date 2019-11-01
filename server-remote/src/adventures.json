@@ -25,7 +25,8 @@
                                 "monster_small_spider"
                             ]
                         }
-                    ]
+                    ],
+                    "other_entities": []
                 }
             ]
         }

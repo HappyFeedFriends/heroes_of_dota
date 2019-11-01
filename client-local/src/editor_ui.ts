@@ -26,11 +26,17 @@ type Editor_Selection = {
 } | {
     selected: true
     id: Adventure_Entity_Id
-    npc_type: Npc_Type
+    type: Adventure_Entity_Type.enemy
     entity: EntityId
     particle: ParticleId
     minions: Minion_Type[]
     highlighted_minion_button?: Panel
+} | {
+    selected: true
+    type: Adventure_Entity_Type.lost_creep
+    id: Adventure_Entity_Id
+    entity: EntityId
+    particle: ParticleId
 }
 
 function text_button(parent: Panel, css_class: string, text: string, action: (button: Panel) => void) {
@@ -83,88 +89,115 @@ function drop_editor_selection() {
     entity_buttons_dropdown.RemoveAndDeleteChildren();
 }
 
-function editor_select_npc(entity: EntityId, adventure_entity_id: Adventure_Entity_Id, npc_type: Npc_Type) {
+function entity_button(text: string, action: (button: Panel) => void, css_class: string = "editor_entity_button") {
+    return text_button(entity_buttons, css_class, text, action);
+}
+
+function dropdown_button(text: string, action: () => void) {
+    return text_button(entity_buttons_dropdown, "editor_entity_dropdown_button", text, action);
+}
+
+function create_adventure_enemy_menu_buttons(adventure_entity_id: Adventure_Entity_Id, minions: Minion_Type[], reselect: () => void) {
+    for (let index = 0; index < minions.length + 1; index++) {
+        const minion = minions[index];
+        const text = index < minions.length ? enum_to_string(minion) : "Add a minion";
+
+        entity_button(text, (button) => {
+            entity_buttons_dropdown.RemoveAndDeleteChildren();
+
+            let show_dropdown = true;
+
+            if (editor_selection.selected && editor_selection.type == Adventure_Entity_Type.enemy) {
+                if (editor_selection.highlighted_minion_button) {
+                    editor_selection.highlighted_minion_button.RemoveClass("selected");
+                }
+
+                if (editor_selection.highlighted_minion_button != button) {
+                    editor_selection.highlighted_minion_button = button;
+                    editor_selection.highlighted_minion_button.AddClass("selected");
+                } else {
+                    editor_selection.highlighted_minion_button = undefined;
+                    show_dropdown = false;
+                }
+            }
+
+            if (!show_dropdown) return;
+
+            for (const [name, type] of enum_names_to_values<Minion_Type>()) {
+                dropdown_button(name, () => {
+                    minions[index] = type;
+
+                    api_request(Api_Request_Type.editor_action, {
+                        type: Adventure_Editor_Action_Type.edit_enemy_deck,
+                        entity_id: adventure_entity_id,
+                        minions: minions,
+                        access_token: get_access_token()
+                    }, reselect);
+                });
+            }
+        });
+    }
+}
+
+function editor_select_entity(entity: EntityId, adventure_entity_id: Adventure_Entity_Id, entity_type: Adventure_Entity_Type, name: string) {
     if (editor_selection.selected) {
         drop_editor_selection();
     }
 
-    function entity_button(text: string, action: (button: Panel) => void, css_class: string = "editor_entity_button") {
-        return text_button(entity_buttons, css_class, text, action);
-    }
-
-    function dropdown_button(text: string, action: () => void) {
-        return text_button(entity_buttons_dropdown, "editor_entity_dropdown_button", text, action);
-    }
-
-    api_request(Api_Request_Type.editor_get_enemy_deck, {
-        entity_id: adventure_entity_id,
-        access_token: get_access_token()
-    }, data => {
-        const fx = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_OVERHEAD_FOLLOW, entity);
-
-        register_particle_for_reload(fx);
-
-        editor_selection = {
-            selected: true,
-            id: adventure_entity_id,
-            entity: entity,
-            particle: fx,
-            npc_type: npc_type,
-            minions: data.minions
-        };
-
-        const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
-        selection_label.text = `Selected: ${enum_to_string(npc_type)}`;
-
-        for (let index = 0; index < data.minions.length + 1; index++) {
-            const minion = data.minions[index];
-            const text = index < data.minions.length ? enum_to_string(minion) : "Add a minion";
-
-            entity_button(text, (button) => {
-                entity_buttons_dropdown.RemoveAndDeleteChildren();
-
-                let show_dropdown = true;
-
-                if (editor_selection.selected) {
-                    if (editor_selection.highlighted_minion_button) {
-                        editor_selection.highlighted_minion_button.RemoveClass("selected");
-                    }
-
-                    if (editor_selection.highlighted_minion_button != button) {
-                        editor_selection.highlighted_minion_button = button;
-                        editor_selection.highlighted_minion_button.AddClass("selected");
-                    } else {
-                        editor_selection.highlighted_minion_button = undefined;
-                        show_dropdown = false;
-                    }
-                }
-
-                if (!show_dropdown) return;
-
-                for (const [name, type] of enum_names_to_values<Minion_Type>()) {
-                    dropdown_button(name, () => {
-                        data.minions[index] = type;
-
-                        api_request(Api_Request_Type.editor_action, {
-                            type: Adventure_Editor_Action_Type.edit_enemy_deck,
-                            entity_id: adventure_entity_id,
-                            minions: data.minions,
-                            access_token: get_access_token()
-                        }, () => {
-                            editor_select_npc(entity, adventure_entity_id, npc_type);
-                        });
-                    });
-                }
-            });
-        }
-
+    function create_delete_button() {
         entity_button("Delete", () => {
             dispatch_editor_event({
                 type: Editor_Event_Type.delete_entity,
                 entity_id: adventure_entity_id
             })
         }, "editor_entity_delete_button");
-    });
+    }
+
+    if (entity_type == Adventure_Entity_Type.enemy) {
+        api_request(Api_Request_Type.editor_get_enemy_deck, {
+            entity_id: adventure_entity_id,
+            access_token: get_access_token()
+        }, data => {
+            const fx = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_OVERHEAD_FOLLOW, entity);
+
+            register_particle_for_reload(fx);
+
+            editor_selection = {
+                selected: true,
+                type: Adventure_Entity_Type.enemy,
+                id: adventure_entity_id,
+                entity: entity,
+                particle: fx,
+                minions: data.minions
+            };
+
+            const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
+            selection_label.text = `Selected: ${name}`;
+
+            create_adventure_enemy_menu_buttons(adventure_entity_id, data.minions, () => {
+                editor_select_entity(entity, adventure_entity_id, entity_type, name);
+            });
+
+            create_delete_button();
+        });
+    } else {
+        const fx = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_OVERHEAD_FOLLOW, entity);
+
+        register_particle_for_reload(fx);
+
+        const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
+        selection_label.text = `Selected: ${name}`;
+
+        editor_selection = {
+            selected: true,
+            type: entity_type,
+            id: adventure_entity_id,
+            entity: entity,
+            particle: fx
+        };
+
+        create_delete_button();
+    }
 }
 
 function hide_editor_context_menu() {
@@ -196,11 +229,20 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
         const entity_under_cursor = get_entity_under_cursor(GameUI.GetCursorPosition());
 
         if (entity_under_cursor != undefined) {
+            const entity_type = enum_value_from_modifier<Adventure_Entity_Type>(entity_under_cursor, "Modifier_Editor_Adventure_Entity_Type");
             const entity_id = enum_value_from_modifier<Adventure_Entity_Id>(entity_under_cursor, "Modifier_Editor_Adventure_Entity_Id");
             const npc_type = enum_value_from_modifier<Npc_Type>(entity_under_cursor, "Modifier_Editor_Npc_Type");
 
-            if (npc_type != undefined && entity_id != undefined) {
-                editor_select_npc(entity_under_cursor, entity_id, npc_type);
+            let name = "Entity #" + entity_id;
+
+            if (npc_type != undefined) {
+                name = enum_to_string(npc_type);
+            }
+
+            $.Msg(entity_id, " ", npc_type);
+
+            if (entity_id != undefined && entity_type != undefined) {
+                editor_select_entity(entity_under_cursor, entity_id, entity_type, name);
             }
         } else {
             drop_editor_selection();
@@ -222,13 +264,10 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
             context_menu_button(`Move here`, () => {
                 if (!editor_selection.selected) return;
 
-                const facing = Entities.GetForward(editor_selection.entity);
-
                 dispatch_editor_event({
-                    type: Editor_Event_Type.edit_enemy,
+                    type: Editor_Event_Type.set_entity_position,
                     entity_id: editor_selection.id,
-                    position: xy(click_world_position[0], click_world_position[1]),
-                    facing: xy(facing[0], facing[1])
+                    position: xy(click_world_position[0], click_world_position[1])
                 });
             });
 
@@ -241,26 +280,40 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
                 const facing = length > 0 ? [delta[0] / length, delta[1] / length, 0] : [1, 0, 0];
 
                 dispatch_editor_event({
-                    type: Editor_Event_Type.edit_enemy,
+                    type: Editor_Event_Type.set_entity_facing,
                     entity_id: editor_selection.id,
-                    position: xy(position[0], position[1]),
                     facing: xy(facing[0], facing[1])
                 });
             });
         } else {
-            for (const [npc_name, npc_type] of enum_names_to_values<Npc_Type>()) {
-                context_menu_button(`Create ${npc_name}`, () => {
-                    dispatch_editor_event({
-                        type: Editor_Event_Type.create_entity,
-                        definition: {
-                            type: Adventure_Entity_Type.enemy,
-                            npc_type: npc_type,
-                            spawn_position: xy(click_world_position[0], click_world_position[1]),
-                            spawn_facing: xy(1, 0),
-                            minions: []
-                        }
-                    })
-                });
+            for (const [entity_name, entity_type] of enum_names_to_values<Adventure_Entity_Type>()) {
+                if (entity_type == Adventure_Entity_Type.enemy) {
+                    for (const [npc_name, npc_type] of enum_names_to_values<Npc_Type>()) {
+                        context_menu_button(`Create ${npc_name}`, () => {
+                            dispatch_editor_event({
+                                type: Editor_Event_Type.create_entity,
+                                definition: {
+                                    type: entity_type,
+                                    npc_type: npc_type,
+                                    spawn_position: xy(click_world_position[0], click_world_position[1]),
+                                    spawn_facing: xy(1, 0),
+                                    minions: []
+                                }
+                            })
+                        });
+                    }
+                } else {
+                    context_menu_button(`Create ${entity_name}`, () => {
+                        dispatch_editor_event({
+                            type: Editor_Event_Type.create_entity,
+                            definition: {
+                                type: entity_type,
+                                spawn_position: xy(click_world_position[0], click_world_position[1]),
+                                spawn_facing: xy(1, 0),
+                            }
+                        })
+                    });
+                }
             }
 
             context_menu_button(`Set entrance to here`, () => {

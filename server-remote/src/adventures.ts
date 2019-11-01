@@ -25,11 +25,16 @@ type Adventures_File = {
         rooms: Array<{
             id: number
             entrance: [number, number]
-            enemies: Array<{
+            enemies?: Array<{
                 type: string
                 position: [number, number]
                 facing: [number, number],
                 minions: string[]
+            }>
+            other_entities?: Array<{
+                type: string
+                position: [number, number]
+                facing: [number, number],
             }>
         }>
     }>
@@ -83,6 +88,7 @@ export function reload_adventures_from_file() {
     const adventures_enum = enum_names_to_values<Adventure_Id>();
     const npc_enum = enum_names_to_values<Npc_Type>();
     const minions_enum = enum_names_to_values<Minion_Type>();
+    const entities_enum = enum_names_to_values<Adventure_Entity_Type>();
     const new_adventures: Adventure[] = [];
 
     function try_string_to_enum_value<T>(value: string, enum_values: [string, T][]): T | undefined {
@@ -114,7 +120,7 @@ export function reload_adventures_from_file() {
 
             const entities: Adventure_Entity_Definition[] = [];
 
-            for (const source_enemy of source_room.enemies) {
+            for (const source_enemy of source_room.enemies || []) {
                 const npc_type = try_string_to_enum_value(source_enemy.type, npc_enum);
 
                 if (npc_type == undefined) {
@@ -148,6 +154,29 @@ export function reload_adventures_from_file() {
                     },
                     minions: minions
                 })
+            }
+
+            for (const source_entity of source_room.other_entities || []) {
+                const entity_type = try_string_to_enum_value(source_entity.type, entities_enum);
+
+                if (entity_type == undefined) {
+                    console.error(`${adventure.id}: entity with type ${source_entity.type} not found`);
+                    continue out;
+                }
+
+                if (entity_type != Adventure_Entity_Type.enemy) {
+                    entities.push({
+                        type: entity_type,
+                        spawn_position: {
+                            x: source_entity.position[0],
+                            y: source_entity.position[1]
+                        },
+                        spawn_facing: {
+                            x: source_entity.facing[0],
+                            y: source_entity.facing[1]
+                        }
+                    })
+                }
             }
 
             rooms.push(room(source_room.id, Adventure_Room_Type.combat, entrance, entities));
@@ -184,10 +213,23 @@ function save_adventures_to_file() {
                     }
                 }
 
+                const other_entities: Adventures_File["adventures"][0]["rooms"][0]["other_entities"] = [];
+
+                for (const entity of room.entities) {
+                    if (entity.type != Adventure_Entity_Type.enemy) {
+                        other_entities.push({
+                            type: enum_to_string(entity.type),
+                            position: [entity.spawn_position.x, entity.spawn_position.y],
+                            facing: [entity.spawn_facing.x, entity.spawn_facing.y],
+                        })
+                    }
+                }
+
                 rooms.push({
                     id: room.id,
                     entrance: [room.entrance_location.x, room.entrance_location.y],
-                    enemies: enemies
+                    enemies: enemies,
+                    other_entities: other_entities
                 });
             }
 
@@ -231,14 +273,20 @@ export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor
             break;
         }
 
-        case Adventure_Editor_Action_Type.edit_enemy: {
-            const enemy = adventure.entities.find(entity => entity.id == action.entity_id);
-            if (!enemy) return;
-            if (enemy.definition.type != Adventure_Entity_Type.enemy) return;
+        case Adventure_Editor_Action_Type.set_entity_position: {
+            const entity = adventure.entities.find(entity => entity.id == action.entity_id);
+            if (!entity) return;
 
-            enemy.definition.npc_type = action.npc_type;
-            enemy.definition.spawn_position = action.new_position;
-            enemy.definition.spawn_facing = action.new_facing;
+            entity.definition.spawn_position = action.new_position;
+
+            break;
+        }
+
+        case Adventure_Editor_Action_Type.set_entity_facing: {
+            const entity = adventure.entities.find(entity => entity.id == action.entity_id);
+            if (!entity) return;
+
+            entity.definition.spawn_facing = action.new_facing;
 
             break;
         }
