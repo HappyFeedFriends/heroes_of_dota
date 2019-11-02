@@ -329,7 +329,13 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                     x: player.online.current_location.x,
                     y: player.online.current_location.y
                 },
-                entities: ongoing_adventure.entities
+                entities: ongoing_adventure.entities,
+                party: {
+                    heroes: player.online.heroes,
+                    minions: player.online.minions,
+                    spells: player.online.spells,
+                    currency: player.online.amount_of_currency
+                }
             }
         }
 

@@ -29,6 +29,7 @@ type Adventure_Materialized_Entity = Adventure_Entity_Base & (
 
 type Adventure_State = {
     entities: Adventure_Materialized_Entity[]
+    party: Adventure_Party_State
 }
 
 function create_adventure_entity(entity: Adventure_Entity): Adventure_Materialized_Entity {

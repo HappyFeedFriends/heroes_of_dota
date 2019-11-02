@@ -47,6 +47,7 @@ type Game_Net_Table_On_Global_Map = Player_Net_Table_Base & {
 
 type Game_Net_Table_On_Adventure = Player_Net_Table_Base & {
     state: Player_State.on_adventure
+    party: Adventure_Party_State
 }
 
 type Game_Net_Table_In_Battle = Player_Net_Table_Base & {

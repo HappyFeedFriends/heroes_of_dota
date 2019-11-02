@@ -242,7 +242,8 @@ function game_net_table(game: Game): Game_Net_Table {
             return {
                 state: game.state,
                 id: game.player.remote_id,
-                token: game.token
+                token: game.token,
+                party: game.adventure.party
             };
         }
 
@@ -356,6 +357,8 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         for (const entity of next_state.entities) {
             game.adventure.entities.push(create_adventure_entity(entity));
         }
+
+        game.adventure.party = next_state.party;
     }
 
     game.state = next_state.state;
@@ -524,7 +527,13 @@ function game_loop() {
         token: "",
         state: Player_State.not_logged_in,
         adventure: {
-            entities: []
+            entities: [],
+            party: {
+                currency: 0,
+                heroes: [],
+                minions: [],
+                spells: []
+            }
         }
     };
 

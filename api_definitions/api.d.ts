@@ -106,6 +106,7 @@ type Player_State_On_Adventure = {
         y: number
     }
     entities: Adventure_Entity[]
+    party: Adventure_Party_State
 }
 
 type Player_State_In_Battle = {

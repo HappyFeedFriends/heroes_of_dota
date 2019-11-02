@@ -145,9 +145,14 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
         adventure_ui.game_state = data.state;
 
         if (data.state == Player_State.on_adventure) {
-            api_request(Api_Request_Type.get_player_adventure_party_state, {
-                access_token: get_access_token()
-            }, create_adventure_ui);
+            const party: Adventure_Party_State = {
+                currency: data.party.currency,
+                heroes: from_server_array(data.party.heroes),
+                spells: from_server_array(data.party.spells),
+                minions: from_server_array(data.party.minions)
+            };
+
+            create_adventure_ui(party);
         }
     }
 });

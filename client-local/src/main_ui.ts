@@ -103,6 +103,14 @@ function subscribe_to_net_table_key<T>(table: string, key: string, callback: (da
     return listener;
 }
 
+function get_hero_name(hero: Hero_Type): string {
+    const enum_string = enum_to_string(hero);
+
+    return enum_string.split("_")
+        .map(word => word[0].toUpperCase() + word.slice(1))
+        .reduce((prev, value) => prev + " " + value);
+}
+
 if (!Array.prototype.find) {
     // @ts-ignore
     Array.prototype.find = function <T>(predicate: (element: T) => boolean): T | undefined {
@@ -138,6 +146,12 @@ if (Game.IsInToolsMode()) {
 
         return this.stack;
     };
+}
+
+function safely_set_panel_background_image(panel: Panel, image: string) {
+    panel.style.backgroundImage = `url('${image}')`;
+    panel.AddClass("fix_bg");
+    panel.RemoveClass("fix_bg");
 }
 
 function from_server_array<T>(array: Array<T>): Array<T> {
@@ -254,6 +268,11 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
 
     if (data.state == Player_State.in_battle) {
         GameUI.SetCameraDistance(1400);
+        GameUI.SetCameraYaw(0);
+        GameUI.SetCameraPitchMin(60);
+        GameUI.SetCameraPitchMax(60);
+    } else if (data.state == Player_State.on_adventure) {
+        GameUI.SetCameraDistance(1600);
         GameUI.SetCameraYaw(0);
         GameUI.SetCameraPitchMin(60);
         GameUI.SetCameraPitchMax(60);
