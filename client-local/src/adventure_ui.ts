@@ -1,10 +1,16 @@
 const adventure_ui = {
-    game_state: Player_State.not_logged_in,
-    card_container: $("#adventure_cards"),
-    currency_label: $("#currency_remaining") as LabelPanel,
+    card_container: adventure_ui_root.FindChildTraverse("adventure_cards"),
+    currency_label: adventure_ui_root.FindChildTraverse("currency_remaining") as LabelPanel,
     tooltip: {
-        ...create_adventure_card_tooltip($("#adventure_card_tooltips")),
+        ...create_adventure_card_tooltip(adventure_ui_root.FindChildTraverse("adventure_card_tooltips")),
         css_class: ""
+    },
+    popup: {
+        window: adventure_ui_root.FindChildTraverse("adventure_popup"),
+        text: adventure_ui_root.FindChildTraverse("adventure_popup_text") as LabelPanel,
+        background: adventure_ui_root.FindChildTraverse("window_background"),
+        button_yes: adventure_ui_root.FindChildTraverse("adventure_popup_yes"),
+        button_no: adventure_ui_root.FindChildTraverse("adventure_popup_no")
     }
 };
 
@@ -140,19 +146,59 @@ function create_adventure_ui(party: Adventure_Party_State) {
     adventure_ui.currency_label.text = party.currency.toString(10);
 }
 
+function show_adventure_popup(entity_id: Adventure_Entity_Id, text: string) {
+    const popup = adventure_ui.popup;
+
+    popup.window.SetHasClass("visible", true);
+    popup.background.SetHasClass("visible", true);
+
+    popup.text.text = text;
+
+    popup.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
+
+    popup.button_yes.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        const event: Adventure_Interact_With_Entity_Event = {
+            entity_id: entity_id
+        };
+
+        GameEvents.SendCustomGameEventToServer("adventure_interact_with_entity", event);
+
+        hide_adventure_popup();
+    });
+
+    popup.button_no.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        hide_adventure_popup();
+    });
+
+    popup.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        hide_adventure_popup();
+    });
+}
+
+function hide_adventure_popup() {
+    adventure_ui.popup.window.SetHasClass("visible", false);
+    adventure_ui.popup.background.SetHasClass("visible", false);
+}
+
+function adventure_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
+    return false;
+}
+
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
-    if (adventure_ui.game_state != data.state) {
-        adventure_ui.game_state = data.state;
+    if (data.state == Player_State.on_adventure) {
+        const party: Adventure_Party_State = {
+            currency: data.party.currency,
+            heroes: from_server_array(data.party.heroes),
+            spells: from_server_array(data.party.spells),
+            minions: from_server_array(data.party.minions)
+        };
 
-        if (data.state == Player_State.on_adventure) {
-            const party: Adventure_Party_State = {
-                currency: data.party.currency,
-                heroes: from_server_array(data.party.heroes),
-                spells: from_server_array(data.party.spells),
-                minions: from_server_array(data.party.minions)
-            };
+        create_adventure_ui(party);
+    }
+});
 
-            create_adventure_ui(party);
-        }
+subscribe_to_custom_event<Adventure_Popup_Event>("show_adventure_popup", event => {
+    if (event.entity.type == Adventure_Entity_Type.lost_creep) {
+        show_adventure_popup(event.entity_id, "Lost Creep would like to join your party");
     }
 });

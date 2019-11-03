@@ -243,6 +243,19 @@ function save_adventures_to_file() {
     writeFileSync(storage_file_path, JSON.stringify(file, (key, value) => value, "    "));
 }
 
+export function interact_with_entity(adventure: Ongoing_Adventure, party: Adventure_Party_State, entity_id: Adventure_Entity_Id) {
+    const entity = adventure.entities.find(entity => entity.id == entity_id);
+    if (!entity) return;
+    if (!entity.alive) return;
+
+    switch (entity.definition.type) {
+        case Adventure_Entity_Type.lost_creep: {
+            party.spells.push(Spell_Id.call_to_arms);
+            break;
+        }
+    }
+}
+
 export function editor_create_entity(adventure: Ongoing_Adventure, definition: Adventure_Entity_Definition): Adventure_Entity {
     const new_entity = adventure_entity_from_definition(get_next_entity_id(), definition);
 

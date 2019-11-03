@@ -8,6 +8,9 @@ const player_name_storage: Record<number, string> = {};
 const player_name_requests: Record<number, Player_Name_Callback[]> = {};
 const map_camera_height = 1300;
 
+const global_map_ui_root = $("#global_map_ui");
+const adventure_ui_root = $("#adventure_ui");
+
 function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>, callback: (response: Find_Response<T>) => void, fail?: () => void) {
     $.AsyncWebRequest(remote_root + "/api" + type, {
         type: "POST",
@@ -81,6 +84,12 @@ function get_visualiser_delta_head(): number | undefined {
     }
 
     return undefined;
+}
+
+function subscribe_to_custom_event<T extends object>(event_name: string, handler: (data: T) => void) {
+    GameEvents.Subscribe(event_name, event_data => {
+        handler(event_data as T);
+    })
 }
 
 function subscribe_to_net_table_key<T>(table: string, key: string, callback: (data: T) => void){
@@ -234,6 +243,31 @@ GameEvents.Subscribe("log_message", event => {
     // $.Msg(event.message);
 });
 
+function setup_mouse_filter() {
+    GameUI.SetMouseCallback((event, button) => {
+        try {
+            if (in_editor_mode) {
+                const should_consume = editor_filter_mouse_click(event, button);
+
+                if (should_consume) {
+                    return true;
+                }
+            }
+
+            switch (current_state) {
+                case Player_State.in_battle: return battle_filter_mouse_click(event, button);
+                case Player_State.on_adventure: return adventure_filter_mouse_click(event, button);
+            }
+
+            return false;
+        } catch (e) {
+            $.Msg(e);
+
+            return true;
+        }
+    });
+}
+
 function hide_default_ui() {
     GameUI.SetDefaultUIEnabled(DotaDefaultUIElement_t.DOTA_DEFAULT_UI_TOP_TIMEOFDAY, false);
     GameUI.SetDefaultUIEnabled(DotaDefaultUIElement_t.DOTA_DEFAULT_UI_TOP_HEROES, false);
@@ -259,10 +293,11 @@ function hide_default_ui() {
 
 clean_up_particles_after_reload();
 hide_default_ui();
+setup_mouse_filter();
 
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
-    $("#global_map_ui").style.visibility = data.state == Player_State.on_global_map ? "visible" : "collapse";
-    $("#adventure_ui").style.visibility = data.state == Player_State.on_adventure ? "visible" : "collapse";
+    global_map_ui_root.style.visibility = data.state == Player_State.on_global_map ? "visible" : "collapse";
+    adventure_ui_root.style.visibility = data.state == Player_State.on_adventure ? "visible" : "collapse";
     $("#battle_ui").style.visibility = data.state == Player_State.in_battle ? "visible" : "collapse";
     $("#disconnected_ui").style.visibility = data.state == Player_State.not_logged_in ? "visible" : "collapse";
 

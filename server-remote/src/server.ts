@@ -25,7 +25,7 @@ import {
     apply_editor_action,
     create_room_entities,
     reload_adventures_from_file,
-    room_by_id, editor_create_entity
+    room_by_id, editor_create_entity, interact_with_entity
 } from "./adventures";
 import {check_and_try_perform_ai_actions} from "./ai";
 
@@ -84,18 +84,20 @@ type Map_Player_On_Adventure = {
     current_location: XY
     movement_history: Movement_History_Entry[]
     previous_global_map_location: XY
-    amount_of_currency: number
-    heroes: {
-        battle_unit_id: Unit_Id
-        type: Hero_Type
-        health: number
-    }[]
-    minions: {
-        battle_unit_id: Unit_Id
-        type: Minion_Type
-        health: number
-    }[]
-    spells: Spell_Id[]
+    party: {
+        currency: number
+        heroes: {
+            battle_unit_id: Unit_Id
+            type: Hero_Type
+            health: number
+        }[]
+        minions: {
+            battle_unit_id: Unit_Id
+            type: Minion_Type
+            health: number
+        }[]
+        spells: Spell_Id[]
+    }
 }
 
 type Card_Deck = {
@@ -330,12 +332,7 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                     y: player.online.current_location.y
                 },
                 entities: ongoing_adventure.entities,
-                party: {
-                    heroes: player.online.heroes,
-                    minions: player.online.minions,
-                    spells: player.online.spells,
-                    currency: player.online.amount_of_currency
-                }
+                party: player.online.party
             }
         }
 
@@ -417,8 +414,8 @@ function player_to_battle_participant(next_id: Id_Generator, player: Map_Player)
 }
 
 function player_to_adventure_battle_participant(next_id: Id_Generator, id: Player_Id, player_on_adventure: Map_Player_On_Adventure): Battle_Participant {
-    const alive_heroes = player_on_adventure.heroes.filter(hero => hero.health > 0);
-    const alive_minions = player_on_adventure.minions.filter(minion => minion.health > 0);
+    const alive_heroes = player_on_adventure.party.heroes.filter(hero => hero.health > 0);
+    const alive_minions = player_on_adventure.party.minions.filter(minion => minion.health > 0);
 
     for (const hero of alive_heroes) {
         hero.battle_unit_id = next_id() as Unit_Id;
@@ -433,7 +430,7 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
             type: Map_Entity_Type.player,
             player_id: id
         },
-        spells: player_on_adventure.spells,
+        spells: player_on_adventure.party.spells,
         heroes: alive_heroes.map(hero => ({
             id: hero.battle_unit_id,
             type: hero.type,
@@ -534,7 +531,7 @@ export function report_battle_over(battle: Battle_Record, winner_entity: Battle_
     }
 
     function update_player_adventure_state_from_battle(player: Map_Player_On_Adventure, battle_counterpart: Battle_Player) {
-        for (const hero of player.heroes) {
+        for (const hero of player.party.heroes) {
             const source_unit = battle.units.find(unit => unit.id == hero.battle_unit_id);
 
             if (source_unit) {
@@ -543,7 +540,7 @@ export function report_battle_over(battle: Battle_Record, winner_entity: Battle_
             }
         }
 
-        for (const minion of player.minions) {
+        for (const minion of player.party.minions) {
             const source_unit = battle.units.find(unit => unit.id == minion.battle_unit_id);
 
             if (source_unit) {
@@ -552,11 +549,11 @@ export function report_battle_over(battle: Battle_Record, winner_entity: Battle_
             }
         }
 
-        player.spells = [];
+        player.party.spells = [];
 
         for (const card of battle_counterpart.hand) {
             if (card.type == Card_Type.spell) {
-                player.spells.push(card.spell_id);
+                player.party.spells.push(card.spell_id);
             }
         }
     }
@@ -962,22 +959,24 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
             current_location: starting_room.entrance_location,
             movement_history: [],
             previous_global_map_location: player.online.current_location,
-            amount_of_currency: 0,
-            heroes: [
-                Hero_Type.dragon_knight,
-                Hero_Type.vengeful_spirit,
-                Hero_Type.mirana
-            ].map(type => ({
-                type: type,
-                battle_unit_id: -1 as Unit_Id, // TODO ugh
-                health: hero_definition_by_type(type).health
-            })),
-            minions: [],
-            spells: [
-                Spell_Id.mekansm,
-                Spell_Id.town_portal_scroll,
-                Spell_Id.euls_scepter
-            ]
+            party: {
+                currency: 0,
+                heroes: [
+                    Hero_Type.dragon_knight,
+                    Hero_Type.vengeful_spirit,
+                    Hero_Type.mirana
+                ].map(type => ({
+                    type: type,
+                    battle_unit_id: -1 as Unit_Id, // TODO ugh
+                    health: hero_definition_by_type(type).health
+                })),
+                minions: [],
+                spells: [
+                    Spell_Id.mekansm,
+                    Spell_Id.town_portal_scroll,
+                    Spell_Id.euls_scepter
+                ]
+            }
         };
 
         return player_to_player_state_object(player);
@@ -1051,16 +1050,13 @@ register_api_handler(Api_Request_Type.exit_adventure, req => {
     });
 });
 
-register_api_handler(Api_Request_Type.get_player_adventure_party_state, req => {
+register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
     return with_player_in_request(req, player => {
         if (player.online.state != Player_State.on_adventure) return;
 
-        return {
-            heroes: player.online.heroes,
-            minions: player.online.minions,
-            spells: player.online.spells,
-            currency: player.online.amount_of_currency
-        }
+        interact_with_entity(player.online.ongoing_adventure, player.online.party, req.target_entity_id);
+
+        return player.online.party;
     });
 });
 

@@ -610,7 +610,7 @@ function linear_projectile_with_targets<T>(
     particle.destroy_and_release(false);
 }
 
-type Replace_Target_Unit_Id<T> = Pick<T, Exclude<keyof T, "target_unit_id">> & { unit: Unit };
+type Replace_Target_Unit_Id<T> = Omit<T, "target_unit_id"> & { unit: Unit };
 
 function filter_and_map_existing_units<T extends { target_unit_id: Unit_Id }>(array: T[]): Replace_Target_Unit_Id<T>[] {
     const result: Replace_Target_Unit_Id<T>[] = [];

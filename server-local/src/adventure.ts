@@ -9,9 +9,10 @@ type Adventure_Entity_Base = {
     id: Adventure_Entity_Id
     spawn_position: XY
     spawn_facing: XY
+    definition: Adventure_Entity_Definition
 }
 
-type Materialize<T extends { type: Adventure_Entity_Type }> = Dead_Or_Alive<Adventure_Entity_Base & T>
+type Materialize<T extends { type: Adventure_Entity_Type }> = Adventure_Entity_Base & Dead_Or_Alive<T>
 
 type Dead_Or_Alive<T extends { type: Adventure_Entity_Type }> = (T & { alive: true }) | {
     type: T["type"]
@@ -40,6 +41,7 @@ type Adventure_Materialized_Entity = Adventure_Materialized_Enemy | Adventure_Ma
 type Adventure_State = {
     entities: Adventure_Materialized_Entity[]
     party: Adventure_Party_State
+    current_right_click_target?: Adventure_Materialized_Entity
 }
 
 function create_adventure_entity(entity: Adventure_Entity): Adventure_Materialized_Entity {
@@ -47,7 +49,8 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
     const base = {
         id: entity.id,
         spawn_facing: data.spawn_facing,
-        spawn_position: data.spawn_position
+        spawn_position: data.spawn_position,
+        definition: entity.definition
     };
 
     function transfer_editor_data(unit: CDOTA_BaseNPC) {
@@ -267,10 +270,58 @@ function update_lost_creep(game: Game, creep: Adventure_Materialized_Lost_Creep)
         }
     }
 }
+function process_player_adventure_order(game: Game, order: ExecuteOrderEvent): boolean {
+    function try_find_entity_by_unit<T extends Entity_With_Movement>(query: CBaseEntity): Adventure_Materialized_Entity | undefined {
+        return array_find(game.adventure.entities, entity => entity.alive && entity.handle == query);
+    }
 
-function adventure_enemy_movement_loop(game: Game) {
+    for (let index in order.units) {
+        if (order.units[index] == game.player.hero_unit.entindex()) {
+            game.adventure.current_right_click_target = undefined;
+
+            if (order.order_type == DotaUnitOrder_t.DOTA_UNIT_ORDER_MOVE_TO_POSITION) {
+                game.player.current_order_x = order.position_x;
+                game.player.current_order_y = order.position_y;
+            } else if (order.order_type == DotaUnitOrder_t.DOTA_UNIT_ORDER_ATTACK_TARGET) {
+                const clicked_entity = try_find_entity_by_unit(EntIndexToHScript(order.entindex_target));
+
+                if (clicked_entity) {
+                    game.adventure.current_right_click_target = clicked_entity;
+                }
+            } else {
+                return false;
+            }
+
+            break;
+        }
+    }
+
+    return true;
+}
+
+function adventure_update_loop(game: Game) {
     while (true) {
         wait_until(() => game.state == Player_State.on_adventure);
+
+        const right_click_target = game.adventure.current_right_click_target;
+        if (right_click_target && right_click_target.alive) {
+            const delta = right_click_target.handle.GetAbsOrigin() - game.player.hero_unit.GetAbsOrigin() as Vector;
+
+            if (!game.player.hero_unit.IsMoving() && delta.Length2D() <= 300) {
+                game.adventure.current_right_click_target = undefined;
+
+                // In case hero is already close to the target we stop them so camera doesn't move behind the popup
+                game.player.hero_unit.Stop();
+                game.player.hero_unit.FaceTowards(right_click_target.handle.GetAbsOrigin());
+
+                const event: Adventure_Popup_Event = {
+                    entity_id: right_click_target.id,
+                    entity: right_click_target.definition
+                };
+
+                CustomGameEventManager.Send_ServerToAllClients("show_adventure_popup", event);
+            }
+        }
 
         for (const entity of game.adventure.entities) {
             if (!entity.alive) continue;
@@ -304,6 +355,25 @@ function submit_adventure_movement_loop(game: Game) {
         };
 
         api_request_with_retry_on_403(Api_Request_Type.submit_adventure_player_movement, game, request);
+    }
+}
+
+function adventure_interact_with_entity(game: Game, id: Adventure_Entity_Id) {
+    const entity = array_find(game.adventure.entities, entity => entity.id == id);
+
+    if (!entity) return;
+    if (!entity.alive) return;
+
+    const new_party_state = api_request(Api_Request_Type.interact_with_adventure_entity, {
+        target_entity_id: id,
+        access_token: game.token,
+        dedicated_server_key: get_dedicated_server_key()
+    });
+
+    if (new_party_state) {
+        game.adventure.party = new_party_state;
+
+        update_game_net_table(game);
     }
 }
 

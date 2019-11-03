@@ -544,7 +544,11 @@ function game_loop() {
     wait_until(() => game.state != Player_State.not_logged_in);
 
     on_player_order_async(order => {
-        if (game.state == Player_State.on_global_map || game.state == Player_State.on_adventure) {
+        if (game.state == Player_State.on_adventure) {
+            return process_player_adventure_order(game, order);
+        }
+
+        if (game.state == Player_State.on_global_map) {
             return process_player_global_map_order(game, map, order);
         }
 
@@ -570,6 +574,12 @@ function game_loop() {
         update_game_net_table(game);
     });
 
+    on_custom_event_async<Adventure_Interact_With_Entity_Event>("adventure_interact_with_entity", event => {
+        if (game.state == Player_State.on_adventure) {
+            adventure_interact_with_entity(game, event.entity_id);
+        }
+    });
+
     if (IsInToolsMode()) {
         SendToServerConsole("r_farz 10000");
 
@@ -581,7 +591,7 @@ function game_loop() {
     }
 
     fork(() => submit_adventure_movement_loop(game));
-    fork(() => adventure_enemy_movement_loop(game));
+    fork(() => adventure_update_loop(game));
     fork(() => submit_and_query_movement_loop(game, map));
     fork(() => {
         while(true) {

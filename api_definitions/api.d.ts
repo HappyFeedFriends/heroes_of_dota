@@ -32,7 +32,7 @@ declare const enum Api_Request_Type {
     query_adventure_entity_states = 203,
     start_adventure_enemy_fight = 204,
     submit_adventure_player_movement = 205,
-    get_player_adventure_party_state = 206,
+    interact_with_adventure_entity = 206,
 
     battle_cheat = 50,
     map_cheat = 51,
@@ -314,8 +314,10 @@ type Api_Request = {
     } & With_Token & With_Private_Key
     response: {}
 } | {
-    type: Api_Request_Type.get_player_adventure_party_state
-    request: {} & With_Token
+    type: Api_Request_Type.interact_with_adventure_entity
+    request: {
+        target_entity_id: Adventure_Entity_Id
+    } & With_Token & With_Private_Key
     response: Adventure_Party_State
 } | {
     type: Api_Request_Type.editor_action

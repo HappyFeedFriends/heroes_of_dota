@@ -121,6 +121,15 @@ type Game_Over_Event = {
     winner_player_id: Battle_Player_Id
 }
 
+type Adventure_Popup_Event = {
+    entity_id: Adventure_Entity_Id
+    entity: Adventure_Entity_Definition
+}
+
+type Adventure_Interact_With_Entity_Event = {
+    entity_id: Adventure_Entity_Id
+}
+
 type Player_Snapshot = {
     id: Battle_Player_Id
     gold: number

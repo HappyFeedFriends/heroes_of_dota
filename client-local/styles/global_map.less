@@ -71,17 +71,7 @@
   width: 1300px;
   height: 800px;
 
-  transition-property: transform, opacity;
-  transition-duration: 0.1s;
-  transform: translateY(60px);
-  opacity: 0;
-
-  box-shadow: #151515 0 0 16px 0;
-
-  &.visible {
-    transform: none;
-    opacity: 1;
-  }
+  #ui_window();
 
   #collection {
     flow-children: down;

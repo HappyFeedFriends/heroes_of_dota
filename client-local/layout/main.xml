@@ -130,6 +130,23 @@
                 <Panel id="right_flare"/>
             </Panel>
             <Panel hittest="false" id="adventure_card_tooltips"/>
+
+            <Panel id="window_background"/>
+            <Panel id="adventure_popup">
+                <Panel id="adventure_popup_content">
+                    <Label id="adventure_popup_text"/>
+                    <Panel id="adventure_popup_content"/>
+                </Panel>
+
+                <Panel id="adventure_popup_buttons">
+                    <Button id="adventure_popup_yes">
+                        <Panel id="icon"/>
+                    </Button>
+                    <Button id="adventure_popup_no">
+                        <Panel id="icon"/>
+                    </Button>
+                </Panel>
+            </Panel>
         </Panel>
 
         <Panel id="editor_ui" hittest="false" style="visibility: collapse;">

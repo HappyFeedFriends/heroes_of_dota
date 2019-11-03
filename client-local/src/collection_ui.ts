@@ -23,8 +23,8 @@ type Collection_Card_UI = Collection_Card & {
     panel: Panel
 }
 
-const window_background = $("#window_background");
-const collection_ui = $("#collection_window");
+const window_background = global_map_ui_root.FindChildTraverse("window_background");
+const collection_ui = global_map_ui_root.FindChildTraverse("collection_window");
 const page_overlay = collection_ui.FindChildTraverse("page_overlay");
 const page_root = collection_ui.FindChildTraverse("page");
 const deck_content_root = collection_ui.FindChildTraverse("deck_content");

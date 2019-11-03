@@ -2302,11 +2302,7 @@ function get_entity_under_cursor(cursor: [ number, number ]): EntityId | undefin
     return undefined;
 }
 
-function filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
-    if (current_state != Player_State.in_battle) {
-        return false;
-    }
-
+function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
     if (event == "pressed" || event == "doublepressed") {
         const click_behaviors = GameUI.GetClickBehaviors();
         const cursor = GameUI.GetCursorPosition();
@@ -2436,26 +2432,6 @@ function filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll
     }
 
     return true;
-}
-
-function setup_mouse_filter() {
-    GameUI.SetMouseCallback((event, button) => {
-        try {
-            if (in_editor_mode) {
-                const should_consume = editor_filter_mouse_click(event, button);
-
-                if (should_consume) {
-                    return true;
-                }
-            }
-
-            return filter_mouse_click(event, button);
-        } catch (e) {
-            $.Msg(e);
-
-            return true;
-        }
-    });
 }
 
 function create_card_ui(root: Panel, card: Card) {
@@ -2840,12 +2816,6 @@ function setup_custom_ability_hotkeys() {
     bind_ability_at_index_to_command("AbilityUltimate", 3);
 }
 
-function subscribe_to_custom_event<T extends object>(event_name: string, handler: (data: T) => void) {
-    GameEvents.Subscribe(event_name, event_data => {
-        handler(event_data as T);
-    })
-}
-
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
     if (current_state != data.state) {
         process_state_transition(current_state, data);
@@ -2860,7 +2830,6 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
     }
 });
 
-setup_mouse_filter();
 setup_custom_ability_hotkeys();
 periodically_update_ui();
 periodically_update_stat_bar_display();

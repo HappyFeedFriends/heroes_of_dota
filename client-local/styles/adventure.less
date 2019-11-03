@@ -163,4 +163,85 @@
       }
     }
   }
+
+  #adventure_popup {
+    align: center center;
+    width: 500px;
+    height: 350px;
+    box-shadow: #151515 0 0 16px 0;
+
+    background-color: #4e6180;
+    background-image: url("s2r://panorama/images/backgrounds/dashboard_vignette_png.vtex");
+    background-size: 100% 100%;
+
+    #ui_window();
+
+    #adventure_popup_content {
+      flow-children: down;
+      align: center center;
+    }
+
+    #adventure_popup_text {
+      color: white;
+      font-family: @font-regular;
+      font-size: 24px;
+      width: 250px;
+      text-align: center;
+    }
+
+    #adventure_popup_buttons {
+      align: center bottom;
+      margin-bottom: 12px;
+      flow-children: right;
+
+      #icon {
+        width: 32px;
+        height: 32px;
+        align: center center;
+        background-size: 100% 100%;
+      }
+
+      #button_gradient(@from, @to) {
+        background-color: gradient(linear, 0% 0%, 0% 100%, from(@from), to(@to));
+
+        &:hover {
+          background-color: gradient(linear, 0% 0%, 0% 100%, from(lighten(@from, 10%)), to(lighten(@to, 10%)));
+        }
+
+        &:active {
+          background-color: gradient(linear, 0% 0%, 0% 100%, from(darken(@from, 5%)), to(darken(@to, 5%)));
+
+          #icon {
+            transform: translateY(1px);
+          }
+        }
+      }
+
+      #adventure_popup_yes {
+        #button_gradient(#60862d, #3d5f1c);
+      }
+
+      #adventure_popup_no {
+        #button_gradient(#708586, #465253);
+      }
+
+      #adventure_popup_yes #icon {
+        background-image: url("s2r://panorama/images/control_icons/check_shadow_png.vtex");
+      }
+
+      #adventure_popup_no #icon {
+        background-image: url("s2r://panorama/images/control_icons/x_close_png.vtex");
+        img-shadow: 0px 1px 0px 1 rgba(0, 0, 0, 0.69);
+      }
+
+      Button {
+        margin: 12px;
+        width: 120px;
+        height: 44px;
+        border-radius: 2px;
+        box-shadow: #151515 0 0 6px 0;
+        border: 1px solid black;
+      }
+    }
+  }
 }
