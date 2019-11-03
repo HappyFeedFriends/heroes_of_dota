@@ -1054,9 +1054,13 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
     return with_player_in_request(req, player => {
         if (player.online.state != Player_State.on_adventure) return;
 
-        interact_with_entity(player.online.ongoing_adventure, player.online.party, req.target_entity_id);
+        const updated_state = interact_with_entity(player.online.ongoing_adventure, player.online.party, req.target_entity_id);
+        if (!updated_state) return;
 
-        return player.online.party;
+        return {
+            updated_party: player.online.party,
+            updated_entity: updated_state
+        };
     });
 });
 

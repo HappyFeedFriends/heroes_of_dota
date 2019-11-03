@@ -359,19 +359,27 @@ function submit_adventure_movement_loop(game: Game) {
 }
 
 function adventure_interact_with_entity(game: Game, id: Adventure_Entity_Id) {
-    const entity = array_find(game.adventure.entities, entity => entity.id == id);
+    const entity_index = array_find_index(game.adventure.entities, entity => entity.id == id);
+    if (entity_index == -1) return;
 
-    if (!entity) return;
+    const entity = game.adventure.entities[entity_index];
     if (!entity.alive) return;
 
-    const new_party_state = api_request(Api_Request_Type.interact_with_adventure_entity, {
+    const state_update = api_request(Api_Request_Type.interact_with_adventure_entity, {
         target_entity_id: id,
         access_token: game.token,
         dedicated_server_key: get_dedicated_server_key()
     });
 
-    if (new_party_state) {
-        game.adventure.party = new_party_state;
+    if (state_update) {
+        game.adventure.party = state_update.updated_party;
+
+        cleanup_adventure_entity(entity);
+
+        game.adventure.entities[entity_index] = create_adventure_entity({
+            ...state_update.updated_entity,
+            definition: entity.definition
+        });
 
         update_game_net_table(game);
     }

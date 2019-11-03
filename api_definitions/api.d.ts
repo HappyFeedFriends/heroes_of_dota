@@ -318,7 +318,10 @@ type Api_Request = {
     request: {
         target_entity_id: Adventure_Entity_Id
     } & With_Token & With_Private_Key
-    response: Adventure_Party_State
+    response: {
+        updated_party: Adventure_Party_State
+        updated_entity: Adventure_Entity_State
+    }
 } | {
     type: Api_Request_Type.editor_action
     request: Editor_Action & With_Token
