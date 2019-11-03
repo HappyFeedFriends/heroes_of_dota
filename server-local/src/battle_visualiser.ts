@@ -2663,7 +2663,7 @@ function add_activity_translation(target: Unit, translation: Activity_Translatio
     target.handle.AddNewModifier(target.handle, undefined, "Modifier_Activity_Translation", parameters);
 }
 
-function add_activity_override(target: Handle_Provider, activity: GameActivity_t, duration?: number) {
+function add_activity_override(target: Handle_Provider, activity: GameActivity_t, duration?: number): CDOTA_Buff {
     if (target.handle.HasModifier("Modifier_Activity_Override")) {
         target.handle.RemoveModifierByName("Modifier_Activity_Override");
     }
@@ -2673,7 +2673,7 @@ function add_activity_override(target: Handle_Provider, activity: GameActivity_t
         duration: duration
     };
 
-    target.handle.AddNewModifier(target.handle, undefined, "Modifier_Activity_Override", parameters);
+    return target.handle.AddNewModifier(target.handle, undefined, "Modifier_Activity_Override", parameters);
 }
 
 function show_damage_effect_on_target(target: Handle_Provider) {
