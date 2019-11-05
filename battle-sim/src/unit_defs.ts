@@ -408,7 +408,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
     }
 }
 
-function creep_definition(): Unit_Definition {
+function monster_definition(): Unit_Definition {
     return {
         attack: basic_attack(1),
         attack_damage: 3,

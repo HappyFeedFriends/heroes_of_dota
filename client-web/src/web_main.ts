@@ -695,7 +695,7 @@ namespace clr {
 
     export function unit_name(unit: Unit): Colored_String {
         switch (unit.supertype) {
-            case Unit_Supertype.creep: {
+            case Unit_Supertype.monster: {
                 return txt("creep", "red");
             }
 
@@ -1205,7 +1205,7 @@ function draw_grid(game: Game_In_Battle, player: Battle_Player | undefined, high
         }
 
         const unit_color = (alpha: number) => {
-            if (unit.supertype == Unit_Supertype.creep) {
+            if (unit.supertype == Unit_Supertype.monster) {
                 return `rgba(255, 0, 0, ${alpha})`;
             } else {
                 return clr.player_color(unit.owner.id, alpha);

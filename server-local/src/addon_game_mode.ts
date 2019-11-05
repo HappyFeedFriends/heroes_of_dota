@@ -37,7 +37,7 @@ function Precache(context: CScriptPrecacheContext) {
         precache_model_and_log([definition.model, definition.scale]);
     }
 
-    precache_model_and_log(creep_type_to_model_and_scale());
+    precache_model_and_log(monster_type_to_model_and_scale());
 
     PrecacheResource("soundfile", "soundevents/custom_game/game_sounds.vsndevts", context);
     PrecacheResource("soundfile", "soundevents/game_sounds_creeps.vsndevts", context);

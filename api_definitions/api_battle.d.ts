@@ -1,6 +1,6 @@
 declare const enum Delta_Type {
     hero_spawn = 0,
-    creep_spawn = 1,
+    monster_spawn = 1,
     minion_spawn = 2,
     tree_spawn = 3,
     rune_spawn = 4,
@@ -85,7 +85,7 @@ declare const enum Shop_Type {
 
 declare const enum Unit_Supertype {
     hero = 0,
-    creep = 1,
+    monster = 1,
     minion = 2
 }
 
@@ -437,8 +437,8 @@ type Delta_Hero_Spawn_From_Hand = {
     }
 }
 
-type Delta_Creep_Spawn = {
-    type: Delta_Type.creep_spawn
+type Delta_Monster_Spawn = {
+    type: Delta_Type.monster_spawn
     unit_id: Unit_Id
     at_position: {
         x: number
@@ -624,7 +624,7 @@ type Delta =
     Delta_Health_Change |
     Delta_Move |
     Delta_Hero_Spawn |
-    Delta_Creep_Spawn |
+    Delta_Monster_Spawn |
     Delta_Minion_Spawn |
     Delta_Tree_Spawn |
     Delta_Rune_Spawn |

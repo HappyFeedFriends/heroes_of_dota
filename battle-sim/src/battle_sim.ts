@@ -96,7 +96,7 @@ type Unit_Base = Unit_Stats & {
     modifiers: Modifier[]
 }
 
-type Unit = Hero | Creep | Minion
+type Unit = Hero | Monster | Minion
 
 type Hero =  Unit_Base & {
     type: Hero_Type;
@@ -106,8 +106,8 @@ type Hero =  Unit_Base & {
     items: Item[]
 }
 
-type Creep = Unit_Base & {
-    supertype: Unit_Supertype.creep
+type Monster = Unit_Base & {
+    supertype: Unit_Supertype.monster
 }
 
 type Minion = Unit_Base & {
@@ -258,11 +258,11 @@ function are_units_allies(a: Unit, b: Unit): boolean {
             - : are enemies
      */
 
-    if (a.supertype == Unit_Supertype.creep && b.supertype == Unit_Supertype.creep) {
+    if (a.supertype == Unit_Supertype.monster && b.supertype == Unit_Supertype.monster) {
         return true;
     }
 
-    if (a.supertype != Unit_Supertype.creep && b.supertype != Unit_Supertype.creep) {
+    if (a.supertype != Unit_Supertype.monster && b.supertype != Unit_Supertype.monster) {
         return a.owner == b.owner;
     }
 
@@ -270,7 +270,7 @@ function are_units_allies(a: Unit, b: Unit): boolean {
 }
 
 function player_owns_unit(player: Battle_Player, unit: Unit) {
-    if (unit.supertype == Unit_Supertype.creep) {
+    if (unit.supertype == Unit_Supertype.monster) {
         return false;
     }
 
@@ -768,7 +768,7 @@ function replace_ability(unit: Unit, ability_id_to_bench: Ability_Id, currently_
 
 function end_turn(battle: Battle, next_turning_player: Battle_Player) {
     for (const unit of battle.units) {
-        if (unit.supertype == Unit_Supertype.creep || unit.owner == battle.turning_player) {
+        if (unit.supertype == Unit_Supertype.monster || unit.owner == battle.turning_player) {
             for (const modifier of unit.modifiers) {
                 if (!modifier.permanent) {
                     if (modifier.duration_remaining > 0) {
@@ -1625,17 +1625,17 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             break;
         }
 
-        case Delta_Type.creep_spawn: {
-            const creep: Creep = {
-                ...unit_base(delta.unit_id, creep_definition(), delta.at_position),
-                supertype: Unit_Supertype.creep
+        case Delta_Type.monster_spawn: {
+            const monster: Monster = {
+                ...unit_base(delta.unit_id, monster_definition(), delta.at_position),
+                supertype: Unit_Supertype.monster
             };
 
-            battle.units.push(creep);
+            battle.units.push(monster);
 
             occupy_cell(battle, delta.at_position);
 
-            battle.receive_event(battle, unit_spawn_event(creep, delta.at_position));
+            battle.receive_event(battle, unit_spawn_event(monster, delta.at_position));
 
             break;
         }

@@ -48,8 +48,8 @@ type Hero = Unit_Base & {
     type: Hero_Type
 }
 
-type Creep = Unit_Base & {
-    supertype: Unit_Supertype.creep
+type Monster = Unit_Base & {
+    supertype: Unit_Supertype.monster
 }
 
 type Minion = Unit_Base & {
@@ -58,7 +58,7 @@ type Minion = Unit_Base & {
     type: Minion_Type
 }
 
-type Unit = Hero | Creep | Minion
+type Unit = Hero | Monster | Minion
 
 type Tree = {
     id: Tree_Id
@@ -119,7 +119,7 @@ type Unit_Creation_Info = {
     supertype: Unit_Supertype.minion
     type: Minion_Type
 } | {
-    supertype: Unit_Supertype.creep
+    supertype: Unit_Supertype.monster
 }
 
 declare let battle: Battle;
@@ -159,11 +159,11 @@ function find_player_deployment_zone_facing(id: Battle_Player_Id): XY | undefine
 }
 
 function are_units_allies(a: Unit, b: Unit): boolean {
-    if (a.supertype == Unit_Supertype.creep && b.supertype == Unit_Supertype.creep) {
+    if (a.supertype == Unit_Supertype.monster && b.supertype == Unit_Supertype.monster) {
         return true;
     }
 
-    if (a.supertype != Unit_Supertype.creep && b.supertype != Unit_Supertype.creep) {
+    if (a.supertype != Unit_Supertype.monster && b.supertype != Unit_Supertype.monster) {
         return a.owner_remote_id == b.owner_remote_id;
     }
 
@@ -280,7 +280,7 @@ function minion_type_to_model_and_scale(minion_type: Minion_Type): [string, numb
     }
 }
 
-function creep_type_to_model_and_scale(): [string, number] {
+function monster_type_to_model_and_scale(): [string, number] {
     return ["models/creeps/neutral_creeps/n_creep_centaur_lrg/n_creep_centaur_lrg.vmdl", 1];
 }
 
@@ -309,8 +309,8 @@ function create_world_handle_for_battle_unit(info: Unit_Creation_Info, at: XY, f
     }
 
     switch (info.supertype) {
-        case Unit_Supertype.creep: {
-            set_model_and_scale(creep_type_to_model_and_scale());
+        case Unit_Supertype.monster: {
+            set_model_and_scale(monster_type_to_model_and_scale());
             break;
         }
 
@@ -440,12 +440,12 @@ function unit_base(unit_id: Unit_Id, info: Unit_Creation_Info, definition: Unit_
     };
 }
 
-function spawn_creep_for_battle(unit_id: Unit_Id, definition: Unit_Definition, at: XY, facing: XY): Creep {
-    const base = unit_base(unit_id, { supertype: Unit_Supertype.creep }, definition, at, facing);
+function spawn_monster_for_battle(unit_id: Unit_Id, definition: Unit_Definition, at: XY, facing: XY): Monster {
+    const base = unit_base(unit_id, { supertype: Unit_Supertype.monster }, definition, at, facing);
 
     return {
         ...base,
-        supertype: Unit_Supertype.creep
+        supertype: Unit_Supertype.monster
     }
 }
 
@@ -865,7 +865,7 @@ function get_ranged_attack_spec(unit: Unit): Ranged_Attack_Spec | undefined {
             break;
         }
 
-        case Unit_Supertype.creep: {
+        case Unit_Supertype.monster: {
             return;
         }
     }
@@ -2539,7 +2539,7 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
 
     if (target.health == 0 && !target.dead) {
         // TODO gold earning could have an actual source, it's probably where we should spawn the particle
-        if (source.supertype != Unit_Supertype.creep && !are_units_allies(source, target)) {
+        if (source.supertype != Unit_Supertype.monster && !are_units_allies(source, target)) {
             fx("particles/generic_gameplay/lasthit_coins.vpcf").to_unit_origin(1, target).release();
             fx_follow_unit("particles/generic_gameplay/lasthit_coins_local.vpcf", source)
                 .to_unit_origin(1, target)
@@ -2547,7 +2547,7 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
                 .release();
         }
 
-        if (source.supertype != Unit_Supertype.creep && target.supertype != Unit_Supertype.creep) {
+        if (source.supertype != Unit_Supertype.monster && target.supertype != Unit_Supertype.monster) {
             if (source.owner_remote_id == target.owner_remote_id) {
                 try_play_random_sound_for_hero(source, sounds => sounds.deny);
             }
@@ -2738,8 +2738,8 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             break;
         }
 
-        case Delta_Type.creep_spawn: {
-            const unit = spawn_creep_for_battle(delta.unit_id, creep_definition(), delta.at_position, delta.facing);
+        case Delta_Type.monster_spawn: {
+            const unit = spawn_monster_for_battle(delta.unit_id, monster_definition(), delta.at_position, delta.facing);
 
             show_damage_effect_on_target(unit);
 
@@ -3183,9 +3183,9 @@ function use_cheat(battle: Battle, cheat: string) {
                 result += `rune(${rune.position.x}, ${rune.position.y}),\n`;
             }
 
-            for (const creep of battle.units) {
-                if (creep.supertype == Unit_Supertype.creep) {
-                    result += `creep(${creep.position.x}, ${creep.position.y}, up),\n`;
+            for (const monster of battle.units) {
+                if (monster.supertype == Unit_Supertype.monster) {
+                    result += `monster(${monster.position.x}, ${monster.position.y}, up),\n`;
                 }
             }
 
@@ -3298,10 +3298,10 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
                 };
             }
 
-            case Unit_Supertype.creep: {
+            case Unit_Supertype.monster: {
                 return {
                     ...base,
-                    supertype: Unit_Supertype.creep
+                    supertype: Unit_Supertype.monster
                 };
             }
 

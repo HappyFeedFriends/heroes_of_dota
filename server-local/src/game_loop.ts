@@ -163,10 +163,10 @@ function unit_to_visualizer_unit_data(unit: Unit): Visualizer_Unit_Data {
             }
         }
 
-        case Unit_Supertype.creep: {
+        case Unit_Supertype.monster: {
             return {
                 ...base,
-                supertype: Unit_Supertype.creep
+                supertype: Unit_Supertype.monster
             }
         }
 

@@ -13,7 +13,7 @@ export type Battle_Record = Battle & {
     finished: boolean
     random_seed: number
     deferred_actions: Deferred_Action[]
-    creep_targets: Map<Creep, Unit>
+    monster_targets: Map<Monster, Unit>
     end_turn_queued: boolean
 }
 
@@ -1481,11 +1481,11 @@ function spawn_minion(id: Unit_Id, owner: Battle_Player, at_position: XY, type: 
     };
 }
 
-function spawn_creep(battle: Battle_Record, at_position: XY, facing: XY): Delta_Creep_Spawn {
+function spawn_monster(battle: Battle_Record, at_position: XY, facing: XY): Delta_Monster_Spawn {
     const id = get_next_entity_id(battle) as Unit_Id;
 
     return {
-        type: Delta_Type.creep_spawn,
+        type: Delta_Type.monster_spawn,
         at_position: at_position,
         facing: facing,
         unit_id: id
@@ -1540,7 +1540,7 @@ function try_compute_battle_winner(battle: Battle_Record): Battle_Player | undef
     let last_alive_unit_owner: Battle_Player | undefined = undefined;
 
     for (const unit of battle.units) {
-        if (!unit.dead && unit.supertype != Unit_Supertype.creep) {
+        if (!unit.dead && unit.supertype != Unit_Supertype.monster) {
             if (last_alive_unit_owner == undefined) {
                 last_alive_unit_owner = unit.owner;
             } else if (last_alive_unit_owner != unit.owner) {
@@ -1562,13 +1562,13 @@ function get_gold_for_killing(target: Unit): number {
             return 4;
         }
 
-        case Unit_Supertype.creep: {
+        case Unit_Supertype.monster: {
             return random_int_range(4, 6);
         }
     }
 }
 
-function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: Unit) {
+function defer_monster_try_retaliate(battle: Battle_Record, monster: Monster, target: Unit) {
     type Attack_Intent_Result = { ok: true, ability: Ability_Active } | { ok: false, error: Attack_Intent_Error };
 
     const enum Attack_Intent_Error {
@@ -1582,7 +1582,7 @@ function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: 
             return { ok: false, error: error };
         }
 
-        const act_on_unit_permission = authorize_act_on_known_unit(battle, creep);
+        const act_on_unit_permission = authorize_act_on_known_unit(battle, monster);
         if (!act_on_unit_permission.ok) return error(Attack_Intent_Error.fail_and_cancel);
 
         const order_unit_permission = authorize_order_unit(act_on_unit_permission);
@@ -1597,9 +1597,9 @@ function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: 
         const act_on_target_permission = authorize_act_on_known_unit(battle, target);
         if (!act_on_target_permission.ok) return error(Attack_Intent_Error.fail_and_cancel);
 
-        if (!creep.attack) return error(Attack_Intent_Error.fail_and_cancel);
+        if (!monster.attack) return error(Attack_Intent_Error.fail_and_cancel);
 
-        const ability_use_permission = authorize_ability_use(order_unit_permission, creep.attack.id);
+        const ability_use_permission = authorize_ability_use(order_unit_permission, monster.attack.id);
         if (!ability_use_permission.ok) return error(Attack_Intent_Error.fail_and_continue_trying);
 
         return ability_use_permission;
@@ -1610,7 +1610,7 @@ function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: 
 
         if (!attack_intent.ok) {
             if (attack_intent.error == Attack_Intent_Error.fail_and_cancel) {
-                battle.creep_targets.delete(creep);
+                battle.monster_targets.delete(monster);
             }
 
             return;
@@ -1619,9 +1619,9 @@ function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: 
         const attack = attack_intent.ability;
 
         if (attack.type == Ability_Type.target_ground) {
-            battle.creep_targets.set(creep, target);
+            battle.monster_targets.set(monster, target);
 
-            return perform_ability_cast_ground(battle, creep, attack, target.position);
+            return perform_ability_cast_ground(battle, monster, attack, target.position);
         }
     });
 
@@ -1630,24 +1630,24 @@ function defer_creep_try_retaliate(battle: Battle_Record, creep: Creep, target: 
 
         if (!attack_intent.ok) {
             if (attack_intent.error == Attack_Intent_Error.fail_and_cancel) {
-                battle.creep_targets.delete(creep);
+                battle.monster_targets.delete(monster);
             }
 
             return;
         }
 
-        const costs = populate_path_costs(battle, creep.position)!;
+        const costs = populate_path_costs(battle, monster.position)!;
 
         for (const cell of battle.cells) {
             const index = grid_cell_index(battle, cell.position);
             const move_cost = costs.cell_index_to_cost[index];
 
-            if (move_cost <= creep.move_points) {
+            if (move_cost <= monster.move_points) {
                 if (ability_targeting_fits(battle, attack_intent.ability.targeting, cell.position, target.position)) {
                     defer_delta(battle, () => ({
                         type: Delta_Type.unit_move,
                         to_position: cell.position,
-                        unit_id: creep.id,
+                        unit_id: monster.id,
                         move_cost: move_cost
                     }));
 
@@ -1679,7 +1679,7 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
             }
 
             if (dead) {
-                if (!are_units_allies(attacker, target) && attacker.supertype != Unit_Supertype.creep) {
+                if (!are_units_allies(attacker, target) && attacker.supertype != Unit_Supertype.monster) {
                     const bounty = get_gold_for_killing(target);
 
                     defer_delta(battle, () => ({
@@ -1701,14 +1701,14 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                     }
                 }
             } else {
-                if (target.supertype == Unit_Supertype.creep) {
-                    defer_creep_try_retaliate(battle, target, attacker);
+                if (target.supertype == Unit_Supertype.monster) {
+                    defer_monster_try_retaliate(battle, target, attacker);
                 }
             }
         }
 
         if (dead) {
-            if (target.supertype != Unit_Supertype.creep) {
+            if (target.supertype != Unit_Supertype.monster) {
                 for (const ability of target.abilities) {
                     switch (ability.id) {
                         case Ability_Id.monster_spawn_spiderlings: {
@@ -1905,12 +1905,12 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         });
     });
 
-    for (const creep of battle.units) {
-        if (creep.supertype == Unit_Supertype.creep) {
-            const target = battle.creep_targets.get(creep);
+    for (const monster of battle.units) {
+        if (monster.supertype == Unit_Supertype.monster) {
+            const target = battle.monster_targets.get(monster);
 
             if (target) {
-                defer_creep_try_retaliate(battle, creep, target);
+                defer_monster_try_retaliate(battle, monster, target);
             }
         }
     }
@@ -2012,7 +2012,7 @@ export function get_all_battles(): Battle_Record[] {
 }
 
 export function surrender_player_forces(battle: Battle_Record, battle_player: Battle_Player) {
-    const player_units = battle.units.filter(unit => unit.supertype != Unit_Supertype.creep && unit.owner == battle_player);
+    const player_units = battle.units.filter(unit => unit.supertype != Unit_Supertype.monster && unit.owner == battle_player);
 
     submit_battle_deltas(battle, player_units.map(unit => {
         const delta: Delta = {
@@ -2051,7 +2051,7 @@ export function start_battle(id_generator: Id_Generator, participants: Battle_Pa
         deferred_actions: [],
         random_seed: random_int_range(0, 65536),
         finished: false,
-        creep_targets: new Map(),
+        monster_targets: new Map(),
         end_turn_queued: false,
         receive_event: on_battle_event
     };
@@ -2125,8 +2125,8 @@ export function start_battle(id_generator: Id_Generator, participants: Battle_Pa
                 break;
             }
 
-            case Spawn_Type.creep: {
-                spawn_deltas.push(spawn_creep(battle, spawn.at, spawn.facing));
+            case Spawn_Type.monster: {
+                spawn_deltas.push(spawn_monster(battle, spawn.at, spawn.facing));
 
                 break;
             }

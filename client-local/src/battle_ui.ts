@@ -92,15 +92,15 @@ type UI_Hero_Data = UI_Unit_Data_Base & {
     level_bar: Level_Bar
 }
 
-type UI_Creep_Data = UI_Unit_Data_Base & {
-    supertype: Unit_Supertype.creep
+type UI_Monster_Data = UI_Unit_Data_Base & {
+    supertype: Unit_Supertype.monster
 }
 
 type UI_Minion_Data = UI_Unit_Data_Base & {
     supertype: Unit_Supertype.minion
 }
 
-type UI_Unit_Data = UI_Hero_Data | UI_Creep_Data | UI_Minion_Data;
+type UI_Unit_Data = UI_Hero_Data | UI_Monster_Data | UI_Minion_Data;
 
 type UI_Battle = Battle & {
     id: Battle_Id
@@ -299,7 +299,7 @@ function update_related_visual_data_from_delta(delta: Delta, delta_paths: Move_D
     }
 
     switch (delta.type) {
-        case Delta_Type.creep_spawn: {
+        case Delta_Type.monster_spawn: {
             battle.unit_id_to_facing[delta.unit_id] = {
                 x: delta.facing.x,
                 y: delta.facing.y
@@ -521,7 +521,7 @@ function on_battle_event(battle: UI_Battle, event: Battle_Event) {
     }
 
     if (event.type == Battle_Event_Type.unit_spawned) {
-        if (event.unit.supertype != Unit_Supertype.creep) {
+        if (event.unit.supertype != Unit_Supertype.monster) {
             const owner = event.unit.owner;
 
             battle.unit_id_to_facing[event.unit.id] = {
@@ -1379,7 +1379,7 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
             }
         }
 
-        case Unit_Supertype.creep: {
+        case Unit_Supertype.monster: {
             const default_indicators = create_default_indicators();
 
             return {
@@ -1589,10 +1589,10 @@ function make_battle_snapshot(): Battle_Snapshot {
                         };
                     }
 
-                    case Unit_Supertype.creep: {
+                    case Unit_Supertype.monster: {
                         return {
                             ...snapshot_base,
-                            supertype: Unit_Supertype.creep
+                            supertype: Unit_Supertype.monster
                         };
                     }
 

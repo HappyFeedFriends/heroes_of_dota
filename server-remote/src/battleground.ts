@@ -1,7 +1,7 @@
 export const enum Spawn_Type {
     rune ,
     shop,
-    creep,
+    monster,
     tree
 }
 
@@ -17,8 +17,8 @@ type Shop_Spawn = {
     facing: XY
 }
 
-type Creep_Spawn = {
-    type: Spawn_Type.creep
+type Monster_Spawn = {
+    type: Spawn_Type.monster
     at: XY
     facing: XY
 }
@@ -28,7 +28,7 @@ type Tree_Spawn = {
     at: XY
 }
 
-type Battleground_Spawn = Rune_Spawn | Shop_Spawn | Creep_Spawn | Tree_Spawn;
+type Battleground_Spawn = Rune_Spawn | Shop_Spawn | Monster_Spawn | Tree_Spawn;
 
 export type Battleground = {
     grid_size: XY
@@ -41,9 +41,9 @@ export function forest(): Battleground {
         return { x: x, y: y };
     }
 
-    function creep(x: number, y: number, facing: XY): Creep_Spawn {
+    function monster(x: number, y: number, facing: XY): Monster_Spawn {
         return {
-            type: Spawn_Type.creep,
+            type: Spawn_Type.monster,
             at: xy(x, y),
             facing: facing
         }
@@ -118,9 +118,9 @@ export function forest(): Battleground {
             shop(6, 8, down, Shop_Type.secret),
             shop(1, 3, up, Shop_Type.normal),
             shop(11, 5, down, Shop_Type.normal),
-            creep(5, 1, right),
+            monster(5, 1, right),
             rune(1, 1),
-            creep(10, 8, left)
+            monster(10, 8, left)
         ]
     }
 }

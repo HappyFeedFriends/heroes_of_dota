@@ -11,15 +11,15 @@ type Visualizer_Hero_Data = Visualizer_Unit_Data_Base & {
     level: number
 }
 
-type Visualizer_Creep_Data = Visualizer_Unit_Data_Base & {
-    supertype: Unit_Supertype.creep
+type Visualizer_Monster_Data = Visualizer_Unit_Data_Base & {
+    supertype: Unit_Supertype.monster
 }
 
 type Visualizer_Minion_Data = Visualizer_Unit_Data_Base & {
     supertype: Unit_Supertype.minion
 }
 
-type Visualizer_Unit_Data = Visualizer_Hero_Data | Visualizer_Creep_Data | Visualizer_Minion_Data
+type Visualizer_Unit_Data = Visualizer_Hero_Data | Visualizer_Monster_Data | Visualizer_Minion_Data
 
 type Visualizer_Player_Data = {
     id: Battle_Player_Id
@@ -155,8 +155,8 @@ type Hero_Snapshot = Unit_Snapshot_Base & {
     type: Hero_Type
 }
 
-type Creep_Snapshot = Unit_Snapshot_Base & {
-    supertype: Unit_Supertype.creep
+type Monster_Snapshot = Unit_Snapshot_Base & {
+    supertype: Unit_Supertype.monster
 }
 
 type Minion_Snapshot = Unit_Snapshot_Base & {
@@ -165,7 +165,7 @@ type Minion_Snapshot = Unit_Snapshot_Base & {
     owner_id: Battle_Player_Id
 }
 
-type Unit_Snapshot = Hero_Snapshot | Creep_Snapshot | Minion_Snapshot
+type Unit_Snapshot = Hero_Snapshot | Monster_Snapshot | Minion_Snapshot
 
 type Rune_Snapshot = {
     id: Rune_Id
