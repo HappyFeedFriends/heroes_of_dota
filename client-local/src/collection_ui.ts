@@ -168,19 +168,14 @@ function refresh_collection_hero_page(page: Collection_Page) {
 
         // Filling the layout
         if (index >= page.cards.length) {
-            const card_panel = $.CreatePanel("Panel", current_row, "");
-            card_panel.AddClass("card");
-            card_panel.AddClass("in_preview");
+            const card_panel = create_card_container_ui(current_row, true);
             card_panel.style.opacity = "0";
 
             continue;
         }
 
         const card = page.cards[index];
-
-        const card_panel = $.CreatePanel("Panel", current_row, "");
-        card_panel.AddClass("card");
-        card_panel.AddClass("in_preview");
+        const card_panel = create_card_container_ui(current_row, true, card.type);
 
         page_contents.push({
             ...card,
@@ -189,8 +184,6 @@ function refresh_collection_hero_page(page: Collection_Page) {
 
         switch (card.type) {
             case Card_Type.spell: {
-                card_panel.AddClass("spell");
-
                 create_spell_card_ui_base(card_panel, card.spell, get_spell_text(spell_definition_by_id(card.spell)));
                 attach_add_to_deck_handler(card_panel, card);
 
@@ -199,8 +192,6 @@ function refresh_collection_hero_page(page: Collection_Page) {
 
             case Card_Type.hero: {
                 const definition = hero_definition_by_type(card.hero);
-                card_panel.AddClass("hero");
-
                 create_hero_card_ui_base(card_panel, card.hero, definition.health, definition.attack_damage, definition.move_points);
                 attach_add_to_deck_handler(card_panel, card);
 

@@ -135,7 +135,7 @@
             <Panel id="adventure_popup">
                 <Panel id="adventure_popup_content">
                     <Label id="adventure_popup_text"/>
-                    <Panel id="adventure_popup_content"/>
+                    <Panel id="adventure_popup_inner_content"/>
                 </Panel>
 
                 <Panel id="adventure_popup_buttons">

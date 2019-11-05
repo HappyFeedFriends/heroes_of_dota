@@ -8,6 +8,7 @@ const adventure_ui = {
     popup: {
         window: adventure_ui_root.FindChildTraverse("adventure_popup"),
         text: adventure_ui_root.FindChildTraverse("adventure_popup_text") as LabelPanel,
+        content: adventure_ui_root.FindChildTraverse("adventure_popup_inner_content"),
         background: adventure_ui_root.FindChildTraverse("window_background"),
         button_yes: adventure_ui_root.FindChildTraverse("adventure_popup_yes"),
         button_no: adventure_ui_root.FindChildTraverse("adventure_popup_no")
@@ -27,11 +28,8 @@ hide_adventure_tooltip();
 
 function create_adventure_card_tooltip(root: Panel) {
     const parent = $.CreatePanel("Panel", root, "card_tooltip");
-
-    const card = $.CreatePanel("Panel", parent, "");
+    const card = create_card_container_ui(parent, true);
     card.style.transitionDuration = "0s";
-    card.AddClass("card");
-    card.AddClass("in_preview");
 
     $.CreatePanel("Panel", parent, "arrow");
 
@@ -167,13 +165,40 @@ function create_adventure_ui(party: Adventure_Party_State) {
     adventure_ui.currency_label.text = party.currency.toString(10);
 }
 
-function show_adventure_popup(entity_id: Adventure_Entity_Id, text: string) {
+function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
+    const popup = adventure_ui.popup;
+
+    switch (entity.type) {
+        case Adventure_Entity_Type.lost_creep: {
+            popup.text.text = "Lost Creep would like to join your party";
+
+            const creep = Creep_Type.lane_creep;
+            const def = creep_definition_by_type(creep);
+            const container = create_card_container_ui(adventure_ui.popup.content, false);
+            create_unit_card_ui_base(container, get_creep_name(creep), get_creep_card_art(creep), def.health, def.attack_damage, def.move_points);
+            container.AddClass("creep");
+
+            break;
+        }
+
+        case Adventure_Entity_Type.enemy: {
+            break;
+        }
+
+        default: unreachable(entity)
+    }
+}
+
+function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_Entity_Definition) {
     const popup = adventure_ui.popup;
 
     popup.window.SetHasClass("visible", true);
     popup.background.SetHasClass("visible", true);
 
-    popup.text.text = text;
+    popup.text.text = "";
+    popup.content.RemoveAndDeleteChildren();
+
+    fill_adventure_popup_content(entity);
 
     popup.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
 
@@ -220,6 +245,6 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
 
 subscribe_to_custom_event<Adventure_Popup_Event>("show_adventure_popup", event => {
     if (event.entity.type == Adventure_Entity_Type.lost_creep) {
-        show_adventure_popup(event.entity_id, "Lost Creep would like to join your party");
+        show_adventure_popup(event.entity_id, event.entity);
     }
 });

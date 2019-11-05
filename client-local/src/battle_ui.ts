@@ -2435,14 +2435,11 @@ function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
 }
 
 function create_card_ui(root: Panel, card: Card) {
-    const container = $.CreatePanel("Panel", root, "");
+    const container = create_card_container_ui(root, false, card.type);
     container.style.position = `${hand_base_x - 400}px ${hand_base_y}px 0`;
-    container.AddClass("card");
 
     switch (card.type) {
         case Card_Type.hero: {
-            container.AddClass("hero");
-
             const definition = hero_definition_by_type(card.hero_type);
 
             create_hero_card_ui_base(container, card.hero_type, definition.health, definition.attack_damage, definition.move_points);
@@ -2451,8 +2448,6 @@ function create_card_ui(root: Panel, card: Card) {
         }
 
         case Card_Type.existing_hero: {
-            container.AddClass("hero");
-
             const unit = find_hero_by_id(battle, card.hero_id);
 
             if (unit) {
@@ -2463,8 +2458,6 @@ function create_card_ui(root: Panel, card: Card) {
         }
 
         case Card_Type.spell: {
-            container.AddClass("spell");
-
             create_spell_card_ui_base(container, card.spell_id, get_spell_text(card));
 
             break;
@@ -2576,11 +2569,7 @@ function recreate_overlay_unit_selection(selection: Card_Selection) {
         if (!spell_use_on_unit_permission.ok) continue;
 
         if (unit.supertype == Unit_Supertype.hero) {
-            const card_panel = $.CreatePanel("Panel", container, "");
-            card_panel.AddClass("card");
-            card_panel.AddClass("hero");
-            card_panel.AddClass("in_preview");
-
+            const card_panel = create_card_container_ui(container, true, Card_Type.hero);
             create_hero_card_ui_base(card_panel, unit.type, unit.max_health, unit.attack_damage, unit.max_move_points);
 
             if (spell_use_on_unit_permission.spell.spell_id == Spell_Id.buyback) {
