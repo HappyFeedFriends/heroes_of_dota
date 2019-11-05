@@ -20,13 +20,25 @@
                                 -0.98078525066376
                             ],
                             "creeps": [
-                                "monster_spider_matriarch",
-                                "monster_small_spider",
-                                "monster_small_spider"
+                                "spider_matriarch",
+                                "small_spider",
+                                "small_spider"
                             ]
                         }
                     ],
-                    "other_entities": []
+                    "other_entities": [
+                        {
+                            "type": "lost_creep",
+                            "position": [
+                                -13653.481445313,
+                                8150.3916015625
+                            ],
+                            "facing": [
+                                0.69675379991531,
+                                -0.71731036901474
+                            ]
+                        }
+                    ]
                 }
             ]
         }

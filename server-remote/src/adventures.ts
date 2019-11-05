@@ -7,6 +7,11 @@ export const enum Adventure_Room_Type {
     rest = 1
 }
 
+export const enum Party_Change_Type {
+    add_creep = 0,
+    add_spell = 1
+}
+
 export type Adventure = {
     id: Adventure_Id
     rooms: Adventure_Room[]
@@ -38,6 +43,19 @@ type Adventures_File = {
             }>
         }>
     }>
+}
+
+type Party_Change = {
+    type: Party_Change_Type.add_creep
+    creep: Creep_Type
+} | {
+    type: Party_Change_Type.add_spell
+    spell: Spell_Id
+}
+
+type Entity_Interaction_Result = {
+    party_changes: Party_Change[]
+    updated_entity: Adventure_Entity_State
 }
 
 export type Ongoing_Adventure = {
@@ -243,24 +261,26 @@ function save_adventures_to_file() {
     writeFileSync(storage_file_path, JSON.stringify(file, (key, value) => value, "    "));
 }
 
-// TODO do not mutate the party, instead return a sequence of mutations
-export function interact_with_entity(adventure: Ongoing_Adventure, party: Adventure_Party_State, entity_id: Adventure_Entity_Id): Adventure_Entity_State | undefined {
+export function interact_with_entity(adventure: Ongoing_Adventure, party: Adventure_Party_State, entity_id: Adventure_Entity_Id): Entity_Interaction_Result | undefined {
     const entity = adventure.entities.find(entity => entity.id == entity_id);
     if (!entity) return;
     if (!entity.alive) return;
 
     switch (entity.definition.type) {
         case Adventure_Entity_Type.lost_creep: {
-            party.spells.push(Spell_Id.call_to_arms);
-            break;
-        }
-    }
+            entity.alive = false;
 
-    entity.alive = false;
-    
-    return {
-        id: entity.id,
-        alive: entity.alive
+            return {
+                updated_entity: {
+                    id: entity.id,
+                    alive: entity.alive
+                },
+                party_changes: [{
+                    type: Party_Change_Type.add_creep,
+                    creep: Creep_Type.lane_creep
+                }]
+            }
+        }
     }
 }
 

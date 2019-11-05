@@ -120,6 +120,14 @@ function get_hero_name(hero: Hero_Type): string {
         .reduce((prev, value) => prev + " " + value);
 }
 
+function get_creep_name(creep: Creep_Type) {
+    const enum_string = enum_to_string(creep);
+
+    return enum_string.split("_")
+        .map(word => word[0].toUpperCase() + word.slice(1))
+        .reduce((prev, value) => prev + " " + value);
+}
+
 if (!Array.prototype.find) {
     // @ts-ignore
     Array.prototype.find = function <T>(predicate: (element: T) => boolean): T | undefined {

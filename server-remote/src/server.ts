@@ -25,7 +25,7 @@ import {
     apply_editor_action,
     create_room_entities,
     reload_adventures_from_file,
-    room_by_id, editor_create_entity, interact_with_entity
+    room_by_id, editor_create_entity, interact_with_entity, Party_Change_Type
 } from "./adventures";
 import {check_and_try_perform_ai_actions} from "./ai";
 
@@ -540,12 +540,18 @@ export function report_battle_over(battle: Battle_Record, winner_entity: Battle_
             }
         }
 
-        for (const creep of player.party.creeps) {
+        for (let index = 0; index < player.party.creeps.length; index++) {
+            const creep = player.party.creeps[index];
             const source_unit = battle.units.find(unit => unit.id == creep.battle_unit_id);
 
             if (source_unit) {
-                creep.health = Math.min(source_unit.health, creep_definition_by_type(creep.type).health);
-                creep.battle_unit_id = -1 as Unit_Id;
+                if (source_unit.health > 0) {
+                    creep.health = Math.min(source_unit.health, creep_definition_by_type(creep.type).health);
+                    creep.battle_unit_id = -1 as Unit_Id;
+                } else {
+                    player.party.creeps.splice(index, 1);
+                    index--;
+                }
             }
         }
 
@@ -1054,12 +1060,34 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
     return with_player_in_request(req, player => {
         if (player.online.state != Player_State.on_adventure) return;
 
-        const updated_state = interact_with_entity(player.online.ongoing_adventure, player.online.party, req.target_entity_id);
-        if (!updated_state) return;
+        const result = interact_with_entity(player.online.ongoing_adventure, player.online.party, req.target_entity_id);
+        if (!result) return;
+
+        for (const change of result.party_changes) {
+            switch (change.type) {
+                case Party_Change_Type.add_creep: {
+                    player.online.party.creeps.push({
+                        type: change.creep,
+                        health: creep_definition_by_type(change.creep).health,
+                        battle_unit_id: -1 as Unit_Id // TODO ugh
+                    });
+
+                    break;
+                }
+
+                case Party_Change_Type.add_spell: {
+                    player.online.party.spells.push(change.spell);
+
+                    break;
+                }
+
+                default: unreachable(change);
+            }
+        }
 
         return {
             updated_party: player.online.party,
-            updated_entity: updated_state
+            updated_entity: result.updated_entity
         };
     });
 });

@@ -30,6 +30,16 @@ function get_hero_card_art(hero_type: Hero_Type) {
     return `file://{images}/custom_game/heroes/${get_hero_dota_name(hero_type)}.jpg`;
 }
 
+function get_creep_card_art(creep_type: Creep_Type) {
+    const folder = "file://{images}/custom_game/creeps";
+
+    switch (creep_type) {
+        case Creep_Type.lane_creep: return `${folder}/lane_creep_good.jpg`;
+
+        default: return ``;
+    }
+}
+
 function get_spell_card_art(spell_id: Spell_Id): string {
     return `file://{images}/${get_spell_card_art_file(spell_id)}`;
 }
@@ -48,7 +58,7 @@ function get_spell_card_art_file(spell_id: Spell_Id): string {
     }
 }
 
-function create_hero_card_ui_base(container: Panel, hero_type: Hero_Type, health: number, attack: number, move: number) {
+function create_unit_card_ui_base(container: Panel, name: string, art_file: string, health: number, attack: number, move: number) {
     function create_stat_container(parent: Panel, id: string, value: number) {
         const stat_container = $.CreatePanel("Panel", parent, id);
         stat_container.AddClass("stat_container");
@@ -61,18 +71,22 @@ function create_hero_card_ui_base(container: Panel, hero_type: Hero_Type, health
 
     const art = $.CreatePanel("Image", container, "card_art");
     art.SetScaling(ScalingFunction.STRETCH_TO_FIT_Y_PRESERVE_ASPECT);
-    art.SetImage(get_hero_card_art(hero_type));
+    art.SetImage(art_file);
 
     const name_panel = $.CreatePanel("Panel", container, "name_panel");
-    const hero_name = $.CreatePanel("Label", name_panel, "");
+    const unit_name = $.CreatePanel("Label", name_panel, "");
 
-    hero_name.text = get_hero_name(hero_type);
+    unit_name.text = name;
 
     const stat_panel = $.CreatePanel("Panel", container, "stat_panel");
 
     create_stat_container(stat_panel, "health", health);
     create_stat_container(stat_panel, "attack", attack);
     create_stat_container(stat_panel, "move_points", move);
+}
+
+function create_hero_card_ui_base(container: Panel, hero_type: Hero_Type, health: number, attack: number, move: number) {
+    create_unit_card_ui_base(container, get_hero_name(hero_type), get_hero_card_art(hero_type), health, attack, move);
 }
 
 function create_spell_card_ui_base(container: Panel, spell: Spell_Id, spell_text: string) {

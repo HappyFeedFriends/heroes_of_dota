@@ -97,14 +97,13 @@ function create_adventure_hero_panel(root: Panel, hero: Hero_Type, health: numbe
     const health_label = $.CreatePanel("Label", slot.card_panel, "health_number");
     health_label.text = health.toString(10);
 
+    slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, hide_adventure_tooltip);
     slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
         const def = hero_definition_by_type(hero);
 
         show_and_prepare_adventure_tooltip(slot, "hero");
         create_hero_card_ui_base(adventure_ui.tooltip.card, hero, def.health, def.attack_damage, def.move_points);
     });
-
-    slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, hide_adventure_tooltip);
 }
 
 function create_adventure_spell_panel(root: Panel, spell: Spell_Id) {
@@ -112,12 +111,28 @@ function create_adventure_spell_panel(root: Panel, spell: Spell_Id) {
     slot.art.AddClass("spell");
     safely_set_panel_background_image(slot.art, get_spell_card_art(spell));
 
+    slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, hide_adventure_tooltip);
     slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
         show_and_prepare_adventure_tooltip(slot, "spell");
         create_spell_card_ui_base(adventure_ui.tooltip.card, spell, get_spell_text(spell_definition_by_id(spell)));
     });
+}
+
+function create_adventure_creep_panel(root: Panel, creep: Creep_Type, health: number) {
+    const slot = create_adventure_card_slot(root);
+    slot.art.AddClass("creep");
+    safely_set_panel_background_image(slot.art, get_creep_card_art(creep));
+
+    const health_label = $.CreatePanel("Label", slot.card_panel, "health_number");
+    health_label.text = health.toString(10);
 
     slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, hide_adventure_tooltip);
+    slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
+        const def = creep_definition_by_type(creep);
+
+        show_and_prepare_adventure_tooltip(slot, "creep");
+        create_unit_card_ui_base(adventure_ui.tooltip.card, get_creep_name(creep), get_creep_card_art(creep), def.health, def.attack_damage, def.move_points);
+    });
 }
 
 function create_adventure_ui(party: Adventure_Party_State) {
@@ -135,6 +150,12 @@ function create_adventure_ui(party: Adventure_Party_State) {
 
     for (const spell of party.spells) {
         create_adventure_spell_panel(card_container, spell);
+
+        empty_slots--;
+    }
+
+    for (const creep of party.creeps) {
+        create_adventure_creep_panel(card_container, creep.type, creep.health);
 
         empty_slots--;
     }
