@@ -29,7 +29,7 @@ type Adventures_File = {
                 type: string
                 position: [number, number]
                 facing: [number, number],
-                minions: string[]
+                creeps: string[]
             }>
             other_entities?: Array<{
                 type: string
@@ -87,7 +87,7 @@ export function reload_adventures_from_file() {
     const file = JSON.parse(readFileSync(storage_file_path, "utf8")) as Adventures_File;
     const adventures_enum = enum_names_to_values<Adventure_Id>();
     const npc_enum = enum_names_to_values<Npc_Type>();
-    const minions_enum = enum_names_to_values<Minion_Type>();
+    const creeps_enum = enum_names_to_values<Creep_Type>();
     const entities_enum = enum_names_to_values<Adventure_Entity_Type>();
     const new_adventures: Adventure[] = [];
 
@@ -128,17 +128,17 @@ export function reload_adventures_from_file() {
                     continue out;
                 }
 
-                const minions: Minion_Type[] = [];
+                const creeps: Creep_Type[] = [];
 
-                for (const minion of source_enemy.minions) {
-                    const minion_type = try_string_to_enum_value(minion, minions_enum);
+                for (const creep of source_enemy.creeps) {
+                    const creep_type = try_string_to_enum_value(creep, creeps_enum);
 
-                    if (minion_type == undefined) {
-                        console.error(`${adventure.id}: minion with type ${minion} not found`);
+                    if (creep_type == undefined) {
+                        console.error(`${adventure.id}: creep with type ${creep} not found`);
                         continue out;
                     }
 
-                    minions.push(minion_type);
+                    creeps.push(creep_type);
                 }
 
                 entities.push({
@@ -152,7 +152,7 @@ export function reload_adventures_from_file() {
                         x: source_enemy.facing[0],
                         y: source_enemy.facing[1]
                     },
-                    minions: minions
+                    creeps: creeps
                 })
             }
 
@@ -208,7 +208,7 @@ function save_adventures_to_file() {
                             type: enum_to_string(entity.npc_type),
                             position: [entity.spawn_position.x, entity.spawn_position.y],
                             facing: [entity.spawn_facing.x, entity.spawn_facing.y],
-                            minions: entity.minions.map(type => enum_to_string<Minion_Type>(type))
+                            creeps: entity.creeps.map(type => enum_to_string<Creep_Type>(type))
                         })
                     }
                 }
@@ -317,7 +317,7 @@ export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor
             if (!enemy) return;
             if (enemy.definition.type != Adventure_Entity_Type.enemy) return;
 
-            enemy.definition.minions = action.minions;
+            enemy.definition.creeps = action.creeps;
 
             break;
         }

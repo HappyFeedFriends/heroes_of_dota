@@ -19,7 +19,7 @@ export type Battle_Record = Battle & {
 
 export type Battle_Participant = {
     heroes: Hero_Spawn[]
-    minions: Minion_Spawn[]
+    creeps: Creep_Spawn[]
     spells: Spell_Id[]
     map_entity: Battle_Participant_Map_Entity
 }
@@ -30,9 +30,9 @@ export type Hero_Spawn = {
     health: number
 }
 
-export type Minion_Spawn = {
+export type Creep_Spawn = {
     id: Unit_Id
-    type: Minion_Type
+    type: Creep_Type
     health: number
 }
 
@@ -271,7 +271,7 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
         }
 
         case Spell_Id.call_to_arms: {
-            const spawn_points = pick_n_random(find_unoccupied_cells_in_deployment_zone_for_player(battle, player), spell.minions_to_summon);
+            const spawn_points = pick_n_random(find_unoccupied_cells_in_deployment_zone_for_player(battle, player), spell.creeps_to_summon);
 
             return {
                 ...base,
@@ -279,7 +279,7 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
                 summons: spawn_points.map(point => ({
                     at: point.position,
                     unit_id: get_next_entity_id(battle) as Unit_Id,
-                    unit_type: Minion_Type.lane_minion
+                    unit_type: Creep_Type.lane_creep
                 }))
             }
         }
@@ -359,7 +359,7 @@ function perform_spell_cast_ground_target(battle: Battle_Record, player: Battle_
             return {
                 ...base,
                 spell_id: spell.spell_id,
-                new_unit_type: Minion_Type.pocket_tower,
+                new_unit_type: Creep_Type.pocket_tower,
                 new_unit_id: get_next_entity_id(battle) as Unit_Id
             }
         }
@@ -1470,12 +1470,12 @@ function spawn_hero(id: Unit_Id, owner: Battle_Player, at_position: XY, type: He
     };
 }
 
-function spawn_minion(id: Unit_Id, owner: Battle_Player, at_position: XY, type: Minion_Type, health: number) : Delta_Minion_Spawn {
+function spawn_creep(id: Unit_Id, owner: Battle_Player, at_position: XY, type: Creep_Type, health: number): Delta_Creep_Spawn {
     return {
-        type: Delta_Type.minion_spawn,
+        type: Delta_Type.creep_spawn,
         at_position: at_position,
         owner_id: owner.id,
-        minion_type: type,
+        creep_type: type,
         unit_id: id,
         health: health
     };
@@ -1558,7 +1558,7 @@ function get_gold_for_killing(target: Unit): number {
             return 4 * target.level;
         }
 
-        case Unit_Supertype.minion: {
+        case Unit_Supertype.creep: {
             return 4;
         }
 
@@ -1739,7 +1739,7 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                                         summons: pick_n_random(free_cells, ability.how_many).map(cell => ({
                                             owner_id: target.owner.id,
                                             unit_id: get_next_entity_id(battle) as Unit_Id,
-                                            minion_type: Minion_Type.monster_spiderling,
+                                            creep_type: Creep_Type.spiderling,
                                             at: cell
                                         }))
                                     })
@@ -2144,19 +2144,19 @@ export function start_battle(id_generator: Id_Generator, participants: Battle_Pa
     for (const [player, participant] of battle_player_and_participant_pairs) {
         const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, player);
         const hero_spawn_points = pick_n_random(free_cells, participant.heroes.length);
-        const minion_spawn_points = pick_n_random(free_cells, participant.minions.length);
+        const creep_spawn_points = pick_n_random(free_cells, participant.creeps.length);
 
         const heroes = participant.heroes;
-        const minions = participant.minions;
+        const creeps = participant.creeps;
 
         for (let index = 0; index < heroes.length; index++) {
             const hero = heroes[index];
             spawn_deltas.push(spawn_hero(hero.id, player, hero_spawn_points[index].position, hero.type, hero.health));
         }
 
-        for (let index = 0; index < minions.length; index++) {
-            const minion = minions[index];
-            spawn_deltas.push(spawn_minion(minion.id, player, minion_spawn_points[index].position, minion.type, minion.health));
+        for (let index = 0; index < creeps.length; index++) {
+            const creep = creeps[index];
+            spawn_deltas.push(spawn_creep(creep.id, player, creep_spawn_points[index].position, creep.type, creep.health));
         }
 
         spawn_deltas.push(get_starting_gold(player));
@@ -2363,16 +2363,16 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
             break;
         }
 
-        case "minion": {
-            const minions = parse_enum_query(parts[1], enum_names_to_values<Minion_Type>());
+        case "creep": {
+            const creeps = parse_enum_query(parts[1], enum_names_to_values<Creep_Type>());
             const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, battle_player);
             const deltas: Delta[] = [];
 
-            for (const minion of minions) {
+            for (const creep of creeps) {
                 const random_cell = pick_n_random(free_cells, 1);
 
                 if (random_cell) {
-                    deltas.push(spawn_minion(get_next_entity_id(battle) as Unit_Id, battle_player, random_cell[0].position, minion, minion_definition_by_type(minion).health));
+                    deltas.push(spawn_creep(get_next_entity_id(battle) as Unit_Id, battle_player, random_cell[0].position, creep, creep_definition_by_type(creep).health));
                 }
             }
 

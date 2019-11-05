@@ -57,7 +57,7 @@ function spell_definition_by_id(spell_id: Spell_Id): Card_Spell_Definition {
 
         case Spell_Id.call_to_arms: {
             return spell<Spell_Call_To_Arms>({
-                minions_to_summon: 2
+                creeps_to_summon: 2
             })
         }
 

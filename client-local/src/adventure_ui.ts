@@ -190,7 +190,7 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
             currency: data.party.currency,
             heroes: from_server_array(data.party.heroes),
             spells: from_server_array(data.party.spells),
-            minions: from_server_array(data.party.minions)
+            creeps: from_server_array(data.party.creeps)
         };
 
         create_adventure_ui(party);

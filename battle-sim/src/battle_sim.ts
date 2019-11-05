@@ -96,7 +96,7 @@ type Unit_Base = Unit_Stats & {
     modifiers: Modifier[]
 }
 
-type Unit = Hero | Monster | Minion
+type Unit = Hero | Monster | Creep
 
 type Hero =  Unit_Base & {
     type: Hero_Type;
@@ -110,9 +110,9 @@ type Monster = Unit_Base & {
     supertype: Unit_Supertype.monster
 }
 
-type Minion = Unit_Base & {
-    type: Minion_Type
-    supertype: Unit_Supertype.minion
+type Creep = Unit_Base & {
+    type: Creep_Type
+    supertype: Unit_Supertype.creep
     owner: Battle_Player
 }
 
@@ -249,9 +249,9 @@ function unit_at(battle: Battle, at: XY): Unit | undefined {
 
 function are_units_allies(a: Unit, b: Unit): boolean {
     /*
-                    hero creep
+                    hero monster
             hero     ?    -
-            creep    -    +
+            monster  -    +
 
             ? : check player ids
             + : are allies
@@ -892,21 +892,21 @@ function unit_spawn_event(unit: Unit, at: XY): Battle_Event {
     }
 }
 
-function create_minion(battle: Battle, owner: Battle_Player, unit_id: Unit_Id, type: Minion_Type, at: XY): Minion {
-    const minion: Minion = {
-        ...unit_base(unit_id, minion_definition_by_type(type), at),
-        supertype: Unit_Supertype.minion,
+function create_creep(battle: Battle, owner: Battle_Player, unit_id: Unit_Id, type: Creep_Type, at: XY): Creep {
+    const creep: Creep = {
+        ...unit_base(unit_id, creep_definition_by_type(type), at),
+        supertype: Unit_Supertype.creep,
         type: type,
         owner: owner,
     };
 
-    battle.units.push(minion);
+    battle.units.push(creep);
 
     occupy_cell(battle, at);
 
-    battle.receive_event(battle, unit_spawn_event(minion, at));
+    battle.receive_event(battle, unit_spawn_event(creep, at));
 
-    return minion;
+    return creep;
 }
 
 function apply_modifier_changes(target: Unit, changes: Modifier_Change[], invert: boolean) {
@@ -1064,7 +1064,7 @@ function collapse_ability_effect(battle: Battle, effect: Ability_Effect) {
                 const owner = find_player_by_id(battle, summon.owner_id);
 
                 if (owner) {
-                    create_minion(battle, owner, summon.unit_id, summon.minion_type, summon.at);
+                    create_creep(battle, owner, summon.unit_id, summon.creep_type, summon.at);
                 }
             }
 
@@ -1351,7 +1351,7 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
 
         case Spell_Id.call_to_arms: {
             for (const summon of cast.summons) {
-                create_minion(battle, caster, summon.unit_id, summon.unit_type, summon.at);
+                create_creep(battle, caster, summon.unit_id, summon.unit_type, summon.at);
             }
 
             break;
@@ -1364,7 +1364,7 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
 function collapse_ground_target_spell_use(battle: Battle, caster: Battle_Player, at: XY, cast: Delta_Use_Ground_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.pocket_tower: {
-            create_minion(battle, caster, cast.new_unit_id, cast.new_unit_type, at);
+            create_creep(battle, caster, cast.new_unit_id, cast.new_unit_type, at);
 
             break;
         }
@@ -1640,12 +1640,12 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             break;
         }
 
-        case Delta_Type.minion_spawn: {
+        case Delta_Type.creep_spawn: {
             const owner = find_player_by_id(battle, delta.owner_id);
             if (!owner) break;
 
-            const minion = create_minion(battle, owner, delta.unit_id, delta.minion_type, delta.at_position);
-            minion.health = delta.health;
+            const creep = create_creep(battle, owner, delta.unit_id, delta.creep_type, delta.at_position);
+            creep.health = delta.health;
 
             break;
         }

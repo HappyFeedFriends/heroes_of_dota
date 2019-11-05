@@ -29,8 +29,8 @@ type Editor_Selection = {
     type: Adventure_Entity_Type.enemy
     entity: EntityId
     particle: ParticleId
-    minions: Minion_Type[]
-    highlighted_minion_button?: Panel
+    creeps: Creep_Type[]
+    highlighted_creep_button?: Panel
 } | {
     selected: true
     type: Adventure_Entity_Type.lost_creep
@@ -97,10 +97,10 @@ function dropdown_button(text: string, action: () => void) {
     return text_button(entity_buttons_dropdown, "editor_entity_dropdown_button", text, action);
 }
 
-function create_adventure_enemy_menu_buttons(adventure_entity_id: Adventure_Entity_Id, minions: Minion_Type[], reselect: () => void) {
-    for (let index = 0; index < minions.length + 1; index++) {
-        const minion = minions[index];
-        const text = index < minions.length ? enum_to_string(minion) : "Add a minion";
+function create_adventure_enemy_menu_buttons(adventure_entity_id: Adventure_Entity_Id, creeps: Creep_Type[], reselect: () => void) {
+    for (let index = 0; index < creeps.length + 1; index++) {
+        const creep = creeps[index];
+        const text = index < creeps.length ? enum_to_string(creep) : "Add a creep";
 
         entity_button(text, (button) => {
             entity_buttons_dropdown.RemoveAndDeleteChildren();
@@ -108,29 +108,29 @@ function create_adventure_enemy_menu_buttons(adventure_entity_id: Adventure_Enti
             let show_dropdown = true;
 
             if (editor_selection.selected && editor_selection.type == Adventure_Entity_Type.enemy) {
-                if (editor_selection.highlighted_minion_button) {
-                    editor_selection.highlighted_minion_button.RemoveClass("selected");
+                if (editor_selection.highlighted_creep_button) {
+                    editor_selection.highlighted_creep_button.RemoveClass("selected");
                 }
 
-                if (editor_selection.highlighted_minion_button != button) {
-                    editor_selection.highlighted_minion_button = button;
-                    editor_selection.highlighted_minion_button.AddClass("selected");
+                if (editor_selection.highlighted_creep_button != button) {
+                    editor_selection.highlighted_creep_button = button;
+                    editor_selection.highlighted_creep_button.AddClass("selected");
                 } else {
-                    editor_selection.highlighted_minion_button = undefined;
+                    editor_selection.highlighted_creep_button = undefined;
                     show_dropdown = false;
                 }
             }
 
             if (!show_dropdown) return;
 
-            for (const [name, type] of enum_names_to_values<Minion_Type>()) {
+            for (const [name, type] of enum_names_to_values<Creep_Type>()) {
                 dropdown_button(name, () => {
-                    minions[index] = type;
+                    creeps[index] = type;
 
                     api_request(Api_Request_Type.editor_action, {
                         type: Adventure_Editor_Action_Type.edit_enemy_deck,
                         entity_id: adventure_entity_id,
-                        minions: minions,
+                        creeps: creeps,
                         access_token: get_access_token()
                     }, reselect);
                 });
@@ -168,13 +168,13 @@ function editor_select_entity(entity: EntityId, adventure_entity_id: Adventure_E
                 id: adventure_entity_id,
                 entity: entity,
                 particle: fx,
-                minions: data.minions
+                creeps: data.creeps
             };
 
             const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
             selection_label.text = `Selected: ${name}`;
 
-            create_adventure_enemy_menu_buttons(adventure_entity_id, data.minions, () => {
+            create_adventure_enemy_menu_buttons(adventure_entity_id, data.creeps, () => {
                 editor_select_entity(entity, adventure_entity_id, entity_type, name);
             });
 
@@ -297,7 +297,7 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
                                     npc_type: npc_type,
                                     spawn_position: xy(click_world_position[0], click_world_position[1]),
                                     spawn_facing: xy(1, 0),
-                                    minions: []
+                                    creeps: []
                                 }
                             })
                         });

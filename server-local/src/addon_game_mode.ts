@@ -28,8 +28,8 @@ function Precache(context: CScriptPrecacheContext) {
         print("Precaching", unit_name);
     }
 
-    for (const minion_type of enum_values<Minion_Type>()) {
-        precache_model_and_log(minion_type_to_model_and_scale(minion_type));
+    for (const creep_type of enum_values<Creep_Type>()) {
+        precache_model_and_log(creep_type_to_model_and_scale(creep_type));
     }
 
     for (const npc_type of enum_values<Npc_Type>()) {

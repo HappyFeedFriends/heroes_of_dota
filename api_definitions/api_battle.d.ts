@@ -1,7 +1,7 @@
 declare const enum Delta_Type {
     hero_spawn = 0,
     monster_spawn = 1,
-    minion_spawn = 2,
+    creep_spawn = 2,
     tree_spawn = 3,
     rune_spawn = 4,
     shop_spawn = 5,
@@ -66,16 +66,16 @@ declare const enum Hero_Type {
     dark_seer = 10
 }
 
-declare const enum Minion_Type {
+declare const enum Creep_Type {
     pocket_tower = 0,
-    lane_minion = 1,
+    lane_creep = 1,
 
-    monster_satyr_big = 100,
-    monster_satyr_small = 101,
-    monster_small_spider = 102,
-    monster_large_spider = 103,
-    monster_spider_matriarch = 104,
-    monster_spiderling = 105
+    satyr_big = 100,
+    satyr_small = 101,
+    small_spider = 102,
+    large_spider = 103,
+    spider_matriarch = 104,
+    spiderling = 105
 }
 
 declare const enum Shop_Type {
@@ -86,7 +86,7 @@ declare const enum Shop_Type {
 declare const enum Unit_Supertype {
     hero = 0,
     monster = 1,
-    minion = 2
+    creep = 2
 }
 
 declare const enum Modifier_Field {
@@ -450,9 +450,9 @@ type Delta_Monster_Spawn = {
     }
 }
 
-type Delta_Minion_Spawn = {
-    type: Delta_Type.minion_spawn
-    minion_type: Minion_Type
+type Delta_Creep_Spawn = {
+    type: Delta_Type.creep_spawn
+    creep_type: Creep_Type
     unit_id: Unit_Id
     owner_id: Battle_Player_Id
     health: number
@@ -625,7 +625,7 @@ type Delta =
     Delta_Move |
     Delta_Hero_Spawn |
     Delta_Monster_Spawn |
-    Delta_Minion_Spawn |
+    Delta_Creep_Spawn |
     Delta_Tree_Spawn |
     Delta_Rune_Spawn |
     Delta_Shop_Spawn |

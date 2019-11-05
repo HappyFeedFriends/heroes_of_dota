@@ -170,10 +170,10 @@ function unit_to_visualizer_unit_data(unit: Unit): Visualizer_Unit_Data {
             }
         }
 
-        case Unit_Supertype.minion: {
+        case Unit_Supertype.creep: {
             return {
                 ...base,
-                supertype: Unit_Supertype.minion
+                supertype: Unit_Supertype.creep
             }
         }
     }
@@ -531,7 +531,7 @@ function game_loop() {
             party: {
                 currency: 0,
                 heroes: [],
-                minions: [],
+                creeps: [],
                 spells: []
             }
         }

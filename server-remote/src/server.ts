@@ -91,9 +91,9 @@ type Map_Player_On_Adventure = {
             type: Hero_Type
             health: number
         }[]
-        minions: {
+        creeps: {
             battle_unit_id: Unit_Id
-            type: Minion_Type
+            type: Creep_Type
             health: number
         }[]
         spells: Spell_Id[]
@@ -409,20 +409,20 @@ function player_to_battle_participant(next_id: Id_Generator, player: Map_Player)
             health: hero_definition_by_type(type).health
         })),
         spells: player.deck.spells,
-        minions: []
+        creeps: []
     }
 }
 
 function player_to_adventure_battle_participant(next_id: Id_Generator, id: Player_Id, player_on_adventure: Map_Player_On_Adventure): Battle_Participant {
     const alive_heroes = player_on_adventure.party.heroes.filter(hero => hero.health > 0);
-    const alive_minions = player_on_adventure.party.minions.filter(minion => minion.health > 0);
+    const alive_creeps = player_on_adventure.party.creeps.filter(creep => creep.health > 0);
 
     for (const hero of alive_heroes) {
         hero.battle_unit_id = next_id() as Unit_Id;
     }
 
-    for (const minion of alive_minions) {
-        minion.battle_unit_id = next_id() as Unit_Id;
+    for (const creep of alive_creeps) {
+        creep.battle_unit_id = next_id() as Unit_Id;
     }
 
     return {
@@ -436,10 +436,10 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
             type: hero.type,
             health: hero.health
         })),
-        minions: alive_minions.map(minion => ({
-            id: minion.battle_unit_id,
-            type: minion.type,
-            health: minion.health
+        creeps: alive_creeps.map(creep => ({
+            id: creep.battle_unit_id,
+            type: creep.type,
+            health: creep.health
         }))
     }
 }
@@ -452,10 +452,10 @@ function adventure_enemy_to_battle_participant(next_id: Id_Generator, id: Advent
             npc_type: definition.npc_type
         },
         heroes: [],
-        minions: definition.minions.map(minion => ({
+        creeps: definition.creeps.map(creep => ({
             id: next_id() as Unit_Id,
-            type: minion,
-            health: minion_definition_by_type(minion).health
+            type: creep,
+            health: creep_definition_by_type(creep).health
         })),
         spells: []
     }
@@ -540,12 +540,12 @@ export function report_battle_over(battle: Battle_Record, winner_entity: Battle_
             }
         }
 
-        for (const minion of player.party.minions) {
-            const source_unit = battle.units.find(unit => unit.id == minion.battle_unit_id);
+        for (const creep of player.party.creeps) {
+            const source_unit = battle.units.find(unit => unit.id == creep.battle_unit_id);
 
             if (source_unit) {
-                minion.health = Math.min(source_unit.health, minion_definition_by_type(minion.type).health);
-                minion.battle_unit_id = -1 as Unit_Id;
+                creep.health = Math.min(source_unit.health, creep_definition_by_type(creep.type).health);
+                creep.battle_unit_id = -1 as Unit_Id;
             }
         }
 
@@ -970,7 +970,7 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
                     battle_unit_id: -1 as Unit_Id, // TODO ugh
                     health: hero_definition_by_type(type).health
                 })),
-                minions: [],
+                creeps: [],
                 spells: [
                     Spell_Id.mekansm,
                     Spell_Id.town_portal_scroll,
@@ -1111,7 +1111,7 @@ function register_dev_handlers() {
             if (entity.definition.type != Adventure_Entity_Type.enemy) return;
 
             return {
-                minions: entity.definition.minions
+                creeps: entity.definition.creeps
             };
         });
     });

@@ -417,9 +417,9 @@ function monster_definition(): Unit_Definition {
     }
 }
 
-function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
-    switch (minion_type) {
-        case Minion_Type.pocket_tower: {
+function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
+    switch (creep_type) {
+        case Creep_Type.pocket_tower: {
             return {
                 attack_damage: 2,
                 health: 7,
@@ -437,7 +437,7 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
             }
         }
 
-        case Minion_Type.lane_minion: {
+        case Creep_Type.lane_creep: {
             return {
                 attack_damage: 3,
                 health: 3,
@@ -446,7 +446,7 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
             }
         }
 
-        case Minion_Type.monster_satyr_big: {
+        case Creep_Type.satyr_big: {
             return {
                 attack_damage: 6,
                 health: 12,
@@ -455,7 +455,7 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
             }
         }
 
-        case Minion_Type.monster_satyr_small: {
+        case Creep_Type.satyr_small: {
             return {
                 attack_damage: 3,
                 health: 6,
@@ -464,7 +464,7 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
             }
         }
 
-        case Minion_Type.monster_small_spider: {
+        case Creep_Type.small_spider: {
             return {
                 attack_damage: 3,
                 health: 5,
@@ -473,7 +473,7 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
             }
         }
 
-        case Minion_Type.monster_large_spider: {
+        case Creep_Type.large_spider: {
             return {
                 attack_damage: 4,
                 health: 10,
@@ -487,7 +487,7 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
             }
         }
 
-        case Minion_Type.monster_spider_matriarch: {
+        case Creep_Type.spider_matriarch: {
             return {
                 attack_damage: 2,
                 health: 10,
@@ -502,7 +502,7 @@ function minion_definition_by_type(minion_type: Minion_Type): Unit_Definition {
             }
         }
 
-        case Minion_Type.monster_spiderling: {
+        case Creep_Type.spiderling: {
             return {
                 attack_damage: 2,
                 health: 2,

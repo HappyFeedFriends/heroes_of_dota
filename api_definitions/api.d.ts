@@ -347,7 +347,7 @@ type Api_Request = {
         entity_id: Adventure_Entity_Id
     } & With_Token
     response: {
-        minions: Minion_Type[]
+        creeps: Creep_Type[]
     }
 }
 
@@ -377,7 +377,7 @@ type Editor_Action = {
 } | {
     type: Adventure_Editor_Action_Type.edit_enemy_deck
     entity_id: Adventure_Entity_Id
-    minions: Minion_Type[]
+    creeps: Creep_Type[]
 }
 
 type Collection_Page = {
@@ -454,7 +454,7 @@ type Adventure_Entity_Definition_Base = {
 type Adventure_Enemy_Definition = Adventure_Entity_Definition_Base & {
     type: Adventure_Entity_Type.enemy
     npc_type: Npc_Type
-    minions: Minion_Type[]
+    creeps: Creep_Type[]
 }
 
 type Adventure_Lost_Creep_Definition = Adventure_Entity_Definition_Base & {
@@ -475,8 +475,8 @@ type Adventure_Party_State = {
         type: Hero_Type
         health: number
     }[]
-    minions: {
-        type: Minion_Type
+    creeps: {
+        type: Creep_Type
         health: number
     }[]
 }

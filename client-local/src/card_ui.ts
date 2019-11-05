@@ -21,7 +21,7 @@ function get_spell_text(spell: Card_Spell_Definition): string {
         case Spell_Id.drums_of_endurance: return `Give allies ${spell.move_points_bonus} move points this turn`;
         case Spell_Id.town_portal_scroll: return `Restore hero's health and return them to your hand`;
         case Spell_Id.pocket_tower: return `Summon a tower to attack a random enemy each turn. Extends deployment zone`;
-        case Spell_Id.call_to_arms: return `Summon ${spell.minions_to_summon} lane creeps in your deployment zone`;
+        case Spell_Id.call_to_arms: return `Summon ${spell.creeps_to_summon} lane creeps in your deployment zone`;
         case Spell_Id.refresher_orb: return `Restore charges of all abilities for target`;
     }
 }

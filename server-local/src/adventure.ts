@@ -99,7 +99,7 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
                 }
             }
 
-            const [model, scale] = minion_type_to_model_and_scale(Minion_Type.lane_minion);
+            const [model, scale] = creep_type_to_model_and_scale(Creep_Type.lane_creep);
             const unit = create_map_unit_with_model(data.spawn_position, data.spawn_facing, model, scale);
 
             if (IsInToolsMode()) {

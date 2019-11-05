@@ -94,7 +94,7 @@ type Spell_Pocket_Tower = Card_Spell_Ground_Target_Base & {
 
 type Spell_Call_To_Arms = Card_Spell_No_Target_Base & {
     spell_id: Spell_Id.call_to_arms
-    minions_to_summon: number
+    creeps_to_summon: number
 }
 
 type Spell_Refresher_Orb = Card_Spell_Unit_Target_Base & {
@@ -170,7 +170,7 @@ type Delta_Spell_Drums_Of_Endurance = Delta_Use_No_Target_Spell_Base & {
 
 type Delta_Spell_Pocket_Tower = Delta_Use_Ground_Target_Spell_Base & {
     spell_id: Spell_Id.pocket_tower
-    new_unit_type: Minion_Type
+    new_unit_type: Creep_Type
     new_unit_id: Unit_Id
 }
 
@@ -178,7 +178,7 @@ type Delta_Spell_Call_To_Arms = Delta_Use_No_Target_Spell_Base & {
     spell_id: Spell_Id.call_to_arms
     summons: {
         unit_id: Unit_Id
-        unit_type: Minion_Type,
+        unit_type: Creep_Type,
         at: {
             x: number
             y: number

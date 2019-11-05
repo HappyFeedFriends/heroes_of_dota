@@ -699,7 +699,7 @@ namespace clr {
                 return txt("creep", "red");
             }
 
-            case Unit_Supertype.minion: {
+            case Unit_Supertype.creep: {
                 return txt(enum_to_string(unit.type), player_color(unit.owner.id, 0.8))
             }
 

@@ -96,11 +96,11 @@ type UI_Monster_Data = UI_Unit_Data_Base & {
     supertype: Unit_Supertype.monster
 }
 
-type UI_Minion_Data = UI_Unit_Data_Base & {
-    supertype: Unit_Supertype.minion
+type UI_Creep_Data = UI_Unit_Data_Base & {
+    supertype: Unit_Supertype.creep
 }
 
-type UI_Unit_Data = UI_Hero_Data | UI_Monster_Data | UI_Minion_Data;
+type UI_Unit_Data = UI_Hero_Data | UI_Monster_Data | UI_Creep_Data;
 
 type UI_Battle = Battle & {
     id: Battle_Id
@@ -1389,7 +1389,7 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
             }
         }
 
-        case Unit_Supertype.minion: {
+        case Unit_Supertype.creep: {
             const default_indicators = create_default_indicators();
 
             return {
@@ -1596,10 +1596,10 @@ function make_battle_snapshot(): Battle_Snapshot {
                         };
                     }
 
-                    case Unit_Supertype.minion: {
+                    case Unit_Supertype.creep: {
                         return {
                             ...snapshot_base,
-                            supertype: Unit_Supertype.minion,
+                            supertype: Unit_Supertype.creep,
                             type: unit.type,
                             owner_id: unit.owner.id
                         };

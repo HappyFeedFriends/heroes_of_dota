@@ -532,7 +532,7 @@ type Ablity_Effect_Monster_Spawn_Spiderlings = {
     summons: {
         owner_id: Battle_Player_Id
         unit_id: Unit_Id
-        minion_type: Minion_Type,
+        creep_type: Creep_Type,
         at: {
             x: number
             y: number
