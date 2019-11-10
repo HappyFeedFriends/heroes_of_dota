@@ -20,7 +20,7 @@ export type Battle_Record = Battle & {
 export type Battle_Participant = {
     heroes: Hero_Spawn[]
     creeps: Creep_Spawn[]
-    spells: Spell_Id[]
+    spells: Spell_Spawn[]
     map_entity: Battle_Participant_Map_Entity
 }
 
@@ -34,6 +34,11 @@ export type Creep_Spawn = {
     id: Unit_Id
     type: Creep_Type
     health: number
+}
+
+export type Spell_Spawn = {
+    id: Card_Id
+    spell: Spell_Id
 }
 
 const battles: Battle_Record[] = [];
@@ -1511,12 +1516,12 @@ function draw_hero_card(battle: Battle_Record, player: Battle_Player, hero_type:
     }
 }
 
-function draw_spell_card(battle: Battle_Record, player: Battle_Player, spell_id: Spell_Id): Delta_Draw_Spell_Card {
+function draw_spell_card(card_id: Card_Id, player: Battle_Player, spell_id: Spell_Id): Delta_Draw_Spell_Card {
     return {
         type: Delta_Type.draw_spell_card,
         player_id: player.id,
         spell_id: spell_id,
-        card_id: get_next_entity_id(battle) as Card_Id
+        card_id: card_id
     }
 }
 
@@ -2160,7 +2165,7 @@ export function start_battle(id_generator: Id_Generator, participants: Battle_Pa
         }
 
         spawn_deltas.push(get_starting_gold(player));
-        spawn_deltas.push(...participant.spells.map(id => draw_spell_card(battle, player, id)));
+        spawn_deltas.push(...participant.spells.map(spell => draw_spell_card(spell.id, player, spell.spell)));
     }
 
     spawn_deltas.push({ type: Delta_Type.game_start });
@@ -2350,7 +2355,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
         case "spl": {
             const spells = parse_enum_query(parts[1], enum_names_to_values<Spell_Id>());
 
-            submit_battle_deltas(battle, spells.map(id => draw_spell_card(battle, battle_player, id)));
+            submit_battle_deltas(battle, spells.map(spell => draw_spell_card(get_next_entity_id(battle) as Card_Id, battle_player, spell)));
 
             break;
         }

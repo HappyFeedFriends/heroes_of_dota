@@ -72,6 +72,13 @@ declare const enum Adventure_Entity_Type {
     lost_creep = 1
 }
 
+declare const enum Adventure_Party_Slot_Type {
+    empty = 0,
+    hero = 1,
+    spell = 2,
+    creep = 3
+}
+
 type Player_Id = number & { _player_id_brand: any };
 type Npc_Id = number & { _npc_id_brand: any };
 type Battle_Id = number & { _battle_id_brand: any };
@@ -470,15 +477,22 @@ type Adventure_Entity_State = {
 
 type Adventure_Party_State = {
     currency: number
-    spells: Spell_Id[]
-    heroes: {
-        type: Hero_Type
-        health: number
-    }[]
-    creeps: {
-        type: Creep_Type
-        health: number
-    }[]
+    slots: Adventure_Party_Slot[]
+}
+
+type Adventure_Party_Slot = {
+    type: Adventure_Party_Slot_Type.empty
+} | {
+    type: Adventure_Party_Slot_Type.hero
+    hero: Hero_Type
+    health: number
+} | {
+    type: Adventure_Party_Slot_Type.creep
+    creep: Creep_Type
+    health: number
+} | {
+    type: Adventure_Party_Slot_Type.spell
+    spell: Spell_Id
 }
 
 type Debug_AI_Data = {

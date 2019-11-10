@@ -15,8 +15,6 @@ const adventure_ui = {
     }
 };
 
-const max_adventure_slots = 10;
-
 type Adventure_Cart_Slot = {
     container: Panel
     card_panel: Panel
@@ -135,31 +133,32 @@ function create_adventure_creep_panel(root: Panel, creep: Creep_Type, health: nu
 
 function create_adventure_ui(party: Adventure_Party_State) {
     const card_container = adventure_ui.card_container;
-
     card_container.RemoveAndDeleteChildren();
 
-    let empty_slots = max_adventure_slots;
+    for (const slot of party.slots) {
+        switch (slot.type) {
+            case Adventure_Party_Slot_Type.empty: {
+                create_adventure_card_slot(card_container);
+                break;
+            }
 
-    for (const hero of party.heroes) {
-        create_adventure_hero_panel(card_container, hero.type, hero.health);
+            case Adventure_Party_Slot_Type.creep: {
+                create_adventure_creep_panel(card_container, slot.creep, slot.health);
+                break;
+            }
 
-        empty_slots--;
-    }
+            case Adventure_Party_Slot_Type.hero: {
+                create_adventure_hero_panel(card_container, slot.hero, slot.health);
+                break;
+            }
 
-    for (const spell of party.spells) {
-        create_adventure_spell_panel(card_container, spell);
+            case Adventure_Party_Slot_Type.spell: {
+                create_adventure_spell_panel(card_container, slot.spell);
+                break;
+            }
 
-        empty_slots--;
-    }
-
-    for (const creep of party.creeps) {
-        create_adventure_creep_panel(card_container, creep.type, creep.health);
-
-        empty_slots--;
-    }
-
-    for (; empty_slots >= 0; empty_slots--) {
-        create_adventure_card_slot(card_container);
+            default: unreachable(slot);
+        }
     }
 
     adventure_ui.currency_label.text = party.currency.toString(10);
@@ -234,9 +233,7 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
     if (data.state == Player_State.on_adventure) {
         const party: Adventure_Party_State = {
             currency: data.party.currency,
-            heroes: from_server_array(data.party.heroes),
-            spells: from_server_array(data.party.spells),
-            creeps: from_server_array(data.party.creeps)
+            slots: from_server_array(data.party.slots)
         };
 
         create_adventure_ui(party);

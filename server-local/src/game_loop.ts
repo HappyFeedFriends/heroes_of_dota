@@ -530,9 +530,7 @@ function game_loop() {
             entities: [],
             party: {
                 currency: 0,
-                heroes: [],
-                creeps: [],
-                spells: []
+                slots: []
             }
         }
     };

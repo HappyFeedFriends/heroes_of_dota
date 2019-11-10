@@ -261,7 +261,7 @@ function save_adventures_to_file() {
     writeFileSync(storage_file_path, JSON.stringify(file, (key, value) => value, "    "));
 }
 
-export function interact_with_entity(adventure: Ongoing_Adventure, party: Adventure_Party_State, entity_id: Adventure_Entity_Id): Entity_Interaction_Result | undefined {
+export function interact_with_entity(adventure: Ongoing_Adventure, entity_id: Adventure_Entity_Id): Entity_Interaction_Result | undefined {
     const entity = adventure.entities.find(entity => entity.id == entity_id);
     if (!entity) return;
     if (!entity.alive) return;
