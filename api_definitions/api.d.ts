@@ -33,6 +33,7 @@ declare const enum Api_Request_Type {
     start_adventure_enemy_fight = 204,
     submit_adventure_player_movement = 205,
     interact_with_adventure_entity = 206,
+    get_adventure_party_changes = 207,
 
     battle_cheat = 50,
     map_cheat = 51,
@@ -82,12 +83,13 @@ type Player_State_On_Adventure = {
     state: Player_State.on_adventure
     adventure_id: Adventure_Id
     current_room_id: Adventure_Room_Id
+    ongoing_adventure_id: Ongoing_Adventure_Id
+    num_party_slots: number
     player_position: {
         x: number
         y: number
     }
     entities: Adventure_Entity[]
-    party: Adventure_Party_State
 }
 
 type Player_State_In_Battle = {
@@ -298,10 +300,19 @@ type Api_Request = {
     type: Api_Request_Type.interact_with_adventure_entity
     request: {
         target_entity_id: Adventure_Entity_Id
+        starting_change_index: number
     } & With_Token & With_Private_Key
     response: {
-        updated_party: Adventure_Party_State
+        party_updates: Adventure_Party_Change[]
         updated_entity: Adventure_Entity_State
+    }
+} | {
+    type: Api_Request_Type.get_adventure_party_changes
+    request: {
+        starting_change_index: number
+    } & With_Token
+    response: {
+        changes: Adventure_Party_Change[]
     }
 } | {
     type: Api_Request_Type.editor_action

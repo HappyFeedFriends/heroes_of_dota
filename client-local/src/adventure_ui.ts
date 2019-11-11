@@ -12,14 +12,38 @@ const adventure_ui = {
         background: adventure_ui_root.FindChildTraverse("window_background"),
         button_yes: adventure_ui_root.FindChildTraverse("adventure_popup_yes"),
         button_no: adventure_ui_root.FindChildTraverse("adventure_popup_no")
-    }
+    },
+    party_slots: new Array<Adventure_Party_Slot_UI>(),
+    last_change_index: 0,
+    ongoing_adventure_id: -1 as Ongoing_Adventure_Id
 };
 
-type Adventure_Cart_Slot = {
+type Adventure_Party_Slot_UI = { container: Panel } & ({
+    type: Adventure_Party_Slot_Type.empty
+} | {
+    type: Adventure_Party_Slot_Type.hero
+    hero: Hero_Type
+    health: number
+    ui: {
+        card_panel: Panel
+        health_number: LabelPanel
+    }
+} | {
+    type: Adventure_Party_Slot_Type.creep
+    creep: Creep_Type
+    health: number
+    ui: {
+        health_number: LabelPanel
+    }
+} | {
+    type: Adventure_Party_Slot_Type.spell
+    spell: Spell_Id
+})
+
+type Base_Slot_UI = {
     container: Panel
     card_panel: Panel
     art: Panel
-    banned_overlay: Panel
 }
 
 hide_adventure_tooltip();
@@ -37,25 +61,23 @@ function create_adventure_card_tooltip(root: Panel) {
     };
 }
 
-function create_adventure_card_slot(root: Panel): Adventure_Cart_Slot {
-    const container = $.CreatePanel("Panel", root, "");
-    container.AddClass("adventure_card_container");
-
+function fill_adventure_base_slot_ui(container: Panel): Base_Slot_UI {
     const card_panel = $.CreatePanel("Panel", container, "adventure_card");
     const art = $.CreatePanel("Panel", card_panel, "adventure_card_art");
-    const banned_overlay = $.CreatePanel("Panel", card_panel, "banned_overlay");
+
+    container.ClearPanelEvent(PanelEvent.ON_MOUSE_OVER);
+    container.ClearPanelEvent(PanelEvent.ON_MOUSE_OUT);
 
     return {
         container: container,
         card_panel: card_panel,
         art: art,
-        banned_overlay: banned_overlay
     }
 }
 
-function show_and_prepare_adventure_tooltip(slot: Adventure_Cart_Slot, css_class: string) {
+function show_and_prepare_adventure_tooltip(parent: Panel, css_class: string) {
     const screen_ratio = Game.GetScreenHeight() / 1080;
-    const window_position = slot.container.GetPositionWithinWindow();
+    const window_position = parent.GetPositionWithinWindow();
 
     // Unfortunately actuallayoutwidth/height are not update before a panel is shown so we have to hardcode the values
     const card_width = 150 * 1.25;
@@ -72,96 +94,179 @@ function show_and_prepare_adventure_tooltip(slot: Adventure_Cart_Slot, css_class
 
     adventure_ui.tooltip.css_class = css_class;
 
-    const position_x = Math.round((window_position.x + slot.container.actuallayoutwidth / 2) / screen_ratio - card_width / 2);
+    const position_x = Math.round((window_position.x + parent.actuallayoutwidth / 2) / screen_ratio - card_width / 2);
     const position_y = Math.round(window_position.y / screen_ratio - card_height) - 50;
 
     tooltip.style.x = position_x + "px";
     tooltip.style.y = position_y + "px";
 }
 
+function set_up_adventure_slot_tooltip(panel: Panel, css_class: string, filler: (tooltip: Panel) => void) {
+    panel.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, hide_adventure_tooltip);
+    panel.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
+        show_and_prepare_adventure_tooltip(panel, css_class);
+        filler(adventure_ui.tooltip.card);
+    });
+}
+
 function hide_adventure_tooltip() {
     adventure_ui.tooltip.container.style.opacity = "0";
 }
 
-function create_adventure_hero_panel(root: Panel, hero: Hero_Type, health: number) {
-    const slot = create_adventure_card_slot(root);
-    slot.art.AddClass("hero");
-    safely_set_panel_background_image(slot.art, get_hero_card_art(hero));
+function create_adventure_empty_slot(root: Panel): Adventure_Party_Slot_UI {
+    const container = $.CreatePanel("Panel", root, "");
+    container.AddClass("adventure_card_container");
 
-    slot.card_panel.SetHasClass("dead", health == 0);
+    return fill_adventure_empty_slot(container);
+}
 
-    const health_label = $.CreatePanel("Label", slot.card_panel, "health_number");
+function fill_adventure_empty_slot(container: Panel): Adventure_Party_Slot_UI {
+    const base_ui = fill_adventure_base_slot_ui(container);
+
+    return {
+        type: Adventure_Party_Slot_Type.empty,
+        container: base_ui.container
+    }
+}
+
+function fill_adventure_hero_slot(container: Panel, hero: Hero_Type, health: number): Adventure_Party_Slot_UI {
+    const base = fill_adventure_base_slot_ui(container);
+    base.art.AddClass("hero");
+    safely_set_panel_background_image(base.art, get_hero_card_art(hero));
+
+    base.card_panel.SetHasClass("dead", health == 0);
+
+    $.CreatePanel("Panel", base.card_panel, "dead_overlay");
+
+    const health_label = $.CreatePanel("Label", base.card_panel, "health_number");
     health_label.text = health.toString(10);
 
-    slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, hide_adventure_tooltip);
-    slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
-        const def = hero_definition_by_type(hero);
+    const def = hero_definition_by_type(hero);
 
-        show_and_prepare_adventure_tooltip(slot, "hero");
-        create_hero_card_ui_base(adventure_ui.tooltip.card, hero, def.health, def.attack_damage, def.move_points);
+    set_up_adventure_slot_tooltip(base.container, "hero", tooltip => {
+        create_hero_card_ui_base(tooltip, hero, def.health, def.attack_damage, def.move_points);
     });
+
+    return {
+        type: Adventure_Party_Slot_Type.hero,
+        hero: hero,
+        health: health,
+        container: base.container,
+        ui: {
+            card_panel: base.card_panel,
+            health_number: health_label
+        }
+    }
 }
 
-function create_adventure_spell_panel(root: Panel, spell: Spell_Id) {
-    const slot = create_adventure_card_slot(root);
-    slot.art.AddClass("spell");
-    safely_set_panel_background_image(slot.art, get_spell_card_art(spell));
+function fill_adventure_spell_slot(container: Panel, spell: Spell_Id): Adventure_Party_Slot_UI {
+    const base = fill_adventure_base_slot_ui(container);
+    base.art.AddClass("spell");
+    safely_set_panel_background_image(base.art, get_spell_card_art(spell));
 
-    slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, hide_adventure_tooltip);
-    slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
-        show_and_prepare_adventure_tooltip(slot, "spell");
-        create_spell_card_ui_base(adventure_ui.tooltip.card, spell, get_spell_text(spell_definition_by_id(spell)));
+    set_up_adventure_slot_tooltip(base.container, "spell", tooltip => {
+        create_spell_card_ui_base(tooltip, spell, get_spell_text(spell_definition_by_id(spell)));
     });
+
+    return {
+        type: Adventure_Party_Slot_Type.spell,
+        spell: spell,
+        container: base.container
+    }
 }
 
-function create_adventure_creep_panel(root: Panel, creep: Creep_Type, health: number) {
-    const slot = create_adventure_card_slot(root);
-    slot.art.AddClass("creep");
-    safely_set_panel_background_image(slot.art, get_creep_card_art(creep));
+function fill_adventure_creep_slot(container: Panel, creep: Creep_Type, health: number): Adventure_Party_Slot_UI {
+    const base = fill_adventure_base_slot_ui(container);
+    base.art.AddClass("creep");
+    safely_set_panel_background_image(base.art, get_creep_card_art(creep));
 
-    const health_label = $.CreatePanel("Label", slot.card_panel, "health_number");
+    const health_label = $.CreatePanel("Label", base.card_panel, "health_number");
     health_label.text = health.toString(10);
 
-    slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, hide_adventure_tooltip);
-    slot.container.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
-        const def = creep_definition_by_type(creep);
+    const def = creep_definition_by_type(creep);
 
-        show_and_prepare_adventure_tooltip(slot, "creep");
-        create_unit_card_ui_base(adventure_ui.tooltip.card, get_creep_name(creep), get_creep_card_art(creep), def.health, def.attack_damage, def.move_points);
+    set_up_adventure_slot_tooltip(base.container, "creep", tooltip => {
+        create_unit_card_ui_base(tooltip, get_creep_name(creep), get_creep_card_art(creep), def.health, def.attack_damage, def.move_points);
     });
+
+    return {
+        type: Adventure_Party_Slot_Type.creep,
+        creep: creep,
+        health: health,
+        container: base.container,
+        ui: {
+            health_number: health_label
+        }
+    }
 }
 
-function create_adventure_ui(party: Adventure_Party_State) {
+function reinitialize_adventure_ui(slots: number) {
     const card_container = adventure_ui.card_container;
     card_container.RemoveAndDeleteChildren();
 
-    for (const slot of party.slots) {
+    adventure_ui.party_slots = [];
+
+    for (; slots >= 0; slots--) {
+        adventure_ui.party_slots.push(create_adventure_empty_slot(card_container));
+    }
+}
+
+function apply_adventure_changes_to_ui(changes: Adventure_Party_Change[]) {
+    function make_new_slot(slot: Adventure_Party_Slot, container: Panel): Adventure_Party_Slot_UI {
         switch (slot.type) {
-            case Adventure_Party_Slot_Type.empty: {
-                create_adventure_card_slot(card_container);
-                break;
-            }
-
-            case Adventure_Party_Slot_Type.creep: {
-                create_adventure_creep_panel(card_container, slot.creep, slot.health);
-                break;
-            }
-
-            case Adventure_Party_Slot_Type.hero: {
-                create_adventure_hero_panel(card_container, slot.hero, slot.health);
-                break;
-            }
-
-            case Adventure_Party_Slot_Type.spell: {
-                create_adventure_spell_panel(card_container, slot.spell);
-                break;
-            }
-
-            default: unreachable(slot);
+            case Adventure_Party_Slot_Type.hero: return fill_adventure_hero_slot(container, slot.hero, slot.health);
+            case Adventure_Party_Slot_Type.creep: return fill_adventure_creep_slot(container, slot.creep, slot.health);
+            case Adventure_Party_Slot_Type.spell: return fill_adventure_spell_slot(container, slot.spell);
+            case Adventure_Party_Slot_Type.empty: return fill_adventure_empty_slot(container);
         }
     }
 
-    adventure_ui.currency_label.text = party.currency.toString(10);
+    function set_slot(slot_index: number, slot: Adventure_Party_Slot) {
+        const old_slot = adventure_ui.party_slots[slot_index];
+        const container = old_slot.container;
+        container.RemoveAndDeleteChildren();
+
+        adventure_ui.party_slots[slot_index] = make_new_slot(slot, container);
+    }
+
+    for (const change of changes) {
+        switch (change.type) {
+            case Adventure_Party_Change_Type.set_slot: {
+                set_slot(change.slot_index, change.slot);
+
+                break;
+            }
+
+            case Adventure_Party_Change_Type.set_health: {
+                const slot = adventure_ui.party_slots[change.slot_index];
+                if (!slot) return;
+
+                switch (slot.type) {
+                    case Adventure_Party_Slot_Type.hero: {
+                        slot.health = change.health;
+                        slot.ui.health_number.text = change.health.toString(10);
+                        slot.ui.card_panel.SetHasClass("dead", slot.health == 0);
+                        break;
+                    }
+
+                    case Adventure_Party_Slot_Type.creep: {
+                        slot.health = change.health;
+                        slot.ui.health_number.text = change.health.toString(10);
+                        break;
+                    }
+
+                    case Adventure_Party_Slot_Type.spell:
+                    case Adventure_Party_Slot_Type.empty: {
+                        break;
+                    }
+                }
+
+                break;
+            }
+
+            default: unreachable(change);
+        }
+    }
 }
 
 function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
@@ -203,7 +308,8 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
 
     popup.button_yes.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
         const event: Adventure_Interact_With_Entity_Event = {
-            entity_id: entity_id
+            entity_id: entity_id,
+            last_change_index: adventure_ui.last_change_index
         };
 
         GameEvents.SendCustomGameEventToServer("adventure_interact_with_entity", event);
@@ -231,12 +337,19 @@ function adventure_filter_mouse_click(event: MouseEvent, button: MouseButton | W
 
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
     if (data.state == Player_State.on_adventure) {
-        const party: Adventure_Party_State = {
-            currency: data.party.currency,
-            slots: from_server_array(data.party.slots)
-        };
+        if (adventure_ui.ongoing_adventure_id != data.ongoing_adventure_id) {
+            adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
+            adventure_ui.last_change_index = 0;
 
-        create_adventure_ui(party);
+            reinitialize_adventure_ui(data.num_party_slots);
+        }
+
+        api_request(Api_Request_Type.get_adventure_party_changes, {
+            access_token: get_access_token(),
+            starting_change_index: adventure_ui.last_change_index
+        }, data => {
+            apply_adventure_changes_to_ui(data.changes);
+        });
     }
 });
 
@@ -244,4 +357,8 @@ subscribe_to_custom_event<Adventure_Popup_Event>("show_adventure_popup", event =
     if (event.entity.type == Adventure_Entity_Type.lost_creep) {
         show_adventure_popup(event.entity_id, event.entity);
     }
+});
+
+subscribe_to_custom_event<Adventure_Receive_Party_Changes_Event>("receive_party_changes", event => {
+    apply_adventure_changes_to_ui(from_server_array(event.changes));
 });

@@ -7,7 +7,7 @@ export const enum Adventure_Room_Type {
     rest = 1
 }
 
-export const enum Party_Change_Type {
+export const enum Party_Event_Type {
     add_creep = 0,
     add_spell = 1
 }
@@ -45,20 +45,21 @@ type Adventures_File = {
     }>
 }
 
-type Party_Change = {
-    type: Party_Change_Type.add_creep
+type Party_Event = {
+    type: Party_Event_Type.add_creep
     creep: Creep_Type
 } | {
-    type: Party_Change_Type.add_spell
+    type: Party_Event_Type.add_spell
     spell: Spell_Id
 }
 
 type Entity_Interaction_Result = {
-    party_changes: Party_Change[]
+    party_events: Party_Event[]
     updated_entity: Adventure_Entity_State
 }
 
 export type Ongoing_Adventure = {
+    id: Ongoing_Adventure_Id
     adventure: Adventure
     current_room: Adventure_Room
     entities: Adventure_Entity[]
@@ -275,8 +276,8 @@ export function interact_with_entity(adventure: Ongoing_Adventure, entity_id: Ad
                     id: entity.id,
                     alive: entity.alive
                 },
-                party_changes: [{
-                    type: Party_Change_Type.add_creep,
+                party_events: [{
+                    type: Party_Event_Type.add_creep,
                     creep: Creep_Type.lane_creep
                 }]
             }

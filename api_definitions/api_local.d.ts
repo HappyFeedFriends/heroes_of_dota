@@ -47,7 +47,8 @@ type Game_Net_Table_On_Global_Map = Player_Net_Table_Base & {
 
 type Game_Net_Table_On_Adventure = Player_Net_Table_Base & {
     state: Player_State.on_adventure
-    party: Adventure_Party_State
+    ongoing_adventure_id: Ongoing_Adventure_Id
+    num_party_slots: number
 }
 
 type Game_Net_Table_In_Battle = Player_Net_Table_Base & {
@@ -128,6 +129,11 @@ type Adventure_Popup_Event = {
 
 type Adventure_Interact_With_Entity_Event = {
     entity_id: Adventure_Entity_Id
+    last_change_index: number
+}
+
+type Adventure_Receive_Party_Changes_Event = {
+    changes: Adventure_Party_Change[]
 }
 
 type Player_Snapshot = {

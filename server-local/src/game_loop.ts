@@ -243,7 +243,8 @@ function game_net_table(game: Game): Game_Net_Table {
                 state: game.state,
                 id: game.player.remote_id,
                 token: game.token,
-                party: game.adventure.party
+                ongoing_adventure_id: game.adventure.ongoing_adventure_id,
+                num_party_slots: game.adventure.num_party_slots
             };
         }
 
@@ -358,7 +359,8 @@ function process_state_transition(game: Game, current_state: Player_State, next_
             game.adventure.entities.push(create_adventure_entity(entity));
         }
 
-        game.adventure.party = next_state.party;
+        game.adventure.ongoing_adventure_id = next_state.ongoing_adventure_id;
+        game.adventure.num_party_slots = next_state.num_party_slots;
     }
 
     game.state = next_state.state;
@@ -528,10 +530,8 @@ function game_loop() {
         state: Player_State.not_logged_in,
         adventure: {
             entities: [],
-            party: {
-                currency: 0,
-                slots: []
-            }
+            ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
+            num_party_slots: 0
         }
     };
 
@@ -574,7 +574,7 @@ function game_loop() {
 
     on_custom_event_async<Adventure_Interact_With_Entity_Event>("adventure_interact_with_entity", event => {
         if (game.state == Player_State.on_adventure) {
-            adventure_interact_with_entity(game, event.entity_id);
+            adventure_interact_with_entity(game, event.entity_id, event.last_change_index);
         }
     });
 

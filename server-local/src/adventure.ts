@@ -40,8 +40,9 @@ type Adventure_Materialized_Entity = Adventure_Materialized_Enemy | Adventure_Ma
 
 type Adventure_State = {
     entities: Adventure_Materialized_Entity[]
-    party: Adventure_Party_State
     current_right_click_target?: Adventure_Materialized_Entity
+    ongoing_adventure_id: Ongoing_Adventure_Id
+    num_party_slots: number
 }
 
 function create_adventure_entity(entity: Adventure_Entity): Adventure_Materialized_Entity {
@@ -358,22 +359,21 @@ function submit_adventure_movement_loop(game: Game) {
     }
 }
 
-function adventure_interact_with_entity(game: Game, id: Adventure_Entity_Id) {
-    const entity_index = array_find_index(game.adventure.entities, entity => entity.id == id);
+function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_Id, last_change_index: number) {
+    const entity_index = array_find_index(game.adventure.entities, entity => entity.id == entity_id);
     if (entity_index == -1) return;
 
     const entity = game.adventure.entities[entity_index];
     if (!entity.alive) return;
 
     const state_update = api_request(Api_Request_Type.interact_with_adventure_entity, {
-        target_entity_id: id,
+        target_entity_id: entity_id,
         access_token: game.token,
-        dedicated_server_key: get_dedicated_server_key()
+        dedicated_server_key: get_dedicated_server_key(),
+        starting_change_index: last_change_index
     });
 
     if (state_update) {
-        game.adventure.party = state_update.updated_party;
-
         cleanup_adventure_entity(entity);
 
         game.adventure.entities[entity_index] = create_adventure_entity({
@@ -381,7 +381,12 @@ function adventure_interact_with_entity(game: Game, id: Adventure_Entity_Id) {
             definition: entity.definition
         });
 
-        update_game_net_table(game);
+        const event: Adventure_Receive_Party_Changes_Event = {
+            changes: state_update.party_updates
+        };
+
+        CustomGameEventManager.Send_ServerToAllClients("receive_party_changes", event);
+
     }
 }
 
