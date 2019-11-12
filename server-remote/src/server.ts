@@ -1005,7 +1005,7 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
             changes: []
         };
 
-        for (let empty = 10; empty >= 0; empty--) {
+        for (let empty = 10; empty > 0; empty--) {
             party.slots.push({ type: Adventure_Party_Slot_Type.empty });
         }
 

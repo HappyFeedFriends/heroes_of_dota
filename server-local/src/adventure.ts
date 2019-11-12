@@ -382,7 +382,8 @@ function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_
         });
 
         const event: Adventure_Receive_Party_Changes_Event = {
-            changes: state_update.party_updates
+            changes: state_update.party_updates,
+            last_change_index: last_change_index
         };
 
         CustomGameEventManager.Send_ServerToAllClients("receive_party_changes", event);

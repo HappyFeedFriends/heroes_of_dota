@@ -98,6 +98,8 @@ export function push_party_change(party: Map_Player_Party, change: Adventure_Par
                 case Adventure_Party_Slot_Type.empty: {
                     break;
                 }
+
+                default: unreachable(slot);
             }
 
             break;

@@ -134,6 +134,7 @@ type Adventure_Interact_With_Entity_Event = {
 
 type Adventure_Receive_Party_Changes_Event = {
     changes: Adventure_Party_Change[]
+    last_change_index: number
 }
 
 type Player_Snapshot = {
