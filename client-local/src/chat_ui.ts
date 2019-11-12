@@ -71,12 +71,12 @@ function hack_into_game_chat() {
                                 selected_unit_id: unit ? unit.id : -1 as Unit_Id
                             }, response => response);
                         } else if (current_state == Player_State.on_adventure) {
-                            const head = adventure_ui.party_changes.length;
+                            const head = adventure_ui.party.changes.length;
 
                             api_request(Api_Request_Type.adventure_party_cheat, {
                                 access_token: get_access_token(),
                                 cheat: text.substring(1),
-                                starting_change_index: adventure_ui.party_changes.length
+                                starting_change_index: adventure_ui.party.changes.length
                             }, response => merge_adventure_party_changes(head, response.party_updates));
                         }
                     }

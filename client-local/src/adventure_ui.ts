@@ -13,13 +13,17 @@ const adventure_ui = {
         button_yes: adventure_ui_root.FindChildTraverse("adventure_popup_yes"),
         button_no: adventure_ui_root.FindChildTraverse("adventure_popup_no")
     },
-    party_slots: new Array<Adventure_Party_Slot_UI>(),
-    party_changes: new Array<Adventure_Party_Change>(),
-    currently_playing_change_index: 0,
-    currently_playing_a_change: false,
+    party: {
+        slots: new Array<Adventure_Party_Slot_UI>(),
+        changes: new Array<Adventure_Party_Change>(),
+        currently_playing_change_index: 0,
+        currently_playing_a_change: false,
+        next_change_promise: () => true
+    },
     ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
-    play_next_change_at: 0
 };
+
+type Adventure_Animation_Promise = () => boolean;
 
 type Adventure_Party_Slot_UI = { container: Panel } & ({
     type: Adventure_Party_Slot_Type.empty
@@ -207,10 +211,10 @@ function reinitialize_adventure_ui(slots: number) {
     const card_container = adventure_ui.card_container;
     card_container.RemoveAndDeleteChildren();
 
-    adventure_ui.party_slots = [];
+    adventure_ui.party.slots = [];
 
     for (; slots > 0; slots--) {
-        adventure_ui.party_slots.push(create_adventure_empty_slot(card_container));
+        adventure_ui.party.slots.push(create_adventure_empty_slot(card_container));
     }
 }
 
@@ -264,25 +268,25 @@ function set_adventure_party_slot(slot_index: number, slot: Adventure_Party_Slot
         }
     }
 
-    const old_slot = adventure_ui.party_slots[slot_index];
+    const old_slot = adventure_ui.party.slots[slot_index];
     const container = old_slot.container;
     container.RemoveAndDeleteChildren();
 
     const new_slot = make_new_slot(slot, container);
 
-    adventure_ui.party_slots[slot_index] = new_slot;
+    adventure_ui.party.slots[slot_index] = new_slot;
 
     return new_slot;
 }
 
 function fast_forward_adventure_party_changes(changes: Adventure_Party_Change[]) {
-    const slots = collapse_adventury_party_changes(adventure_ui.party_slots.length, changes);
+    const slots = collapse_adventury_party_changes(adventure_ui.party.slots.length, changes);
 
     for (let index = 0; index < slots.length; index++) {
         set_adventure_party_slot(index, slots[index]);
     }
 
-    adventure_ui.currently_playing_change_index = changes.length;
+    adventure_ui.party.currently_playing_change_index = changes.length;
 }
 
 function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
@@ -325,7 +329,7 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
     popup.button_yes.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
         const event: Adventure_Interact_With_Entity_Event = {
             entity_id: entity_id,
-            last_change_index: adventure_ui.party_changes.length
+            last_change_index: adventure_ui.party.changes.length
         };
 
         GameEvents.SendCustomGameEventToServer("adventure_interact_with_entity", event);
@@ -346,7 +350,7 @@ function merge_adventure_party_changes(head_before_merge: number, changes: Adven
     $.Msg("Received ", changes.length, " party changes, inserting after ", head_before_merge);
 
     for (let index = 0; index < changes.length; index++) {
-        adventure_ui.party_changes[head_before_merge + index] = changes[index];
+        adventure_ui.party.changes[head_before_merge + index] = changes[index];
     }
 }
 
@@ -359,7 +363,58 @@ function adventure_filter_mouse_click(event: MouseEvent, button: MouseButton | W
     return false;
 }
 
-function play_adventure_party_change(change: Adventure_Party_Change) {
+function play_adventure_party_change(change: Adventure_Party_Change): Adventure_Animation_Promise {
+    function fixed_duration(duration: number): Adventure_Animation_Promise {
+        const finish_at = Game.Time() + duration;
+        return () => Game.Time() >= finish_at;
+    }
+
+    function animate_integer(start_from: number, finish_on: number, consumer: (value: number) => void): Adventure_Animation_Promise {
+        let finished_updating = false;
+        let current_value = start_from;
+
+        const normal = Math.sign(finish_on - start_from);
+
+        function update_number() {
+            if (current_value == finish_on || current_state != Player_State.on_adventure) {
+                finished_updating = true;
+                return;
+            }
+
+            $.Schedule(0.03, update_number);
+
+            current_value += normal;
+
+            consumer(current_value);
+        }
+
+        update_number();
+
+        return () => finished_updating;
+    }
+
+    function both(a: Adventure_Animation_Promise, b: Adventure_Animation_Promise): Adventure_Animation_Promise {
+        return () => a() && b();
+    }
+
+    function proceed() {
+        return true;
+    }
+
+    function animate_health_change(container: Panel, from: number, to: number) {
+        if (to < from) {
+            const damage = $.CreatePanel("Panel", container, "");
+            damage.AddClass("animation");
+            damage.AddClass("animate_damage");
+            damage.DeleteAsync(0.3);
+        } else if (to > from) {
+            const heal = $.CreatePanel("Panel", container, "");
+            heal.AddClass("animation");
+            heal.AddClass("animate_heal");
+            heal.DeleteAsync(0.3);
+        }
+    }
+
     switch (change.type) {
         case Adventure_Party_Change_Type.set_slot: {
             const new_slot = set_adventure_party_slot(change.slot_index, change.slot);
@@ -367,25 +422,37 @@ function play_adventure_party_change(change: Adventure_Party_Change) {
             const flash = $.CreatePanel("Panel", new_slot.container, "");
             flash.AddClass("animate_add_to_deck_flash");
 
-            break;
+            return fixed_duration(0.2);
         }
 
         case Adventure_Party_Change_Type.set_health: {
-            const slot = adventure_ui.party_slots[change.slot_index];
-            if (!slot) return;
+            const slot = adventure_ui.party.slots[change.slot_index];
+            if (!slot) return proceed;
 
             switch (slot.type) {
                 case Adventure_Party_Slot_Type.hero: {
-                    slot.health = change.health;
-                    slot.ui.health_number.text = change.health.toString(10);
-                    slot.ui.card_panel.SetHasClass("dead", slot.health == 0);
-                    break;
+                    if (change.health < slot.health) {
+                        emit_random_sound(hero_sounds_by_hero_type(slot.hero).pain);
+                    }
+
+                    animate_health_change(slot.container, slot.health, change.health);
+
+                    return both(fixed_duration(1.0), animate_integer(slot.health, change.health, value => {
+                        slot.health = value;
+                        slot.ui.card_panel.SetHasClass("dead", slot.health == 0);
+
+                        return slot.ui.health_number.text = value.toString(10);
+                    }));
                 }
 
                 case Adventure_Party_Slot_Type.creep: {
-                    slot.health = change.health;
-                    slot.ui.health_number.text = change.health.toString(10);
-                    break;
+                    animate_health_change(slot.container, slot.health, change.health);
+
+                    return both(fixed_duration(1.0), animate_integer(slot.health, change.health, value => {
+                        slot.health = value;
+
+                        return slot.ui.health_number.text = value.toString(10);
+                    }));
                 }
 
                 case Adventure_Party_Slot_Type.spell:
@@ -401,26 +468,31 @@ function play_adventure_party_change(change: Adventure_Party_Change) {
 
         default: unreachable(change);
     }
+
+    return proceed;
 }
 
 function periodically_update_party_ui() {
     $.Schedule(0, periodically_update_party_ui);
 
-    const current_change = adventure_ui.party_changes[adventure_ui.currently_playing_change_index];
+    const party = adventure_ui.party;
+    const current_change = party.changes[party.currently_playing_change_index];
 
     if (current_change) {
-        const now = Game.Time();
-
-        if (!adventure_ui.currently_playing_a_change) {
-            adventure_ui.currently_playing_a_change = true;
-            adventure_ui.play_next_change_at = now + 0.2;
-
-            play_adventure_party_change(current_change);
+        if (!party.currently_playing_a_change) {
+            party.currently_playing_a_change = true;
+            party.next_change_promise = play_adventure_party_change(current_change);
         }
 
-        if (now >= adventure_ui.play_next_change_at) {
-            adventure_ui.currently_playing_a_change = false;
-            adventure_ui.currently_playing_change_index++;
+        if (party.currently_playing_a_change) {
+            if (current_change.type == Adventure_Party_Change_Type.set_health) {
+
+            }
+        }
+
+        if (party.next_change_promise()) {
+            party.currently_playing_a_change = false;
+            party.currently_playing_change_index++;
         }
     }
 }
@@ -433,13 +505,13 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
 
         if (reinitialize_ui) {
             adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
-            adventure_ui.currently_playing_change_index = 0;
-            adventure_ui.party_changes = [];
+            adventure_ui.party.currently_playing_change_index = 0;
+            adventure_ui.party.changes = [];
 
             reinitialize_adventure_ui(data.num_party_slots);
         }
 
-        const current_head = adventure_ui.party_changes.length;
+        const current_head = adventure_ui.party.changes.length;
 
         api_request(Api_Request_Type.get_adventure_party_changes, {
             access_token: get_access_token(),

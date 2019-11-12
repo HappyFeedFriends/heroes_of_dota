@@ -105,11 +105,13 @@ function subscribe_to_net_table_key<T>(table: string, key: string, callback: (da
         }
     });
 
-    const data = CustomNetTables.GetTableValue(table, key);
+    $.Schedule(0, () => {
+        const data = CustomNetTables.GetTableValue(table, key);
 
-    if (data) {
-        callback(data);
-    }
+        if (data) {
+            callback(data);
+        }
+    });
 
     return listener;
 }
@@ -333,4 +335,4 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
 
         current_state = data.state;
     }
-});
+})

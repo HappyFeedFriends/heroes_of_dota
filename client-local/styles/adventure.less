@@ -150,6 +150,26 @@
                 }
               }
             }
+
+            .animation {
+              width: 100%;
+              height: 100%;
+              animation-iteration-count: 1;
+            }
+
+            .animate_damage {
+              background-color: red;
+              animation-duration: 0.3s;
+              animation-timing-function: linear;
+              animation-name: adventure_slot_damage_animation;
+            }
+
+            .animate_heal {
+              background-color: #00ff4b;
+              animation-duration: 0.3s;
+              animation-timing-function: linear;
+              animation-name: adventure_slot_heal_animation;
+            }
           }
         }
       }
@@ -262,5 +282,35 @@
         border: 1px solid black;
       }
     }
+  }
+}
+
+@adventure_slot_damage_animation: 'adventure_slot_damage_animation';
+@keyframes @adventure_slot_damage_animation {
+  0% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 0.6;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@adventure_slot_heal_animation: 'adventure_slot_heal_animation';
+@keyframes @adventure_slot_heal_animation {
+  0% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+
+  100% {
+    opacity: 0;
   }
 }
