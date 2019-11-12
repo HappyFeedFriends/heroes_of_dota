@@ -2209,8 +2209,6 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
         if (!query) {
             return enum_data.map(([, value]) => value);
         } else {
-            const query = parts[1];
-
             if (/\d+/.test(query)) {
                 return [ parseInt(query) as T ];
             } else {

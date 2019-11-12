@@ -1212,6 +1212,83 @@ function register_dev_handlers() {
             };
         });
     });
+
+    register_api_handler(Api_Request_Type.adventure_party_cheat, req => {
+        return with_player_in_request(req, player => {
+            if (player.online.state != Player_State.on_adventure) return;
+
+            function parse_enum_query<T extends number>(query: string, enum_data: [string, T][]): T[] {
+                return enum_data
+                    .filter(([name]) => {
+                        const actual_query = query.toLowerCase();
+                        const name_lowercase = name.toLowerCase();
+                        const has_substring = name_lowercase.includes(actual_query);
+                        const abbreviation = name_lowercase.split("_").filter(str => str.length > 0).map(str => str[0]).join("");
+
+                        return has_substring || abbreviation == actual_query;
+                    })
+                    .map(([, id]) => id);
+            }
+
+            const parts = req.cheat.split(" ");
+            const party = player.online.party;
+
+            function changes_from_cheat<T extends number>(from_enum: [string, T][], changer: (slot: number, value: T) => Adventure_Party_Change) {
+                const elements = parse_enum_query(parts[1], from_enum);
+
+                for (const element of elements) {
+                    const slot_index = find_empty_party_slot_index(party);
+                    if (slot_index != -1) {
+                        push_party_change(party, changer(slot_index, element));
+                    }
+                }
+            }
+
+            switch (parts[0]) {
+                case "hero": {
+                    changes_from_cheat(enum_names_to_values<Hero_Type>(), change_party_add_hero);
+                    break;
+                }
+
+                case "spl": {
+                    changes_from_cheat(enum_names_to_values<Spell_Id>(), change_party_add_spell);
+                    break;
+                }
+
+                case "crp": {
+                    changes_from_cheat(enum_names_to_values<Creep_Type>(), change_party_add_creep);
+                    break;
+                }
+
+                case "hp": {
+                    const health = parseInt(parts[2]);
+                    const targets = parse_enum_query(parts[1], enum_names_to_values<Hero_Type>());
+
+                    for (const [index, slot] of party.slots.entries()) {
+                        if (slot.type == Adventure_Party_Slot_Type.hero && targets.indexOf(slot.hero) != -1) {
+                            push_party_change(party, change_party_change_health(index, health));
+                        }
+                    }
+
+                    break;
+                }
+
+                case "rm": {
+                    for (let index = 1; index < parts.length; index++) {
+                        const slot = parseInt(parts[index]) - 1;
+
+                        push_party_change(player.online.party, change_party_empty_slot(slot));
+                    }
+
+                    break;
+                }
+            }
+
+            return {
+                party_updates: player.online.party.changes.slice(req.starting_change_index)
+            }
+        });
+    });
 }
 
 type Request_Result<T> = Result_Ok<T> | Result_Error;

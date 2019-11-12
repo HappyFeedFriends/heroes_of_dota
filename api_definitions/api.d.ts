@@ -37,6 +37,7 @@ declare const enum Api_Request_Type {
 
     battle_cheat = 50,
     map_cheat = 51,
+    adventure_party_cheat = 52,
     get_debug_ai_data = 100,
 
     editor_action = 1000,
@@ -340,6 +341,15 @@ type Api_Request = {
     } & With_Token
     response: {
         creeps: Creep_Type[]
+    }
+} | {
+    type: Api_Request_Type.adventure_party_cheat
+    request: {
+        starting_change_index: number
+        cheat: string
+    } & With_Token
+    response: {
+        party_updates: Adventure_Party_Change[]
     }
 }
 

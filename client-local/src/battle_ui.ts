@@ -181,7 +181,6 @@ type Hover_State_Ability = {
     ability: Ability
 }
 
-let current_state = Player_State.not_logged_in;
 let battle: UI_Battle;
 let ui_player_data: UI_Player_Data[] = [];
 
@@ -536,7 +535,7 @@ function on_battle_event(battle: UI_Battle, event: Battle_Event) {
     }
 }
 
-function process_state_transition(from: Player_State, new_state: Game_Net_Table) {
+function battle_process_state_transition(from: Player_State, new_state: Game_Net_Table) {
     $.Msg(`Transition from ${from} to ${new_state.state}`);
 
     if (from == Player_State.in_battle) {
@@ -1466,75 +1465,69 @@ function dispose_of_unit_stat_bar_data(data: UI_Unit_Data) {
     data.stat_bar_panel.DeleteAsync(0);
 }
 
-function process_state_update(state: Game_Net_Table) {
-    if (state.state == Player_State.not_logged_in) {
-        return;
+function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In_Battle) {
+    ui_player_data = from_server_array(state.battle.players).map(player => ({
+        id: player.id,
+        gold: player.gold
+    }));
+
+    battle.entity_id_to_rune_id = {};
+
+    for (const entity_id in state.battle.entity_id_to_rune_id) {
+        battle.entity_id_to_rune_id[entity_id] = state.battle.entity_id_to_rune_id[entity_id];
     }
 
-    if (battle && state.state == Player_State.in_battle) {
-        ui_player_data = from_server_array(state.battle.players).map(player => ({
-            id: player.id,
-            gold: player.gold
-        }));
+    battle.entity_id_to_shop_id = {};
 
-        battle.entity_id_to_rune_id = {};
+    for (const entity_id in state.battle.entity_id_to_shop_id) {
+        battle.entity_id_to_shop_id[entity_id] = state.battle.entity_id_to_shop_id[entity_id];
+    }
 
-        for (const entity_id in state.battle.entity_id_to_rune_id) {
-            battle.entity_id_to_rune_id[entity_id] = state.battle.entity_id_to_rune_id[entity_id];
+    const leftover_entity_ids = Object.keys(battle.entity_id_to_unit_data);
+
+    for (const entity_id in state.battle.entity_id_to_unit_data) {
+        const new_data = state.battle.entity_id_to_unit_data[entity_id];
+        const existing_data = battle.entity_id_to_unit_data[entity_id];
+        const present_id_index = leftover_entity_ids.indexOf(entity_id);
+
+        if (present_id_index != -1) {
+            leftover_entity_ids.splice(present_id_index, 1);
         }
 
-        battle.entity_id_to_shop_id = {};
+        if (existing_data && new_data.supertype == existing_data.supertype) {
+            update_unit_stat_bar_data(existing_data, new_data);
+        } else {
+            const created_data = create_ui_unit_data(new_data);
+            update_unit_stat_bar_data(created_data, new_data);
 
-        for (const entity_id in state.battle.entity_id_to_shop_id) {
-            battle.entity_id_to_shop_id[entity_id] = state.battle.entity_id_to_shop_id[entity_id];
+            battle.entity_id_to_unit_data[entity_id] = created_data;
         }
+    }
 
-        const leftover_entity_ids = Object.keys(battle.entity_id_to_unit_data);
+    if (leftover_entity_ids.length > 0) {
+        $.Msg(`Cleaning up ${leftover_entity_ids.length} unit data entries`);
+    }
 
-        for (const entity_id in state.battle.entity_id_to_unit_data) {
-            const new_data = state.battle.entity_id_to_unit_data[entity_id];
-            const existing_data = battle.entity_id_to_unit_data[entity_id];
-            const present_id_index = leftover_entity_ids.indexOf(entity_id);
+    for (const leftover_id_string of leftover_entity_ids) {
+        const leftover_id = Number(leftover_id_string);
 
-            if (present_id_index != -1) {
-                leftover_entity_ids.splice(present_id_index, 1);
-            }
+        if (is_unit_selection(selection) && selection.unit_entity == leftover_id) {
+            const old_selected_unit_data = battle.entity_id_to_unit_data[leftover_id];
 
-            if (existing_data && new_data.supertype == existing_data.supertype) {
-                update_unit_stat_bar_data(existing_data, new_data);
-            } else {
-                const created_data = create_ui_unit_data(new_data);
-                update_unit_stat_bar_data(created_data, new_data);
+            for (const new_entity_id in state.battle.entity_id_to_unit_data) {
+                const new_data = state.battle.entity_id_to_unit_data[new_entity_id];
 
-                battle.entity_id_to_unit_data[entity_id] = created_data;
-            }
-        }
+                if (new_data.id == old_selected_unit_data.id) {
+                    select_unit(Number(new_entity_id));
 
-        if (leftover_entity_ids.length > 0) {
-            $.Msg(`Cleaning up ${leftover_entity_ids.length} unit data entries`);
-        }
-
-        for (const leftover_id_string of leftover_entity_ids) {
-            const leftover_id = Number(leftover_id_string);
-
-            if (is_unit_selection(selection) && selection.unit_entity == leftover_id) {
-                const old_selected_unit_data = battle.entity_id_to_unit_data[leftover_id];
-
-                for (const new_entity_id in state.battle.entity_id_to_unit_data) {
-                    const new_data = state.battle.entity_id_to_unit_data[new_entity_id];
-
-                    if (new_data.id == old_selected_unit_data.id) {
-                        select_unit(Number(new_entity_id));
-
-                        break;
-                    }
+                    break;
                 }
             }
-
-            dispose_of_unit_stat_bar_data(battle.entity_id_to_unit_data[leftover_id]);
-
-            delete battle.entity_id_to_unit_data[Number(leftover_id)];
         }
+
+        dispose_of_unit_stat_bar_data(battle.entity_id_to_unit_data[leftover_id]);
+
+        delete battle.entity_id_to_unit_data[Number(leftover_id)];
     }
 }
 
@@ -2812,15 +2805,8 @@ function setup_custom_ability_hotkeys() {
 }
 
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
-    if (current_state != data.state) {
-        process_state_transition(current_state, data);
-
-        current_state = data.state;
-    }
-
-    process_state_update(data);
-
-    if (data.state == Player_State.in_battle) {
+    if (battle && data.state == Player_State.in_battle) {
+        battle_process_state_update(battle, data);
         update_grid_visuals();
     }
 });

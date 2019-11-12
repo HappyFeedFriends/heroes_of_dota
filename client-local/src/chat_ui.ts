@@ -62,13 +62,23 @@ function hack_into_game_chat() {
                     if (text == "-ping") {
                         Game.ServerCmd("dota_ping");
                     } else {
-                        const unit = selection.type == Selection_Type.unit ? selection.unit : undefined;
+                        if (current_state == Player_State.in_battle) {
+                            const unit = selection.type == Selection_Type.unit ? selection.unit : undefined;
 
-                        api_request(Api_Request_Type.battle_cheat, {
-                            access_token: get_access_token(),
-                            cheat: text.substring(1),
-                            selected_unit_id: unit ? unit.id : -1 as Unit_Id
-                        }, response => response);
+                            api_request(Api_Request_Type.battle_cheat, {
+                                access_token: get_access_token(),
+                                cheat: text.substring(1),
+                                selected_unit_id: unit ? unit.id : -1 as Unit_Id
+                            }, response => response);
+                        } else if (current_state == Player_State.on_adventure) {
+                            const head = adventure_ui.party_changes.length;
+
+                            api_request(Api_Request_Type.adventure_party_cheat, {
+                                access_token: get_access_token(),
+                                cheat: text.substring(1),
+                                starting_change_index: adventure_ui.party_changes.length
+                            }, response => merge_adventure_party_changes(head, response.party_updates));
+                        }
                     }
                 } else if (text.charAt(0) == "/") {
                     cheat(text.substring(1));

@@ -8,6 +8,8 @@ const player_name_storage: Record<number, string> = {};
 const player_name_requests: Record<number, Player_Name_Callback[]> = {};
 const map_camera_height = 1300;
 
+let current_state = Player_State.not_logged_in;
+
 const global_map_ui_root = $("#global_map_ui");
 const adventure_ui_root = $("#adventure_ui");
 
@@ -324,5 +326,11 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
         GameUI.SetCameraYaw(0);
         GameUI.SetCameraPitchMin(60);
         GameUI.SetCameraPitchMax(60);
+    }
+
+    if (current_state != data.state) {
+        battle_process_state_transition(current_state, data);
+
+        current_state = data.state;
     }
 });
