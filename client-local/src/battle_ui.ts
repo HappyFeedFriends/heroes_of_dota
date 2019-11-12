@@ -484,13 +484,7 @@ function cheat(cheat: string) {
     });
 }
 
-function periodically_request_battle_deltas_when_in_battle() {
-    $.Schedule(2.0, periodically_request_battle_deltas_when_in_battle);
-
-    if (current_state != Player_State.in_battle) {
-        return;
-    }
-
+function request_battle_deltas() {
     const head_before = battle.delta_head;
 
     api_request(Api_Request_Type.query_battle_deltas, {
@@ -500,6 +494,16 @@ function periodically_request_battle_deltas_when_in_battle() {
     }, response => {
         receive_battle_deltas(head_before, response.deltas);
     });
+}
+
+function periodically_request_battle_deltas_when_in_battle() {
+    $.Schedule(2.0, periodically_request_battle_deltas_when_in_battle);
+
+    if (current_state != Player_State.in_battle) {
+        return;
+    }
+
+    request_battle_deltas();
 }
 
 function create_cell_particle_at(position: XYZ) {
@@ -608,6 +612,8 @@ function process_state_transition(from: Player_State, new_state: Game_Net_Table)
 
         $("#shop_panels_container").RemoveAndDeleteChildren();
         $("#stat_bar_container").RemoveAndDeleteChildren();
+
+        request_battle_deltas();
     }
 }
 
