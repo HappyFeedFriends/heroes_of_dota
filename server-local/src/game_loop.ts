@@ -302,6 +302,9 @@ function process_state_transition(game: Game, current_state: Player_State, next_
     if (current_state == Player_State.in_battle) {
         print("Battle over");
 
+        battle.camera_dummy.SetDayTimeVisionRange(0);
+        battle.camera_dummy.SetDayTimeVisionRange(0);
+
         clean_battle_world_handles(battle);
         reinitialize_battle(battle.world_origin, battle.camera_dummy);
     }
@@ -329,9 +332,18 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         battle.grid_size = next_state.grid_size;
         battle.is_over = false;
 
-        const camera_look_at = battle.world_origin + Vector(next_state.grid_size.width, next_state.grid_size.height - 2) * get_battle_cell_size() / 2 as Vector;
+        const grid_w = next_state.grid_size.width;
+        const grid_h = next_state.grid_size.height;
+
+        const vision_w = grid_w + 4;
+        const vision_h = grid_h + 3;
+
+        const camera_look_at = battle.world_origin + Vector(grid_w, grid_h - 2) * get_battle_cell_size() / 2 as Vector;
+        const radius = Math.sqrt(vision_w * vision_w + vision_h * vision_h) / 2 * get_battle_cell_size();
 
         battle.camera_dummy.SetAbsOrigin(camera_look_at);
+        battle.camera_dummy.SetDayTimeVisionRange(radius);
+        battle.camera_dummy.SetNightTimeVisionRange(radius);
 
         PlayerResource.SetCameraTarget(game.player.player_id, battle.camera_dummy);
 
@@ -378,16 +390,8 @@ function try_submit_state_transition(game: Game, new_state: Player_State_Data) {
 
 function get_default_battleground_data(): [Vector, CDOTA_BaseNPC] {
     const origin = Entities.FindByName(undefined, "battle_bottom_left").GetAbsOrigin();
-
-    const camera_entity = CreateModifierThinker(
-        undefined,
-        undefined,
-        "",
-        {},
-        Vector(),
-        DOTATeam_t.DOTA_TEAM_GOODGUYS,
-        false
-    ) as CDOTA_BaseNPC;
+    const camera_entity = CreateUnitByName("npc_dummy_unit", Vector(), true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
+    camera_entity.AddNewModifier(camera_entity, undefined, "Modifier_Dummy", {});
 
     return [origin, camera_entity];
 }
@@ -473,6 +477,7 @@ function main() {
     link_modifier("Modifier_Euls_Scepter", "modifiers/modifier_euls_scepter");
     link_modifier("Modifier_Activity_Translation", "modifiers/modifier_activity_translation");
     link_modifier("Modifier_Activity_Override", "modifiers/modifier_activity_override");
+    link_modifier("Modifier_Dummy", "modifiers/modifier_dummy");
 
     if (IsInToolsMode()) {
         link_modifier("Modifier_Editor_Npc_Type", "modifiers/modifier_editor");

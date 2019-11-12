@@ -2501,7 +2501,10 @@ function apply_special_death_effects(target: Unit) {
     if (target.supertype == Unit_Supertype.creep && target.type == Creep_Type.spider_matriarch) {
         fork(() => {
             wait(1);
-            target.handle.AddNoDraw();
+
+            if (IsValidEntity(target.handle)) {
+                target.handle.AddNoDraw();
+            }
         })
     }
 }
