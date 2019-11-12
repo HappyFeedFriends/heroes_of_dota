@@ -286,6 +286,7 @@ function fast_forward_adventure_party_changes(changes: Adventure_Party_Change[])
         set_adventure_party_slot(index, slots[index]);
     }
 
+    adventure_ui.party.changes = changes;
     adventure_ui.party.currently_playing_change_index = changes.length;
 }
 
