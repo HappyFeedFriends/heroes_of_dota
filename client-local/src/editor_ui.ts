@@ -258,12 +258,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
             const entity_type = enum_value_from_modifier<Adventure_Entity_Type>(entity_under_cursor, "Modifier_Editor_Adventure_Entity_Type");
             const entity_id = enum_value_from_modifier<Adventure_Entity_Id>(entity_under_cursor, "Modifier_Editor_Adventure_Entity_Id");
             const npc_type = enum_value_from_modifier<Npc_Type>(entity_under_cursor, "Modifier_Editor_Npc_Type");
-
-            let name = "Entity #" + entity_id;
-
-            if (npc_type != undefined) {
-                name = enum_to_string(npc_type);
-            }
+            const name = `${npc_type != undefined ? enum_to_string(npc_type) : enum_to_string(entity_type)} (#${entity_id})`;
 
             $.Msg(entity_id, " ", npc_type);
 
@@ -388,11 +383,39 @@ function periodically_update_editor_ui() {
     }
 }
 
-function update_state_from_editor_mode(state: Player_State, editor: Editor) {
-    if (state != Player_State.on_adventure) {
-        exit_editor();
-    }
+function periodically_update_editor_camera_state() {
+    $.Schedule(0.1, periodically_update_editor_camera_state);
 
+    switch (editor.type) {
+        case Editor_Type.adventure: {
+            dispatch_editor_event({
+                type: Editor_Event_Type.set_camera,
+                camera: {
+                    free: true
+                }
+            });
+
+            break;
+        }
+
+        case Editor_Type.battleground: {
+            dispatch_editor_event({
+                type: Editor_Event_Type.set_camera,
+                camera: {
+                    free: false,
+                    grid_size: {
+                        x: 14,
+                        y: 14
+                    }
+                }
+            });
+
+            break;
+        }
+    }
+}
+
+function update_state_from_editor_mode(state: Player_State, editor: Editor) {
     if (editor.type == Editor_Type.adventure) {
         api_request(Api_Request_Type.editor_get_room_details, {
             access_token: get_access_token()
@@ -416,10 +439,6 @@ function update_state_from_editor_mode(state: Player_State, editor: Editor) {
 function update_adventure_editor_buttons(editor: Adventure_Editor) {
     editor_button("Toggle map vision", () => dispatch_editor_event({
         type: Editor_Event_Type.toggle_map_vision
-    }));
-
-    editor_button("Toggle camera lock", () => dispatch_editor_event({
-        type: Editor_Event_Type.toggle_camera_lock
     }));
 
     editor_button("Change camera height", () => {
@@ -448,12 +467,12 @@ function update_editor_buttons(state: Player_State) {
             exit_editor();
             update_state_from_editor_mode(state, editor);
         });
+    } else {
+        editor_button("Battleground editor", () => {
+            editor = battleground_editor;
+            update_state_from_editor_mode(state, editor);
+        });
     }
-
-    editor_button("Battleground editor", () => {
-        editor = battleground_editor;
-        update_state_from_editor_mode(state, editor);
-    });
 
     if (state == Player_State.on_adventure) {
         if (editor.type == Editor_Type.adventure) {
@@ -487,11 +506,16 @@ function init_editor_ui() {
     subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
         buttons_root.RemoveAndDeleteChildren();
 
+        if (data.state != Player_State.on_adventure && editor.type == Editor_Type.adventure) {
+            exit_editor();
+        }
+
         update_state_from_editor_mode(data.state, editor);
     });
 
     update_editor_indicator(editor);
     periodically_update_editor_ui();
+    periodically_update_editor_camera_state();
 }
 
 if (Game.IsInToolsMode()) {

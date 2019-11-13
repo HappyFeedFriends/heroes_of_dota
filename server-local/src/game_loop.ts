@@ -14,6 +14,16 @@ type Main_Player = {
     movement_history: Movement_History_Entry[]
 }
 
+type Camera_Target = {
+    target?: CDOTA_BaseNPC
+}
+
+let actual_camera_target: Camera_Target = {};
+let current_camera_target: Camera_Target = {};
+let editor_override_camera_target: Camera_Target | undefined = undefined;
+let reset_camera_override_at = 0;
+let suppress_camera_change = false;
+
 let state_transition: Player_State_Data | undefined = undefined;
 
 declare let can_transition_into_next_state: boolean;
@@ -285,6 +295,10 @@ function on_custom_event_async<T>(event_name: string, callback: (data: T) => voi
     CustomGameEventManager.RegisterListener(event_name, (user_id, event) => fork(() => callback(event as T)));
 }
 
+function get_camera_look_at_for_battle(origin: Vector, grid_w: number, grid_h: number) {
+    return origin + Vector(grid_w, grid_h - 2) * get_battle_cell_size() / 2 as Vector;
+}
+
 function process_state_transition(game: Game, current_state: Player_State, next_state: Player_State_Data) {
     print(`State transition ${enum_to_string(current_state)} => ${enum_to_string(next_state.state)}`);
 
@@ -310,9 +324,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
     }
 
     if (next_state.state == Player_State.on_global_map) {
-        PlayerResource.SetCameraTarget(game.player.player_id, game.player.hero_unit);
-        wait_one_frame();
-        PlayerResource.SetCameraTarget(game.player.player_id, undefined);
+        set_camera_location_on_unit_blocking(game.player.player_id, game.player.hero_unit);
     }
 
     if (next_state.state == Player_State.in_battle) {
@@ -338,14 +350,12 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         const vision_w = grid_w + 4;
         const vision_h = grid_h + 3;
 
-        const camera_look_at = battle.world_origin + Vector(grid_w, grid_h - 2) * get_battle_cell_size() / 2 as Vector;
+        const camera_look_at = get_camera_look_at_for_battle(battle.world_origin, grid_w, grid_h);
         const radius = Math.sqrt(vision_w * vision_w + vision_h * vision_h) / 2 * get_battle_cell_size();
 
         battle.camera_dummy.SetAbsOrigin(camera_look_at);
         battle.camera_dummy.SetDayTimeVisionRange(radius);
         battle.camera_dummy.SetNightTimeVisionRange(radius);
-
-        PlayerResource.SetCameraTarget(game.player.player_id, battle.camera_dummy);
 
         battle_emit_sound("combat_start");
     }
@@ -356,7 +366,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         FindClearSpaceForUnit(game.player.hero_unit, start, true);
         game.player.hero_unit.Interrupt();
 
-        PlayerResource.SetCameraTarget(game.player.player_id, game.player.hero_unit);
+        set_camera_location_on_unit_blocking(game.player.player_id, game.player.hero_unit);
 
         game.player.current_order_x = start.x;
         game.player.current_order_y = start.y;
@@ -394,6 +404,19 @@ function get_default_battleground_data(): [Vector, CDOTA_BaseNPC] {
     camera_entity.AddNewModifier(camera_entity, undefined, "Modifier_Dummy", {});
 
     return [origin, camera_entity];
+}
+
+function set_camera_location_on_unit_blocking(player_id: PlayerID, target: CDOTA_BaseNPC) {
+    suppress_camera_change = true;
+    PlayerResource.SetCameraTarget(player_id, target);
+    wait_one_frame();
+    PlayerResource.SetCameraTarget(player_id, undefined);
+    suppress_camera_change = false;
+}
+
+function set_camera_override(target: CDOTA_BaseNPC | undefined, time: number) {
+    editor_override_camera_target = { target: target };
+    reset_camera_override_at = GameRules.GetGameTime() + time;
 }
 
 function get_player_movement(player: Main_Player) {
@@ -617,6 +640,39 @@ function game_loop() {
         while(true) {
             if (game.state == Player_State.in_battle) {
                 periodically_update_battle();
+            }
+
+            wait_one_frame();
+        }
+    });
+
+    fork(() => {
+        while(true) {
+            const desired_camera_target = editor_override_camera_target ? editor_override_camera_target : current_camera_target;
+
+            if (desired_camera_target.target != actual_camera_target.target && !suppress_camera_change) {
+                print("Changed camera target to", desired_camera_target.target);
+
+                PlayerResource.SetCameraTarget(game.player.player_id, desired_camera_target.target);
+                actual_camera_target.target = desired_camera_target.target;
+            }
+
+            if (editor_override_camera_target && GameRules.GetGameTime() >= reset_camera_override_at) {
+                editor_override_camera_target = undefined;
+            }
+
+            wait_one_frame();
+        }
+    });
+
+    fork(() => {
+        while(true) {
+            if (game.state == Player_State.in_battle) {
+                current_camera_target.target = battle.camera_dummy;
+            } else if (game.state == Player_State.on_global_map) {
+                current_camera_target.target = undefined;
+            } else if (game.state == Player_State.on_adventure) {
+                current_camera_target.target = game.player.hero_unit;
             }
 
             wait_one_frame();

@@ -1,6 +1,6 @@
 type Editor_State = {
     map_revealed: boolean
-    camera_unlocked: boolean
+    camera_dummy: CDOTA_BaseNPC
 }
 
 function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) {
@@ -16,13 +16,18 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
             break;
         }
 
-        case Editor_Event_Type.toggle_camera_lock: {
-            editor.camera_unlocked = !editor.camera_unlocked;
+        case Editor_Event_Type.set_camera: {
+            event.camera.free = from_client_bool(event.camera.free);
 
-            if (editor.camera_unlocked) {
-                PlayerResource.SetCameraTarget(0, undefined);
+            if (event.camera.free) {
+                set_camera_override(undefined, 0.15);
             } else {
-                PlayerResource.SetCameraTarget(0, game.player.hero_unit);
+                const look_at = get_camera_look_at_for_battle(battle.world_origin, event.camera.grid_size.x, event.camera.grid_size.y);
+                editor.camera_dummy.SetAbsOrigin(look_at);
+
+                set_camera_override(editor.camera_dummy, 0.15);
+
+                AddFOWViewer(DOTATeam_t.DOTA_TEAM_GOODGUYS, look_at, 3000, 0.5, true);
             }
 
             break;
@@ -137,9 +142,12 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
 }
 
 function subscribe_to_editor_events(game: Game) {
+    const camera_entity = CreateUnitByName("npc_dummy_unit", Vector(), true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
+    camera_entity.AddNewModifier(camera_entity, undefined, "Modifier_Dummy", {});
+
     const state: Editor_State =  {
         map_revealed: false,
-        camera_unlocked: false
+        camera_dummy: camera_entity
     };
 
     on_custom_event_async<Editor_Event>("editor_event", event => on_editor_event(game, state, event));

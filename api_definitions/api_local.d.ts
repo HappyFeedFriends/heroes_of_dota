@@ -213,13 +213,13 @@ type Battle_Snapshot = {
 declare const enum Editor_Event_Type {
     toggle_map_vision = 0,
     start_adventure = 1,
-    toggle_camera_lock = 2,
+    set_camera = 2,
     create_entity = 3,
     delete_entity = 4,
     set_entity_facing = 5,
     set_entity_position = 6,
     teleport = 7,
-    exit_adventure = 8
+    exit_adventure = 8,
 }
 
 type Editor_Event = {
@@ -228,7 +228,16 @@ type Editor_Event = {
     type: Editor_Event_Type.start_adventure
     adventure: Adventure_Id
 } | {
-    type: Editor_Event_Type.toggle_camera_lock
+    type: Editor_Event_Type.set_camera
+    camera: {
+        free: true
+    } | {
+        free: false
+        grid_size: {
+            x: number
+            y: number
+        }
+    }
 } | {
     type: Editor_Event_Type.set_entity_position
     entity_id: Adventure_Entity_Id
