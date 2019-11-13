@@ -23,14 +23,6 @@ declare const enum Adventure_Party_Change_Type {
     set_health = 1
 }
 
-declare const enum Adventure_Editor_Action_Type {
-    set_entity_position = 0,
-    set_entity_facing = 1,
-    delete_entity = 2,
-    set_entrance = 3,
-    edit_enemy_deck = 4
-}
-
 type Adventure_Entity = Adventure_Entity_State & {
     definition: Adventure_Entity_Definition
 }
@@ -86,33 +78,4 @@ type Adventure_Party_Change = {
     type: Adventure_Party_Change_Type.set_health
     slot_index: number
     health: number
-}
-
-type Editor_Action = {
-    type: Adventure_Editor_Action_Type.set_entrance
-    entrance: {
-        x: number
-        y: number
-    }
-} | {
-    type: Adventure_Editor_Action_Type.delete_entity
-    entity_id: Adventure_Entity_Id
-} | {
-    type: Adventure_Editor_Action_Type.set_entity_position
-    entity_id: Adventure_Entity_Id
-    new_position: {
-        x: number
-        y: number
-    }
-} | {
-    type: Adventure_Editor_Action_Type.set_entity_facing
-    entity_id: Adventure_Entity_Id
-    new_facing: {
-        x: number
-        y: number
-    }
-} | {
-    type: Adventure_Editor_Action_Type.edit_enemy_deck
-    entity_id: Adventure_Entity_Id
-    creeps: Creep_Type[]
 }

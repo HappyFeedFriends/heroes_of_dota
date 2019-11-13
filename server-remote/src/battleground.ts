@@ -15,6 +15,7 @@ type Shop_Spawn = {
     shop_type: Shop_Type
     at: XY
     facing: XY
+    item_pool: Item_Id[]
 }
 
 type Monster_Spawn = {
@@ -49,12 +50,13 @@ export function forest(): Battleground {
         }
     }
 
-    function shop(x: number, y: number, facing: XY, shop_type: Shop_Type): Shop_Spawn {
+    function shop(x: number, y: number, facing: XY, shop_type: Shop_Type, items: Item_Id[]): Shop_Spawn {
         return {
             type: Spawn_Type.shop,
             shop_type: shop_type,
             at: xy(x, y),
-            facing: facing
+            facing: facing,
+            item_pool: items
         }
     }
 
@@ -115,9 +117,35 @@ export function forest(): Battleground {
             tree(4, 3),
             tree(4, 9),
             tree(4, 8),
-            shop(6, 8, down, Shop_Type.secret),
-            shop(1, 3, up, Shop_Type.normal),
-            shop(11, 5, down, Shop_Type.normal),
+            shop(6, 8, down, Shop_Type.secret, [
+                Item_Id.boots_of_travel,
+                Item_Id.heart_of_tarrasque,
+                Item_Id.assault_cuirass,
+                Item_Id.satanic,
+                Item_Id.divine_rapier,
+                Item_Id.tome_of_knowledge,
+                Item_Id.refresher_shard,
+                Item_Id.mask_of_madness,
+                Item_Id.armlet,
+                Item_Id.octarine_core,
+                Item_Id.basher
+            ]),
+            shop(1, 3, up, Shop_Type.normal, [
+                Item_Id.belt_of_strength,
+                Item_Id.blades_of_attack,
+                Item_Id.boots_of_speed,
+                Item_Id.morbid_mask,
+                Item_Id.chainmail,
+                Item_Id.enchanted_mango
+            ]),
+            shop(11, 5, down, Shop_Type.normal, [
+                Item_Id.belt_of_strength,
+                Item_Id.blades_of_attack,
+                Item_Id.boots_of_speed,
+                Item_Id.morbid_mask,
+                Item_Id.chainmail,
+                Item_Id.enchanted_mango
+            ]),
             monster(5, 1, right),
             rune(1, 1),
             monster(10, 8, left)

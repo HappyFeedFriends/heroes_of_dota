@@ -316,33 +316,6 @@ type Api_Request = {
         changes: Adventure_Party_Change[]
     }
 } | {
-    type: Api_Request_Type.editor_action
-    request: Editor_Action & With_Token
-    response: {}
-} | {
-    type: Api_Request_Type.editor_get_room_details
-    request: {} & With_Token
-    response: {
-        entrance_location: {
-            x: number
-            y: number
-        }
-    }
-} | {
-    type: Api_Request_Type.editor_create_entity
-    request: {
-        definition: Adventure_Entity_Definition
-    } & With_Token
-    response: Adventure_Entity
-} | {
-    type: Api_Request_Type.editor_get_enemy_deck
-    request: {
-        entity_id: Adventure_Entity_Id
-    } & With_Token
-    response: {
-        creeps: Creep_Type[]
-    }
-} | {
     type: Api_Request_Type.adventure_party_cheat
     request: {
         starting_change_index: number
@@ -351,7 +324,7 @@ type Api_Request = {
     response: {
         party_updates: Adventure_Party_Change[]
     }
-}
+} | Editor_Handlers
 
 type Collection_Page = {
     cards: Collection_Card[]

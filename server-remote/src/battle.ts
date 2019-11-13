@@ -2089,34 +2089,7 @@ export function start_battle(id_generator: Id_Generator, participants: Battle_Pa
             }
 
             case Spawn_Type.shop: {
-                const all_items = (() => {
-                    switch (spawn.shop_type) {
-                        case Shop_Type.normal: return [
-                            Item_Id.belt_of_strength,
-                            Item_Id.blades_of_attack,
-                            Item_Id.boots_of_speed,
-                            Item_Id.morbid_mask,
-                            Item_Id.chainmail,
-                            Item_Id.enchanted_mango
-                        ];
-
-                        case Shop_Type.secret: return [
-                            Item_Id.boots_of_travel,
-                            Item_Id.heart_of_tarrasque,
-                            Item_Id.assault_cuirass,
-                            Item_Id.satanic,
-                            Item_Id.divine_rapier,
-                            Item_Id.tome_of_knowledge,
-                            Item_Id.refresher_shard,
-                            Item_Id.mask_of_madness,
-                            Item_Id.armlet,
-                            Item_Id.octarine_core,
-                            Item_Id.basher
-                        ]
-                    }
-                })();
-
-                const items = pick_n_random(all_items, 3);
+                const items = pick_n_random(spawn.item_pool, 3);
 
                 spawn_deltas.push({
                     type: Delta_Type.shop_spawn,
