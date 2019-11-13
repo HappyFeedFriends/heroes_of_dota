@@ -258,8 +258,8 @@ GameEvents.Subscribe("log_message", event => {
 function setup_mouse_filter() {
     GameUI.SetMouseCallback((event, button) => {
         try {
-            if (in_editor_mode) {
-                const should_consume = editor_filter_mouse_click(event, button);
+            if (editor.type == Editor_Type.adventure) {
+                const should_consume = adventure_editor_filter_mouse_click(editor, event, button);
 
                 if (should_consume) {
                     return true;

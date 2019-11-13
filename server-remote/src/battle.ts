@@ -1,6 +1,5 @@
 import {Id_Generator, random, report_battle_over} from "./server";
 import {readFileSync} from "fs";
-import {Battleground, Spawn_Type} from "./battleground";
 import {XY} from "./common";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));

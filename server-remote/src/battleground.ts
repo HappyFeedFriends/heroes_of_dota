@@ -1,48 +1,10 @@
-export const enum Spawn_Type {
-    rune ,
-    shop,
-    monster,
-    tree
-}
-
-type Rune_Spawn = {
-    type: Spawn_Type.rune
-    at: XY
-}
-
-type Shop_Spawn = {
-    type: Spawn_Type.shop
-    shop_type: Shop_Type
-    at: XY
-    facing: XY
-    item_pool: Item_Id[]
-}
-
-type Monster_Spawn = {
-    type: Spawn_Type.monster
-    at: XY
-    facing: XY
-}
-
-type Tree_Spawn = {
-    type: Spawn_Type.tree
-    at: XY
-}
-
-type Battleground_Spawn = Rune_Spawn | Shop_Spawn | Monster_Spawn | Tree_Spawn;
-
-export type Battleground = {
-    grid_size: XY
-    deployment_zones: Deployment_Zone[]
-    spawns: Battleground_Spawn[]
-}
 
 export function forest(): Battleground {
     function xy(x: number, y: number): XY {
         return { x: x, y: y };
     }
 
-    function monster(x: number, y: number, facing: XY): Monster_Spawn {
+    function monster(x: number, y: number, facing: XY): Battleground_Spawn {
         return {
             type: Spawn_Type.monster,
             at: xy(x, y),
@@ -50,7 +12,7 @@ export function forest(): Battleground {
         }
     }
 
-    function shop(x: number, y: number, facing: XY, shop_type: Shop_Type, items: Item_Id[]): Shop_Spawn {
+    function shop(x: number, y: number, facing: XY, shop_type: Shop_Type, items: Item_Id[]): Battleground_Spawn {
         return {
             type: Spawn_Type.shop,
             shop_type: shop_type,
@@ -60,14 +22,14 @@ export function forest(): Battleground {
         }
     }
 
-    function tree(x: number, y: number): Tree_Spawn {
+    function tree(x: number, y: number): Battleground_Spawn {
         return {
             type: Spawn_Type.tree,
             at: xy(x, y)
         }
     }
 
-    function rune(x: number, y: number): Rune_Spawn {
+    function rune(x: number, y: number): Battleground_Spawn {
         return {
             type: Spawn_Type.rune,
             at: xy(x, y)

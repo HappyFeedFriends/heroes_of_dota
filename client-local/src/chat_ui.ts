@@ -80,8 +80,6 @@ function hack_into_game_chat() {
                             }, response => merge_adventure_party_changes(head, response.party_updates));
                         }
                     }
-                } else if (text.charAt(0) == "/") {
-                    cheat(text.substring(1));
                 } else {
                     api_request(Api_Request_Type.submit_chat_message, {
                         access_token: get_access_token(),

@@ -587,10 +587,6 @@ function game_loop() {
         SendToServerConsole("r_farz 10000");
 
         subscribe_to_editor_events(game);
-
-        on_custom_event_async<Battle_Cheat_Event>("cheat", event => {
-            use_cheat(battle, event.message);
-        });
     }
 
     fork(() => submit_adventure_movement_loop(game));

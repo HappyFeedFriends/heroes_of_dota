@@ -43,7 +43,8 @@ declare const enum Api_Request_Type {
     editor_action = 1000,
     editor_get_room_details = 1001,
     editor_create_entity = 1002,
-    editor_get_enemy_deck = 1003
+    editor_get_enemy_deck = 1003,
+    editor_submit_battleground = 1004
 }
 
 declare const enum Map_Entity_Type {

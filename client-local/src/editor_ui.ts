@@ -11,17 +11,26 @@ const entity_buttons_dropdown = entity_panel.FindChildTraverse("editor_entity_dr
 // To prevent click-through
 entity_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
 
-let in_editor_mode = false;
-let camera_height_index = 4;
-let pinned_context_menu_position: XYZ = [0, 0, 0];
-let context_menu_particle: ParticleId | undefined = undefined;
-let room_entrance_location: XY | undefined = undefined;
+const enum Editor_Type {
+    none,
+    adventure,
+    battleground
+}
 
-let editor_selection: Editor_Selection = {
-    selected: false
-};
+type Adventure_Editor = {
+    type: Editor_Type.adventure
+    selection: Adventure_Editor_Selection
+    camera_height_index: number
+    room_entrance_location: XY | undefined
+}
 
-type Editor_Selection = {
+type Battleground_Editor = {
+    type: Editor_Type.battleground
+}
+
+type Editor = { type: Editor_Type.none } | Adventure_Editor | Battleground_Editor
+
+type Adventure_Editor_Selection = {
     selected: false
 } | {
     selected: true
@@ -39,6 +48,21 @@ type Editor_Selection = {
     particle: ParticleId
 }
 
+let pinned_context_menu_position: XYZ = [0, 0, 0];
+let context_menu_particle: ParticleId | undefined = undefined;
+let editor: Editor = { type: Editor_Type.none };
+
+const adventure_editor: Adventure_Editor = {
+    type: Editor_Type.adventure,
+    selection: { selected: false },
+    camera_height_index: 4,
+    room_entrance_location: undefined
+};
+
+const battleground_editor: Battleground_Editor = {
+    type: Editor_Type.battleground
+};
+
 function text_button(parent: Panel, css_class: string, text: string, action: (button: Panel) => void) {
     const button = $.CreatePanel("Panel", parent, "");
     button.AddClass(css_class);
@@ -55,12 +79,12 @@ function dispatch_editor_event(event: Editor_Event) {
     GameEvents.SendCustomGameEventToServer("editor_event", event);
 }
 
-function update_editor_indicator() {
-    indicator.style.visibility = in_editor_mode ? "visible" : "collapse";
+function update_editor_indicator(editor: Editor) {
+    indicator.style.visibility = editor.type != Editor_Type.none ? "visible" : "collapse";
 }
 
-function update_editor_camera_height() {
-    GameUI.SetCameraDistance(in_editor_mode ? 1200 + 200 * camera_height_index : map_camera_height);
+function update_editor_camera_height(editor: Editor) {
+    GameUI.SetCameraDistance(editor.type == Editor_Type.adventure ? 1200 + 200 * editor.camera_height_index : map_camera_height);
 }
 
 function enum_value_from_modifier<T extends number>(entity: EntityId, modifier_name: string): T | undefined {
@@ -75,13 +99,13 @@ function enum_value_from_modifier<T extends number>(entity: EntityId, modifier_n
     }
 }
 
-function drop_editor_selection() {
-    if (editor_selection.selected) {
-        Particles.DestroyParticleEffect(editor_selection.particle, false);
-        Particles.ReleaseParticleIndex(editor_selection.particle);
+function drop_adventure_editor_selection(editor: Adventure_Editor) {
+    if (editor.selection.selected) {
+        Particles.DestroyParticleEffect(editor.selection.particle, false);
+        Particles.ReleaseParticleIndex(editor.selection.particle);
     }
 
-    editor_selection = {
+    editor.selection = {
         selected: false
     };
 
@@ -97,7 +121,7 @@ function dropdown_button(text: string, action: () => void) {
     return text_button(entity_buttons_dropdown, "editor_entity_dropdown_button", text, action);
 }
 
-function create_adventure_enemy_menu_buttons(adventure_entity_id: Adventure_Entity_Id, creeps: Creep_Type[], reselect: () => void) {
+function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, adventure_entity_id: Adventure_Entity_Id, creeps: Creep_Type[], reselect: () => void) {
     for (let index = 0; index < creeps.length + 1; index++) {
         const creep = creeps[index];
         const text = index < creeps.length ? enum_to_string(creep) : "Add a creep";
@@ -107,16 +131,18 @@ function create_adventure_enemy_menu_buttons(adventure_entity_id: Adventure_Enti
 
             let show_dropdown = true;
 
-            if (editor_selection.selected && editor_selection.type == Adventure_Entity_Type.enemy) {
-                if (editor_selection.highlighted_creep_button) {
-                    editor_selection.highlighted_creep_button.RemoveClass("selected");
+            const selection = editor.selection;
+
+            if (selection.selected && selection.type == Adventure_Entity_Type.enemy) {
+                if (selection.highlighted_creep_button) {
+                    selection.highlighted_creep_button.RemoveClass("selected");
                 }
 
-                if (editor_selection.highlighted_creep_button != button) {
-                    editor_selection.highlighted_creep_button = button;
-                    editor_selection.highlighted_creep_button.AddClass("selected");
+                if (selection.highlighted_creep_button != button) {
+                    selection.highlighted_creep_button = button;
+                    selection.highlighted_creep_button.AddClass("selected");
                 } else {
-                    editor_selection.highlighted_creep_button = undefined;
+                    selection.highlighted_creep_button = undefined;
                     show_dropdown = false;
                 }
             }
@@ -139,9 +165,9 @@ function create_adventure_enemy_menu_buttons(adventure_entity_id: Adventure_Enti
     }
 }
 
-function editor_select_entity(entity: EntityId, adventure_entity_id: Adventure_Entity_Id, entity_type: Adventure_Entity_Type, name: string) {
-    if (editor_selection.selected) {
-        drop_editor_selection();
+function adventure_editor_select_entity(editor: Adventure_Editor, entity: EntityId, adventure_entity_id: Adventure_Entity_Id, entity_type: Adventure_Entity_Type, name: string) {
+    if (editor.selection.selected) {
+        drop_adventure_editor_selection(editor);
     }
 
     function create_delete_button() {
@@ -162,7 +188,7 @@ function editor_select_entity(entity: EntityId, adventure_entity_id: Adventure_E
 
             register_particle_for_reload(fx);
 
-            editor_selection = {
+            editor.selection = {
                 selected: true,
                 type: Adventure_Entity_Type.enemy,
                 id: adventure_entity_id,
@@ -174,8 +200,8 @@ function editor_select_entity(entity: EntityId, adventure_entity_id: Adventure_E
             const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
             selection_label.text = `Selected: ${name}`;
 
-            create_adventure_enemy_menu_buttons(adventure_entity_id, data.creeps, () => {
-                editor_select_entity(entity, adventure_entity_id, entity_type, name);
+            create_adventure_enemy_menu_buttons(editor, adventure_entity_id, data.creeps, () => {
+                adventure_editor_select_entity(editor, entity, adventure_entity_id, entity_type, name);
             });
 
             create_delete_button();
@@ -188,7 +214,7 @@ function editor_select_entity(entity: EntityId, adventure_entity_id: Adventure_E
         const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
         selection_label.text = `Selected: ${name}`;
 
-        editor_selection = {
+        editor.selection = {
             selected: true,
             type: entity_type,
             id: adventure_entity_id,
@@ -218,7 +244,7 @@ function context_menu_button(text: string, action: () => void) {
 }
 
 // Returns if event should be consumed or not
-function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
+function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: MouseEvent, button: MouseButton | WheelScroll): boolean {
     if (event != "pressed") {
         return true;
     }
@@ -242,10 +268,10 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
             $.Msg(entity_id, " ", npc_type);
 
             if (entity_id != undefined && entity_type != undefined) {
-                editor_select_entity(entity_under_cursor, entity_id, entity_type, name);
+                adventure_editor_select_entity(editor, entity_under_cursor, entity_id, entity_type, name);
             }
         } else {
-            drop_editor_selection();
+            drop_adventure_editor_selection(editor);
         }
 
         return true;
@@ -260,28 +286,28 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
         context_menu_particle = Particles.CreateParticle("particles/ui_mouseactions/ping_waypoint.vpcf", ParticleAttachment_t.PATTACH_WORLDORIGIN, 0);
         Particles.SetParticleControl(context_menu_particle, 0, click_world_position);
 
-        if (editor_selection.selected) {
+        if (editor.selection.selected) {
             context_menu_button(`Move here`, () => {
-                if (!editor_selection.selected) return;
+                if (!editor.selection.selected) return;
 
                 dispatch_editor_event({
                     type: Editor_Event_Type.set_entity_position,
-                    entity_id: editor_selection.id,
+                    entity_id: editor.selection.id,
                     position: xy(click_world_position[0], click_world_position[1])
                 });
             });
 
             context_menu_button(`Look here`, () => {
-                if (!editor_selection.selected) return;
+                if (!editor.selection.selected) return;
 
-                const position = Entities.GetAbsOrigin(editor_selection.entity);
+                const position = Entities.GetAbsOrigin(editor.selection.entity);
                 const delta = [click_world_position[0] - position[0], click_world_position[1] - position[1]];
                 const length = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
                 const facing = length > 0 ? [delta[0] / length, delta[1] / length, 0] : [1, 0, 0];
 
                 dispatch_editor_event({
                     type: Editor_Event_Type.set_entity_facing,
-                    entity_id: editor_selection.id,
+                    entity_id: editor.selection.id,
                     facing: xy(facing[0], facing[1])
                 });
             });
@@ -322,7 +348,7 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
                     entrance: xy(click_world_position[0], click_world_position[1]),
                     access_token: get_access_token()
                 }, () => {
-                    room_entrance_location = xy(click_world_position[0], click_world_position[1]);
+                    editor.room_entrance_location = xy(click_world_position[0], click_world_position[1]);
                 });
             });
 
@@ -343,47 +369,64 @@ function editor_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
 function periodically_update_editor_ui() {
     $.Schedule(1 / 200, periodically_update_editor_ui);
 
-    if (editor_selection.selected) {
-        if (!Entities.IsValidEntity(editor_selection.entity)) {
-            drop_editor_selection();
+    if (editor.type == Editor_Type.adventure) {
+        if (editor.selection.selected) {
+            if (!Entities.IsValidEntity(editor.selection.entity)) {
+                drop_adventure_editor_selection(editor);
+            }
+        }
+
+        if (editor.room_entrance_location) {
+            const position_over: XYZ = [editor.room_entrance_location.x, editor.room_entrance_location.y, 256];
+
+            position_panel_over_position_in_the_world(entrance_indicator, position_over, Align_H.center, Align_V.top);
         }
     }
 
     if (context_menu.style.visibility == "visible") {
         position_panel_over_position_in_the_world(context_menu, pinned_context_menu_position, Align_H.right, Align_V.bottom);
     }
-
-    if (room_entrance_location) {
-        const position_over: XYZ = [room_entrance_location.x, room_entrance_location.y, 256];
-
-        position_panel_over_position_in_the_world(entrance_indicator, position_over, Align_H.center, Align_V.top);
-    }
 }
 
-function update_state_from_editor_mode(state: Player_State) {
+function update_state_from_editor_mode(state: Player_State, editor: Editor) {
     if (state != Player_State.on_adventure) {
-        in_editor_mode = false;
+        exit_editor();
     }
 
-    if (in_editor_mode) {
+    if (editor.type == Editor_Type.adventure) {
         api_request(Api_Request_Type.editor_get_room_details, {
             access_token: get_access_token()
         }, response => {
-            room_entrance_location = response.entrance_location;
+            editor.room_entrance_location = response.entrance_location;
         });
-    } else {
-        room_entrance_location = undefined;
     }
 
-    update_editor_indicator();
-    update_editor_camera_height();
+    entrance_indicator.style.visibility = editor.type == Editor_Type.adventure ? "visible" : "collapse";
 
-    if (!in_editor_mode) {
-        drop_editor_selection();
+    update_editor_indicator(editor);
+    update_editor_camera_height(editor);
+
+    if (editor.type == Editor_Type.none) {
         hide_editor_context_menu();
     }
 
     update_editor_buttons(state);
+}
+
+function update_adventure_editor_buttons(editor: Adventure_Editor) {
+    editor_button("Toggle map vision", () => dispatch_editor_event({
+        type: Editor_Event_Type.toggle_map_vision
+    }));
+
+    editor_button("Toggle camera lock", () => dispatch_editor_event({
+        type: Editor_Event_Type.toggle_camera_lock
+    }));
+
+    editor_button("Change camera height", () => {
+        editor.camera_height_index = (editor.camera_height_index + 1) % 5;
+
+        update_editor_camera_height(editor);
+    });
 }
 
 function update_editor_buttons(state: Player_State) {
@@ -398,26 +441,27 @@ function update_editor_buttons(state: Player_State) {
                 adventure: id
             }));
         }
-    } else if (state == Player_State.on_adventure) {
-        editor_button("Toggle editor", () => {
-            in_editor_mode = !in_editor_mode;
+    }
 
-            update_state_from_editor_mode(state);
+    if (editor.type != Editor_Type.none) {
+        editor_button("Exit editor", () => {
+            exit_editor();
+            update_state_from_editor_mode(state, editor);
         });
+    }
 
-        if (in_editor_mode) {
-            editor_button("Toggle map vision", () => dispatch_editor_event({
-                type: Editor_Event_Type.toggle_map_vision
-            }));
+    editor_button("Battleground editor", () => {
+        editor = battleground_editor;
+        update_state_from_editor_mode(state, editor);
+    });
 
-            editor_button("Toggle camera lock", () => dispatch_editor_event({
-                type: Editor_Event_Type.toggle_camera_lock
-            }));
-
-            editor_button("Change camera height", () => {
-                camera_height_index = (camera_height_index + 1) % 5;
-
-                update_editor_camera_height();
+    if (state == Player_State.on_adventure) {
+        if (editor.type == Editor_Type.adventure) {
+            update_adventure_editor_buttons(editor);
+        } else {
+            editor_button("Adventure editor", () => {
+                editor = adventure_editor;
+                update_state_from_editor_mode(state, editor);
             });
         }
 
@@ -429,16 +473,24 @@ function update_editor_buttons(state: Player_State) {
     }
 }
 
+function exit_editor() {
+    if (editor.type == Editor_Type.adventure) {
+        drop_adventure_editor_selection(editor);
+    }
+
+    editor = { type: Editor_Type.none };
+}
+
 function init_editor_ui() {
     editor_root.style.visibility = "visible";
 
     subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
         buttons_root.RemoveAndDeleteChildren();
 
-        update_state_from_editor_mode(data.state);
+        update_state_from_editor_mode(data.state, editor);
     });
 
-    update_editor_indicator();
+    update_editor_indicator(editor);
     periodically_update_editor_ui();
 }
 

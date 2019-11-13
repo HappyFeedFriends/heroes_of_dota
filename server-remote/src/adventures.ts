@@ -296,7 +296,7 @@ export function editor_create_entity(adventure: Ongoing_Adventure, definition: A
     return new_entity;
 }
 
-export function apply_editor_action(adventure: Ongoing_Adventure, action: Editor_Action) {
+export function apply_editor_action(adventure: Ongoing_Adventure, action: Adventure_Editor_Action) {
     switch (action.type) {
         case Adventure_Editor_Action_Type.set_entrance: {
             adventure.current_room.entrance_location = action.entrance;
