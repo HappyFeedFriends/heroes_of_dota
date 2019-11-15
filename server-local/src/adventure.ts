@@ -315,12 +315,10 @@ function adventure_update_loop(game: Game) {
                 game.player.hero_unit.Stop();
                 game.player.hero_unit.FaceTowards(right_click_target.handle.GetAbsOrigin());
 
-                const event: Adventure_Popup_Event = {
+                fire_event(To_Client_Event_Type.adventure_display_entity_popup, {
                     entity_id: right_click_target.id,
                     entity: right_click_target.definition
-                };
-
-                CustomGameEventManager.Send_ServerToAllClients("show_adventure_popup", event);
+                });
             }
         }
 
@@ -381,13 +379,10 @@ function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_
             definition: entity.definition
         });
 
-        const event: Adventure_Receive_Party_Changes_Event = {
+        fire_event(To_Client_Event_Type.adventure_receive_party_changes, {
             changes: state_update.party_updates,
             last_change_index: last_change_index
-        };
-
-        CustomGameEventManager.Send_ServerToAllClients("receive_party_changes", event);
-
+        });
     }
 }
 

@@ -131,9 +131,7 @@ function hack_into_game_chat() {
 }
 
 function subscribe_to_debug_message_event() {
-    GameEvents.Subscribe("log_chat_debug_message", data => {
-        const event = data as Debug_Chat_Message_Event;
-
+    subscribe_to_custom_event(To_Client_Event_Type.log_chat_debug_message, event => {
         api_request(Api_Request_Type.submit_chat_message, {
             access_token: get_access_token(),
             message: event.message

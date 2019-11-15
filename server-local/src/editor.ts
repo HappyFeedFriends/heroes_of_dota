@@ -150,7 +150,7 @@ function subscribe_to_editor_events(game: Game) {
         camera_dummy: camera_entity
     };
 
-    on_custom_event_async<Editor_Event>("editor_event", event => on_editor_event(game, state, event));
+    on_custom_event_async(To_Server_Event_Type.editor_event, event => on_editor_event(game, state, event));
 
     fork(() => {
         while (true) {

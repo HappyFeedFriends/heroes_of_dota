@@ -82,7 +82,7 @@ function editor_button(text: string, action: () => void) {
 }
 
 function dispatch_editor_event(event: Editor_Event) {
-    GameEvents.SendCustomGameEventToServer("editor_event", event);
+    fire_event(To_Server_Event_Type.editor_event, event);
 }
 
 function update_editor_indicator(editor: Editor) {

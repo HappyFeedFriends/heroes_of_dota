@@ -105,19 +105,12 @@ function game_time_formatted() {
     return string.format("%.2f", GameRules.GetGameTime());
 }
 
-function log_message(message: string) {
-    const final_message = `[${game_time_formatted()}] ${message}`;
-
-    CustomGameEventManager.Send_ServerToAllClients("log_message", { message: final_message });
-
-    print(final_message);
-}
-
 function log_chat_debug_message(message: string) {
     const final_message = `Debug@[${game_time_formatted()}] ${message}`;
-    const event: Debug_Chat_Message_Event = { message: final_message };
 
-    CustomGameEventManager.Send_ServerToAllClients("log_chat_debug_message", event);
+    fire_event(To_Client_Event_Type.log_chat_debug_message, {
+        message: final_message
+    });
 }
 
 function lock_state_transition(code: () => void) {
@@ -293,8 +286,16 @@ function on_player_order_async(callback: (event: ExecuteOrderEvent) => boolean) 
     }, mode);
 }
 
-function on_custom_event_async<T>(event_name: string, callback: (data: T) => void) {
+function on_raw_custom_event_async<T>(event_name: string, callback: (data: T) => void) {
     CustomGameEventManager.RegisterListener(event_name, (user_id, event) => fork(() => callback(event as T)));
+}
+
+function on_custom_event_async<T extends To_Server_Event_Type>(type: T, callback: (data: Find_To_Server_Payload<T>) => void) {
+    CustomGameEventManager.RegisterListener(`${Prefixes.to_server_event}${type}`, (user_id, event) => fork(() => callback(event as Find_To_Server_Payload<T>)));
+}
+
+function fire_event<T extends To_Client_Event_Type>(type: T, payload: Find_To_Client_Payload<T>) {
+    CustomGameEventManager.Send_ServerToAllClients(`${Prefixes.to_client_event}${type}`, payload);
 }
 
 function get_camera_look_at_for_battle(origin: Vector, grid_w: number, grid_h: number) {
@@ -588,12 +589,12 @@ function game_loop() {
         return false;
     });
 
-    on_custom_event_async<Put_Deltas_Event>("put_battle_deltas", event => {
+    on_custom_event_async(To_Server_Event_Type.put_deltas, event => {
         merge_battle_deltas(battle, event.from_head, from_client_array(event.deltas));
         merge_delta_paths_from_client(battle, event.delta_paths);
     });
 
-    on_custom_event_async<Fast_Forward_Event>("fast_forward", event => {
+    on_custom_event_async(To_Server_Event_Type.fast_forward, event => {
         fast_forward_from_snapshot(battle, {
             has_started: from_client_bool(event.has_started),
             players: from_client_array(event.players),
@@ -607,7 +608,7 @@ function game_loop() {
         update_game_net_table(game);
     });
 
-    on_custom_event_async<Local_Api_Request_Packet>("local_api_request", request => {
+    on_raw_custom_event_async<Local_Api_Request_Packet>(Prefixes.local_api_request, request => {
         const handler = local_api_handlers[request.type];
 
         if (handler) {
@@ -617,11 +618,11 @@ function game_loop() {
             };
 
             // TODO works incorrectly with multiple players (spectators?)
-            CustomGameEventManager.Send_ServerToPlayer(PlayerResource.GetPlayer(game.player.player_id), "local_api_response", packet);
+            CustomGameEventManager.Send_ServerToPlayer(PlayerResource.GetPlayer(game.player.player_id), Prefixes.local_api_response, packet);
         }
     });
 
-    on_custom_event_async<Adventure_Interact_With_Entity_Event>("adventure_interact_with_entity", event => {
+    on_custom_event_async(To_Server_Event_Type.adventure_interact_with_entity, event => {
         if (game.state == Player_State.on_adventure) {
             adventure_interact_with_entity(game, event.entity_id, event.last_change_index);
         }

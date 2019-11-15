@@ -328,12 +328,10 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
     popup.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
 
     popup.button_yes.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-        const event: Adventure_Interact_With_Entity_Event = {
+        fire_event(To_Server_Event_Type.adventure_interact_with_entity, {
             entity_id: entity_id,
             last_change_index: adventure_ui.party.changes.length
-        };
-
-        GameEvents.SendCustomGameEventToServer("adventure_interact_with_entity", event);
+        });
 
         hide_adventure_popup();
     });
@@ -527,12 +525,12 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
     }
 });
 
-subscribe_to_custom_event<Adventure_Popup_Event>("show_adventure_popup", event => {
+subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, event => {
     if (event.entity.type == Adventure_Entity_Type.lost_creep) {
         show_adventure_popup(event.entity_id, event.entity);
     }
 });
 
-subscribe_to_custom_event<Adventure_Receive_Party_Changes_Event>("receive_party_changes", event => {
+subscribe_to_custom_event(To_Client_Event_Type.adventure_receive_party_changes, event => {
     merge_adventure_party_changes(event.last_change_index, from_server_array(event.changes));
 });

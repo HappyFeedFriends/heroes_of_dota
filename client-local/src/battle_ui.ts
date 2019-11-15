@@ -462,9 +462,9 @@ function receive_battle_deltas(head_before_merge: number, deltas: Delta[]) {
     const visualiser_head = get_visualiser_delta_head();
 
     if (visualiser_head != undefined && battle.delta_head - visualiser_head > 40) {
-        fire_event<Fast_Forward_Event>("fast_forward", make_battle_snapshot());
+        fire_event(To_Server_Event_Type.fast_forward, make_battle_snapshot());
     } else if (deltas.length > 0) {
-        fire_event<Put_Deltas_Event>("put_battle_deltas", {
+        fire_event(To_Server_Event_Type.put_deltas, {
             deltas: deltas,
             delta_paths: delta_paths,
             from_head: head_before_merge
@@ -2714,21 +2714,21 @@ function highlight_grid_for_unit_ability_with_predicate(unit_id: Unit_Id, abilit
     highlight_outline_temporarily(outline, color_red, 0.75);
 }
 
-function highlight_grid_for_targeted_ability(event: Grid_Highlight_Targeted_Ability_Event) {
+subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_targeted_ability, event => {
     highlight_grid_for_unit_ability_with_predicate(
         event.unit_id,
         event.ability_id,
         (ability, cell) => ability_selector_fits(battle, ability.targeting.selector, event.from, event.to, cell.position)
     );
-}
+});
 
-function highlight_grid_for_no_target_ability(event: Grid_Highlight_No_Target_Ability_Event) {
+subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_no_target_ability, event => {
     highlight_grid_for_unit_ability_with_predicate(
         event.unit_id,
         event.ability_id,
         (ability, cell) => ability_targeting_fits(battle, ability.targeting, event.from, cell.position)
     );
-}
+});
 
 function show_start_turn_ui() {
     Game.EmitSound("your_turn");
@@ -2797,6 +2797,4 @@ setup_custom_ability_hotkeys();
 periodically_update_ui();
 periodically_update_stat_bar_display();
 periodically_request_battle_deltas_when_in_battle();
-subscribe_to_custom_event<Grid_Highlight_Targeted_Ability_Event>("grid_highlight_targeted_ability", highlight_grid_for_targeted_ability);
-subscribe_to_custom_event<Grid_Highlight_No_Target_Ability_Event>("grid_highlight_no_target_ability", highlight_grid_for_no_target_ability);
-subscribe_to_custom_event("show_start_turn_ui", show_start_turn_ui);
+subscribe_to_custom_event(To_Client_Event_Type.show_start_turn_ui, show_start_turn_ui);

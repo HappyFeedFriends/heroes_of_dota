@@ -896,24 +896,20 @@ function try_play_sound_for_hero(unit: Unit, supplier: (type: Hero_Type) => stri
 }
 
 function highlight_grid_for_targeted_ability(unit: Unit, ability: Ability_Id, to: XY) {
-    const event: Grid_Highlight_Targeted_Ability_Event = {
+    fire_event(To_Client_Event_Type.grid_highlight_targeted_ability, {
         unit_id: unit.id,
         ability_id: ability,
         from: unit.position,
         to: to
-    };
-
-    CustomGameEventManager.Send_ServerToAllClients("grid_highlight_targeted_ability", event)
+    })
 }
 
 function highlight_grid_for_no_target_ability(unit: Unit, ability: Ability_Id) {
-    const event: Grid_Highlight_No_Target_Ability_Event = {
+    fire_event(To_Client_Event_Type.grid_highlight_no_target_ability, {
         unit_id: unit.id,
         ability_id: ability,
         from: unit.position,
-    };
-
-    CustomGameEventManager.Send_ServerToAllClients("grid_highlight_no_target_ability", event)
+    })
 }
 
 function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_Attack) {
@@ -3007,7 +3003,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             update_game_net_table(game);
 
             if (delta.start_turn_of_player_id == battle.this_player_id) {
-                CustomGameEventManager.Send_ServerToAllClients("show_start_turn_ui", {});
+                fire_event(To_Client_Event_Type.show_start_turn_ui, {});
             }
 
             break;
@@ -3078,11 +3074,10 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
         }
 
         case Delta_Type.game_over: {
-            const event: Game_Over_Event = {
+            fire_event(To_Client_Event_Type.show_game_over_ui, {
                 winner_player_id: delta.winner_player_id
-            };
 
-            CustomGameEventManager.Send_ServerToAllClients("show_game_over_screen", event);
+            });
 
             wait(5);
 

@@ -76,7 +76,7 @@ function wait_one_frame() {
 
 function wait(time: number) {
     if (time == 0) {
-        log_message("Can't wait for 0! Defaulting to 1 frame wait");
+        print("Can't wait for 0! Defaulting to 1 frame wait");
         wait_one_frame();
         return;
     }

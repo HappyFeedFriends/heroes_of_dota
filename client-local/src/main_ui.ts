@@ -53,7 +53,7 @@ function local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find
         delete ongoing_local_requests[packet.request_id];
     };
 
-    GameEvents.SendCustomGameEventToServer("local_api_request", packet);
+    GameEvents.SendCustomGameEventToServer(Prefixes.local_api_request, packet);
 }
 
 function async_get_player_name(player_id: Player_Id, callback: Player_Name_Callback): void {
@@ -89,8 +89,8 @@ function async_get_player_name(player_id: Player_Id, callback: Player_Name_Callb
     }, () => delete player_name_requests[player_id]);
 }
 
-function fire_event<T extends Object>(event_name: string, data: T) {
-    GameEvents.SendCustomGameEventToServer(event_name, data);
+function fire_event<T extends To_Server_Event_Type>(type: T, data: Find_To_Server_Payload<T>) {
+    GameEvents.SendCustomGameEventToServer(`${Prefixes.to_server_event}${type}`, data);
 }
 
 function get_net_table<T>(table_name: string, key: string): T {
@@ -117,9 +117,15 @@ function get_visualiser_delta_head(): number | undefined {
     return undefined;
 }
 
-function subscribe_to_custom_event<T extends object>(event_name: string, handler: (data: T) => void) {
+function subscribe_to_raw_custom_event<T extends object>(event_name: string, handler: (data: T) => void) {
     GameEvents.Subscribe(event_name, event_data => {
         handler(event_data as T);
+    })
+}
+
+function subscribe_to_custom_event<T extends To_Client_Event_Type>(type: T, handler: (data: Find_To_Client_Payload<T>) => void) {
+    GameEvents.Subscribe(`${Prefixes.to_client_event}${type}`, event_data => {
+        handler(event_data as Find_To_Client_Payload<T>);
     })
 }
 
@@ -280,10 +286,6 @@ function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, 
     panel.style.y = Math.floor(screen_y / screen_ratio - panel_offset_y) + "px";
 }
 
-GameEvents.Subscribe("log_message", event => {
-    // $.Msg(event.message);
-});
-
 function setup_mouse_filter() {
     GameUI.SetMouseCallback((event, button) => {
         try {
@@ -336,7 +338,7 @@ clean_up_particles_after_reload();
 hide_default_ui();
 setup_mouse_filter();
 
-subscribe_to_custom_event<Local_Api_Response_Packet>("local_api_response", packet => {
+subscribe_to_raw_custom_event<Local_Api_Response_Packet>(Prefixes.local_api_response, packet => {
     const handler = ongoing_local_requests[packet.request_id];
 
     if (handler) {
@@ -372,4 +374,4 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
 
         current_state = data.state;
     }
-})
+});

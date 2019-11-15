@@ -2,8 +2,104 @@ declare const enum Local_Api_Request_Type {
     get_battle_position = 0
 }
 
+declare const enum To_Server_Event_Type {
+    adventure_interact_with_entity = 0,
+    put_deltas = 1,
+    fast_forward = 2,
+    editor_event = 3
+}
+
+declare const enum To_Client_Event_Type {
+    adventure_receive_party_changes = 0,
+    adventure_display_entity_popup = 1,
+    grid_highlight_targeted_ability = 2,
+    grid_highlight_no_target_ability = 3,
+    show_start_turn_ui = 4,
+    show_game_over_ui = 5,
+    log_chat_debug_message = 6
+}
+
+declare const enum Prefixes {
+    to_server_event = "to_server_",
+    to_client_event = "to_client_",
+    local_api_request = "local_api_request",
+    local_api_response = "local_api_response"
+}
+
+type To_Server_Event = {
+    type: To_Server_Event_Type.adventure_interact_with_entity
+    payload: {
+        entity_id: Adventure_Entity_Id
+        last_change_index: number
+    }
+} | {
+    type: To_Server_Event_Type.put_deltas
+    payload: {
+        deltas: Delta[]
+        delta_paths: Move_Delta_Paths
+        from_head: number
+    }
+} | {
+    type: To_Server_Event_Type.fast_forward
+    payload: Battle_Snapshot
+} | {
+    type: To_Server_Event_Type.editor_event
+    payload: Editor_Event
+}
+
+type To_Client_Event = {
+    type: To_Client_Event_Type.adventure_receive_party_changes
+    payload: {
+        changes: Adventure_Party_Change[]
+        last_change_index: number
+    }
+} | {
+    type: To_Client_Event_Type.adventure_display_entity_popup
+    payload: {
+        entity_id: Adventure_Entity_Id
+        entity: Adventure_Entity_Definition
+    }
+} | {
+    type: To_Client_Event_Type.grid_highlight_targeted_ability
+    payload: {
+        unit_id: Unit_Id
+        ability_id: Ability_Id
+        from: {
+            x: number
+            y: number
+        }
+        to: {
+            x: number
+            y: number
+        }
+    }
+} | {
+    type: To_Client_Event_Type.grid_highlight_no_target_ability
+    payload: {
+        unit_id: Unit_Id
+        ability_id: Ability_Id
+        from: {
+            x: number
+            y: number
+        }
+    }
+} | {
+    type: To_Client_Event_Type.show_start_turn_ui
+    payload: {}
+} | {
+    type: To_Client_Event_Type.show_game_over_ui
+    payload: {
+        winner_player_id: Battle_Player_Id
+    }
+} | {
+    type: To_Client_Event_Type.log_chat_debug_message
+    payload: {
+        message: string
+    }
+}
+
 type Local_Api_Request = {
-    type: Local_Api_Request_Type.get_battle_position,
+    type: Local_Api_Request_Type.get_battle_position
     request: {
     }
 
@@ -29,6 +125,9 @@ type Local_Api_Request_Id = number & { _player_id_brand: any };
 
 type Find_Local_Request<T> = Find_By_Type<Local_Api_Request, T>["request"]
 type Find_Local_Response<T> = Find_By_Type<Local_Api_Request, T>["response"]
+
+type Find_To_Server_Payload<T> = Find_By_Type<To_Server_Event, T>["payload"]
+type Find_To_Client_Payload<T> = Find_By_Type<To_Client_Event, T>["payload"]
 
 type Move_Delta_Paths = Record<number, { x: number, y: number }[]>
 
@@ -111,59 +210,6 @@ type Game_Net_Table =
     Game_Net_Table_On_Adventure |
     Game_Net_Table_In_Battle |
     Game_Net_Table_Not_Logged_In
-
-type Put_Deltas_Event = {
-    deltas: Delta[]
-    delta_paths: Move_Delta_Paths
-    from_head: number
-}
-
-type Debug_Chat_Message_Event = {
-    message: string
-}
-
-type Fast_Forward_Event = Battle_Snapshot
-
-type Grid_Highlight_Targeted_Ability_Event = {
-    unit_id: Unit_Id
-    ability_id: Ability_Id
-    from: {
-        x: number
-        y: number
-    }
-    to: {
-        x: number
-        y: number
-    }
-}
-
-type Grid_Highlight_No_Target_Ability_Event = {
-    unit_id: Unit_Id
-    ability_id: Ability_Id
-    from: {
-        x: number
-        y: number
-    }
-}
-
-type Game_Over_Event = {
-    winner_player_id: Battle_Player_Id
-}
-
-type Adventure_Popup_Event = {
-    entity_id: Adventure_Entity_Id
-    entity: Adventure_Entity_Definition
-}
-
-type Adventure_Interact_With_Entity_Event = {
-    entity_id: Adventure_Entity_Id
-    last_change_index: number
-}
-
-type Adventure_Receive_Party_Changes_Event = {
-    changes: Adventure_Party_Change[]
-    last_change_index: number
-}
 
 type Player_Snapshot = {
     id: Battle_Player_Id
