@@ -182,14 +182,14 @@ if (!Array.prototype.find) {
 
 if (!Array.prototype.findIndex) {
     // @ts-ignore
-    Array.prototype.findIndex = function <T>(predicate: (element: T) => boolean): number | undefined {
+    Array.prototype.findIndex = function <T>(predicate: (element: T) => boolean): number {
         for (let index = 0; index < this.length; index++) {
             if (predicate(this[index])) {
                 return index;
             }
         }
 
-        return undefined;
+        return -1;
     };
 }
 

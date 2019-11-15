@@ -41,7 +41,7 @@ function native_fx(path: string, attach: ParticleAttachment_t, handle: CBaseEnti
         to_location(control_point: number, point: XY): FX {
             check_particle_validity();
 
-            ParticleManager.SetParticleControl(fx, control_point, battle_position_to_world_position_center(point));
+            ParticleManager.SetParticleControl(fx, control_point, battle_position_to_world_position_center(battle.world_origin, point));
 
             return this;
         },

@@ -1,6 +1,38 @@
 type Editor_State = {
     map_revealed: boolean
     camera_dummy: CDOTA_BaseNPC
+    battleground_entities: Editor_Battleground_Entity[]
+}
+
+type Editor_Battleground_Entity = {
+    type: Spawn_Type.tree
+    at: XY
+    handle: CBaseEntity
+}
+
+function update_editor_battleground(editor: Editor_State, spawns: Battleground_Spawn[]) {
+    for (const entity of editor.battleground_entities) {
+        entity.handle.RemoveSelf();
+    }
+
+    editor.battleground_entities = [];
+
+    for (const spawn of spawns) {
+        if (spawn.type == Spawn_Type.tree) {
+            const handle = SpawnEntityFromTableSynchronous("prop_dynamic", {
+                origin: battle_position_to_world_position_center(battle.world_origin, spawn.at),
+                model: "models/props_tree/cypress/tree_cypress010.vmdl"
+            }) as CBaseModelEntity;
+
+            const new_entity: Editor_Battleground_Entity = {
+                type: Spawn_Type.tree,
+                at: spawn.at,
+                handle: handle
+            };
+
+            editor.battleground_entities.push(new_entity);
+        }
+    }
 }
 
 function perform_editor_action(game: Game, editor: Editor_State, event: Editor_Action) {
@@ -138,6 +170,12 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
 
             break;
         }
+
+        case Editor_Action_Type.submit_battleground: {
+            update_editor_battleground(editor, from_client_array(event.spawns));
+
+            break;
+        }
     }
 }
 
@@ -147,7 +185,8 @@ function subscribe_to_editor_events(game: Game) {
 
     const state: Editor_State =  {
         map_revealed: false,
-        camera_dummy: camera_entity
+        camera_dummy: camera_entity,
+        battleground_entities: []
     };
 
     on_custom_event_async(To_Server_Event_Type.editor_action, event => perform_editor_action(game, state, event));

@@ -190,15 +190,15 @@ function merge_delta_paths_from_client(battle: Battle, delta_paths: Move_Delta_P
     }
 }
 
-function battle_position_to_world_position_center(position: { x: number, y: number }): Vector {
-    const x = battle.world_origin.x + position.x * battle_cell_size + battle_cell_size / 2;
-    const y = battle.world_origin.y + position.y * battle_cell_size + battle_cell_size / 2;
+function battle_position_to_world_position_center(world_origin: Vector, position: { x: number, y: number }): Vector {
+    const x = world_origin.x + position.x * battle_cell_size + battle_cell_size / 2;
+    const y = world_origin.y + position.y * battle_cell_size + battle_cell_size / 2;
 
     return Vector(x, y, GetGroundHeight(Vector(x, y), undefined));
 }
 
 function shake_screen(at: XY, strength: Shake) {
-    const at_world = battle_position_to_world_position_center(at);
+    const at_world = battle_position_to_world_position_center(battle.world_origin, at);
 
     switch (strength) {
         case Shake.weak: {
@@ -293,7 +293,7 @@ function create_world_handle_for_battle_unit(info: Unit_Creation_Info, at: XY, f
         return "hod_unit";
     }
 
-    const world_location = battle_position_to_world_position_center(at);
+    const world_location = battle_position_to_world_position_center(battle.world_origin, at);
     const handle = CreateUnitByName(get_dota_unit_name(), world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS) as CDOTA_BaseNPC_Hero;
     handle.SetBaseMoveSpeed(500);
     handle.AddNewModifier(handle, undefined, "Modifier_Battle_Unit", {});
@@ -335,7 +335,7 @@ function create_world_handle_for_battle_unit(info: Unit_Creation_Info, at: XY, f
 }
 
 function create_world_handle_for_rune(type: Rune_Type, at: XY): CDOTA_BaseNPC {
-    const world_location = battle_position_to_world_position_center(at);
+    const world_location = battle_position_to_world_position_center(battle.world_origin, at);
     const handle = CreateUnitByName("npc_dummy_unit", world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
     handle.AddNewModifier(handle, undefined, "Modifier_Battle_Unit", {});
     handle.SetUnitCanRespawn(true);
@@ -364,7 +364,7 @@ function create_world_handle_for_shop(type: Shop_Type, at: XY, facing: XY): CDOT
         [Shop_Type.secret]: "models/heroes/shopkeeper_dire/shopkeeper_dire.vmdl"
     };
 
-    const world_location = battle_position_to_world_position_center(at);
+    const world_location = battle_position_to_world_position_center(battle.world_origin, at);
     const handle = CreateUnitByName("npc_dummy_unit", world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
     const model = shop_models[type];
     handle.AddNewModifier(handle, undefined, "Modifier_Battle_Unit", {});
@@ -388,7 +388,7 @@ function create_world_handle_for_tree(tree_id: Tree_Id, at: XY): CBaseEntity {
     const random_model = models[(battle.random_seed + tree_id) % models.length];
 
     const entity = SpawnEntityFromTableSynchronous("prop_dynamic", {
-        origin: battle_position_to_world_position_center(at),
+        origin: battle_position_to_world_position_center(battle.world_origin, at),
         model: random_model
     }) as CBaseModelEntity;
 
@@ -506,7 +506,7 @@ function tracking_projectile_to_unit(source: Unit, target: Unit, particle_path: 
 
 function tracking_projectile_to_point(source: Unit, target: XY, particle_path: string, speed: number) {
     const out_attach = "attach_attack1";
-    const world_location = battle_position_to_world_position_center(target) + Vector(0, 0, 128) as Vector;
+    const world_location = battle_position_to_world_position_center(battle.world_origin, target) + Vector(0, 0, 128) as Vector;
 
     const particle = fx(particle_path)
         .to_unit_attach_point(0, source, out_attach)
@@ -564,7 +564,7 @@ function linear_projectile_with_targets<T>(
 ) {
     const start_time = GameRules.GetGameTime();
     const time_to_travel = distance_in_cells * battle_cell_size / travel_speed;
-    const world_from = battle_position_to_world_position_center(from);
+    const world_from = battle_position_to_world_position_center(battle.world_origin, from);
     const direction = Vector(towards.x - from.x, towards.y - from.y).Normalized();
 
     const particle = fx(fx_path)
@@ -701,7 +701,7 @@ function pudge_hook(game: Game, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
 
         chain.to_unit_attach_point(1, target, "attach_hitloc", target.handle.GetOrigin() + hook_offset as Vector);
 
-        const target_world_position = battle_position_to_world_position_center(cast.result.move_target_to);
+        const target_world_position = battle_position_to_world_position_center(battle.world_origin, cast.result.move_target_to);
         const travel_position_start = target.handle.GetAbsOrigin();
         const travel_position_finish = GetGroundPosition(Vector(target_world_position.x, target_world_position.y), target.handle);
 
@@ -722,7 +722,7 @@ function pudge_hook(game: Game, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
 
         chain_sound.stop();
 
-        EmitSoundOnLocationWithCaster(battle_position_to_world_position_center(travel_target), "Hero_Pudge.AttackHookRetractStop", pudge.handle);
+        EmitSoundOnLocationWithCaster(battle_position_to_world_position_center(battle.world_origin, travel_target), "Hero_Pudge.AttackHookRetractStop", pudge.handle);
 
         wait(time_to_travel);
     }
@@ -1020,8 +1020,8 @@ function attachment_world_origin(unit: CDOTA_BaseNPC, attachment_name: string) {
 function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Ground_Target_Ability) {
     highlight_grid_for_targeted_ability(unit, cast.ability_id, cast.target_position);
 
-    const world_from = battle_position_to_world_position_center(unit.position);
-    const world_to = battle_position_to_world_position_center(cast.target_position);
+    const world_from = battle_position_to_world_position_center(battle.world_origin, unit.position);
+    const world_to = battle_position_to_world_position_center(battle.world_origin, cast.target_position);
     const distance = ((world_to - world_from) as Vector).Length2D();
     const direction = ((world_to - world_from) as Vector).Normalized();
 
@@ -1054,7 +1054,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
                 total_time += tick_time * (-target.change.value_delta);
             }
 
-            const world_target = battle_position_to_world_position_center(cast.target_position);
+            const world_target = battle_position_to_world_position_center(battle.world_origin, cast.target_position);
 
             EmitSoundOnLocationWithCaster(world_target, "Hero_SkywrathMage.MysticFlare", unit.handle);
 
@@ -1172,7 +1172,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
 
             unit_emit_sound(unit, "Hero_DragonKnight.ElderDragonShoot3.Attack");
 
-            EmitSoundOnLocationWithCaster(battle_position_to_world_position_center(cast.target_position), "Hero_DragonKnight.ProjectileImpact", unit.handle);
+            EmitSoundOnLocationWithCaster(battle_position_to_world_position_center(battle.world_origin, cast.target_position), "Hero_DragonKnight.ProjectileImpact", unit.handle);
 
             shake_screen(cast.target_position, Shake.medium);
 
@@ -1232,7 +1232,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
                 travel_target = cast.result.final_point;
             }
 
-            const world_to = battle_position_to_world_position_center(travel_target);
+            const world_to = battle_position_to_world_position_center(battle.world_origin, travel_target);
             const distance = (world_to - world_from as Vector).Length2D();
 
             const travel_speed = 1300;
@@ -1342,7 +1342,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
 
             wait_for_all_forks(targets.map(target => fork(() => {
                 const world_from = target.unit.handle.GetAbsOrigin();
-                const world_to_actual = battle_position_to_world_position_center(target.move_to);
+                const world_to_actual = battle_position_to_world_position_center(battle.world_origin, target.move_to);
                 const distance_to_cast_point = (world_to - world_from as Vector).Length2D();
                 const distance_to_actual_position = (world_to - world_to_actual as Vector).Length2D();
 
@@ -1854,7 +1854,7 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
                         .to_location(5, position)
                         .release();
 
-                    EmitSoundOnLocationWithCaster(battle_position_to_world_position_center(position), "Hero_Luna.Eclipse.NoTarget", unit.handle);
+                    EmitSoundOnLocationWithCaster(battle_position_to_world_position_center(battle.world_origin, position), "Hero_Luna.Eclipse.NoTarget", unit.handle);
 
                     wait(0.3);
                 }
@@ -2189,7 +2189,7 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
             unit_emit_sound(source, "spawn_spiderlings");
 
             fx("particles/units/heroes/hero_broodmother/broodmother_spiderlings_spawn.vpcf")
-                .with_vector_value(0, battle_position_to_world_position_center(source.position))
+                .with_vector_value(0, battle_position_to_world_position_center(battle.world_origin, source.position))
                 .release();
 
             const spawn_at = source.position;
@@ -2207,7 +2207,7 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
                     }
 
                     const creep = spawn_creep_for_battle(summon.creep_type, summon.unit_id, summon.owner_id, spawn_at, { x: direction.x, y: direction.y });
-                    const world_target = battle_position_to_world_position_center(summon.at);
+                    const world_target = battle_position_to_world_position_center(battle.world_origin, summon.at);
 
                     battle.units.push(creep);
 
@@ -2406,7 +2406,7 @@ function play_item_equip_delta(game: Game, hero: Hero, delta: Delta_Equip_Item) 
 }
 
 function turn_unit_towards_target(unit: Unit, towards: XY) {
-    const towards_world_position = battle_position_to_world_position_center(towards);
+    const towards_world_position = battle_position_to_world_position_center(battle.world_origin, towards);
     const desired_forward = ((towards_world_position - unit.handle.GetAbsOrigin()) * Vector(1, 1, 0) as Vector).Normalized();
 
     if (desired_forward.Length2D() == 0) {
@@ -2562,7 +2562,7 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
 
 function move_unit(game: Game, unit: Unit, path: XY[]) {
     for (const cell of path) {
-        const world_position = battle_position_to_world_position_center(cell);
+        const world_position = battle_position_to_world_position_center(battle.world_origin, cell);
 
         unit.handle.MoveToPosition(world_position);
 
@@ -2599,7 +2599,7 @@ function change_gold(game: Game, player: Battle_Player, change: number) {
 function on_modifier_removed(unit: Unit, modifier_id: Modifier_Id) {
     if (modifier_id == Modifier_Id.spell_euls_scepter) {
         const handle = unit.handle;
-        const ground = battle_position_to_world_position_center(unit.position);
+        const ground = battle_position_to_world_position_center(battle.world_origin, unit.position);
         const delta_z = handle.GetAbsOrigin().z - ground.z;
         const fall_time = 0.45;
 
@@ -2785,7 +2785,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
 
             battle.trees.push(tree);
 
-            const world_target = battle_position_to_world_position_center(delta.at_position);
+            const world_target = battle_position_to_world_position_center(battle.world_origin, delta.at_position);
 
             fork(() => {
                 do_each_frame_for(0.12, progress => {
@@ -2815,7 +2815,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
                 unit.handle.RespawnHero(false, false);
             }
 
-            const world_at = battle_position_to_world_position_center(delta.at_position);
+            const world_at = battle_position_to_world_position_center(battle.world_origin, delta.at_position);
 
             if (delta.source_spell_id == Spell_Id.town_portal_scroll) {
                 const particle = fx("particles/items2_fx/teleport_end.vpcf")

@@ -27,10 +27,13 @@ type Adventure_Editor = {
 type Battleground_Editor = {
     type: Editor_Type.battleground
     cells: Editor_Cell[]
+    grid_world_origin: XY
     grid_size: {
         w: number
         h: number
     }
+    cell_under_cursor?: Editor_Cell
+    spawns: Battleground_Spawn[]
 }
 
 type Editor_Cell = {
@@ -81,7 +84,7 @@ function editor_button(text: string, action: () => void) {
     return text_button(buttons_root, "editor_button", text, action);
 }
 
-function dispatch_editor_event(event: Editor_Action) {
+function dispatch_editor_action(event: Editor_Action) {
     fire_event(To_Server_Event_Type.editor_action, event);
 }
 
@@ -178,7 +181,7 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Entity
 
     function create_delete_button() {
         entity_button("Delete", () => {
-            dispatch_editor_event({
+            dispatch_editor_action({
                 type: Editor_Action_Type.delete_entity,
                 entity_id: adventure_entity_id
             })
@@ -291,7 +294,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
             context_menu_button(`Move here`, () => {
                 if (!editor.selection.selected) return;
 
-                dispatch_editor_event({
+                dispatch_editor_action({
                     type: Editor_Action_Type.set_entity_position,
                     entity_id: editor.selection.id,
                     position: xy(click_world_position[0], click_world_position[1])
@@ -306,7 +309,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                 const length = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
                 const facing = length > 0 ? [delta[0] / length, delta[1] / length, 0] : [1, 0, 0];
 
-                dispatch_editor_event({
+                dispatch_editor_action({
                     type: Editor_Action_Type.set_entity_facing,
                     entity_id: editor.selection.id,
                     facing: xy(facing[0], facing[1])
@@ -317,7 +320,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                 if (entity_type == Adventure_Entity_Type.enemy) {
                     for (const [npc_name, npc_type] of enum_names_to_values<Npc_Type>()) {
                         context_menu_button(`Create ${npc_name}`, () => {
-                            dispatch_editor_event({
+                            dispatch_editor_action({
                                 type: Editor_Action_Type.create_entity,
                                 definition: {
                                     type: entity_type,
@@ -331,7 +334,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                     }
                 } else {
                     context_menu_button(`Create ${entity_name}`, () => {
-                        dispatch_editor_event({
+                        dispatch_editor_action({
                             type: Editor_Action_Type.create_entity,
                             definition: {
                                 type: entity_type,
@@ -354,7 +357,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
             });
 
             context_menu_button(`Teleport here`, () => {
-                dispatch_editor_event({
+                dispatch_editor_action({
                     type: Editor_Action_Type.teleport,
                     position: xy(click_world_position[0], click_world_position[1])
                 })
@@ -384,6 +387,54 @@ function periodically_update_editor_ui() {
         }
     }
 
+    if (editor.type == Editor_Type.battleground) {
+        const cursor = GameUI.GetCursorPosition();
+        const world_position = GameUI.GetScreenWorldPosition(cursor);
+
+        if (world_position) {
+            const battle_position = world_position_to_battle_position(editor.grid_world_origin, world_position);
+            const actual_cell_under_cursor = editor.cells.find(cell => xy_equal(cell.position, battle_position));
+
+            if (actual_cell_under_cursor != editor.cell_under_cursor) {
+                if (editor.cell_under_cursor) {
+                    Particles.SetParticleControl(editor.cell_under_cursor.particle, 2, [255, 255, 255]);
+                    Particles.SetParticleControl(editor.cell_under_cursor.particle, 3, [ 50, 0, 0 ]);
+                }
+
+                if (actual_cell_under_cursor) {
+                    Particles.SetParticleControl(actual_cell_under_cursor.particle, 2, GameUI.IsShiftDown() ? [255, 0, 0] : [0, 255, 0]);
+                    Particles.SetParticleControl(actual_cell_under_cursor.particle, 3, [255, 0, 0]);
+                }
+
+                editor.cell_under_cursor = actual_cell_under_cursor;
+            }
+
+            if (GameUI.IsMouseDown(MouseButton.LEFT)) {
+                const spawn_index = editor.spawns.findIndex(spawn => xy_equal(battle_position, spawn.at));
+
+                if (GameUI.IsShiftDown()) {
+                    if (spawn_index != -1) {
+                        editor.spawns.splice(spawn_index, 1);
+                    }
+                } else {
+                    if (spawn_index == -1) {
+                        editor.spawns.push({
+                            type: Spawn_Type.tree,
+                            at: battle_position
+                        });
+                    } else {
+                        editor.spawns[spawn_index] = {
+                            type: Spawn_Type.tree,
+                            at: battle_position
+                        };
+                    }
+                }
+
+                submit_editor_battleground(editor);
+            }
+        }
+    }
+
     if (context_menu.style.visibility == "visible") {
         position_panel_over_position_in_the_world(context_menu, pinned_context_menu_position, Align_H.right, Align_V.bottom);
     }
@@ -394,7 +445,7 @@ function periodically_update_editor_camera_state() {
 
     switch (editor.type) {
         case Editor_Type.adventure: {
-            dispatch_editor_event({
+            dispatch_editor_action({
                 type: Editor_Action_Type.set_camera,
                 camera: {
                     free: true
@@ -405,7 +456,7 @@ function periodically_update_editor_camera_state() {
         }
 
         case Editor_Type.battleground: {
-            dispatch_editor_event({
+            dispatch_editor_action({
                 type: Editor_Action_Type.set_camera,
                 camera: {
                     free: false,
@@ -437,7 +488,7 @@ function update_state_from_editor_mode(state: Player_State, editor: Editor) {
 }
 
 function update_adventure_editor_buttons(editor: Adventure_Editor) {
-    editor_button("Toggle map vision", () => dispatch_editor_event({
+    editor_button("Toggle map vision", () => dispatch_editor_action({
         type: Editor_Action_Type.toggle_map_vision
     }));
 
@@ -459,7 +510,9 @@ function enter_battleground_editor() {
             grid_size: {
                 w: grid_w,
                 h: grid_h
-            }
+            },
+            spawns: [],
+            grid_world_origin: position
         };
 
         const particle_bottom_left_origin: XYZ = [
@@ -485,6 +538,7 @@ function enter_battleground_editor() {
             }
         }
 
+        submit_editor_battleground(editor);
         update_state_from_editor_mode(current_state, editor);
     });
 }
@@ -527,7 +581,7 @@ function update_editor_buttons(state: Player_State) {
 
     if (state == Player_State.on_global_map) {
         for (const [name, id] of adventures) {
-            editor_button(`Adventure: ${name}`, () => dispatch_editor_event({
+            editor_button(`Adventure: ${name}`, () => dispatch_editor_action({
                 type: Editor_Action_Type.start_adventure,
                 adventure: id
             }));
@@ -556,11 +610,18 @@ function update_editor_buttons(state: Player_State) {
         }
 
         editor_button("Back to map", () => {
-            dispatch_editor_event({
+            dispatch_editor_action({
                 type: Editor_Action_Type.exit_adventure
             })
         });
     }
+}
+
+function submit_editor_battleground(editor: Battleground_Editor) {
+    dispatch_editor_action({
+        type: Editor_Action_Type.submit_battleground,
+        spawns: editor.spawns
+    });
 }
 
 function exit_editor() {

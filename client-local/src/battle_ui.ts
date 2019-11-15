@@ -369,7 +369,7 @@ function update_related_visual_data_from_delta(delta: Delta, delta_paths: Move_D
             if (delta.player_id == battle.this_player.id) {
                 const card_index = hand.findIndex(card => card.card.id == delta.card_id);
 
-                if (card_index != undefined) {
+                if (card_index != -1) {
                     const card = hand[card_index];
                     card.panel.DeleteAsync(0);
 
@@ -1525,10 +1525,10 @@ function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In
     }
 }
 
-function world_position_to_battle_position(position: XYZ): XY {
+function world_position_to_battle_position(world_origin: { x: number, y: number }, position: XYZ): XY {
     return {
-        x: Math.floor((position[0] - battle.world_origin.x) / battle_cell_size),
-        y: Math.floor((position[1] - battle.world_origin.y) / battle_cell_size)
+        x: Math.floor((position[0] - world_origin.x) / battle_cell_size),
+        y: Math.floor((position[1] - world_origin.y) / battle_cell_size)
     }
 }
 
@@ -2305,7 +2305,7 @@ function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
             return true;
         }
 
-        const battle_position = world_position_to_battle_position(world_position);
+        const battle_position = world_position_to_battle_position(battle.world_origin, world_position);
         const cursor_entity = get_entity_under_cursor(cursor);
         const cursor_entity_unit = find_unit_by_entity_id(battle, cursor_entity);
         const cursor_entity_shop = find_shop_by_entity_id(battle, cursor_entity);
@@ -2501,7 +2501,7 @@ function get_hovered_battle_position(): XY | undefined {
         return;
     }
 
-    const battle_position = world_position_to_battle_position(world_position);
+    const battle_position = world_position_to_battle_position(battle.world_origin, world_position);
 
     const is_position_valid = battle_position.x >= 0 && battle_position.x < battle.grid_size.x && battle_position.y >= 0 && battle_position.y < battle.grid_size.y;
 
