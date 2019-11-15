@@ -1,3 +1,35 @@
+declare const enum Local_Api_Request_Type {
+    get_battle_position = 0
+}
+
+type Local_Api_Request = {
+    type: Local_Api_Request_Type.get_battle_position,
+    request: {
+    }
+
+    response: {
+        x: number
+        y: number
+        z: number
+    }
+}
+
+type Local_Api_Request_Packet = {
+    type: Local_Api_Request_Type
+    request_id: Local_Api_Request_Id
+    body: Local_Api_Request["request"]
+}
+
+type Local_Api_Response_Packet = {
+    request_id: Local_Api_Request_Id
+    body: object
+}
+
+type Local_Api_Request_Id = number & { _player_id_brand: any };
+
+type Find_Local_Request<T> = Find_By_Type<Local_Api_Request, T>["request"]
+type Find_Local_Response<T> = Find_By_Type<Local_Api_Request, T>["response"]
+
 type Move_Delta_Paths = Record<number, { x: number, y: number }[]>
 
 type Visualizer_Unit_Data_Base = Unit_Stats & {

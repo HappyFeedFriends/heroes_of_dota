@@ -26,6 +26,16 @@ type Adventure_Editor = {
 
 type Battleground_Editor = {
     type: Editor_Type.battleground
+    cells: Editor_Cell[]
+    grid_size: {
+        w: number
+        h: number
+    }
+}
+
+type Editor_Cell = {
+    position: XY
+    particle: ParticleId
 }
 
 type Editor = { type: Editor_Type.none } | Adventure_Editor | Battleground_Editor
@@ -57,10 +67,6 @@ const adventure_editor: Adventure_Editor = {
     selection: { selected: false },
     camera_height_index: 4,
     room_entrance_location: undefined
-};
-
-const battleground_editor: Battleground_Editor = {
-    type: Editor_Type.battleground
 };
 
 function text_button(parent: Panel, css_class: string, text: string, action: (button: Panel) => void) {
@@ -404,8 +410,8 @@ function periodically_update_editor_camera_state() {
                 camera: {
                     free: false,
                     grid_size: {
-                        x: 14,
-                        y: 14
+                        x: editor.grid_size.w,
+                        y: editor.grid_size.h
                     }
                 }
             });
@@ -416,14 +422,6 @@ function periodically_update_editor_camera_state() {
 }
 
 function update_state_from_editor_mode(state: Player_State, editor: Editor) {
-    if (editor.type == Editor_Type.adventure) {
-        api_request(Api_Request_Type.editor_get_room_details, {
-            access_token: get_access_token()
-        }, response => {
-            editor.room_entrance_location = response.entrance_location;
-        });
-    }
-
     entrance_indicator.style.visibility = editor.type == Editor_Type.adventure ? "visible" : "collapse";
 
     update_editor_indicator(editor);
@@ -432,6 +430,8 @@ function update_state_from_editor_mode(state: Player_State, editor: Editor) {
     if (editor.type == Editor_Type.none) {
         hide_editor_context_menu();
     }
+
+    $.GetContextPanel().SetHasClass("in_editor", editor.type != Editor_Type.none);
 
     update_editor_buttons(state);
 }
@@ -446,6 +446,78 @@ function update_adventure_editor_buttons(editor: Adventure_Editor) {
 
         update_editor_camera_height(editor);
     });
+}
+
+function enter_battleground_editor() {
+    local_api_request(Local_Api_Request_Type.get_battle_position, {}, position => {
+        const grid_w = 14;
+        const grid_h = 10;
+
+        editor = {
+            type: Editor_Type.battleground,
+            cells: [],
+            grid_size: {
+                w: grid_w,
+                h: grid_h
+            }
+        };
+
+        const particle_bottom_left_origin: XYZ = [
+            position.x + battle_cell_size / 2,
+            position.y + battle_cell_size / 2,
+            position.z
+        ];
+
+        for (let x = 0; x < grid_w; x++) {
+            for (let y = 0; y < grid_h; y++) {
+                const particle = create_cell_particle_at([
+                    particle_bottom_left_origin[0] + x * battle_cell_size,
+                    particle_bottom_left_origin[1] + y * battle_cell_size,
+                    particle_bottom_left_origin[2]
+                ]);
+
+                editor.cells.push({
+                    position: xy(x, y),
+                    particle: particle
+                });
+
+                register_particle_for_reload(particle);
+            }
+        }
+
+        update_state_from_editor_mode(current_state, editor);
+    });
+}
+
+function enter_adventure_editor() {
+    editor = adventure_editor;
+
+    api_request(Api_Request_Type.editor_get_room_details, {
+        access_token: get_access_token()
+    }, response => {
+        if (editor.type == Editor_Type.adventure) {
+            editor.room_entrance_location = response.entrance_location;
+        }
+    });
+}
+
+function exit_current_editor() {
+    switch (editor.type) {
+        case Editor_Type.battleground: {
+            for (const cell of editor.cells) {
+                Particles.DestroyParticleEffect(cell.particle, false);
+                Particles.ReleaseParticleIndex(cell.particle);
+            }
+
+            break;
+        }
+
+        case Editor_Type.adventure: {
+            drop_adventure_editor_selection(editor);
+
+            break;
+        }
+    }
 }
 
 function update_editor_buttons(state: Player_State) {
@@ -469,8 +541,7 @@ function update_editor_buttons(state: Player_State) {
         });
     } else {
         editor_button("Battleground editor", () => {
-            editor = battleground_editor;
-            update_state_from_editor_mode(state, editor);
+            enter_battleground_editor();
         });
     }
 
@@ -479,7 +550,7 @@ function update_editor_buttons(state: Player_State) {
             update_adventure_editor_buttons(editor);
         } else {
             editor_button("Adventure editor", () => {
-                editor = adventure_editor;
+                enter_adventure_editor();
                 update_state_from_editor_mode(state, editor);
             });
         }
@@ -493,9 +564,7 @@ function update_editor_buttons(state: Player_State) {
 }
 
 function exit_editor() {
-    if (editor.type == Editor_Type.adventure) {
-        drop_adventure_editor_selection(editor);
-    }
+    exit_current_editor();
 
     editor = { type: Editor_Type.none };
 }

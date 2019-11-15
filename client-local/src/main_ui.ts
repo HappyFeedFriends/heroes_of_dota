@@ -13,6 +13,14 @@ let current_state = Player_State.not_logged_in;
 const global_map_ui_root = $("#global_map_ui");
 const adventure_ui_root = $("#adventure_ui");
 
+let local_request_id_counter = 0;
+
+const ongoing_local_requests: Record<number, (body: object) => void> = {};
+
+function next_local_request_id() {
+    return local_request_id_counter++ as Local_Api_Request_Id;
+}
+
 function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>, callback: (response: Find_Response<T>) => void, fail?: () => void) {
     $.AsyncWebRequest(remote_root + "/api" + type, {
         type: "POST",
@@ -25,6 +33,27 @@ function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>,
             }
         }
     });
+}
+
+function local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>, callback: (response: Find_Local_Response<T>) => void) {
+    const packet: Local_Api_Request_Packet = {
+        type: type,
+        body: body,
+        request_id: next_local_request_id()
+    };
+
+    $.Msg(`Request ${enum_to_string<Local_Api_Request_Type>(type)}`);
+
+    // TODO handle timeout
+    ongoing_local_requests[packet.request_id] = (body: object) => {
+        $.Msg(`Response for ${enum_to_string<Local_Api_Request_Type>(type)}: ${body}`);
+
+        callback(body as Find_Local_Response<T>);
+
+        delete ongoing_local_requests[packet.request_id];
+    };
+
+    GameEvents.SendCustomGameEventToServer("local_api_request", packet);
 }
 
 function async_get_player_name(player_id: Player_Id, callback: Player_Name_Callback): void {
@@ -307,11 +336,19 @@ clean_up_particles_after_reload();
 hide_default_ui();
 setup_mouse_filter();
 
+subscribe_to_custom_event<Local_Api_Response_Packet>("local_api_response", packet => {
+    const handler = ongoing_local_requests[packet.request_id];
+
+    if (handler) {
+        handler(packet.body);
+    }
+});
+
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
-    global_map_ui_root.style.visibility = data.state == Player_State.on_global_map ? "visible" : "collapse";
-    adventure_ui_root.style.visibility = data.state == Player_State.on_adventure ? "visible" : "collapse";
-    $("#battle_ui").style.visibility = data.state == Player_State.in_battle ? "visible" : "collapse";
-    $("#disconnected_ui").style.visibility = data.state == Player_State.not_logged_in ? "visible" : "collapse";
+    global_map_ui_root.SetHasClass("active", data.state == Player_State.on_global_map);
+    adventure_ui_root.SetHasClass("active", data.state == Player_State.on_adventure);
+    $("#battle_ui").SetHasClass("active", data.state == Player_State.in_battle);
+    $("#disconnected_ui").SetHasClass("active", data.state == Player_State.not_logged_in);
 
     if (data.state == Player_State.in_battle) {
         GameUI.SetCameraDistance(1400);

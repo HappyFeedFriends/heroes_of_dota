@@ -26,6 +26,8 @@ let suppress_camera_change = false;
 
 let state_transition: Player_State_Data | undefined = undefined;
 
+let local_api_handlers: Record<number, (body: object) => object> = {};
+
 declare let can_transition_into_next_state: boolean;
 
 function print_table(a: object, indent: string = "") {
@@ -475,6 +477,10 @@ function reconnect_loop(game: Game) {
     }
 }
 
+function register_local_api_handler<T extends Local_Api_Request_Type>(type: T, callback: (request: Find_Local_Request<T>) => Find_Local_Response<T>) {
+    local_api_handlers[type] = callback;
+}
+
 function main() {
     function link_modifier(name: string, path: string) {
         LinkLuaModifier(name, path, LuaModifierType.LUA_MODIFIER_MOTION_NONE);
@@ -600,6 +606,20 @@ function game_loop() {
         update_game_net_table(game);
     });
 
+    on_custom_event_async<Local_Api_Request_Packet>("local_api_request", request => {
+        const handler = local_api_handlers[request.type];
+
+        if (handler) {
+            const packet: Local_Api_Response_Packet = {
+                request_id: request.request_id,
+                body: handler(request.body)
+            };
+
+            // TODO works incorrectly with multiple players (spectators?)
+            CustomGameEventManager.Send_ServerToPlayer(PlayerResource.GetPlayer(game.player.player_id), "local_api_response", packet);
+        }
+    });
+
     on_custom_event_async<Adventure_Interact_With_Entity_Event>("adventure_interact_with_entity", event => {
         if (game.state == Player_State.on_adventure) {
             adventure_interact_with_entity(game, event.entity_id, event.last_change_index);
@@ -610,6 +630,14 @@ function game_loop() {
         SendToServerConsole("r_farz 10000");
 
         subscribe_to_editor_events(game);
+
+        register_local_api_handler(Local_Api_Request_Type.get_battle_position, () => {
+            return {
+                x: battle.world_origin.x,
+                y: battle.world_origin.y,
+                z: battle.world_origin.z
+            }
+        })
     }
 
     fork(() => submit_adventure_movement_loop(game));

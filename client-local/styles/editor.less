@@ -1,4 +1,10 @@
-@import "shared";
+@import "utils";
+
+.in_editor {
+  #global_map_ui, #adventure_ui, #battle_ui {
+    visibility: collapse;
+  }
+}
 
 #button(@color, @font-size) {
   background-color: @color;

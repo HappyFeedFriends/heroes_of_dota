@@ -13,6 +13,7 @@
         <include src="file://{resources}/scripts/custom_game/battle_actions.js" />
     </scripts>
     <styles>
+        <include src="file://{resources}/styles/custom_game/shared.css" />
         <include src="file://{resources}/styles/custom_game/global_map.css" />
         <include src="file://{resources}/styles/custom_game/adventure.css" />
         <include src="file://{resources}/styles/custom_game/battle.css" />
@@ -25,11 +26,11 @@
             <Panel id="chat_messages" style="flow-children: down; color: white; font-size: 16px;"/>
         </Panel>
 
-        <Panel id="disconnected_ui" hittest="false">
+        <Panel id="disconnected_ui" hittest="false" class="ui_state active">
             <Label text="Connecting to server..."/>
         </Panel>
 
-        <Panel id="battle_ui" hittest="false" style="visibility: collapse;">
+        <Panel id="battle_ui" hittest="false" class="ui_state">
             <Panel id="control_panel">
                 <Panel id="heroes_panel">
                     <Panel id="background"/>
@@ -72,7 +73,7 @@
             </Panel>
         </Panel>
 
-        <Panel id="global_map_ui" hittest="false" style="visibility: collapse;">
+        <Panel id="global_map_ui" hittest="false" class="ui_state">
             <Panel id="action_bar">
                 <Button id="collection_button" onactivate="ui_toggle_collection();">
                     <Label text="Collection"/>
@@ -112,7 +113,7 @@
             </Panel>
         </Panel>
 
-        <Panel id="adventure_ui" hittest="false" style="visibility: collapse;">
+        <Panel id="adventure_ui" hittest="false" class="ui_state">
             <Panel id="adventure_party_container">
                 <Panel id="left_flare"/>
                 <Panel id="adventure_party">
@@ -149,7 +150,7 @@
             </Panel>
         </Panel>
 
-        <Panel id="editor_ui" hittest="false" style="visibility: collapse;">
+        <Panel id="editor_ui" hittest="false" class="ui_state">
             <Panel id="editor_buttons"/>
             <Panel id="editor_indicator">
                 <Panel id="editor_entity_panel" hittest="true">
