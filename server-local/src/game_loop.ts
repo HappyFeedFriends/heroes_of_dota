@@ -413,6 +413,7 @@ function set_camera_location_on_unit_blocking(player_id: PlayerID, target: CDOTA
     PlayerResource.SetCameraTarget(player_id, target);
     wait_one_frame();
     PlayerResource.SetCameraTarget(player_id, undefined);
+    actual_camera_target.target = undefined;
     suppress_camera_change = false;
 }
 
