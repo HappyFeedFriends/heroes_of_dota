@@ -6,7 +6,7 @@ declare const enum To_Server_Event_Type {
     adventure_interact_with_entity = 0,
     put_deltas = 1,
     fast_forward = 2,
-    editor_event = 3
+    editor_action = 3
 }
 
 declare const enum To_Client_Event_Type {
@@ -43,8 +43,8 @@ type To_Server_Event = {
     type: To_Server_Event_Type.fast_forward
     payload: Battle_Snapshot
 } | {
-    type: To_Server_Event_Type.editor_event
-    payload: Editor_Event
+    type: To_Server_Event_Type.editor_action
+    payload: Editor_Action
 }
 
 type To_Client_Event = {
@@ -288,7 +288,7 @@ type Battle_Snapshot = {
     delta_head: number
 }
 
-declare const enum Editor_Event_Type {
+declare const enum Editor_Action_Type {
     toggle_map_vision = 0,
     start_adventure = 1,
     set_camera = 2,
@@ -300,13 +300,13 @@ declare const enum Editor_Event_Type {
     exit_adventure = 8,
 }
 
-type Editor_Event = {
-    type: Editor_Event_Type.toggle_map_vision
+type Editor_Action = {
+    type: Editor_Action_Type.toggle_map_vision
 } | {
-    type: Editor_Event_Type.start_adventure
+    type: Editor_Action_Type.start_adventure
     adventure: Adventure_Id
 } | {
-    type: Editor_Event_Type.set_camera
+    type: Editor_Action_Type.set_camera
     camera: {
         free: true
     } | {
@@ -317,31 +317,31 @@ type Editor_Event = {
         }
     }
 } | {
-    type: Editor_Event_Type.set_entity_position
+    type: Editor_Action_Type.set_entity_position
     entity_id: Adventure_Entity_Id
     position: {
         x: number
         y: number
     }
 } | {
-    type: Editor_Event_Type.set_entity_facing
+    type: Editor_Action_Type.set_entity_facing
     entity_id: Adventure_Entity_Id
     facing: {
         x: number
         y: number
     }
 } | {
-    type: Editor_Event_Type.delete_entity
+    type: Editor_Action_Type.delete_entity
     entity_id: Adventure_Entity_Id
 } | {
-    type: Editor_Event_Type.create_entity
+    type: Editor_Action_Type.create_entity
     definition: Adventure_Entity_Definition
 } | {
-    type: Editor_Event_Type.teleport
+    type: Editor_Action_Type.teleport
     position: {
         x: number
         y: number
     }
 } | {
-    type: Editor_Event_Type.exit_adventure
+    type: Editor_Action_Type.exit_adventure
 }

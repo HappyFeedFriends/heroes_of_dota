@@ -3,20 +3,20 @@ type Editor_State = {
     camera_dummy: CDOTA_BaseNPC
 }
 
-function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) {
+function perform_editor_action(game: Game, editor: Editor_State, event: Editor_Action) {
     function find_entity_by_id(id: Adventure_Entity_Id) {
         return array_find(game.adventure.entities, entity => entity.id == id);
     }
 
     switch (event.type) {
-        case Editor_Event_Type.toggle_map_vision: {
+        case Editor_Action_Type.toggle_map_vision: {
             editor.map_revealed = !editor.map_revealed;
             GameRules.GetGameModeEntity().SetUnseenFogOfWarEnabled(!editor.map_revealed);
 
             break;
         }
 
-        case Editor_Event_Type.set_camera: {
+        case Editor_Action_Type.set_camera: {
             event.camera.free = from_client_bool(event.camera.free);
 
             if (event.camera.free) {
@@ -33,7 +33,7 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
             break;
         }
 
-        case Editor_Event_Type.delete_entity: {
+        case Editor_Action_Type.delete_entity: {
             const entity = find_entity_by_id(event.entity_id);
             if (!entity) break;
 
@@ -56,7 +56,7 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
             break;
         }
 
-        case Editor_Event_Type.create_entity: {
+        case Editor_Action_Type.create_entity: {
             const created_entity = api_request(Api_Request_Type.editor_create_entity, {
                 definition: event.definition,
                 access_token: game.token
@@ -69,7 +69,7 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
             break;
         }
 
-        case Editor_Event_Type.set_entity_position: {
+        case Editor_Action_Type.set_entity_position: {
             const entity = find_entity_by_id(event.entity_id);
             if (!entity) break;
             if (!entity.alive) break;
@@ -88,7 +88,7 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
             break;
         }
 
-        case Editor_Event_Type.set_entity_facing: {
+        case Editor_Action_Type.set_entity_facing: {
             const entity = find_entity_by_id(event.entity_id);
             if (!entity) break;
             if (!entity.alive) break;
@@ -107,7 +107,7 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
             break;
         }
 
-        case Editor_Event_Type.start_adventure: {
+        case Editor_Action_Type.start_adventure: {
             const new_state = api_request(Api_Request_Type.start_adventure, {
                 access_token: game.token,
                 dedicated_server_key: get_dedicated_server_key(),
@@ -121,12 +121,12 @@ function on_editor_event(game: Game, editor: Editor_State, event: Editor_Event) 
             break;
         }
 
-        case Editor_Event_Type.teleport: {
+        case Editor_Action_Type.teleport: {
             FindClearSpaceForUnit(PlayerResource.GetSelectedHeroEntity(0), Vector(event.position.x, event.position.y), true);
             break;
         }
 
-        case Editor_Event_Type.exit_adventure: {
+        case Editor_Action_Type.exit_adventure: {
             const new_state = api_request(Api_Request_Type.exit_adventure, {
                 access_token: game.token,
                 dedicated_server_key: get_dedicated_server_key()
@@ -150,7 +150,7 @@ function subscribe_to_editor_events(game: Game) {
         camera_dummy: camera_entity
     };
 
-    on_custom_event_async(To_Server_Event_Type.editor_event, event => on_editor_event(game, state, event));
+    on_custom_event_async(To_Server_Event_Type.editor_action, event => perform_editor_action(game, state, event));
 
     fork(() => {
         while (true) {

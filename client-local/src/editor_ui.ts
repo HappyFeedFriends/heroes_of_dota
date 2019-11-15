@@ -81,8 +81,8 @@ function editor_button(text: string, action: () => void) {
     return text_button(buttons_root, "editor_button", text, action);
 }
 
-function dispatch_editor_event(event: Editor_Event) {
-    fire_event(To_Server_Event_Type.editor_event, event);
+function dispatch_editor_event(event: Editor_Action) {
+    fire_event(To_Server_Event_Type.editor_action, event);
 }
 
 function update_editor_indicator(editor: Editor) {
@@ -179,7 +179,7 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Entity
     function create_delete_button() {
         entity_button("Delete", () => {
             dispatch_editor_event({
-                type: Editor_Event_Type.delete_entity,
+                type: Editor_Action_Type.delete_entity,
                 entity_id: adventure_entity_id
             })
         }, "editor_entity_delete_button");
@@ -292,7 +292,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                 if (!editor.selection.selected) return;
 
                 dispatch_editor_event({
-                    type: Editor_Event_Type.set_entity_position,
+                    type: Editor_Action_Type.set_entity_position,
                     entity_id: editor.selection.id,
                     position: xy(click_world_position[0], click_world_position[1])
                 });
@@ -307,7 +307,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                 const facing = length > 0 ? [delta[0] / length, delta[1] / length, 0] : [1, 0, 0];
 
                 dispatch_editor_event({
-                    type: Editor_Event_Type.set_entity_facing,
+                    type: Editor_Action_Type.set_entity_facing,
                     entity_id: editor.selection.id,
                     facing: xy(facing[0], facing[1])
                 });
@@ -318,7 +318,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                     for (const [npc_name, npc_type] of enum_names_to_values<Npc_Type>()) {
                         context_menu_button(`Create ${npc_name}`, () => {
                             dispatch_editor_event({
-                                type: Editor_Event_Type.create_entity,
+                                type: Editor_Action_Type.create_entity,
                                 definition: {
                                     type: entity_type,
                                     npc_type: npc_type,
@@ -332,7 +332,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                 } else {
                     context_menu_button(`Create ${entity_name}`, () => {
                         dispatch_editor_event({
-                            type: Editor_Event_Type.create_entity,
+                            type: Editor_Action_Type.create_entity,
                             definition: {
                                 type: entity_type,
                                 spawn_position: xy(click_world_position[0], click_world_position[1]),
@@ -355,7 +355,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
 
             context_menu_button(`Teleport here`, () => {
                 dispatch_editor_event({
-                    type: Editor_Event_Type.teleport,
+                    type: Editor_Action_Type.teleport,
                     position: xy(click_world_position[0], click_world_position[1])
                 })
             });
@@ -395,7 +395,7 @@ function periodically_update_editor_camera_state() {
     switch (editor.type) {
         case Editor_Type.adventure: {
             dispatch_editor_event({
-                type: Editor_Event_Type.set_camera,
+                type: Editor_Action_Type.set_camera,
                 camera: {
                     free: true
                 }
@@ -406,7 +406,7 @@ function periodically_update_editor_camera_state() {
 
         case Editor_Type.battleground: {
             dispatch_editor_event({
-                type: Editor_Event_Type.set_camera,
+                type: Editor_Action_Type.set_camera,
                 camera: {
                     free: false,
                     grid_size: {
@@ -438,7 +438,7 @@ function update_state_from_editor_mode(state: Player_State, editor: Editor) {
 
 function update_adventure_editor_buttons(editor: Adventure_Editor) {
     editor_button("Toggle map vision", () => dispatch_editor_event({
-        type: Editor_Event_Type.toggle_map_vision
+        type: Editor_Action_Type.toggle_map_vision
     }));
 
     editor_button("Change camera height", () => {
@@ -528,7 +528,7 @@ function update_editor_buttons(state: Player_State) {
     if (state == Player_State.on_global_map) {
         for (const [name, id] of adventures) {
             editor_button(`Adventure: ${name}`, () => dispatch_editor_event({
-                type: Editor_Event_Type.start_adventure,
+                type: Editor_Action_Type.start_adventure,
                 adventure: id
             }));
         }
@@ -557,7 +557,7 @@ function update_editor_buttons(state: Player_State) {
 
         editor_button("Back to map", () => {
             dispatch_editor_event({
-                type: Editor_Event_Type.exit_adventure
+                type: Editor_Action_Type.exit_adventure
             })
         });
     }
