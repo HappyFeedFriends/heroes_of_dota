@@ -37,6 +37,10 @@ export default function run_transformer(program: ts.Program, options: Options): 
     function resolve_enum_members(type: SimpleType): SimpleTypeEnumMember[] {
         const enum_members: SimpleTypeEnumMember[] = [];
 
+        if (type.kind == SimpleTypeKind.ENUM_MEMBER) {
+            return [ type ];
+        }
+
         if (type.kind == SimpleTypeKind.ENUM) {
             enum_members.push(...type.types);
         }
@@ -129,8 +133,8 @@ export default function run_transformer(program: ts.Program, options: Options): 
                         error_out(argument, "Generic parameters not supported, specify the type in type arguments");
                     }
 
-                    if (type.kind == SimpleTypeKind.ENUM_MEMBER) {
-                        return ts.createStringLiteral(type.name);
+                    if (enum_members.length == 1) {
+                        return ts.createStringLiteral(enum_members[0].name);
                     }
 
                     const cases = enum_members.map(member => {
@@ -165,10 +169,6 @@ export default function run_transformer(program: ts.Program, options: Options): 
                     const argument = resolve_alias(toSimpleType(call.typeArguments[0], checker));
                     const enum_members: SimpleTypeEnumMember[] = resolve_enum_members(argument);
 
-                    if (argument.kind == SimpleTypeKind.ENUM_MEMBER) {
-                        enum_members.push(argument);
-                    }
-
                     return ts.createArrayLiteral(enum_members.map(member => {
                         const literal = enum_member_to_literal(member);
 
@@ -181,10 +181,6 @@ export default function run_transformer(program: ts.Program, options: Options): 
             } else if (function_name == "enum_values") {
                     const argument = resolve_alias(toSimpleType(call.typeArguments[0], checker));
                     const enum_members: SimpleTypeEnumMember[] = resolve_enum_members(argument);
-
-                    if (argument.kind == SimpleTypeKind.ENUM_MEMBER) {
-                        enum_members.push(argument);
-                    }
 
                     return ts.createArrayLiteral(enum_members.map(member => {
                         const literal = enum_member_to_literal(member);
