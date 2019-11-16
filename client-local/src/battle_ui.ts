@@ -104,19 +104,18 @@ type UI_Unit_Data = UI_Hero_Data | UI_Monster_Data | UI_Creep_Data;
 
 type UI_Battle = Battle & {
     id: Battle_Id
-    world_origin: { x: number, y: number, z: number }
     entity_id_to_unit_data: Record<EntityId, UI_Unit_Data>
     entity_id_to_rune_id: Record<number, Rune_Id>
     entity_id_to_shop_id: Record<number, Shop_Id>
     unit_id_to_facing: Record<number, XY>
     shop_id_to_facing: Record<number, XY>
-    cells: UI_Cell[]
     cell_index_to_unit: Unit[]
     cell_index_to_rune: Rune[]
     outline_particles: ParticleId[]
     shop_range_outline_particles: ParticleId[]
     zone_highlight_particles: ParticleId[]
     this_player: Battle_Player
+    grid: UI_Grid
 }
 
 type UI_Cell = Cell & {
@@ -179,6 +178,12 @@ type Hover_State_Ability = {
     type: Hover_Type.ability
     unit: Unit
     ability: Ability
+}
+
+type UI_Grid = World_Grid<UI_Cell>;
+
+type World_Grid<T extends Cell_Like> = Grid<T> & {
+    world_origin: { x: number, y: number, z: number }
 }
 
 let battle: UI_Battle;
@@ -402,12 +407,12 @@ function rebuild_cell_indexes() {
 
     for (const unit of battle.units) {
         if (authorize_act_on_known_unit(battle, unit).ok) {
-            battle.cell_index_to_unit[grid_cell_index(battle, unit.position)] = unit;
+            battle.cell_index_to_unit[grid_cell_index(battle.grid, unit.position)] = unit;
         }
     }
 
     for (const rune of battle.runes) {
-        battle.cell_index_to_rune[grid_cell_index(battle, rune.position)] = rune;
+        battle.cell_index_to_rune[grid_cell_index(battle.grid, rune.position)] = rune;
     }
 }
 
@@ -533,7 +538,7 @@ function battle_process_state_transition(from: Player_State, new_state: Game_Net
     $.Msg(`Transition from ${from} to ${new_state.state}`);
 
     if (from == Player_State.in_battle) {
-        for (const cell of battle.cells) {
+        for (const cell of battle.grid.cells) {
             Particles.DestroyParticleEffect(cell.associated_particle, true);
             Particles.ReleaseParticleIndex(cell.associated_particle);
         }
@@ -553,8 +558,6 @@ function battle_process_state_transition(from: Player_State, new_state: Game_Net
             ...base,
             id: new_data.id,
             this_player: this_player,
-            world_origin: new_data.world_origin,
-            cells: [],
             cell_index_to_unit: [],
             cell_index_to_rune: [],
             entity_id_to_unit_data: {},
@@ -565,6 +568,11 @@ function battle_process_state_transition(from: Player_State, new_state: Game_Net
             outline_particles: [],
             shop_range_outline_particles: [],
             zone_highlight_particles: [],
+            grid: {
+                world_origin: new_data.world_origin,
+                size: base.grid.size,
+                cells: []
+            },
             receive_event: on_battle_event as (battle: Battle, event: Battle_Event) => void // TODO poorly typed
         };
 
@@ -575,20 +583,20 @@ function battle_process_state_transition(from: Player_State, new_state: Game_Net
         ui_shop_data = [];
 
         const particle_bottom_left_origin: XYZ = [
-            battle.world_origin.x + battle_cell_size / 2,
-            battle.world_origin.y + battle_cell_size / 2,
-            battle.world_origin.z
+            battle.grid.world_origin.x + battle_cell_size / 2,
+            battle.grid.world_origin.y + battle_cell_size / 2,
+            battle.grid.world_origin.z
         ];
 
-        for (let x = 0; x < battle.grid_size.x; x++) {
-            for (let y = 0; y < battle.grid_size.y; y++) {
+        for (let x = 0; x < battle.grid.size.x; x++) {
+            for (let y = 0; y < battle.grid.size.y; y++) {
                 const particle = create_cell_particle_at([
                     particle_bottom_left_origin[0] + x * battle_cell_size,
                     particle_bottom_left_origin[1] + y * battle_cell_size,
                     particle_bottom_left_origin[2]
                 ]);
 
-                battle.cells.push({
+                battle.grid.cells.push({
                     position: xy(x, y),
                     occupied: false,
                     cost: 1,
@@ -611,8 +619,8 @@ function battle_process_state_transition(from: Player_State, new_state: Game_Net
 }
 
 function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | undefined {
-    const cell_from = grid_cell_at(battle, from);
-    const cell_to = grid_cell_at(battle, to);
+    const cell_from = grid_cell_at(battle.grid, from);
+    const cell_to = grid_cell_at(battle.grid, to);
 
     if (!cell_from || !cell_to) {
         return;
@@ -624,8 +632,8 @@ function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | undefine
         return;
     }
 
-    let current_cell_index = populated.cell_index_to_parent_index[grid_cell_index(battle, to)];
-    const to_index = grid_cell_index(battle, from);
+    let current_cell_index = populated.cell_index_to_parent_index[grid_cell_index(battle.grid, to)];
+    const to_index = grid_cell_index(battle.grid, from);
     const path = [];
 
     path.push(to);
@@ -635,7 +643,7 @@ function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | undefine
             return;
         }
 
-        path.push(battle.cells[current_cell_index].position);
+        path.push(battle.grid.cells[current_cell_index].position);
         current_cell_index = populated.cell_index_to_parent_index[current_cell_index];
     }
 
@@ -649,7 +657,7 @@ const color_green: XYZ = [ 128, 255, 128 ];
 const color_red: XYZ = [ 255, 128, 128 ];
 const color_yellow: XYZ = [ 255, 255, 0 ];
 
-function highlight_outline(cell_index_to_highlight: boolean[], color: XYZ): ParticleId[] {
+function highlight_outline<T extends Cell_Like>(grid: World_Grid<T>, cell_index_to_highlight: boolean[], color: XYZ): ParticleId[] {
     const cell_index_to_edges: Array<{ edge: Edge, from: XY, to: XY, deleted: boolean }[]> = [];
     const unique_edges: { edge: Edge, from: XY, to: XY, deleted: boolean }[] = [];
 
@@ -687,13 +695,13 @@ function highlight_outline(cell_index_to_highlight: boolean[], color: XYZ): Part
 
         if (!is_highlighted) continue;
 
-        const cell = battle.cells[index];
+        const cell = grid.cells[index];
         const at = cell.position;
 
-        const right = grid_cell_index_raw(battle, at.x + 1, at.y);
-        const left = grid_cell_index_raw(battle, at.x - 1, at.y);
-        const top = grid_cell_index_raw(battle, at.x, at.y + 1);
-        const bottom = grid_cell_index_raw(battle, at.x, at.y - 1);
+        const right = grid_cell_index_raw(grid, at.x + 1, at.y);
+        const left = grid_cell_index_raw(grid, at.x - 1, at.y);
+        const top = grid_cell_index_raw(grid, at.x, at.y + 1);
+        const bottom = grid_cell_index_raw(grid, at.x, at.y - 1);
 
         const edge_side_right_left: [Edge, number | undefined, number | undefined, number | undefined][] = [
             [ Edge.top, top, right, left ],
@@ -723,8 +731,8 @@ function highlight_outline(cell_index_to_highlight: boolean[], color: XYZ): Part
 
         const fx = Particles.CreateParticle("particles/ui/highlight_rope.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
 
-        const [fr_x, fr_y, fr_z] = battle_position_to_world_position_center(from);
-        const [to_x, to_y, to_z] = battle_position_to_world_position_center(to);
+        const [fr_x, fr_y, fr_z] = battle_position_to_world_position_center(grid.world_origin, from);
+        const [to_x, to_y, to_z] = battle_position_to_world_position_center(grid.world_origin, to);
 
         switch (edge) {
             case Edge.bottom: {
@@ -764,8 +772,8 @@ function highlight_outline(cell_index_to_highlight: boolean[], color: XYZ): Part
     return particles;
 }
 
-function highlight_outline_temporarily(cell_index_to_highlight: boolean[], color: XYZ, highlight_time: number) {
-    const particles = highlight_outline(cell_index_to_highlight, color);
+function highlight_outline_temporarily(grid: UI_Grid, cell_index_to_highlight: boolean[], color: XYZ, highlight_time: number) {
+    const particles = highlight_outline(grid, cell_index_to_highlight, color);
 
     $.Schedule(highlight_time, () => {
         for (const particle of particles) {
@@ -912,14 +920,14 @@ function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, 
     return [color_nothing, 20];
 }
 
-function update_outline(storage: ParticleId[], cell_index_to_highlight: boolean[], color: XYZ): ParticleId[] {
+function update_outline<T extends Cell_Like>(grid: World_Grid<T>, storage: ParticleId[], cell_index_to_highlight: boolean[], color: XYZ): ParticleId[] {
     for (const old_particle of storage) {
         Particles.DestroyParticleEffect(old_particle, false);
         Particles.ReleaseParticleIndex(old_particle);
     }
 
     if (cell_index_to_highlight.length > 0) {
-        const result = highlight_outline(cell_index_to_highlight, color);
+        const result = highlight_outline(grid, cell_index_to_highlight, color);
 
         for (const particle of result) {
             register_particle_for_reload(particle);
@@ -956,8 +964,8 @@ function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell
         }
     }
 
-    for (const cell of battle.cells) {
-        const index = grid_cell_index(battle, cell.position);
+    for (const cell of battle.grid.cells) {
+        const index = grid_cell_index(battle.grid, cell.position);
 
         let cell_color: XYZ = color_nothing;
         let alpha = 20;
@@ -1027,8 +1035,8 @@ function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell
 function update_grid_visuals_for_unit_selection(selection: Grid_Selection_Unit, cell_index_to_shop_highlight: boolean[]) {
     const hovered_shop = hover.type == Hover_Type.cell && shop_at(battle, hover.cell);
 
-    for (const cell of battle.cells) {
-        const index = grid_cell_index(battle, cell.position);
+    for (const cell of battle.grid.cells) {
+        const index = grid_cell_index(battle.grid, cell.position);
         const unit_in_cell = battle.cell_index_to_unit[index];
 
         let [cell_color, alpha] = compute_unit_path_cell_color(selection.unit, selection.path, index);
@@ -1046,8 +1054,8 @@ function update_grid_visuals_for_unit_selection(selection: Grid_Selection_Unit, 
 }
 
 function update_grid_visuals_for_shop_selection(selection: Grid_Selection_Shop, cell_index_to_shop_highlight: boolean[]) {
-    for (const cell of battle.cells) {
-        const index = grid_cell_index(battle, cell.position);
+    for (const cell of battle.grid.cells) {
+        const index = grid_cell_index(battle.grid, cell.position);
         const unit_in_cell = battle.cell_index_to_unit[index];
 
         let [cell_color, alpha] = compute_unit_path_cell_color(selection.unit, selection.path, index);
@@ -1065,8 +1073,8 @@ function update_grid_visuals_for_shop_selection(selection: Grid_Selection_Shop, 
 }
 
 function update_grid_visuals_for_card_selection(selection: Grid_Selection_Card, cell_index_to_zone_highlight: boolean[]) {
-    for (const cell of battle.cells) {
-        const index = grid_cell_index(battle, cell.position);
+    for (const cell of battle.grid.cells) {
+        const index = grid_cell_index(battle.grid, cell.position);
         const unit_in_cell = battle.cell_index_to_unit[index];
 
         let cell_color: XYZ = color_nothing;
@@ -1089,8 +1097,8 @@ function update_grid_visuals_for_card_selection(selection: Grid_Selection_Card, 
 function update_grid_visuals_for_no_selection(cell_index_to_shop_highlight: boolean[]) {
     const hovered_shop = hover.type == Hover_Type.cell && shop_at(battle, hover.cell);
 
-    for (const cell of battle.cells) {
-        const index = grid_cell_index(battle, cell.position);
+    for (const cell of battle.grid.cells) {
+        const index = grid_cell_index(battle.grid, cell.position);
         const unit_in_cell = battle.cell_index_to_unit[index];
 
         let cell_color: XYZ = color_nothing;
@@ -1145,8 +1153,8 @@ function update_grid_visuals() {
         default: unreachable(selection);
     }
 
-    for (const cell of battle.cells) {
-        const index = grid_cell_index(battle, cell.position);
+    for (const cell of battle.grid.cells) {
+        const index = grid_cell_index(battle.grid, cell.position);
 
         if (hover.type == Hover_Type.cell && xy_equal(hover.cell, cell.position)) {
             if (selection.type == Selection_Type.card) {
@@ -1157,9 +1165,9 @@ function update_grid_visuals() {
         }
     }
 
-    battle.outline_particles = update_outline(battle.outline_particles, cell_index_to_highlight, color_red);
-    battle.shop_range_outline_particles = update_outline(battle.shop_range_outline_particles, cell_index_to_shop_highlight, color_yellow);
-    battle.zone_highlight_particles = update_outline(battle.zone_highlight_particles, cell_index_to_zone_highlight, color_green);
+    battle.outline_particles = update_outline(battle.grid, battle.outline_particles, cell_index_to_highlight, color_red);
+    battle.shop_range_outline_particles = update_outline(battle.grid, battle.shop_range_outline_particles, cell_index_to_shop_highlight, color_yellow);
+    battle.zone_highlight_particles = update_outline(battle.grid, battle.zone_highlight_particles, cell_index_to_zone_highlight, color_green);
 }
 
 function periodically_drop_selection_in_battle() {
@@ -1525,18 +1533,18 @@ function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In
     }
 }
 
-function world_position_to_battle_position(world_origin: { x: number, y: number }, position: XYZ): XY {
+function world_position_to_battle_position(world_origin: XY, position: XYZ): XY {
     return {
         x: Math.floor((position[0] - world_origin.x) / battle_cell_size),
         y: Math.floor((position[1] - world_origin.y) / battle_cell_size)
     }
 }
 
-function battle_position_to_world_position_center(position: XY): XYZ {
+function battle_position_to_world_position_center(world_origin: { x: number, y: number, z: number }, position: XY): XYZ {
     return [
-        battle.world_origin.x + position.x * battle_cell_size + battle_cell_size / 2,
-        battle.world_origin.y + position.y * battle_cell_size + battle_cell_size / 2,
-        battle.world_origin.z - 128
+        world_origin.x + position.x * battle_cell_size + battle_cell_size / 2,
+        world_origin.y + position.y * battle_cell_size + battle_cell_size / 2,
+        world_origin.z - 128
     ]
 }
 
@@ -2305,7 +2313,7 @@ function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
             return true;
         }
 
-        const battle_position = world_position_to_battle_position(battle.world_origin, world_position);
+        const battle_position = world_position_to_battle_position(battle.grid.world_origin, world_position);
         const cursor_entity = get_entity_under_cursor(cursor);
         const cursor_entity_unit = find_unit_by_entity_id(battle, cursor_entity);
         const cursor_entity_shop = find_shop_by_entity_id(battle, cursor_entity);
@@ -2501,9 +2509,9 @@ function get_hovered_battle_position(): XY | undefined {
         return;
     }
 
-    const battle_position = world_position_to_battle_position(battle.world_origin, world_position);
+    const battle_position = world_position_to_battle_position(battle.grid.world_origin, world_position);
 
-    const is_position_valid = battle_position.x >= 0 && battle_position.x < battle.grid_size.x && battle_position.y >= 0 && battle_position.y < battle.grid_size.y;
+    const is_position_valid = battle_position.x >= 0 && battle_position.x < battle.grid.size.x && battle_position.y >= 0 && battle_position.y < battle.grid.size.y;
 
     if (!is_position_valid) {
         return;
@@ -2705,13 +2713,13 @@ function highlight_grid_for_unit_ability_with_predicate(unit_id: Unit_Id, abilit
 
     const outline: boolean[] = [];
 
-    for (const cell of battle.cells) {
+    for (const cell of battle.grid.cells) {
         if (predicate(ability, cell)) {
-            outline[grid_cell_index(battle, cell.position)] = true;
+            outline[grid_cell_index(battle.grid, cell.position)] = true;
         }
     }
 
-    highlight_outline_temporarily(outline, color_red, 0.75);
+    highlight_outline_temporarily(battle.grid, outline, color_red, 0.75);
 }
 
 subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_targeted_ability, event => {

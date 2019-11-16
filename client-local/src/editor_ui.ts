@@ -3,6 +3,7 @@ const buttons_root = editor_root.FindChildTraverse("editor_buttons");
 const indicator = editor_root.FindChildTraverse("editor_indicator");
 const entity_panel = indicator.FindChildTraverse("editor_entity_panel");
 const context_menu = indicator.FindChildTraverse("editor_context_menu");
+const brushes_root = indicator.FindChildTraverse("editor_brushes");
 const entrance_indicator = indicator.FindChildTraverse("editor_entrance_indicator");
 
 const entity_buttons = entity_panel.FindChildTraverse("editor_entity_buttons");
@@ -17,6 +18,11 @@ const enum Editor_Type {
     battleground
 }
 
+const enum Battleground_Brush_Type {
+    select = 0,
+    trees = 1
+}
+
 type Adventure_Editor = {
     type: Editor_Type.adventure
     selection: Adventure_Editor_Selection
@@ -26,14 +32,16 @@ type Adventure_Editor = {
 
 type Battleground_Editor = {
     type: Editor_Type.battleground
-    cells: Editor_Cell[]
-    grid_world_origin: XY
-    grid_size: {
-        w: number
-        h: number
+    cells: Editor_Cell[][]
+    grid_world_origin: {
+        x: number
+        y: number
+        z: number
     }
+    grid_size: XY
     cell_under_cursor?: Editor_Cell
     spawns: Battleground_Spawn[]
+    brush: Battleground_Brush
 }
 
 type Editor_Cell = {
@@ -61,6 +69,21 @@ type Adventure_Editor_Selection = {
     particle: ParticleId
 }
 
+type Battleground_Brush = {
+    type: Battleground_Brush_Type.select
+    selected: Editor_Cell[]
+    selection_outline: ParticleId[]
+    drag_state: {
+        dragging: false
+    } | {
+        dragging: true
+        outline: ParticleId[]
+        start_at: XY
+    }
+} | {
+    type: Battleground_Brush_Type.trees
+}
+
 let pinned_context_menu_position: XYZ = [0, 0, 0];
 let context_menu_particle: ParticleId | undefined = undefined;
 let editor: Editor = { type: Editor_Type.none };
@@ -78,10 +101,16 @@ function text_button(parent: Panel, css_class: string, text: string, action: (bu
     button.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => action(button));
 
     $.CreatePanel("Label", button, "").text = text;
+
+    return button;
 }
 
 function editor_button(text: string, action: () => void) {
     return text_button(buttons_root, "editor_button", text, action);
+}
+
+function brush_button(text: string, action: () => void) {
+    return text_button(brushes_root, "brush_button", text, action);
 }
 
 function dispatch_editor_action(event: Editor_Action) {
@@ -269,8 +298,6 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
             const npc_type = enum_value_from_modifier<Npc_Type>(entity_under_cursor, "Modifier_Editor_Npc_Type");
             const name = `${npc_type != undefined ? enum_to_string(npc_type) : enum_to_string(entity_type)} (#${entity_id})`;
 
-            $.Msg(entity_id, " ", npc_type);
-
             if (entity_id != undefined && entity_type != undefined) {
                 adventure_editor_select_entity(editor, entity_under_cursor, entity_id, entity_type, name);
             }
@@ -370,6 +397,135 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
     return true;
 }
 
+function update_battleground_brush_from_cursor(editor: Battleground_Editor, position: XY, pressed: boolean, shift_down: boolean) {
+    const brush = editor.brush;
+
+    function update_editor_cells_outline(cells: Editor_Cell[], outline: ParticleId[]) {
+        const indexed_cells: Editor_Cell[] = [];
+        const highlighted_cells: boolean[] = [];
+
+        const grid: World_Grid<Editor_Cell> = {
+            cells: indexed_cells,
+            world_origin: editor.grid_world_origin,
+            size: editor.grid_size
+        };
+
+        for (const by_x of editor.cells) {
+            for (const editor_cell of by_x) {
+                indexed_cells[grid_cell_index(grid, editor_cell.position)] = editor_cell;
+            }
+        }
+
+        for (let cell of cells) {
+            highlighted_cells[grid_cell_index(grid, cell.position)] = true;
+        }
+
+        return update_outline(grid, outline, highlighted_cells, color_green);
+    }
+
+    function all_cells_within_bounds(from: XY, to: XY) {
+        const min = xy(Math.min(from.x, to.x), Math.min(from.y, to.y));
+        const max = xy(Math.max(from.x, to.x), Math.max(from.y, to.y));
+
+        const result: Editor_Cell[] = [];
+
+        for (const by_x of editor.cells) {
+            for (const editor_cell of by_x) {
+                const point = editor_cell.position;
+                if (point.x >= min.x && point.y >= min.y && point.x <= max.x && point.y <= max.y) {
+                    result.push(editor_cell);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    switch (brush.type) {
+        case Battleground_Brush_Type.select: {
+            const cell = editor_cell_by_xy(editor, position);
+
+            if (!cell) {
+                if (pressed) {
+                    brush.selected = [];
+                    brush.selection_outline = update_editor_cells_outline(brush.selected, brush.selection_outline);
+                }
+
+                break;
+            }
+
+            const drag_state = brush.drag_state;
+
+            if (pressed) {
+                if (drag_state.dragging) {
+                    const cells: Editor_Cell[] = all_cells_within_bounds(drag_state.start_at, position);
+                    drag_state.outline = update_editor_cells_outline(cells, drag_state.outline);
+                } else {
+                    brush.drag_state = {
+                        dragging: true,
+                        outline: [],
+                        start_at: position
+                    }
+                }
+            } else {
+                if (drag_state.dragging) {
+                    const cells: Editor_Cell[] = all_cells_within_bounds(drag_state.start_at, position);
+
+                    if (shift_down) {
+                        brush.selected.push(...cells);
+                    } else {
+                        brush.selected = cells;
+                    }
+
+                    brush.selection_outline = update_editor_cells_outline(brush.selected, brush.selection_outline);
+                    drag_state.outline.forEach(destroy_fx);
+                    brush.drag_state = { dragging: false };
+                }
+            }
+
+            break;
+        }
+
+        case Battleground_Brush_Type.trees: {
+            if (!pressed) break;
+
+            const cell = editor_cell_by_xy(editor, position);
+            if (!cell) break;
+
+            const spawn_index = editor.spawns.findIndex(spawn => xy_equal(position, spawn.at));
+
+            if (shift_down) {
+                if (spawn_index != -1) {
+                    editor.spawns.splice(spawn_index, 1);
+                }
+            } else {
+                if (spawn_index == -1) {
+                    editor.spawns.push({
+                        type: Spawn_Type.tree,
+                        at: position
+                    });
+                } else {
+                    editor.spawns[spawn_index] = {
+                        type: Spawn_Type.tree,
+                        at: position
+                    };
+                }
+            }
+
+            submit_editor_battleground(editor);
+
+            break;
+        }
+    }
+}
+
+function editor_cell_by_xy(editor: Battleground_Editor, xy: XY): Editor_Cell | undefined {
+    const by_x = editor.cells[xy.x];
+    if (!by_x) return;
+
+    return by_x[xy.y];
+}
+
 function periodically_update_editor_ui() {
     $.Schedule(1 / 200, periodically_update_editor_ui);
 
@@ -391,47 +547,25 @@ function periodically_update_editor_ui() {
         const cursor = GameUI.GetCursorPosition();
         const world_position = GameUI.GetScreenWorldPosition(cursor);
 
+        if (editor.cell_under_cursor) {
+            Particles.SetParticleControl(editor.cell_under_cursor.particle, 2, GameUI.IsShiftDown() ? [255, 0, 0] : [0, 255, 0]);
+            Particles.SetParticleControl(editor.cell_under_cursor.particle, 3, [255, 0, 0]);
+        }
+
         if (world_position) {
             const battle_position = world_position_to_battle_position(editor.grid_world_origin, world_position);
-            const actual_cell_under_cursor = editor.cells.find(cell => xy_equal(cell.position, battle_position));
+            const actual_cell_under_cursor = editor_cell_by_xy(editor, battle_position);
 
             if (actual_cell_under_cursor != editor.cell_under_cursor) {
                 if (editor.cell_under_cursor) {
                     Particles.SetParticleControl(editor.cell_under_cursor.particle, 2, [255, 255, 255]);
-                    Particles.SetParticleControl(editor.cell_under_cursor.particle, 3, [ 50, 0, 0 ]);
-                }
-
-                if (actual_cell_under_cursor) {
-                    Particles.SetParticleControl(actual_cell_under_cursor.particle, 2, GameUI.IsShiftDown() ? [255, 0, 0] : [0, 255, 0]);
-                    Particles.SetParticleControl(actual_cell_under_cursor.particle, 3, [255, 0, 0]);
+                    Particles.SetParticleControl(editor.cell_under_cursor.particle, 3, [ 10, 0, 0 ]);
                 }
 
                 editor.cell_under_cursor = actual_cell_under_cursor;
             }
 
-            if (GameUI.IsMouseDown(MouseButton.LEFT)) {
-                const spawn_index = editor.spawns.findIndex(spawn => xy_equal(battle_position, spawn.at));
-
-                if (GameUI.IsShiftDown()) {
-                    if (spawn_index != -1) {
-                        editor.spawns.splice(spawn_index, 1);
-                    }
-                } else {
-                    if (spawn_index == -1) {
-                        editor.spawns.push({
-                            type: Spawn_Type.tree,
-                            at: battle_position
-                        });
-                    } else {
-                        editor.spawns[spawn_index] = {
-                            type: Spawn_Type.tree,
-                            at: battle_position
-                        };
-                    }
-                }
-
-                submit_editor_battleground(editor);
-            }
+            update_battleground_brush_from_cursor(editor, battle_position, GameUI.IsMouseDown(MouseButton.LEFT), GameUI.IsShiftDown());
         }
     }
 
@@ -460,10 +594,7 @@ function periodically_update_editor_camera_state() {
                 type: Editor_Action_Type.set_camera,
                 camera: {
                     free: false,
-                    grid_size: {
-                        x: editor.grid_size.w,
-                        y: editor.grid_size.h
-                    }
+                    grid_size: editor.grid_size
                 }
             });
 
@@ -499,48 +630,95 @@ function update_adventure_editor_buttons(editor: Adventure_Editor) {
     });
 }
 
-function enter_battleground_editor() {
-    local_api_request(Local_Api_Request_Type.get_battle_position, {}, position => {
-        const grid_w = 14;
-        const grid_h = 10;
+function load_battleground_editor() {
+    local_api_request(Local_Api_Request_Type.get_battle_position, {}, enter_battleground_editor);
+}
 
-        editor = {
-            type: Editor_Type.battleground,
-            cells: [],
-            grid_size: {
-                w: grid_w,
-                h: grid_h
-            },
-            spawns: [],
-            grid_world_origin: position
-        };
+function enter_battleground_editor(grid_world_origin: { x: number, y: number, z: number }) {
+    const grid_w = 14;
+    const grid_h = 10;
 
-        const particle_bottom_left_origin: XYZ = [
-            position.x + battle_cell_size / 2,
-            position.y + battle_cell_size / 2,
-            position.z
-        ];
+    const default_selection_brush: Battleground_Brush = {
+        type: Battleground_Brush_Type.select,
+        selected: [],
+        selection_outline: [],
+        drag_state: { dragging: false }
+    };
 
-        for (let x = 0; x < grid_w; x++) {
-            for (let y = 0; y < grid_h; y++) {
-                const particle = create_cell_particle_at([
-                    particle_bottom_left_origin[0] + x * battle_cell_size,
-                    particle_bottom_left_origin[1] + y * battle_cell_size,
-                    particle_bottom_left_origin[2]
-                ]);
+    const new_editor: Battleground_Editor = {
+        type: Editor_Type.battleground,
+        cells: [],
+        grid_size: xy(grid_w, grid_h),
+        spawns: [],
+        grid_world_origin: grid_world_origin,
+        brush: default_selection_brush
+    };
 
-                editor.cells.push({
-                    position: xy(x, y),
-                    particle: particle
-                });
+    editor = new_editor;
 
-                register_particle_for_reload(particle);
-            }
+    const particle_bottom_left_origin: XYZ = [
+        grid_world_origin.x + battle_cell_size / 2,
+        grid_world_origin.y + battle_cell_size / 2,
+        grid_world_origin.z
+    ];
+
+    for (let x = 0; x < grid_w; x++) {
+        const by_x: Editor_Cell[] = [];
+
+        for (let y = 0; y < grid_h; y++) {
+            const particle = create_cell_particle_at([
+                particle_bottom_left_origin[0] + x * battle_cell_size,
+                particle_bottom_left_origin[1] + y * battle_cell_size,
+                particle_bottom_left_origin[2]
+            ]);
+
+            Particles.SetParticleControl(particle, 3, [ 10, 0, 0 ]);
+
+            by_x.push({
+                position: xy(x, y),
+                particle: particle
+            });
+
+            register_particle_for_reload(particle);
         }
 
-        submit_editor_battleground(editor);
-        update_state_from_editor_mode(current_state, editor);
+        editor.cells[x] = by_x;
+    }
+
+    const buttons: Brush_Button[] = [];
+
+    type Brush_Button = {
+        panel: Panel
+        brush: Battleground_Brush
+    }
+
+    function update_brush_button_styles() {
+        for (const button of buttons) {
+            button.panel.SetHasClass("active", button.brush == new_editor.brush);
+        }
+    }
+
+    function set_brush_button(text: string, new_brush: Battleground_Brush) {
+        const panel = brush_button(text, () => {
+            new_editor.brush = new_brush;
+            update_brush_button_styles();
+        });
+
+        buttons.push({
+            brush: new_brush,
+            panel: panel
+        });
+    }
+
+    set_brush_button("Select", default_selection_brush);
+
+    set_brush_button("Paint trees", {
+        type: Battleground_Brush_Type.trees
     });
+
+    update_brush_button_styles();
+    submit_editor_battleground(editor);
+    update_state_from_editor_mode(current_state, editor);
 }
 
 function enter_adventure_editor() {
@@ -556,11 +734,26 @@ function enter_adventure_editor() {
 }
 
 function exit_current_editor() {
+    brushes_root.RemoveAndDeleteChildren();
+
     switch (editor.type) {
         case Editor_Type.battleground: {
-            for (const cell of editor.cells) {
-                Particles.DestroyParticleEffect(cell.particle, false);
-                Particles.ReleaseParticleIndex(cell.particle);
+            for (const by_x of editor.cells) {
+                for (const cell of by_x) {
+                    destroy_fx(cell.particle);
+                }
+            }
+
+            switch (editor.brush.type) {
+                case Battleground_Brush_Type.select: {
+                    editor.brush.selection_outline.forEach(destroy_fx);
+
+                    if (editor.brush.drag_state.dragging) {
+                        editor.brush.drag_state.outline.forEach(destroy_fx);
+                    }
+
+                    break;
+                }
             }
 
             break;
@@ -595,7 +788,7 @@ function update_editor_buttons(state: Player_State) {
         });
     } else {
         editor_button("Battleground editor", () => {
-            enter_battleground_editor();
+            load_battleground_editor();
         });
     }
 

@@ -37,8 +37,7 @@ type Battle = {
     players: Battle_Player[]
     deltas: Delta[]
     turning_player: Battle_Player
-    cells: Cell[]
-    grid_size: XY
+    grid: Grid<Cell>
     receive_event: (battle: Battle, event: Battle_Event) => void
 }
 
@@ -169,6 +168,13 @@ type Cost_Population_Result = {
     cell_index_to_parent_index: number[];
 }
 
+type Grid<T extends Cell_Like> = {
+    size: XY
+    cells: T[]
+}
+
+type Cell_Like = { position: XY };
+
 const max_unit_level = 3;
 const shop_range = 1;
 
@@ -188,40 +194,40 @@ function unreachable(x: never): never {
     throw new Error("Didn't expect to get here");
 }
 
-function grid_cell_at_raw(battle: Battle, x: number, y: number): Cell | undefined {
-    if (x < 0 || x >= battle.grid_size.x || y < 0 || y >= battle.grid_size.y) {
+function grid_cell_at_raw<T extends Cell_Like>(grid: Grid<T>, x: number, y: number): T | undefined {
+    if (x < 0 || x >= grid.size.x || y < 0 || y >= grid.size.y) {
         return undefined;
     }
 
-    return battle.cells[x * battle.grid_size.y + y];
+    return grid.cells[x * grid.size.y + y];
 }
 
-function grid_cell_at(battle: Battle, at: XY): Cell | undefined {
-    return grid_cell_at_raw(battle, at.x, at.y);
+function grid_cell_at<T extends Cell_Like>(grid: Grid<T>, at: XY): T | undefined {
+    return grid_cell_at_raw(grid, at.x, at.y);
 }
 
-function grid_cell_index_raw(battle: Battle, x: number, y: number): number | undefined {
-    if (x < 0 || x >= battle.grid_size.x || y < 0 || y >= battle.grid_size.y) {
+function grid_cell_index_raw<T extends Cell_Like>(grid: Grid<T>, x: number, y: number): number | undefined {
+    if (x < 0 || x >= grid.size.x || y < 0 || y >= grid.size.y) {
         return undefined;
     }
 
-    return x * battle.grid_size.y + y;
+    return x * grid.size.y + y;
 }
 
-function grid_cell_index(battle: Battle, at: XY): number {
-    return at.x * battle.grid_size.y + at.y;
+function grid_cell_index<T extends Cell_Like>(grid: Grid<T>, at: XY): number {
+    return at.x * grid.size.y + at.y;
 }
 
-function grid_cell_at_unchecked(battle: Battle, at: XY): Cell {
-    return battle.cells[at.x * battle.grid_size.y + at.y];
+function grid_cell_at_unchecked<T extends Cell_Like>(grid: Grid<T>, at: XY): T {
+    return grid.cells[at.x * grid.size.y + at.y];
 }
 
-function grid_cell_neighbors(battle: Battle, at: XY): Array<Cell | undefined> {
+function grid_cell_neighbors<T extends Cell_Like>(grid: Grid<T>, at: XY): Array<T | undefined> {
     return [
-        grid_cell_at_raw(battle, at.x + 1, at.y),
-        grid_cell_at_raw(battle, at.x - 1, at.y),
-        grid_cell_at_raw(battle, at.x, at.y + 1),
-        grid_cell_at_raw(battle, at.x, at.y - 1)
+        grid_cell_at_raw(grid, at.x + 1, at.y),
+        grid_cell_at_raw(grid, at.x - 1, at.y),
+        grid_cell_at_raw(grid, at.x, at.y + 1),
+        grid_cell_at_raw(grid, at.x, at.y - 1)
     ];
 }
 
@@ -443,12 +449,14 @@ function make_battle(players: Battle_Player[], grid_width: number, grid_height: 
         units: [],
         runes: [],
         shops: [],
-        cells: [],
         trees: [],
         players: players,
         turning_player: players[0],
         deltas: [],
-        grid_size: xy(grid_width, grid_height),
+        grid: {
+            size: xy(grid_width, grid_height),
+            cells: []
+        },
         receive_event: () => {}
     }
 }
@@ -456,7 +464,7 @@ function make_battle(players: Battle_Player[], grid_width: number, grid_height: 
 // TODO replace with a more efficient A* implementation
 function can_find_path(battle: Battle, from: XY, to: XY, ignore_runes = false): [boolean, number] {
     const indices_already_checked: boolean[] = [];
-    const from_index = grid_cell_index(battle, from);
+    const from_index = grid_cell_index(battle.grid, from);
 
     let indices_not_checked: number[] = [];
 
@@ -467,19 +475,19 @@ function can_find_path(battle: Battle, from: XY, to: XY, ignore_runes = false): 
         const new_indices: number[] = [];
 
         for (const index of indices_not_checked) {
-            const cell = battle.cells[index];
+            const cell = battle.grid.cells[index];
             const at = cell.position;
 
             if (xy_equal(to, at)) {
                 return [true, current_cost];
             }
 
-            const neighbors = grid_cell_neighbors(battle, at);
+            const neighbors = grid_cell_neighbors(battle.grid, at);
 
             for (const neighbor of neighbors) {
                 if (!neighbor) continue;
 
-                const neighbor_index = grid_cell_index(battle, neighbor.position);
+                const neighbor_index = grid_cell_index(battle.grid, neighbor.position);
 
                 if (indices_already_checked[neighbor_index]) continue;
 
@@ -513,7 +521,7 @@ function populate_path_costs(battle: Battle, from: XY, to: XY | undefined = unde
     const cell_index_to_cost: number[] = [];
     const cell_index_to_parent_index: number[] = [];
     const indices_already_checked: boolean[] = [];
-    const from_index = grid_cell_index(battle, from);
+    const from_index = grid_cell_index(battle.grid, from);
 
     let indices_not_checked: number[] = [];
 
@@ -525,7 +533,7 @@ function populate_path_costs(battle: Battle, from: XY, to: XY | undefined = unde
         const new_indices: number[] = [];
 
         for (const index of indices_not_checked) {
-            const cell = battle.cells[index];
+            const cell = battle.grid.cells[index];
             const at = cell.position;
 
             cell_index_to_cost[index] = current_cost;
@@ -537,12 +545,12 @@ function populate_path_costs(battle: Battle, from: XY, to: XY | undefined = unde
                 };
             }
 
-            const neighbors = grid_cell_neighbors(battle, at);
+            const neighbors = grid_cell_neighbors(battle.grid, at);
 
             for (const neighbor of neighbors) {
                 if (!neighbor) continue;
 
-                const neighbor_cell_index = grid_cell_index(battle, neighbor.position);
+                const neighbor_cell_index = grid_cell_index(battle.grid, neighbor.position);
 
                 if (indices_already_checked[neighbor_cell_index]) continue;
 
@@ -606,7 +614,7 @@ function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, fr
         }
 
         case Ability_Targeting_Type.any_free_cell: {
-            const cell = grid_cell_at(battle, check_at);
+            const cell = grid_cell_at(battle.grid, check_at);
 
             if (cell) {
                 return !cell.occupied;
@@ -665,7 +673,7 @@ function ability_selector_fits(battle: Battle, selector: Ability_Target_Selector
                         return true;
                     }
 
-                    const cell = grid_cell_at(battle, current_cell);
+                    const cell = grid_cell_at(battle.grid, current_cell);
 
                     if (!cell || cell.occupied) {
                         return false;
@@ -698,9 +706,9 @@ function ability_selector_fits(battle: Battle, selector: Ability_Target_Selector
 }
 
 function fill_grid(battle: Battle) {
-    for (let x = 0; x < battle.grid_size.x; x++) {
-        for (let y = 0; y < battle.grid_size.y; y++) {
-            battle.cells.push({
+    for (let x = 0; x < battle.grid.size.x; x++) {
+        for (let y = 0; y < battle.grid.size.y; y++) {
+            battle.grid.cells.push({
                 position: xy(x, y),
                 occupied: false,
                 cost: 1
@@ -710,8 +718,8 @@ function fill_grid(battle: Battle) {
 }
 
 function move_unit(battle: Battle, unit: Unit, to: XY) {
-    const cell_from = grid_cell_at_unchecked(battle, unit.position);
-    const cell_to = grid_cell_at_unchecked(battle, to);
+    const cell_from = grid_cell_at_unchecked(battle.grid, unit.position);
+    const cell_to = grid_cell_at_unchecked(battle.grid, to);
     const from_was_occupied = cell_from.occupied;
 
     cell_from.occupied = false;
@@ -833,7 +841,7 @@ function add_card_to_hand(battle: Battle, player: Battle_Player, card: Card) {
 }
 
 function occupy_cell(battle: Battle, at: XY) {
-    const cell = grid_cell_at(battle, at);
+    const cell = grid_cell_at(battle.grid, at);
 
     if (cell) {
         cell.occupied = true;
@@ -841,7 +849,7 @@ function occupy_cell(battle: Battle, at: XY) {
 }
 
 function free_cell(battle: Battle, at: XY) {
-    const cell = grid_cell_at(battle, at);
+    const cell = grid_cell_at(battle.grid, at);
 
     if (cell) {
         cell.occupied = false;
@@ -1727,7 +1735,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
         case Delta_Type.use_ground_target_ability: {
             const unit = find_unit_by_id(battle, delta.unit_id);
-            const target = grid_cell_at(battle, delta.target_position);
+            const target = grid_cell_at(battle.grid, delta.target_position);
 
             if (!unit) break;
             if (!target) break;

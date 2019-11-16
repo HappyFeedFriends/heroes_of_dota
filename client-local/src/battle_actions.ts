@@ -292,15 +292,15 @@ function try_attack_target(source: Unit, target: XY, flash_ground_on_error: bool
             if (flash_ground_on_error && attack_use_permission.kind == Ground_Target_Ability_Use_Error.not_in_range) {
                 const cell_index_to_highlight: boolean[] = [];
 
-                for (const cell of battle.cells) {
-                    const index = grid_cell_index(battle, cell.position);
+                for (const cell of battle.grid.cells) {
+                    const index = grid_cell_index(battle.grid, cell.position);
 
                     if (ability_targeting_fits(battle, source.attack.targeting, source.position, cell.position)) {
                         cell_index_to_highlight[index] = true;
                     }
                 }
 
-                highlight_outline_temporarily(cell_index_to_highlight, color_red, 0.2);
+                highlight_outline_temporarily(battle.grid, cell_index_to_highlight, color_red, 0.2);
             }
         }
     }
@@ -379,10 +379,10 @@ function highlight_move_path(unit: Unit, to: XY) {
     const cell_index_to_highlight: boolean[] = [];
 
     for (const point of path) {
-        cell_index_to_highlight[grid_cell_index(battle, point)] = true;
+        cell_index_to_highlight[grid_cell_index(battle.grid, point)] = true;
     }
 
-    highlight_outline_temporarily(cell_index_to_highlight, color_green, 0.5);
+    highlight_outline_temporarily(battle.grid, cell_index_to_highlight, color_green, 0.5);
 }
 
 function try_order_unit_to_pick_up_rune(unit: Unit, rune: Rune) {

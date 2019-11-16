@@ -606,8 +606,8 @@ function highlight_cells_unit_can_go_to(battle: Battle, unit: Unit) {
     const xy = unit.position;
     const min_x = Math.max(0, xy.x - unit.move_points);
     const min_y = Math.max(0, xy.y - unit.move_points);
-    const max_x = Math.max(battle.grid_size.x, xy.x + unit.move_points);
-    const max_y = Math.max(battle.grid_size.y, xy.y + unit.move_points);
+    const max_x = Math.max(battle.grid.size.x, xy.x + unit.move_points);
+    const max_y = Math.max(battle.grid.size.y, xy.y + unit.move_points);
 
     for (let x = min_x; x < max_x; x++) {
         for (let y = min_y; y < max_y; y++) {
@@ -622,8 +622,8 @@ function highlight_cells_unit_can_go_to(battle: Battle, unit: Unit) {
 }
 
 function highlight_cells_for_ability(battle: Battle, unit: Unit, ability: Ability_Active) {
-    for (let x = 0; x < battle.grid_size.x; x++) {
-        for (let y = 0; y < battle.grid_size.y; y++) {
+    for (let x = 0; x < battle.grid.size.x; x++) {
+        for (let y = 0; y < battle.grid.size.y; y++) {
             if (ability_targeting_fits(battle, ability.targeting, unit.position, xy(x, y))) {
                 game.ctx.fillStyle = "rgba(0, 255, 0, 0.1)";
                 game.ctx.fillRect(x * cell_size, y * cell_size, cell_size, cell_size);
@@ -633,8 +633,8 @@ function highlight_cells_for_ability(battle: Battle, unit: Unit, ability: Abilit
 }
 
 function highlight_cells_for_ability_selector(battle: Battle, from_position: XY, to_position: XY, selector: Ability_Target_Selector) {
-    for (let x = 0; x < battle.grid_size.x; x++) {
-        for (let y = 0; y < battle.grid_size.y; y++) {
+    for (let x = 0; x < battle.grid.size.x; x++) {
+        for (let y = 0; y < battle.grid.size.y; y++) {
             if (ability_selector_fits(battle, selector, from_position, to_position, xy(x, y))) {
                 game.ctx.fillStyle = "rgba(255, 0, 0, 0.1)";
                 game.ctx.fillRect(x * cell_size, y * cell_size, cell_size, cell_size);
@@ -1074,7 +1074,7 @@ function draw_battle_log(game: Game_In_Battle) {
 
     const font_height = 16;
 
-    const starting_x = 120 + game.battle.grid_size.x * cell_size + 180;
+    const starting_x = 120 + game.battle.grid.size.x * cell_size + 180;
 
     let cursor_x = starting_x;
     let cursor_y = grid_top_left_y;
@@ -1101,7 +1101,7 @@ function draw_battle_log(game: Game_In_Battle) {
 function draw_grid(game: Game_In_Battle, player: Battle_Player | undefined, highlight_occupied: boolean) {
     const ctx = game.ctx;
 
-    const grid_size = game.battle.grid_size;
+    const grid_size = game.battle.grid.size;
 
     ctx.strokeStyle = "black";
     ctx.lineWidth = 2;
@@ -1506,7 +1506,7 @@ function draw_chat(game: Game) {
 }
 
 function draw_ability_list(game: Game_In_Battle, unit: Unit): boolean {
-    const top_left_x = 120 + game.battle.grid_size.x * cell_size + 30;
+    const top_left_x = 120 + game.battle.grid.size.x * cell_size + 30;
 
     let ability_highlighted = false;
 

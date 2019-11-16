@@ -308,8 +308,8 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                     map_entity: player.map_entity
                 })),
                 grid_size: {
-                    width: battle.grid_size.x,
-                    height: battle.grid_size.y
+                    width: battle.grid.size.x,
+                    height: battle.grid.size.y
                 }
             }
         }
@@ -858,8 +858,8 @@ register_api_handler(Api_Request_Type.query_battles, req => {
                 id: battle.id,
                 random_seed: battle.random_seed,
                 grid_size: {
-                    width: battle.grid_size.x,
-                    height: battle.grid_size.y
+                    width: battle.grid.size.x,
+                    height: battle.grid.size.y
                 },
                 participants: battle.players.map(player => ({
                     id: player.id,

@@ -157,6 +157,7 @@
                     <Panel id="editor_entity_buttons"/>
                     <Panel id="editor_entity_dropdown"/>
                 </Panel>
+                <Panel id="editor_brushes"/>
                 <Panel id="editor_entrance_indicator">
                     <Label id="editor_entrance_text" text="START"/>
                     <Panel id="editor_entrance_underline"/>

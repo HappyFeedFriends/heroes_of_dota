@@ -235,7 +235,7 @@ function authorize_card_use(action: Player_Action_Permission, card_id: Card_Id):
 }
 
 function authorize_hero_card_location(battle: Battle, player: Battle_Player, at: XY): Auth<{ ok: true, cell: Cell }, Hero_Card_Use_Error> {
-    const cell = grid_cell_at(battle, at);
+    const cell = grid_cell_at(battle.grid, at);
 
     if (!cell) return { ok: false, kind: Hero_Card_Use_Error.other };
     if (cell.occupied) return { ok: false, kind: Hero_Card_Use_Error.cell_occupied };
@@ -522,7 +522,7 @@ function authorize_unit_target_ability_use(use: Ability_Use_Permission, on_targe
 }
 
 function authorize_ground_target_ability_use(use: Ability_Use_Permission, at: XY): Ground_Target_Ability_Use_Auth {
-    const cell = grid_cell_at(use.battle, at);
+    const cell = grid_cell_at(use.battle.grid, at);
 
     if (!cell) return { ok: false, kind: Ground_Target_Ability_Use_Error.other };
 

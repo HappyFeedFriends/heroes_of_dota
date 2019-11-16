@@ -156,4 +156,23 @@
       #button(#688bff, 16px);
     }
   }
+
+  #editor_brushes {
+    align: center bottom;
+    flow-children: right;
+    margin-bottom: 20px;
+
+    .brush_button {
+      margin: 8px;
+      width: 180px;
+      height: 30px;
+
+      #button(#7278e9, 20px);
+
+      &.active {
+        border: 2px solid #c8fcff;
+        box-shadow: inset #c8fcff 0 0 4px 0;
+      }
+    }
+  }
 }

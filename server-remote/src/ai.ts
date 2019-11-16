@@ -55,7 +55,7 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
 
     push_color_rescale();
 
-    for (const cell of ai.battle.cells) {
+    for (const cell of ai.battle.grid.cells) {
         for (const target of ai.battle.units) {
             const can_act_upon_target = authorize_act_on_known_unit(ai.battle, target);
             if (!can_act_upon_target.ok) continue;
@@ -106,10 +106,10 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
     let best_cell: Cell | undefined = undefined;
     let best_cell_targets: Interesting_Cell[] = [];
 
-    let maximum_walkable_distance = ai.battle.grid_size.x * ai.battle.grid_size.y;
+    let maximum_walkable_distance = ai.battle.grid.size.x * ai.battle.grid.size.y;
 
-    for (const cell of ai.battle.cells) {
-        const cell_index = grid_cell_index(ai.battle, cell.position);
+    for (const cell of ai.battle.grid.cells) {
+        const cell_index = grid_cell_index(ai.battle.grid, cell.position);
         const from_actor_to_cell = pathing.cell_index_to_cost[cell_index];
 
         let cell_score = 0;
@@ -126,7 +126,7 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
             // If we are checking actor's cell, the from_actor_to_cell is going to be 0,
             // but target.costs.cell_index_to_cost will yield undefined, because that cell is occupied
             if (xy_equal(actor.position, cell.position)) {
-                from_cell_to_target = pathing.cell_index_to_cost[grid_cell_index(ai.battle, target.cell)];
+                from_cell_to_target = pathing.cell_index_to_cost[grid_cell_index(ai.battle.grid, target.cell)];
             } else {
                 from_cell_to_target = target.costs.cell_index_to_cost[cell_index];
             }

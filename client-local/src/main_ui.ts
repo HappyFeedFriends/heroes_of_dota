@@ -241,6 +241,11 @@ function register_particle_for_reload(particle: ParticleId) {
     array.push(particle);
 }
 
+function destroy_fx(id: ParticleId) {
+    Particles.DestroyParticleEffect(id, false);
+    Particles.ReleaseParticleIndex(id);
+}
+
 function clean_up_particles_after_reload() {
     if (!Game.IsInToolsMode()) {
         return;

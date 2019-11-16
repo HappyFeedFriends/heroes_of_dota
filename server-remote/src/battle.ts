@@ -131,7 +131,7 @@ function query_first_unit_in_line(
             return { hit: true, unit: unit };
         }
 
-        const cell = grid_cell_at(battle, current_cell);
+        const cell = grid_cell_at(battle.grid, current_cell);
 
         if (!cell) {
             return {
@@ -561,7 +561,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
             });
 
             const selector = ability.targeting.selector;
-            const free_cells = battle.cells
+            const free_cells = battle.grid.cells
                 .filter(cell => !cell.occupied && ability_selector_fits(battle, selector, unit.position, target, cell.position))
                 .map(cell => cell.position);
 
@@ -1642,8 +1642,8 @@ function defer_monster_try_retaliate(battle: Battle_Record, monster: Monster, ta
 
         const costs = populate_path_costs(battle, monster.position)!;
 
-        for (const cell of battle.cells) {
-            const index = grid_cell_index(battle, cell.position);
+        for (const cell of battle.grid.cells) {
+            const index = grid_cell_index(battle.grid, cell.position);
             const move_cost = costs.cell_index_to_cost[index];
 
             if (move_cost <= monster.move_points) {
@@ -1720,13 +1720,13 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                                 const center = target.position;
                                 const from_x = Math.max(0, center.x - 2);
                                 const from_y = Math.max(0, center.y - 2);
-                                const to_x = Math.min(battle.grid_size.x, center.x + 2);
-                                const to_y = Math.min(battle.grid_size.y, center.y + 2);
+                                const to_x = Math.min(battle.grid.size.x, center.x + 2);
+                                const to_y = Math.min(battle.grid.size.y, center.y + 2);
                                 const free_cells: XY[] = [];
 
                                 for (let x = from_x; x < to_x; x++) {
                                     for (let y = from_y; y < to_y; y++) {
-                                        const cell = grid_cell_at_unchecked(battle, xy(x, y));
+                                        const cell = grid_cell_at_unchecked(battle.grid, xy(x, y));
 
                                         if (!cell.occupied) {
                                             free_cells.push(cell.position);
@@ -2000,7 +2000,7 @@ function submit_battle_deltas(battle: Battle_Record, battle_deltas: Delta[]) {
 }
 
 export function find_unoccupied_cells_in_deployment_zone_for_player(battle: Battle_Record, player: Battle_Player) {
-    return battle.cells.filter(cell => !cell.occupied && is_point_in_deployment_zone(battle, cell.position, player));
+    return battle.grid.cells.filter(cell => !cell.occupied && is_point_in_deployment_zone(battle, cell.position, player));
 }
 
 export function get_battle_deltas_after(battle: Battle, head: number): Delta[] {
@@ -2306,7 +2306,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
 
             const at = xy(4, 4);
 
-            if (grid_cell_at_unchecked(battle, at).occupied) {
+            if (grid_cell_at_unchecked(battle.grid, at).occupied) {
                 break;
             }
 
