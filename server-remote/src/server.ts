@@ -571,8 +571,10 @@ export function report_battle_over(battle: Battle_Record, winner_entity: Battle_
 
                     if (!source_unit) break;
 
-                    const new_health = Math.min(source_unit.health, hero_definition_by_type(slot.hero).health);
-                    push_party_change(player.party, change_party_change_health(index, new_health));
+                    if (slot.health != source_unit.health) {
+                        const new_health = Math.min(source_unit.health, hero_definition_by_type(slot.hero).health);
+                        push_party_change(player.party, change_party_change_health(index, new_health));
+                    }
 
                     break;
                 }
@@ -586,8 +588,10 @@ export function report_battle_over(battle: Battle_Record, winner_entity: Battle_
                     if (!source_unit) break;
 
                     if (source_unit.health > 0) {
-                        const new_health = Math.min(source_unit.health, creep_definition_by_type(slot.creep).health);
-                        push_party_change(player.party, change_party_change_health(index, new_health));
+                        if (slot.health != source_unit.health) {
+                            const new_health = Math.min(source_unit.health, creep_definition_by_type(slot.creep).health);
+                            push_party_change(player.party, change_party_change_health(index, new_health));
+                        }
                     } else {
                         push_party_change(player.party, change_party_empty_slot(index));
                     }
