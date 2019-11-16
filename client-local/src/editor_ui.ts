@@ -281,6 +281,122 @@ function context_menu_button(text: string, action: () => void) {
     });
 }
 
+function update_editor_cells_outline(editor: Battleground_Editor, cells: Editor_Cell[], outline: ParticleId[]) {
+    const indexed_cells: Editor_Cell[] = [];
+    const highlighted_cells: boolean[] = [];
+
+    const grid: World_Grid<Editor_Cell> = {
+        cells: indexed_cells,
+        world_origin: editor.grid_world_origin,
+        size: editor.grid_size
+    };
+
+    for (const by_x of editor.cells) {
+        for (const editor_cell of by_x) {
+            indexed_cells[grid_cell_index(grid, editor_cell.position)] = editor_cell;
+        }
+    }
+
+    for (let cell of cells) {
+        highlighted_cells[grid_cell_index(grid, cell.position)] = true;
+    }
+
+    return update_outline(grid, outline, highlighted_cells, color_green);
+}
+
+function all_cells_within_bounds(editor: Battleground_Editor, from: XY, to: XY) {
+    const min = xy(Math.min(from.x, to.x), Math.min(from.y, to.y));
+    const max = xy(Math.max(from.x, to.x), Math.max(from.y, to.y));
+
+    const result: Editor_Cell[] = [];
+
+    for (const by_x of editor.cells) {
+        for (const editor_cell of by_x) {
+            const point = editor_cell.position;
+            if (point.x >= min.x && point.y >= min.y && point.x <= max.x && point.y <= max.y) {
+                result.push(editor_cell);
+            }
+        }
+    }
+
+    return result;
+}
+
+function battleground_editor_filter_mouse_click(editor: Battleground_Editor, event: MouseEvent, button: MouseButton | WheelScroll) {
+    if (button != MouseButton.LEFT) {
+        return;
+    }
+
+    const cursor = GameUI.GetCursorPosition();
+    const world_position = GameUI.GetScreenWorldPosition(cursor);
+
+    if (!world_position) {
+        return;
+    }
+
+    const shift_down = GameUI.IsShiftDown();
+    const position = world_position_to_battle_position(editor.grid_world_origin, world_position);
+    const cell = editor_cell_by_xy(editor, position);
+    const brush = editor.brush;
+
+    const pressed = event == "pressed";
+    const released = event == "released";
+
+    if (!pressed && !released) {
+        return;
+    }
+
+    switch (brush.type) {
+        case Battleground_Brush_Type.select: {
+            if (!cell) {
+                if (pressed) {
+                    brush.selected = [];
+                    brush.selection_outline = update_editor_cells_outline(editor, brush.selected, brush.selection_outline);
+                }
+
+                break;
+            }
+
+            const drag_state = brush.drag_state;
+
+            if (pressed) {
+                if (!brush.drag_state.dragging) {
+                    brush.drag_state = {
+                        dragging: true,
+                        outline: [],
+                        start_at: position
+                    }
+                }
+            } else if (released && drag_state.dragging) {
+                const cells: Editor_Cell[] = all_cells_within_bounds(editor, drag_state.start_at, position);
+
+                if (shift_down) {
+                    const the_only_cell = cells[0];
+                    if (cells.length == 1) {
+                        const index_in_selection = brush.selected.findIndex(cell => xy_equal(the_only_cell.position, cell.position));
+
+                        if (index_in_selection != -1) {
+                            brush.selected.splice(index_in_selection, 1);
+                        } else {
+                            brush.selected.push(the_only_cell);
+                        }
+                    } else {
+                        brush.selected.push(...cells);
+                    }
+                } else {
+                    brush.selected = cells;
+                }
+
+                brush.selection_outline = update_editor_cells_outline(editor, brush.selected, brush.selection_outline);
+                drag_state.outline.forEach(destroy_fx);
+                brush.drag_state = { dragging: false };
+            }
+
+            break;
+        }
+    }
+}
+
 // Returns if event should be consumed or not
 function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: MouseEvent, button: MouseButton | WheelScroll): boolean {
     if (event != "pressed") {
@@ -400,87 +516,13 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
 function update_battleground_brush_from_cursor(editor: Battleground_Editor, position: XY, pressed: boolean, shift_down: boolean) {
     const brush = editor.brush;
 
-    function update_editor_cells_outline(cells: Editor_Cell[], outline: ParticleId[]) {
-        const indexed_cells: Editor_Cell[] = [];
-        const highlighted_cells: boolean[] = [];
-
-        const grid: World_Grid<Editor_Cell> = {
-            cells: indexed_cells,
-            world_origin: editor.grid_world_origin,
-            size: editor.grid_size
-        };
-
-        for (const by_x of editor.cells) {
-            for (const editor_cell of by_x) {
-                indexed_cells[grid_cell_index(grid, editor_cell.position)] = editor_cell;
-            }
-        }
-
-        for (let cell of cells) {
-            highlighted_cells[grid_cell_index(grid, cell.position)] = true;
-        }
-
-        return update_outline(grid, outline, highlighted_cells, color_green);
-    }
-
-    function all_cells_within_bounds(from: XY, to: XY) {
-        const min = xy(Math.min(from.x, to.x), Math.min(from.y, to.y));
-        const max = xy(Math.max(from.x, to.x), Math.max(from.y, to.y));
-
-        const result: Editor_Cell[] = [];
-
-        for (const by_x of editor.cells) {
-            for (const editor_cell of by_x) {
-                const point = editor_cell.position;
-                if (point.x >= min.x && point.y >= min.y && point.x <= max.x && point.y <= max.y) {
-                    result.push(editor_cell);
-                }
-            }
-        }
-
-        return result;
-    }
-
     switch (brush.type) {
         case Battleground_Brush_Type.select: {
-            const cell = editor_cell_by_xy(editor, position);
-
-            if (!cell) {
-                if (pressed) {
-                    brush.selected = [];
-                    brush.selection_outline = update_editor_cells_outline(brush.selected, brush.selection_outline);
-                }
-
-                break;
-            }
-
             const drag_state = brush.drag_state;
 
-            if (pressed) {
-                if (drag_state.dragging) {
-                    const cells: Editor_Cell[] = all_cells_within_bounds(drag_state.start_at, position);
-                    drag_state.outline = update_editor_cells_outline(cells, drag_state.outline);
-                } else {
-                    brush.drag_state = {
-                        dragging: true,
-                        outline: [],
-                        start_at: position
-                    }
-                }
-            } else {
-                if (drag_state.dragging) {
-                    const cells: Editor_Cell[] = all_cells_within_bounds(drag_state.start_at, position);
-
-                    if (shift_down) {
-                        brush.selected.push(...cells);
-                    } else {
-                        brush.selected = cells;
-                    }
-
-                    brush.selection_outline = update_editor_cells_outline(brush.selected, brush.selection_outline);
-                    drag_state.outline.forEach(destroy_fx);
-                    brush.drag_state = { dragging: false };
-                }
+            if (drag_state.dragging) {
+                const cells: Editor_Cell[] = all_cells_within_bounds(editor, drag_state.start_at, position);
+                drag_state.outline = update_editor_cells_outline(editor, cells, drag_state.outline);
             }
 
             break;

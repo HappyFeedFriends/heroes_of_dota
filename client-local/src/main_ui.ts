@@ -302,6 +302,12 @@ function setup_mouse_filter() {
                 }
             }
 
+            if (editor.type == Editor_Type.battleground) {
+                battleground_editor_filter_mouse_click(editor, event, button);
+
+                return true;
+            }
+
             switch (current_state) {
                 case Player_State.in_battle: return battle_filter_mouse_click(event, button);
                 case Player_State.on_adventure: return adventure_filter_mouse_click(event, button);
