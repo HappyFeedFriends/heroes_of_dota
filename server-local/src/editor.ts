@@ -86,6 +86,10 @@ function update_editor_battleground(editor: Editor_State, spawns: Battleground_S
         if (existing_entity && entities_are_essentially_the_same(existing_entity, spawn)) {
             remove_entity_at(old_index, existing_entity.at);
             set_entity_at(new_index, existing_entity.at, existing_entity);
+
+            if (spawn.type == Spawn_Type.monster || spawn.type == Spawn_Type.shop) {
+                existing_entity.handle.SetForwardVector(Vector(spawn.facing.x, spawn.facing.y));
+            }
         } else {
             set_entity_at(new_index, spawn.at, spawn_to_entity(spawn));
         }

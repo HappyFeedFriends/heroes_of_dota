@@ -336,36 +336,66 @@ function battleground_editor_update_buttons_after_selection_change(editor: Battl
     const selected = brush.selected;
     const all_empty = selected.every(cell => !editor_spawn_at_xy(editor, cell.position));
 
-    function create_entity_button(text: string, supplier: (at: XY) => Battleground_Spawn) {
+    function battleground_updating_button(text: string, action: () => void) {
         entity_button(text, () => {
-            for (const cell of selected) {
-                editor_set_spawn_at(editor, cell.position, supplier(cell.position))
-            }
+            action();
 
             battleground_editor_update_buttons_after_selection_change(editor, brush);
             submit_editor_battleground(editor);
         });
     }
 
+    function entity_create_button(text: string, supplier: (at: XY) => Battleground_Spawn) {
+        battleground_updating_button(text, () => {
+            for (const cell of selected) {
+                editor_set_spawn_at(editor, cell.position, supplier(cell.position))
+            }
+        });
+    }
+
+    function create_spawn_specific_buttons(spawn: Battleground_Spawn) {
+        function create_facing_buttons(for_spawn: { facing: XY }) {
+            function facing_button(direction_name: string, direction: XY) {
+                battleground_updating_button(`Face ${direction_name}`, () => {
+                    for_spawn.facing = direction;
+                });
+            }
+
+            facing_button("left", xy(-1, 0));
+            facing_button("up", xy(0, 1));
+            facing_button("right", xy(1, 0));
+            facing_button("down", xy(0, -1));
+        }
+
+        switch (spawn.type) {
+            case Spawn_Type.monster:
+            case Spawn_Type.shop: {
+                create_facing_buttons(spawn);
+
+                break;
+            }
+        }
+    }
+
     if (selected.length > 0) {
         if (all_empty) {
-            create_entity_button("Create tree", at => ({
+            entity_create_button("Create tree", at => ({
                 type: Spawn_Type.tree,
                 at: at
             }));
 
-            create_entity_button("Create rune", at => ({
+            entity_create_button("Create rune", at => ({
                 type: Spawn_Type.rune,
                 at: at
             }));
 
-            create_entity_button("Create monster", at => ({
+            entity_create_button("Create monster", at => ({
                 type: Spawn_Type.monster,
                 at: at,
                 facing: xy(1, 0)
             }));
 
-            create_entity_button("Create shop", at => ({
+            entity_create_button("Create shop", at => ({
                 type: Spawn_Type.shop,
                 at: at,
                 facing: xy(1, 0),
@@ -373,6 +403,15 @@ function battleground_editor_update_buttons_after_selection_change(editor: Battl
                 item_pool: []
             }));
         } else {
+            if (selected.length == 1) {
+                const the_only_cell = brush.selected[0];
+                const spawn = editor_spawn_at_xy(editor, the_only_cell.position);
+
+                if (spawn) {
+                    create_spawn_specific_buttons(spawn);
+                }
+            }
+
             entity_button("Delete", () => {
                 for (const cell of selected) {
                     editor_remove_spawn_at(editor, cell.position);
@@ -381,15 +420,6 @@ function battleground_editor_update_buttons_after_selection_change(editor: Battl
                 battleground_editor_update_buttons_after_selection_change(editor, brush);
                 submit_editor_battleground(editor);
             }, "editor_entity_delete_button");
-        }
-    }
-
-    if (selected.length == 1) {
-        const the_only_cell = brush.selected[0];
-        const spawn_at = editor_spawn_at_xy(editor, the_only_cell.position);
-
-        if (spawn_at) {
-            // TODO options for a specific spawn
         }
     }
 }
@@ -642,6 +672,8 @@ function update_battleground_brush_from_cursor(editor: Battleground_Editor, posi
 
 function battleground_editor_cleanup_brush(brush: Battleground_Brush) {
     if (brush.type == Battleground_Brush_Type.select) {
+        entity_buttons.RemoveAndDeleteChildren();
+
         brush.selection_outline.forEach(destroy_fx);
 
         battleground_editor_set_drag_state(brush, { dragging: false });
@@ -703,7 +735,9 @@ function periodically_update_editor_ui() {
         const world_position = GameUI.GetScreenWorldPosition(cursor);
 
         if (editor.cell_under_cursor) {
-            Particles.SetParticleControl(editor.cell_under_cursor.particle, 2, GameUI.IsShiftDown() ? [255, 0, 0] : [0, 255, 0]);
+            const should_paint_red = editor.brush.type == Battleground_Brush_Type.trees && GameUI.IsShiftDown();
+
+            Particles.SetParticleControl(editor.cell_under_cursor.particle, 2, should_paint_red ? [255, 0, 0] : [0, 255, 0]);
             Particles.SetParticleControl(editor.cell_under_cursor.particle, 3, [255, 0, 0]);
         }
 
