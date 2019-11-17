@@ -40,7 +40,7 @@ type Battleground_Editor = {
     }
     grid_size: XY
     cell_under_cursor?: Editor_Cell
-    spawns: Battleground_Spawn[]
+    spawns: Battleground_Spawn[][]
     brush: Battleground_Brush
 }
 
@@ -69,19 +69,25 @@ type Adventure_Editor_Selection = {
     particle: ParticleId
 }
 
-type Battleground_Brush = {
+type Battleground_Brush = Battleground_Select_Brush | {
+    type: Battleground_Brush_Type.trees
+}
+
+type Battleground_Select_Brush = {
     type: Battleground_Brush_Type.select
     selected: Editor_Cell[]
     selection_outline: ParticleId[]
-    drag_state: {
-        dragging: false
-    } | {
-        dragging: true
-        outline: ParticleId[]
-        start_at: XY
-    }
-} | {
-    type: Battleground_Brush_Type.trees
+    drag_state: Drag_State
+}
+
+type Drag_State = Drag_State_Dragging | {
+    dragging: false
+}
+
+type Drag_State_Dragging = {
+    dragging: true
+    outline: ParticleId[]
+    start_at: XY
 }
 
 let pinned_context_menu_position: XYZ = [0, 0, 0];
@@ -322,6 +328,104 @@ function all_cells_within_bounds(editor: Battleground_Editor, from: XY, to: XY) 
     return result;
 }
 
+function battleground_editor_update_buttons_after_selection_change(editor: Battleground_Editor, brush: Battleground_Select_Brush) {
+    entity_buttons.RemoveAndDeleteChildren();
+
+    brush.selection_outline = update_editor_cells_outline(editor, brush.selected, brush.selection_outline);
+
+    const selected = brush.selected;
+    const all_empty = selected.every(cell => !editor_spawn_at_xy(editor, cell.position));
+
+    function create_entity_button(text: string, supplier: (at: XY) => Battleground_Spawn) {
+        entity_button(text, () => {
+            for (const cell of selected) {
+                editor_set_spawn_at(editor, cell.position, supplier(cell.position))
+            }
+
+            battleground_editor_update_buttons_after_selection_change(editor, brush);
+            submit_editor_battleground(editor);
+        });
+    }
+
+    if (selected.length > 0) {
+        if (all_empty) {
+            create_entity_button("Create tree", at => ({
+                type: Spawn_Type.tree,
+                at: at
+            }));
+
+            create_entity_button("Create rune", at => ({
+                type: Spawn_Type.rune,
+                at: at
+            }));
+
+            create_entity_button("Create monster", at => ({
+                type: Spawn_Type.monster,
+                at: at,
+                facing: xy(1, 0)
+            }));
+
+            create_entity_button("Create shop", at => ({
+                type: Spawn_Type.shop,
+                at: at,
+                facing: xy(1, 0),
+                shop_type: Shop_Type.normal,
+                item_pool: []
+            }));
+        } else {
+            entity_button("Delete", () => {
+                for (const cell of selected) {
+                    editor_remove_spawn_at(editor, cell.position);
+                }
+
+                battleground_editor_update_buttons_after_selection_change(editor, brush);
+                submit_editor_battleground(editor);
+            }, "editor_entity_delete_button");
+        }
+    }
+
+    if (selected.length == 1) {
+        const the_only_cell = brush.selected[0];
+        const spawn_at = editor_spawn_at_xy(editor, the_only_cell.position);
+
+        if (spawn_at) {
+            // TODO options for a specific spawn
+        }
+    }
+}
+
+function battleground_editor_update_selection_after_dragging(editor: Battleground_Editor, brush: Battleground_Select_Brush, drag: Drag_State_Dragging, finished_at: XY, shift_down: boolean) {
+    const cells: Editor_Cell[] = all_cells_within_bounds(editor, drag.start_at, finished_at);
+
+    if (shift_down) {
+        const the_only_cell = cells[0];
+        if (cells.length == 1) {
+            const index_in_selection = brush.selected.findIndex(cell => xy_equal(the_only_cell.position, cell.position));
+
+            if (index_in_selection != -1) {
+                brush.selected.splice(index_in_selection, 1);
+            } else {
+                brush.selected.push(the_only_cell);
+            }
+        } else {
+            brush.selected.push(...cells);
+        }
+    } else {
+        brush.selected = cells;
+    }
+
+    battleground_editor_update_buttons_after_selection_change(editor, brush);
+    battleground_editor_set_drag_state(brush, { dragging: false });
+}
+
+function battleground_editor_set_drag_state(brush: Battleground_Select_Brush, new_state: Drag_State) {
+    if (brush.drag_state.dragging) {
+        brush.drag_state.outline.forEach(destroy_fx);
+    }
+
+    brush.drag_state = new_state;
+}
+
 function battleground_editor_filter_mouse_click(editor: Battleground_Editor, event: MouseEvent, button: MouseButton | WheelScroll) {
     if (button != MouseButton.LEFT) {
         return;
@@ -351,7 +455,8 @@ function battleground_editor_filter_mouse_click(editor: Battleground_Editor, eve
             if (!cell) {
                 if (pressed) {
                     brush.selected = [];
-                    brush.selection_outline = update_editor_cells_outline(editor, brush.selected, brush.selection_outline);
+
+                    battleground_editor_update_buttons_after_selection_change(editor, brush);
                 }
 
                 break;
@@ -360,36 +465,13 @@ function battleground_editor_filter_mouse_click(editor: Battleground_Editor, eve
             const drag_state = brush.drag_state;
 
             if (pressed) {
-                if (!brush.drag_state.dragging) {
-                    brush.drag_state = {
-                        dragging: true,
-                        outline: [],
-                        start_at: position
-                    }
-                }
+                battleground_editor_set_drag_state(brush, {
+                    dragging: true,
+                    outline: [],
+                    start_at: position
+                });
             } else if (released && drag_state.dragging) {
-                const cells: Editor_Cell[] = all_cells_within_bounds(editor, drag_state.start_at, position);
-
-                if (shift_down) {
-                    const the_only_cell = cells[0];
-                    if (cells.length == 1) {
-                        const index_in_selection = brush.selected.findIndex(cell => xy_equal(the_only_cell.position, cell.position));
-
-                        if (index_in_selection != -1) {
-                            brush.selected.splice(index_in_selection, 1);
-                        } else {
-                            brush.selected.push(the_only_cell);
-                        }
-                    } else {
-                        brush.selected.push(...cells);
-                    }
-                } else {
-                    brush.selected = cells;
-                }
-
-                brush.selection_outline = update_editor_cells_outline(editor, brush.selected, brush.selection_outline);
-                drag_state.outline.forEach(destroy_fx);
-                brush.drag_state = { dragging: false };
+                battleground_editor_update_selection_after_dragging(editor, brush, drag_state, position, shift_down);
             }
 
             break;
@@ -523,6 +605,10 @@ function update_battleground_brush_from_cursor(editor: Battleground_Editor, posi
             if (drag_state.dragging) {
                 const cells: Editor_Cell[] = all_cells_within_bounds(editor, drag_state.start_at, position);
                 drag_state.outline = update_editor_cells_outline(editor, cells, drag_state.outline);
+
+                if (!pressed) {
+                    battleground_editor_set_drag_state(brush, { dragging: false });
+                }
             }
 
             break;
@@ -534,24 +620,17 @@ function update_battleground_brush_from_cursor(editor: Battleground_Editor, posi
             const cell = editor_cell_by_xy(editor, position);
             if (!cell) break;
 
-            const spawn_index = editor.spawns.findIndex(spawn => xy_equal(position, spawn.at));
+            const spawn = editor_spawn_at_xy(editor, position);
 
             if (shift_down) {
-                if (spawn_index != -1) {
-                    editor.spawns.splice(spawn_index, 1);
+                if (spawn) {
+                    editor_remove_spawn_at(editor, position);
                 }
             } else {
-                if (spawn_index == -1) {
-                    editor.spawns.push({
-                        type: Spawn_Type.tree,
-                        at: position
-                    });
-                } else {
-                    editor.spawns[spawn_index] = {
-                        type: Spawn_Type.tree,
-                        at: position
-                    };
-                }
+                editor_set_spawn_at(editor, position, {
+                    type: Spawn_Type.tree,
+                    at: position
+                });
             }
 
             submit_editor_battleground(editor);
@@ -561,11 +640,45 @@ function update_battleground_brush_from_cursor(editor: Battleground_Editor, posi
     }
 }
 
+function battleground_editor_cleanup_brush(brush: Battleground_Brush) {
+    if (brush.type == Battleground_Brush_Type.select) {
+        brush.selection_outline.forEach(destroy_fx);
+
+        battleground_editor_set_drag_state(brush, { dragging: false });
+    }
+}
+
 function editor_cell_by_xy(editor: Battleground_Editor, xy: XY): Editor_Cell | undefined {
     const by_x = editor.cells[xy.x];
     if (!by_x) return;
 
     return by_x[xy.y];
+}
+
+function editor_spawn_at_xy(editor: Battleground_Editor, xy: XY): Battleground_Spawn | undefined {
+    const by_x = editor.spawns[xy.x];
+    if (!by_x) return;
+
+    return by_x[xy.y];
+}
+
+function editor_remove_spawn_at(editor: Battleground_Editor, xy: XY) {
+    const by_x = editor.spawns[xy.x];;
+
+    if (by_x) {
+        delete by_x[xy.y];
+    }
+}
+
+function editor_set_spawn_at(editor: Battleground_Editor, xy: XY, spawn: Battleground_Spawn) {
+    let by_x = editor.spawns[xy.x];
+
+    if (!by_x) {
+       by_x = [];
+       editor.spawns[xy.x] = by_x;
+    }
+
+    by_x[xy.y] = spawn;
 }
 
 function periodically_update_editor_ui() {
@@ -742,6 +855,7 @@ function enter_battleground_editor(grid_world_origin: { x: number, y: number, z:
 
     function set_brush_button(text: string, new_brush: Battleground_Brush) {
         const panel = brush_button(text, () => {
+            battleground_editor_cleanup_brush(new_editor.brush);
             new_editor.brush = new_brush;
             update_brush_button_styles();
         });
@@ -786,18 +900,7 @@ function exit_current_editor() {
                 }
             }
 
-            switch (editor.brush.type) {
-                case Battleground_Brush_Type.select: {
-                    editor.brush.selection_outline.forEach(destroy_fx);
-
-                    if (editor.brush.drag_state.dragging) {
-                        editor.brush.drag_state.outline.forEach(destroy_fx);
-                    }
-
-                    break;
-                }
-            }
-
+            battleground_editor_cleanup_brush(editor.brush);
             break;
         }
 
@@ -853,9 +956,21 @@ function update_editor_buttons(state: Player_State) {
 }
 
 function submit_editor_battleground(editor: Battleground_Editor) {
+    const flattened_spawns: Battleground_Spawn[] = [];
+
+    for (const by_x of editor.spawns) {
+        if (by_x) {
+            for (const spawn of by_x) {
+                if (spawn) {
+                    flattened_spawns.push(spawn);
+                }
+            }
+        }
+    }
+
     dispatch_editor_action({
         type: Editor_Action_Type.submit_battleground,
-        spawns: editor.spawns
+        spawns: flattened_spawns
     });
 }
 
