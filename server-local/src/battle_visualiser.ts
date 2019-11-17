@@ -294,7 +294,7 @@ function create_world_handle_for_battle_unit(world_origin: Vector, info: Unit_Cr
     }
 
     const world_location = battle_position_to_world_position_center(world_origin, at);
-    const handle = CreateUnitByName(get_dota_unit_name(), world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS) as CDOTA_BaseNPC_Hero;
+    const handle = CreateUnitByName(get_dota_unit_name(), world_location, false, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS) as CDOTA_BaseNPC_Hero;
     handle.SetBaseMoveSpeed(500);
     handle.AddNewModifier(handle, undefined, "Modifier_Battle_Unit", {});
     handle.SetForwardVector(Vector(facing.x, facing.y));
@@ -336,7 +336,7 @@ function create_world_handle_for_battle_unit(world_origin: Vector, info: Unit_Cr
 
 function create_world_handle_for_rune(world_origin: Vector, type: Rune_Type, at: XY): CDOTA_BaseNPC {
     const world_location = battle_position_to_world_position_center(world_origin, at);
-    const handle = CreateUnitByName("npc_dummy_unit", world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
+    const handle = CreateUnitByName("npc_dummy_unit", world_location, false, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
     handle.AddNewModifier(handle, undefined, "Modifier_Battle_Unit", {});
     handle.SetUnitCanRespawn(true);
 
@@ -365,7 +365,7 @@ function create_world_handle_for_shop(world_origin: Vector, type: Shop_Type, at:
     };
 
     const world_location = battle_position_to_world_position_center(world_origin, at);
-    const handle = CreateUnitByName("npc_dummy_unit", world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
+    const handle = CreateUnitByName("npc_dummy_unit", world_location, false, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
     const model = shop_models[type];
     handle.AddNewModifier(handle, undefined, "Modifier_Battle_Unit", {});
     handle.SetModel(model);

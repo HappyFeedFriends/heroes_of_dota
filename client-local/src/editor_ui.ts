@@ -368,9 +368,22 @@ function battleground_editor_update_buttons_after_selection_change(editor: Battl
         }
 
         switch (spawn.type) {
-            case Spawn_Type.monster:
+            case Spawn_Type.monster: {
+                create_facing_buttons(spawn);
+
+                break;
+            }
+
             case Spawn_Type.shop: {
                 create_facing_buttons(spawn);
+
+                for (const [name, type] of enum_names_to_values<Shop_Type>()) {
+                    if (type != spawn.shop_type) {
+                        battleground_updating_button(`Set type to '${name}'`, () => {
+                            spawn.shop_type = type;
+                        });
+                    }
+                }
 
                 break;
             }
