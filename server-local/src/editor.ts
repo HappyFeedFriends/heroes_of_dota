@@ -1,38 +1,111 @@
 type Editor_State = {
     map_revealed: boolean
     camera_dummy: CDOTA_BaseNPC
-    battleground_entities: Editor_Battleground_Entity[]
+    battleground_entities: Indexed_Entities
 }
 
-type Editor_Battleground_Entity = {
-    type: Spawn_Type.tree
-    at: XY
+type Editor_Battleground_Entity = Battleground_Spawn & {
     handle: CBaseEntity
 }
 
+type Indexed_Entities = Record<number, Record<number, Editor_Battleground_Entity>>
+
 function update_editor_battleground(editor: Editor_State, spawns: Battleground_Spawn[]) {
-    for (const entity of editor.battleground_entities) {
-        entity.handle.RemoveSelf();
+    function set_entity_at(index: Indexed_Entities, xy: XY, spawn: Editor_Battleground_Entity) {
+        let by_x = index[xy.x];
+
+        if (!by_x) {
+            by_x = {};
+            index[xy.x] = by_x;
+        }
+
+        by_x[xy.y] = spawn;
     }
 
-    editor.battleground_entities = [];
+    function remove_entity_at(index: Indexed_Entities, xy: XY) {
+        const by_x = index[xy.x];
 
-    for (const spawn of spawns) {
-        if (spawn.type == Spawn_Type.tree) {
-            const handle = SpawnEntityFromTableSynchronous("prop_dynamic", {
-                origin: battle_position_to_world_position_center(battle.world_origin, spawn.at),
-                model: "models/props_tree/cypress/tree_cypress010.vmdl"
-            }) as CBaseModelEntity;
-
-            const new_entity: Editor_Battleground_Entity = {
-                type: Spawn_Type.tree,
-                at: spawn.at,
-                handle: handle
-            };
-
-            editor.battleground_entities.push(new_entity);
+        if (by_x) {
+            delete by_x[xy.y];
         }
     }
+
+    function entity_at(index: Indexed_Entities, xy: XY) {
+        const by_x = index[xy.x];
+
+        if (by_x) {
+            return by_x[xy.y];
+        }
+    }
+
+    function spawn_to_entity(spawn: Battleground_Spawn): Editor_Battleground_Entity {
+        switch (spawn.type) {
+            case Spawn_Type.monster: return {
+                ...spawn,
+                handle: create_world_handle_for_battle_unit(battle.world_origin, { supertype: Unit_Supertype.monster }, spawn.at, spawn.facing)
+            };
+
+            case Spawn_Type.rune: return {
+                ...spawn,
+                handle: create_world_handle_for_rune(battle.world_origin, Rune_Type.bounty, spawn.at)
+            };
+
+            case Spawn_Type.shop: return {
+                ...spawn,
+                handle: create_world_handle_for_shop(battle.world_origin, spawn.shop_type, spawn.at, spawn.facing)
+            };
+
+            case Spawn_Type.tree: return {
+                ...spawn,
+                handle: create_world_handle_for_tree(battle.world_origin, 0, 0 as Tree_Id, spawn.at)
+            };
+        }
+    }
+
+    function entities_are_essentially_the_same(left: Battleground_Spawn, right: Battleground_Spawn) {
+        switch (left.type) {
+            case Spawn_Type.tree: return left.type == right.type;
+            case Spawn_Type.rune: return left.type == right.type;
+            case Spawn_Type.monster: return left.type == right.type;
+            case Spawn_Type.shop: {
+                if (left.type == right.type) {
+                    return left.shop_type == right.shop_type;
+                }
+
+                return false;
+            }
+        }
+    }
+
+    const old_index = editor.battleground_entities;
+    const new_index: Indexed_Entities = {};
+
+    for (const spawn of spawns) {
+        const existing_entity = entity_at(old_index, spawn.at);
+
+        if (existing_entity && entities_are_essentially_the_same(existing_entity, spawn)) {
+            remove_entity_at(old_index, existing_entity.at);
+            set_entity_at(new_index, existing_entity.at, existing_entity);
+        } else {
+            set_entity_at(new_index, spawn.at, spawn_to_entity(spawn));
+        }
+    }
+
+    for (const x in old_index) {
+        const by_x = old_index[x];
+
+        if (by_x) {
+            for (const y in by_x) {
+                const entity = by_x[y];
+
+                if (entity) {
+                    entity.handle.RemoveSelf();
+                }
+            }
+        }
+    }
+
+    editor.battleground_entities = new_index;
 }
 
 function perform_editor_action(game: Game, editor: Editor_State, event: Editor_Action) {

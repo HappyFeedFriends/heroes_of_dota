@@ -284,7 +284,7 @@ function monster_type_to_model_and_scale(): [string, number] {
     return ["models/creeps/neutral_creeps/n_creep_centaur_lrg/n_creep_centaur_lrg.vmdl", 1];
 }
 
-function create_world_handle_for_battle_unit(info: Unit_Creation_Info, at: XY, facing: XY): CDOTA_BaseNPC_Hero {
+function create_world_handle_for_battle_unit(world_origin: Vector, info: Unit_Creation_Info, at: XY, facing: XY): CDOTA_BaseNPC_Hero {
     function get_dota_unit_name(): string {
         if (info.supertype == Unit_Supertype.hero) {
             return hero_type_to_dota_unit_name(info.type);
@@ -293,7 +293,7 @@ function create_world_handle_for_battle_unit(info: Unit_Creation_Info, at: XY, f
         return "hod_unit";
     }
 
-    const world_location = battle_position_to_world_position_center(battle.world_origin, at);
+    const world_location = battle_position_to_world_position_center(world_origin, at);
     const handle = CreateUnitByName(get_dota_unit_name(), world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS) as CDOTA_BaseNPC_Hero;
     handle.SetBaseMoveSpeed(500);
     handle.AddNewModifier(handle, undefined, "Modifier_Battle_Unit", {});
@@ -334,8 +334,8 @@ function create_world_handle_for_battle_unit(info: Unit_Creation_Info, at: XY, f
     return handle;
 }
 
-function create_world_handle_for_rune(type: Rune_Type, at: XY): CDOTA_BaseNPC {
-    const world_location = battle_position_to_world_position_center(battle.world_origin, at);
+function create_world_handle_for_rune(world_origin: Vector, type: Rune_Type, at: XY): CDOTA_BaseNPC {
+    const world_location = battle_position_to_world_position_center(world_origin, at);
     const handle = CreateUnitByName("npc_dummy_unit", world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
     handle.AddNewModifier(handle, undefined, "Modifier_Battle_Unit", {});
     handle.SetUnitCanRespawn(true);
@@ -358,13 +358,13 @@ function create_world_handle_for_rune(type: Rune_Type, at: XY): CDOTA_BaseNPC {
     return handle;
 }
 
-function create_world_handle_for_shop(type: Shop_Type, at: XY, facing: XY): CDOTA_BaseNPC {
+function create_world_handle_for_shop(world_origin: Vector, type: Shop_Type, at: XY, facing: XY): CDOTA_BaseNPC {
     const shop_models: Record<Shop_Type, string> = {
         [Shop_Type.normal]: "models/heroes/shopkeeper/shopkeeper.vmdl",
         [Shop_Type.secret]: "models/heroes/shopkeeper_dire/shopkeeper_dire.vmdl"
     };
 
-    const world_location = battle_position_to_world_position_center(battle.world_origin, at);
+    const world_location = battle_position_to_world_position_center(world_origin, at);
     const handle = CreateUnitByName("npc_dummy_unit", world_location, true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
     const model = shop_models[type];
     handle.AddNewModifier(handle, undefined, "Modifier_Battle_Unit", {});
@@ -377,22 +377,22 @@ function create_world_handle_for_shop(type: Shop_Type, at: XY, facing: XY): CDOT
     return handle;
 }
 
-function create_world_handle_for_tree(tree_id: Tree_Id, at: XY): CBaseEntity {
+function create_world_handle_for_tree(world_origin: Vector, seed: number, tree_id: Tree_Id, at: XY): CBaseEntity {
     const models = [
         "models/props_tree/cypress/tree_cypress010.vmdl",
         "models/props_tree/cypress/tree_cypress008.vmdl"
     ];
 
-    const r_variance = ((battle.random_seed + tree_id) * 2) % 20 - 10;
-    const g_variance = ((battle.random_seed + tree_id) * 3) % 20 - 10;
-    const random_model = models[(battle.random_seed + tree_id) % models.length];
+    const r_variance = ((seed + tree_id) * 2) % 20 - 10;
+    const g_variance = ((seed + tree_id) * 3) % 20 - 10;
+    const random_model = models[(seed + tree_id) % models.length];
 
     const entity = SpawnEntityFromTableSynchronous("prop_dynamic", {
-        origin: battle_position_to_world_position_center(battle.world_origin, at),
+        origin: battle_position_to_world_position_center(world_origin, at),
         model: random_model
     }) as CBaseModelEntity;
 
-    const angle = (battle.random_seed + tree_id) % 16 * (360 / 16) * (Math.PI / 180);
+    const angle = (seed + tree_id) % 16 * (360 / 16) * (Math.PI / 180);
     entity.SetForwardVector(Vector(Math.cos(angle), Math.sin(angle)));
     entity.SetRenderColor(80 + r_variance, 90 + g_variance, 30);
 
@@ -419,7 +419,7 @@ function destroy_rune(rune: Rune, destroy_effects_instantly: boolean) {
 
 function unit_base(unit_id: Unit_Id, info: Unit_Creation_Info, definition: Unit_Definition, at: XY, facing: XY): Unit_Base {
     return {
-        handle: create_world_handle_for_battle_unit(info, at, facing),
+        handle: create_world_handle_for_battle_unit(battle. world_origin, info, at, facing),
         id: unit_id,
         position: at,
         health: definition.health,
@@ -2750,7 +2750,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
         }
 
         case Delta_Type.rune_spawn: {
-            const handle = create_world_handle_for_rune(delta.rune_type, delta.at);
+            const handle = create_world_handle_for_rune(battle.world_origin, delta.rune_type, delta.at);
 
             battle.runes.push({
                 id: delta.rune_id,
@@ -2768,7 +2768,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             battle.shops.push({
                 id: delta.shop_id,
                 type: delta.shop_type,
-                handle: create_world_handle_for_shop(delta.shop_type, delta.at, delta.facing),
+                handle: create_world_handle_for_shop(battle.world_origin, delta.shop_type, delta.at, delta.facing),
                 position: delta.at
             });
 
@@ -2776,7 +2776,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
         }
 
         case Delta_Type.tree_spawn: {
-            const tree_handle = create_world_handle_for_tree(delta.tree_id, delta.at_position);
+            const tree_handle = create_world_handle_for_tree(battle.world_origin, battle.random_seed, delta.tree_id, delta.at_position);
             const tree = {
                 id: delta.tree_id,
                 handle: tree_handle,
@@ -3172,7 +3172,7 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
             id: unit.id,
             dead: unit.health <= 0,
             position: unit.position,
-            handle: create_world_handle_for_battle_unit(unit, unit.position, unit.facing),
+            handle: create_world_handle_for_battle_unit(battle.world_origin, unit, unit.position, unit.facing),
             modifiers: from_client_array(unit.modifiers).map(modifier => ({
                 modifier_id: modifier.modifier_id,
                 modifier_handle_id: modifier.modifier_handle_id,
@@ -3211,7 +3211,7 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
     });
 
     battle.runes = snapshot.runes.map(rune => {
-        const handle = create_world_handle_for_rune(rune.type, rune.position);
+        const handle = create_world_handle_for_rune(battle.world_origin, rune.type, rune.position);
         return {
             id: rune.id,
             type: rune.type,
@@ -3225,13 +3225,13 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
     battle.shops = snapshot.shops.map(shop => ({
         id: shop.id,
         type: shop.type,
-        handle: create_world_handle_for_shop(shop.type, shop.position, shop.facing),
+        handle: create_world_handle_for_shop(battle.world_origin, shop.type, shop.position, shop.facing),
         position: shop.position
     }));
 
     battle.trees = snapshot.trees.map(tree => ({
         id: tree.id,
-        handle: create_world_handle_for_tree(tree.id, tree.position),
+        handle: create_world_handle_for_tree(battle.world_origin, battle.random_seed, tree.id, tree.position),
         position: tree.position
     }));
 
