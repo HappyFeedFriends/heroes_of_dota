@@ -19,8 +19,9 @@ const enum Editor_Type {
 }
 
 const enum Battleground_Brush_Type {
-    select = 0,
-    trees = 1
+    select,
+    trees,
+    grid
 }
 
 type Adventure_Editor = {
@@ -69,7 +70,7 @@ type Adventure_Editor_Selection = {
     particle: ParticleId
 }
 
-type Battleground_Brush = Battleground_Select_Brush | {
+type Battleground_Brush = Battleground_Select_Brush | Battleground_Grid_Brush | {
     type: Battleground_Brush_Type.trees
 }
 
@@ -80,14 +81,34 @@ type Battleground_Select_Brush = {
     drag_state: Drag_State
 }
 
+type Battleground_Grid_Brush = {
+    type: Battleground_Brush_Type.grid
+    selection: {
+        active: false
+    } | {
+        active: true
+        outline: Rect_Outline
+        min: XY
+        max: XY
+    }
+    drag_state: Drag_State
+}
+
 type Drag_State = Drag_State_Dragging | {
     dragging: false
 }
 
 type Drag_State_Dragging = {
     dragging: true
-    outline: ParticleId[]
+    outline: Rect_Outline
     start_at: XY
+}
+
+type Rect_Outline = {
+    top: ParticleId
+    right: ParticleId
+    bottom: ParticleId
+    left: ParticleId
 }
 
 let pinned_context_menu_position: XYZ = [0, 0, 0];
@@ -287,7 +308,26 @@ function context_menu_button(text: string, action: () => void) {
     });
 }
 
-function update_editor_cells_outline(editor: Battleground_Editor, cells: Editor_Cell[], outline: ParticleId[]) {
+function destroy_rect_outline(rect: Rect_Outline) {
+    destroy_fx(rect.bottom);
+    destroy_fx(rect.left);
+    destroy_fx(rect.top);
+    destroy_fx(rect.right);
+}
+
+function make_rect_outline(world_origin: { x: number, y: number, z: number }, from: XY, to: XY, color: XYZ): Rect_Outline {
+    const min = xy(Math.min(from.x, to.x), Math.min(from.y, to.y));
+    const max = xy(Math.max(from.x, to.x), Math.max(from.y, to.y));
+
+    return {
+        bottom: create_particle_for_outline_edge(Edge.bottom, world_origin, xy(min.x, min.y), xy(max.x, min.y), color),
+        left: create_particle_for_outline_edge(Edge.left, world_origin, xy(min.x, max.y), xy(min.x, min.y), color),
+        right: create_particle_for_outline_edge(Edge.right, world_origin, xy(max.x, min.y), xy(max.x, max.y), color),
+        top: create_particle_for_outline_edge(Edge.top, world_origin, xy(max.x, max.y), xy(min.x, max.y), color)
+    }
+}
+
+function update_editor_cells_outline(editor: Battleground_Editor, cells: Editor_Cell[], outline: ParticleId[], color: XYZ = color_green) {
     const indexed_cells: Editor_Cell[] = [];
     const highlighted_cells: boolean[] = [];
 
@@ -307,7 +347,7 @@ function update_editor_cells_outline(editor: Battleground_Editor, cells: Editor_
         highlighted_cells[grid_cell_index(grid, cell.position)] = true;
     }
 
-    return update_outline(grid, outline, highlighted_cells, color_green);
+    return update_outline(grid, outline, highlighted_cells, color);
 }
 
 function all_cells_within_bounds(editor: Battleground_Editor, from: XY, to: XY) {
@@ -461,19 +501,55 @@ function battleground_editor_update_selection_after_dragging(editor: Battlegroun
     battleground_editor_set_drag_state(brush, { dragging: false });
 }
 
-function battleground_editor_set_drag_state(brush: Battleground_Select_Brush, new_state: Drag_State) {
+function battleground_editor_set_drag_state(brush: Battleground_Select_Brush | Battleground_Grid_Brush, new_state: Drag_State) {
     if (brush.drag_state.dragging) {
-        brush.drag_state.outline.forEach(destroy_fx);
+        const outline = brush.drag_state.outline;
+
+        destroy_fx(outline.left);
+        destroy_fx(outline.right);
+        destroy_fx(outline.top);
+        destroy_fx(outline.bottom);
     }
 
     brush.drag_state = new_state;
 }
 
-function battleground_editor_filter_mouse_click(editor: Battleground_Editor, event: MouseEvent, button: MouseButton | WheelScroll) {
-    if (button != MouseButton.LEFT) {
-        return;
+function battleground_editor_set_grid_brush_selection_state(editor: Battleground_Editor, brush: Battleground_Grid_Brush, new_state: Battleground_Grid_Brush["selection"]) {
+    entity_buttons.RemoveAndDeleteChildren();
+
+    if (brush.selection.active) {
+        destroy_rect_outline(brush.selection.outline);
     }
 
+    brush.selection = new_state;
+
+    const selection = brush.selection;
+    if (selection.active) {
+        entity_button("Crop grid", () => {
+            for_each_editor_spawn(editor, spawn => {
+                if (spawn.at.x > selection.max.x ||
+                    spawn.at.y > selection.max.y ||
+                    spawn.at.x < selection.min.x ||
+                    spawn.at.y < selection.min.y) {
+                    editor_remove_spawn_at(editor, spawn.at);
+                } else {
+                    spawn.at.x -= selection.min.x;
+                    spawn.at.y -= selection.min.y;
+                }
+            });
+
+            editor.grid_size.x = selection.max.x - selection.min.x + 1;
+            editor.grid_size.y = selection.max.y - selection.min.y + 1;
+
+            battleground_editor_cleanup_cells(editor);
+            editor.cells = fill_battleground_editor_cells(editor.grid_world_origin, editor.grid_size.x, editor.grid_size.y);
+            battleground_editor_set_grid_brush_selection_state(editor, brush, { active: false });
+            submit_editor_battleground(editor);
+        });
+    }
+}
+
+function battleground_editor_filter_mouse_click(editor: Battleground_Editor, event: MouseEvent, button: MouseButton | WheelScroll) {
     const cursor = GameUI.GetCursorPosition();
     const world_position = GameUI.GetScreenWorldPosition(cursor);
 
@@ -494,13 +570,46 @@ function battleground_editor_filter_mouse_click(editor: Battleground_Editor, eve
     }
 
     switch (brush.type) {
-        case Battleground_Brush_Type.select: {
-            if (!cell) {
-                if (pressed) {
-                    brush.selected = [];
+        case Battleground_Brush_Type.grid: {
+            if (button == MouseButton.RIGHT) {
+                battleground_editor_set_grid_brush_selection_state(editor, brush, { active: false });
+                break;
+            }
 
-                    battleground_editor_update_buttons_after_selection_change(editor, brush);
-                }
+            const drag_state = brush.drag_state;
+
+            if (pressed) {
+                battleground_editor_set_drag_state(brush, {
+                    dragging: true,
+                    outline: { bottom: -1, top: -1, right: -1, left: -1 },
+                    start_at: position
+                });
+            } else if (released && drag_state.dragging) {
+                const from = drag_state.start_at;
+                const to = position;
+                const min = xy(Math.min(from.x, to.x), Math.min(from.y, to.y));
+                const max = xy(Math.max(from.x, to.x), Math.max(from.y, to.y));
+
+                battleground_editor_set_grid_brush_selection_state(editor, brush, {
+                    active: true,
+                    outline: make_rect_outline(editor.grid_world_origin, drag_state.start_at, position, color_yellow),
+                    min: min,
+                    max: max
+                });
+            }
+
+            break;
+        }
+
+        case Battleground_Brush_Type.select: {
+            if (button != MouseButton.LEFT) {
+                break;
+            }
+
+            if (!cell && pressed) {
+                brush.selected = [];
+
+                battleground_editor_update_buttons_after_selection_change(editor, brush);
 
                 break;
             }
@@ -510,7 +619,9 @@ function battleground_editor_filter_mouse_click(editor: Battleground_Editor, eve
             if (pressed) {
                 battleground_editor_set_drag_state(brush, {
                     dragging: true,
-                    outline: [],
+                    outline: {
+                        bottom: -1, top: -1, right: -1, left: -1
+                    },
                     start_at: position
                 });
             } else if (released && drag_state.dragging) {
@@ -642,12 +753,27 @@ function update_battleground_brush_from_cursor(editor: Battleground_Editor, posi
     const brush = editor.brush;
 
     switch (brush.type) {
+        case Battleground_Brush_Type.grid: {
+            const drag_state = brush.drag_state;
+
+            if (drag_state.dragging) {
+                destroy_rect_outline(drag_state.outline);
+                drag_state.outline = make_rect_outline(editor.grid_world_origin, drag_state.start_at, position, color_yellow);
+
+                if (!pressed) {
+                    battleground_editor_set_drag_state(brush, { dragging: false });
+                }
+            }
+
+            break;
+        }
+
         case Battleground_Brush_Type.select: {
             const drag_state = brush.drag_state;
 
             if (drag_state.dragging) {
-                const cells: Editor_Cell[] = all_cells_within_bounds(editor, drag_state.start_at, position);
-                drag_state.outline = update_editor_cells_outline(editor, cells, drag_state.outline);
+                destroy_rect_outline(drag_state.outline);
+                drag_state.outline = make_rect_outline(editor.grid_world_origin, drag_state.start_at, position, color_green);
 
                 if (!pressed) {
                     battleground_editor_set_drag_state(brush, { dragging: false });
@@ -683,12 +809,19 @@ function update_battleground_brush_from_cursor(editor: Battleground_Editor, posi
     }
 }
 
-function battleground_editor_cleanup_brush(brush: Battleground_Brush) {
+function battleground_editor_cleanup_brush(editor: Battleground_Editor) {
+    const brush = editor.brush;
+
     if (brush.type == Battleground_Brush_Type.select) {
         entity_buttons.RemoveAndDeleteChildren();
 
         brush.selection_outline.forEach(destroy_fx);
 
+        battleground_editor_set_drag_state(brush, { dragging: false });
+    }
+
+    if (brush.type == Battleground_Brush_Type.grid) {
+        battleground_editor_set_grid_brush_selection_state(editor, brush, { active: false });
         battleground_editor_set_drag_state(brush, { dragging: false });
     }
 }
@@ -708,7 +841,7 @@ function editor_spawn_at_xy(editor: Battleground_Editor, xy: XY): Battleground_S
 }
 
 function editor_remove_spawn_at(editor: Battleground_Editor, xy: XY) {
-    const by_x = editor.spawns[xy.x];;
+    const by_x = editor.spawns[xy.x];
 
     if (by_x) {
         delete by_x[xy.y];
@@ -724,6 +857,18 @@ function editor_set_spawn_at(editor: Battleground_Editor, xy: XY, spawn: Battleg
     }
 
     by_x[xy.y] = spawn;
+}
+
+function for_each_editor_spawn(editor: Battleground_Editor, action: (spawn: Battleground_Spawn) => void) {
+    for (const by_x of editor.spawns) {
+        if (by_x) {
+            for (const spawn of by_x) {
+                if (spawn) {
+                    action(spawn);
+                }
+            }
+        }
+    }
 }
 
 function periodically_update_editor_ui() {
@@ -836,38 +981,19 @@ function load_battleground_editor() {
     local_api_request(Local_Api_Request_Type.get_battle_position, {}, enter_battleground_editor);
 }
 
-function enter_battleground_editor(grid_world_origin: { x: number, y: number, z: number }) {
-    const grid_w = 14;
-    const grid_h = 10;
-
-    const default_selection_brush: Battleground_Brush = {
-        type: Battleground_Brush_Type.select,
-        selected: [],
-        selection_outline: [],
-        drag_state: { dragging: false }
-    };
-
-    const new_editor: Battleground_Editor = {
-        type: Editor_Type.battleground,
-        cells: [],
-        grid_size: xy(grid_w, grid_h),
-        spawns: [],
-        grid_world_origin: grid_world_origin,
-        brush: default_selection_brush
-    };
-
-    editor = new_editor;
-
+function fill_battleground_editor_cells(grid_world_origin: { x: number, y: number, z: number }, w: number, h: number): Editor_Cell[][] {
     const particle_bottom_left_origin: XYZ = [
         grid_world_origin.x + battle_cell_size / 2,
         grid_world_origin.y + battle_cell_size / 2,
         grid_world_origin.z
     ];
 
-    for (let x = 0; x < grid_w; x++) {
+    const cells: Editor_Cell[][] = [];
+
+    for (let x = 0; x < w; x++) {
         const by_x: Editor_Cell[] = [];
 
-        for (let y = 0; y < grid_h; y++) {
+        for (let y = 0; y < h; y++) {
             const particle = create_cell_particle_at([
                 particle_bottom_left_origin[0] + x * battle_cell_size,
                 particle_bottom_left_origin[1] + y * battle_cell_size,
@@ -884,8 +1010,41 @@ function enter_battleground_editor(grid_world_origin: { x: number, y: number, z:
             register_particle_for_reload(particle);
         }
 
-        editor.cells[x] = by_x;
+        cells[x] = by_x;
     }
+
+    return cells;
+}
+
+function battleground_editor_cleanup_cells(editor: Battleground_Editor) {
+    for (const by_x of editor.cells) {
+        for (const cell of by_x) {
+            destroy_fx(cell.particle);
+        }
+    }
+}
+
+function enter_battleground_editor(grid_world_origin: { x: number, y: number, z: number }) {
+    const grid_w = 14;
+    const grid_h = 10;
+
+    const default_selection_brush: Battleground_Brush = {
+        type: Battleground_Brush_Type.select,
+        selected: [],
+        selection_outline: [],
+        drag_state: { dragging: false }
+    };
+
+    const new_editor: Battleground_Editor = {
+        type: Editor_Type.battleground,
+        cells: fill_battleground_editor_cells(grid_world_origin, grid_w, grid_h),
+        grid_size: xy(grid_w, grid_h),
+        spawns: [],
+        grid_world_origin: grid_world_origin,
+        brush: default_selection_brush
+    };
+
+    editor = new_editor;
 
     const buttons: Brush_Button[] = [];
 
@@ -902,7 +1061,7 @@ function enter_battleground_editor(grid_world_origin: { x: number, y: number, z:
 
     function set_brush_button(text: string, new_brush: Battleground_Brush) {
         const panel = brush_button(text, () => {
-            battleground_editor_cleanup_brush(new_editor.brush);
+            battleground_editor_cleanup_brush(new_editor);
             new_editor.brush = new_brush;
             update_brush_button_styles();
         });
@@ -913,10 +1072,16 @@ function enter_battleground_editor(grid_world_origin: { x: number, y: number, z:
         });
     }
 
-    set_brush_button("Select", default_selection_brush);
+    set_brush_button("Selection tool", default_selection_brush);
 
     set_brush_button("Paint trees", {
         type: Battleground_Brush_Type.trees
+    });
+
+    set_brush_button("Crop grid", {
+        type: Battleground_Brush_Type.grid,
+        selection: { active: false },
+        drag_state: { dragging: false }
     });
 
     update_brush_button_styles();
@@ -941,13 +1106,8 @@ function exit_current_editor() {
 
     switch (editor.type) {
         case Editor_Type.battleground: {
-            for (const by_x of editor.cells) {
-                for (const cell of by_x) {
-                    destroy_fx(cell.particle);
-                }
-            }
-
-            battleground_editor_cleanup_brush(editor.brush);
+            battleground_editor_cleanup_cells(editor);
+            battleground_editor_cleanup_brush(editor);
             break;
         }
 
@@ -1005,16 +1165,7 @@ function update_editor_buttons(state: Player_State) {
 function submit_editor_battleground(editor: Battleground_Editor) {
     const flattened_spawns: Battleground_Spawn[] = [];
 
-    for (const by_x of editor.spawns) {
-        if (by_x) {
-            for (const spawn of by_x) {
-                if (spawn) {
-                    flattened_spawns.push(spawn);
-                }
-            }
-        }
-    }
-
+    for_each_editor_spawn(editor, spawn => flattened_spawns.push(spawn));
     dispatch_editor_action({
         type: Editor_Action_Type.submit_battleground,
         spawns: flattened_spawns

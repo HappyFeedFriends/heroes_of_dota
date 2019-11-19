@@ -657,6 +657,51 @@ const color_green: XYZ = [ 128, 255, 128 ];
 const color_red: XYZ = [ 255, 128, 128 ];
 const color_yellow: XYZ = [ 255, 255, 0 ];
 
+function create_particle_for_outline_edge(edge: Edge, world_origin: { x: number, y: number, z: number }, from: XY, to: XY, color: XYZ) {
+    const fx = Particles.CreateParticle("particles/ui/highlight_rope.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
+    const half = battle_cell_size / 2;
+    const height = 160;
+
+    register_particle_for_reload(fx);
+
+    const [fr_x, fr_y, fr_z] = battle_position_to_world_position_center(world_origin, from);
+    const [to_x, to_y, to_z] = battle_position_to_world_position_center(world_origin, to);
+
+    switch (edge) {
+        case Edge.bottom: {
+            Particles.SetParticleControl(fx, 0, [fr_x - half, fr_y - half, fr_z + height]);
+            Particles.SetParticleControl(fx, 1, [to_x + half, to_y - half, to_z + height]);
+
+            break;
+        }
+
+        case Edge.top: {
+            Particles.SetParticleControl(fx, 0, [fr_x + half, fr_y + half, fr_z + height]);
+            Particles.SetParticleControl(fx, 1, [to_x - half, to_y + half, to_z + height]);
+
+            break;
+        }
+
+        case Edge.left: {
+            Particles.SetParticleControl(fx, 0, [fr_x - half, fr_y + half, fr_z + height]);
+            Particles.SetParticleControl(fx, 1, [to_x - half, to_y - half, to_z + height]);
+
+            break;
+        }
+
+        case Edge.right: {
+            Particles.SetParticleControl(fx, 0, [fr_x + half, fr_y - half, fr_z + height]);
+            Particles.SetParticleControl(fx, 1, [to_x + half, to_y + half, to_z + height]);
+
+            break;
+        }
+    }
+
+    Particles.SetParticleControl(fx, 2, color);
+
+    return fx;
+}
+
 function highlight_outline<T extends Cell_Like>(grid: World_Grid<T>, cell_index_to_highlight: boolean[], color: XYZ): ParticleId[] {
     const cell_index_to_edges: Array<{ edge: Edge, from: XY, to: XY, deleted: boolean }[]> = [];
     const unique_edges: { edge: Edge, from: XY, to: XY, deleted: boolean }[] = [];
@@ -721,50 +766,12 @@ function highlight_outline<T extends Cell_Like>(grid: World_Grid<T>, cell_index_
         }
     }
 
-    const half = battle_cell_size / 2;
-    const height = 160;
-
     const particles: ParticleId[] = [];
 
     for (const { edge, from, to, deleted } of unique_edges) {
         if (deleted) continue;
 
-        const fx = Particles.CreateParticle("particles/ui/highlight_rope.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
-
-        const [fr_x, fr_y, fr_z] = battle_position_to_world_position_center(grid.world_origin, from);
-        const [to_x, to_y, to_z] = battle_position_to_world_position_center(grid.world_origin, to);
-
-        switch (edge) {
-            case Edge.bottom: {
-                Particles.SetParticleControl(fx, 0, [fr_x - half, fr_y - half, fr_z + height]);
-                Particles.SetParticleControl(fx, 1, [to_x + half, to_y - half, to_z + height]);
-
-                break;
-            }
-
-            case Edge.top: {
-                Particles.SetParticleControl(fx, 0, [fr_x + half, fr_y + half, fr_z + height]);
-                Particles.SetParticleControl(fx, 1, [to_x - half, to_y + half, to_z + height]);
-
-                break;
-            }
-
-            case Edge.left: {
-                Particles.SetParticleControl(fx, 0, [fr_x - half, fr_y + half, fr_z + height]);
-                Particles.SetParticleControl(fx, 1, [to_x - half, to_y - half, to_z + height]);
-
-                break;
-            }
-
-            case Edge.right: {
-                Particles.SetParticleControl(fx, 0, [fr_x + half, fr_y - half, fr_z + height]);
-                Particles.SetParticleControl(fx, 1, [to_x + half, to_y + half, to_z + height]);
-
-                break;
-            }
-        }
-
-        Particles.SetParticleControl(fx, 2, color);
+        const fx = create_particle_for_outline_edge(edge, grid.world_origin, from, to, color);
 
         particles.push(fx);
     }
