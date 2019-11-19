@@ -526,15 +526,19 @@ function battleground_editor_set_grid_brush_selection_state(editor: Battleground
     const selection = brush.selection;
     if (selection.active) {
         entity_button("Crop grid", () => {
-            for_each_editor_spawn(editor, spawn => {
+            const old_spawns = editor.spawns;
+            editor.spawns = [];
+
+            for_each_editor_spawn(old_spawns, spawn => {
                 if (spawn.at.x > selection.max.x ||
                     spawn.at.y > selection.max.y ||
                     spawn.at.x < selection.min.x ||
                     spawn.at.y < selection.min.y) {
-                    editor_remove_spawn_at(editor, spawn.at);
                 } else {
                     spawn.at.x -= selection.min.x;
                     spawn.at.y -= selection.min.y;
+
+                    editor_set_spawn_at(editor, spawn.at, spawn);
                 }
             });
 
@@ -859,8 +863,8 @@ function editor_set_spawn_at(editor: Battleground_Editor, xy: XY, spawn: Battleg
     by_x[xy.y] = spawn;
 }
 
-function for_each_editor_spawn(editor: Battleground_Editor, action: (spawn: Battleground_Spawn) => void) {
-    for (const by_x of editor.spawns) {
+function for_each_editor_spawn(spawns: Battleground_Spawn[][], action: (spawn: Battleground_Spawn) => void) {
+    for (const by_x of spawns) {
         if (by_x) {
             for (const spawn of by_x) {
                 if (spawn) {
@@ -1165,7 +1169,7 @@ function update_editor_buttons(state: Player_State) {
 function submit_editor_battleground(editor: Battleground_Editor) {
     const flattened_spawns: Battleground_Spawn[] = [];
 
-    for_each_editor_spawn(editor, spawn => flattened_spawns.push(spawn));
+    for_each_editor_spawn(editor.spawns, spawn => flattened_spawns.push(spawn));
     dispatch_editor_action({
         type: Editor_Action_Type.submit_battleground,
         spawns: flattened_spawns
