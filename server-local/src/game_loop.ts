@@ -187,7 +187,7 @@ function unit_to_visualizer_unit_data(unit: Unit): Visualizer_Unit_Data {
 function game_net_table(game: Game): Game_Net_Table {
     switch (game.state) {
         case Player_State.in_battle: {
-            const entity_id_to_unit_data: Record<EntityID, Visualizer_Unit_Data> = {};
+            const entity_id_to_unit_data: Record<number, Visualizer_Unit_Data> = {};
             const entity_id_to_rune_id: Record<number, Rune_Id> = {};
             const entity_id_to_shop_id: Record<number, Shop_Id> = {};
 
