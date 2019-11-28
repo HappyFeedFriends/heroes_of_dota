@@ -1,7 +1,6 @@
 <root>
     <scripts>
         <include src="file://{resources}/scripts/custom_game/battle_sim.js" />
-        <include src="file://{resources}/scripts/custom_game/unit_defs.js" />
         <include src="file://{resources}/scripts/custom_game/hero_sounds.js" />
         <include src="file://{resources}/scripts/custom_game/main_ui.js" />
         <include src="file://{resources}/scripts/custom_game/card_ui.js" />
