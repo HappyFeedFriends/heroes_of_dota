@@ -114,6 +114,7 @@ type Battleground_Deployment_Brush = {
 
 type UI_Deployment_Zone = Deployment_Zone & {
     outline: Rect_Outline
+    facing_particle: ParticleId
 }
 
 type Drag_State = Drag_State_Dragging | {
@@ -349,6 +350,39 @@ function make_rect_outline(world_origin: { x: number, y: number, z: number }, fr
     }
 }
 
+function make_new_zone(editor: Battleground_Editor, min: XY, max: XY, facing: XY): UI_Deployment_Zone {
+    const particle_path = "particles/ui_mouseactions/range_finder_directional_c.vpcf";
+    const facing_particle = Particles.CreateParticle(particle_path, ParticleAttachment_t.PATTACH_WORLDORIGIN, 0);
+
+    const world_min = battle_position_to_world_position_center(editor.grid_world_origin, min);
+    const world_max = battle_position_to_world_position_center(editor.grid_world_origin, max);
+    const arrow_position: XYZ = [
+        world_min[0] + (world_max[0] - world_min[0]) / 2,
+        world_min[1] + (world_max[1] - world_min[1]) / 2,
+        world_min[2] + (world_max[2] - world_min[2]) / 2 + 250,
+    ];
+
+    Particles.SetParticleControl(facing_particle, 0, arrow_position);
+    Particles.SetParticleControl(facing_particle, 2, [
+        arrow_position[0] + facing.x,
+        arrow_position[1] + facing.y,
+        arrow_position[2]
+    ]);
+
+    register_particle_for_reload(facing_particle);
+
+    return {
+        min_x: min.x,
+        min_y: min.y,
+        max_x: max.x,
+        max_y: max.y,
+        face_x: facing.x,
+        face_y: facing.y,
+        outline: make_rect_outline(editor.grid_world_origin, min, max, zone_color),
+        facing_particle: facing_particle
+    };
+}
+
 function make_active_drag_state(drag_from: XY): Drag_State {
     return {
         dragging: true,
@@ -560,18 +594,6 @@ function battleground_editor_set_deployment_brush_selection_state(editor: Battle
         battleground_editor_set_deployment_brush_selection_state(editor, brush, { active: false });
     }
 
-    function make_new_zone(min: XY, max: XY) {
-        return {
-            min_x: min.x,
-            min_y: min.y,
-            max_x: max.x,
-            max_y: max.y,
-            face_x: 1,
-            face_y: 0,
-            outline: make_rect_outline(editor.grid_world_origin, min, max, zone_color)
-        };
-    }
-
     if (brush.selection.active) {
         const min = brush.selection.min;
         const max = brush.selection.max;
@@ -581,14 +603,15 @@ function battleground_editor_set_deployment_brush_selection_state(editor: Battle
 
             entity_button(`Assign to zone ${index + 1}`, () => {
                 destroy_rect_outline(zone.outline);
-                brush.zones[index] = make_new_zone(min, max);
+                destroy_fx(zone.facing_particle);
+                brush.zones[index] = make_new_zone(editor, min, max, xy(zone.face_x, zone.face_y));
                 update_editor_zones();
                 deselect();
             });
         }
 
         entity_button(`Assign to new zone`, () => {
-            brush.zones.push(make_new_zone(min, max));
+            brush.zones.push(make_new_zone(editor, min, max, xy(1, 0)));
             update_editor_zones();
             deselect();
         });
@@ -599,6 +622,7 @@ function battleground_editor_set_deployment_brush_selection_state(editor: Battle
             entity_button(`Delete Zone ${index + 1}`, () => {
                 brush.zones.splice(index, 1);
                 destroy_rect_outline(zone.outline);
+                destroy_fx(zone.facing_particle);
                 update_editor_zones();
                 deselect();
             });
@@ -944,6 +968,7 @@ function battleground_editor_cleanup_brush(editor: Battleground_Editor) {
 
         for (const zone of brush.zones) {
             destroy_rect_outline(zone.outline);
+            destroy_fx(zone.facing_particle);
         }
     }
 
@@ -1195,10 +1220,12 @@ function enter_battleground_editor(grid_world_origin: { x: number, y: number, z:
             }
 
             if (new_brush.type == Battleground_Brush_Type.deployment) {
-                new_brush.zones = new_editor.deployment_zones.map(zone => ({
-                    ...zone,
-                    outline: make_rect_outline(grid_world_origin, xy(zone.min_x, zone.min_y), xy(zone.max_x, zone.max_y), zone_color)
-                }));
+                new_brush.zones = new_editor.deployment_zones.map(zone => make_new_zone(
+                    new_editor,
+                    xy(zone.min_x, zone.min_y),
+                    xy(zone.max_x, zone.max_y),
+                    xy(zone.face_x, zone.face_y)
+                ));
 
                 battleground_editor_set_deployment_brush_selection_state(new_editor, new_brush, { active: false });
             }
