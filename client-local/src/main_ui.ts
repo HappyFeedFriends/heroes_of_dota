@@ -167,32 +167,6 @@ function get_creep_name(creep: Creep_Type) {
         .reduce((prev, value) => prev + " " + value);
 }
 
-if (!Array.prototype.find) {
-    // @ts-ignore
-    Array.prototype.find = function <T>(predicate: (element: T) => boolean): T | undefined {
-        for (const element of this) {
-            if (predicate(element)) {
-                return element;
-            }
-        }
-
-        return undefined;
-    };
-}
-
-if (!Array.prototype.findIndex) {
-    // @ts-ignore
-    Array.prototype.findIndex = function <T>(predicate: (element: T) => boolean): number {
-        for (let index = 0; index < this.length; index++) {
-            if (predicate(this[index])) {
-                return index;
-            }
-        }
-
-        return -1;
-    };
-}
-
 if (Game.IsInToolsMode()) {
     Error.prototype.toString = function (this: Error) {
         this.stack = this.stack!.replace(/\.vjs_c/g, '.js');
