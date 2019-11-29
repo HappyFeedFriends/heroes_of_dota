@@ -517,6 +517,8 @@ function battleground_editor_set_drag_state(brush: Battleground_Select_Brush | B
 function battleground_editor_set_grid_brush_selection_state(editor: Battleground_Editor, brush: Battleground_Grid_Brush, new_state: Battleground_Grid_Brush["selection"]) {
     entity_buttons.RemoveAndDeleteChildren();
 
+    const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
+
     if (brush.selection.active) {
         destroy_rect_outline(brush.selection.outline);
     }
@@ -524,6 +526,13 @@ function battleground_editor_set_grid_brush_selection_state(editor: Battleground
     brush.selection = new_state;
 
     const selection = brush.selection;
+
+    if (selection.active) {
+        selection_label.text = `Selected: ${selection.max.x - selection.min.x + 1}x${selection.max.y - selection.min.y + 1}`;
+    } else {
+        selection_label.text = `Grid: ${editor.grid_size.x}x${editor.grid_size.y}`;
+    }
+
     if (selection.active) {
         entity_button("Crop grid", () => {
             const old_spawns = editor.spawns;
@@ -817,8 +826,6 @@ function battleground_editor_cleanup_brush(editor: Battleground_Editor) {
     const brush = editor.brush;
 
     if (brush.type == Battleground_Brush_Type.select) {
-        entity_buttons.RemoveAndDeleteChildren();
-
         brush.selection_outline.forEach(destroy_fx);
 
         battleground_editor_set_drag_state(brush, { dragging: false });
@@ -828,6 +835,8 @@ function battleground_editor_cleanup_brush(editor: Battleground_Editor) {
         battleground_editor_set_grid_brush_selection_state(editor, brush, { active: false });
         battleground_editor_set_drag_state(brush, { dragging: false });
     }
+
+    entity_buttons.RemoveAndDeleteChildren();
 }
 
 function editor_cell_by_xy(editor: Battleground_Editor, xy: XY): Editor_Cell | undefined {
@@ -1068,6 +1077,10 @@ function enter_battleground_editor(grid_world_origin: { x: number, y: number, z:
             battleground_editor_cleanup_brush(new_editor);
             new_editor.brush = new_brush;
             update_brush_button_styles();
+
+            if (new_brush.type == Battleground_Brush_Type.grid) {
+                battleground_editor_set_grid_brush_selection_state(new_editor, new_brush, { active: false });
+            }
         });
 
         buttons.push({
