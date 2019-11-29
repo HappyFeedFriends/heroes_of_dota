@@ -2119,19 +2119,19 @@ export function start_battle(id_generator: Id_Generator, participants: Battle_Pa
     }
 
     for (const [player, participant] of battle_player_and_participant_pairs) {
-        const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, player);
-        const hero_spawn_points = pick_n_random(free_cells, participant.heroes.length);
-        const creep_spawn_points = pick_n_random(free_cells, participant.creeps.length);
-
         const heroes = participant.heroes;
         const creeps = participant.creeps;
 
-        for (let index = 0; index < heroes.length; index++) {
+        const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, player);
+        const hero_spawn_points = pick_n_random(free_cells, heroes.length);
+        const creep_spawn_points = pick_n_random(free_cells, creeps.length);
+
+        for (let index = 0; index < hero_spawn_points.length; index++) {
             const hero = heroes[index];
             spawn_deltas.push(spawn_hero(hero.id, player, hero_spawn_points[index].position, hero.type, hero.health));
         }
 
-        for (let index = 0; index < creeps.length; index++) {
+        for (let index = 0; index < creep_spawn_points.length; index++) {
             const creep = creeps[index];
             spawn_deltas.push(spawn_creep(creep.id, player, creep_spawn_points[index].position, creep.type, creep.health));
         }
