@@ -107,6 +107,8 @@ type Battleground_Deployment_Brush = {
         outline: Rect_Outline
         min: XY
         max: XY
+        facing: XY
+        facing_particle: ParticleId
     }
     drag_state: Drag_State
     zones: UI_Deployment_Zone[]
@@ -350,7 +352,7 @@ function make_rect_outline(world_origin: { x: number, y: number, z: number }, fr
     }
 }
 
-function make_new_zone(editor: Battleground_Editor, min: XY, max: XY, facing: XY): UI_Deployment_Zone {
+function make_zone_facing_particle(editor: Battleground_Editor, min: XY, max: XY, facing: XY) {
     const particle_path = "particles/ui_mouseactions/range_finder_directional_c.vpcf";
     const facing_particle = Particles.CreateParticle(particle_path, ParticleAttachment_t.PATTACH_WORLDORIGIN, 0);
 
@@ -371,6 +373,10 @@ function make_new_zone(editor: Battleground_Editor, min: XY, max: XY, facing: XY
 
     register_particle_for_reload(facing_particle);
 
+    return facing_particle;
+}
+
+function make_new_zone(editor: Battleground_Editor, min: XY, max: XY, facing: XY): UI_Deployment_Zone {
     return {
         min_x: min.x,
         min_y: min.y,
@@ -379,7 +385,7 @@ function make_new_zone(editor: Battleground_Editor, min: XY, max: XY, facing: XY
         face_x: facing.x,
         face_y: facing.y,
         outline: make_rect_outline(editor.grid_world_origin, min, max, zone_color),
-        facing_particle: facing_particle
+        facing_particle: make_zone_facing_particle(editor, min, max, facing)
     };
 }
 
@@ -582,6 +588,7 @@ function battleground_editor_set_deployment_brush_selection_state(editor: Battle
 
     if (brush.selection.active) {
         destroy_rect_outline(brush.selection.outline);
+        destroy_fx(brush.selection.facing_particle);
     }
 
     brush.selection = new_state;
@@ -595,8 +602,9 @@ function battleground_editor_set_deployment_brush_selection_state(editor: Battle
     }
 
     if (brush.selection.active) {
-        const min = brush.selection.min;
-        const max = brush.selection.max;
+        const selection = brush.selection;
+        const min = selection.min;
+        const max = selection.max;
 
         for (let index = 0; index < brush.zones.length; index++) {
             const zone = brush.zones[index];
@@ -604,14 +612,14 @@ function battleground_editor_set_deployment_brush_selection_state(editor: Battle
             entity_button(`Assign to zone ${index + 1}`, () => {
                 destroy_rect_outline(zone.outline);
                 destroy_fx(zone.facing_particle);
-                brush.zones[index] = make_new_zone(editor, min, max, xy(zone.face_x, zone.face_y));
+                brush.zones[index] = make_new_zone(editor, min, max, selection.facing);
                 update_editor_zones();
                 deselect();
             });
         }
 
         entity_button(`Assign to new zone`, () => {
-            brush.zones.push(make_new_zone(editor, min, max, xy(1, 0)));
+            brush.zones.push(make_new_zone(editor, min, max, selection.facing));
             update_editor_zones();
             deselect();
         });
@@ -693,6 +701,33 @@ function battleground_editor_filter_mouse_click(editor: Battleground_Editor, eve
     const pressed = event == "pressed";
 
     if (!pressed) {
+        return;
+    }
+
+    if (brush.type == Battleground_Brush_Type.deployment && cell && brush.selection.active && GameUI.IsShiftDown()) {
+        const click  = cell.position;
+        const selection = brush.selection;
+
+        // TODO annoying but we have to ignore the error for now
+        //@ts-ignore
+        function set_facing(facing: XY) {
+            selection.facing = facing;
+
+            destroy_fx(selection.facing_particle);
+
+            selection.facing_particle = make_zone_facing_particle(editor, selection.min, selection.max, facing);
+        }
+
+        if (click.x < selection.min.x) {
+            set_facing(xy(-1, 0));
+        } else if (click.x > selection.max.x) {
+            set_facing(xy(1, 0));
+        } else if (click.y < selection.min.y) {
+            set_facing(xy(0, -1));
+        } else if (click.y > selection.max.y) {
+            set_facing(xy(0, 1));
+        }
+
         return;
     }
 
@@ -913,7 +948,9 @@ function update_battleground_brush_from_cursor(editor: Battleground_Editor, posi
                             active: true,
                             outline: make_rect_outline(editor.grid_world_origin, clamped_min, clamped_max, color_green),
                             min: clamped_min,
-                            max: clamped_max
+                            max: clamped_max,
+                            facing: xy(1, 0),
+                            facing_particle: make_zone_facing_particle(editor, clamped_min, clamped_max, xy(1, 0))
                         });
                     }
                 }
