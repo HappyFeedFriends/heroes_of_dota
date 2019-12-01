@@ -61,6 +61,10 @@ export function random_in_array<T>(array: T[], length = array.length): T | undef
 }
 
 function pick_n_random<T>(array: T[], n: number): T[] {
+    return pick_n_random_mutable(array.slice(), n);
+}
+
+function pick_n_random_mutable<T>(array: T[], n: number): T[] {
     const result: T[] = [];
 
     if (array.length == 0) {
@@ -275,7 +279,7 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
         }
 
         case Spell_Id.call_to_arms: {
-            const spawn_points = pick_n_random(find_unoccupied_cells_in_deployment_zone_for_player(battle, player), spell.creeps_to_summon);
+            const spawn_points = pick_n_random_mutable(find_unoccupied_cells_in_deployment_zone_for_player(battle, player), spell.creeps_to_summon);
 
             return {
                 ...base,
@@ -1740,7 +1744,7 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                                     return apply_ability_effect_delta({
                                         ability_id: Ability_Id.monster_spawn_spiderlings,
                                         source_unit_id: target.id,
-                                        summons: pick_n_random(free_cells, ability.how_many).map(cell => ({
+                                        summons: pick_n_random_mutable(free_cells, ability.how_many).map(cell => ({
                                             owner_id: target.owner.id,
                                             unit_id: get_next_entity_id(battle) as Unit_Id,
                                             creep_type: Creep_Type.spiderling,
@@ -2123,8 +2127,8 @@ export function start_battle(id_generator: Id_Generator, participants: Battle_Pa
         const creeps = participant.creeps;
 
         const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, player);
-        const hero_spawn_points = pick_n_random(free_cells, heroes.length);
-        const creep_spawn_points = pick_n_random(free_cells, creeps.length);
+        const hero_spawn_points = pick_n_random_mutable(free_cells, heroes.length);
+        const creep_spawn_points = pick_n_random_mutable(free_cells, creeps.length);
 
         for (let index = 0; index < hero_spawn_points.length; index++) {
             const hero = heroes[index];
@@ -2344,7 +2348,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
             const deltas: Delta[] = [];
 
             for (const creep of creeps) {
-                const random_cell = pick_n_random(free_cells, 1);
+                const random_cell = pick_n_random_mutable(free_cells, 1);
 
                 if (random_cell) {
                     deltas.push(spawn_creep(get_next_entity_id(battle) as Unit_Id, battle_player, random_cell[0].position, creep, creep_definition_by_type(creep).health));
