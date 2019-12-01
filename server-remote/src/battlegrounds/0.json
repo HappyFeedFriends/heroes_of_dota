@@ -1,0 +1,154 @@
+{
+    "grid_size": {
+        "x": 13,
+        "y": 10
+    },
+    "deployment_zones": [
+        {
+            "min_x": 0,
+            "min_y": 5,
+            "max_x": 3,
+            "max_y": 9,
+            "face_x": 1,
+            "face_y": 0
+        },
+        {
+            "min_x": 10,
+            "min_y": 1,
+            "max_x": 13,
+            "max_y": 5,
+            "face_x": -1,
+            "face_y": 0
+        }
+    ],
+    "trees": [
+        {
+            "x": 0,
+            "y": 2
+        },
+        {
+            "x": 2,
+            "y": 2
+        },
+        {
+            "x": 3,
+            "y": 0
+        },
+        {
+            "x": 8,
+            "y": 1
+        },
+        {
+            "x": 1,
+            "y": 2
+        },
+        {
+            "x": 0,
+            "y": 1
+        },
+        {
+            "x": 1,
+            "y": 0
+        },
+        {
+            "x": 0,
+            "y": 0
+        },
+        {
+            "x": 10,
+            "y": 6
+        },
+        {
+            "x": 11,
+            "y": 6
+        },
+        {
+            "x": 12,
+            "y": 7
+        },
+        {
+            "x": 4,
+            "y": 3
+        },
+        {
+            "x": 4,
+            "y": 9
+        },
+        {
+            "x": 4,
+            "y": 8
+        }
+    ],
+    "shops": [
+        {
+            "x": 6,
+            "y": 8,
+            "face_x": 0,
+            "face_y": -1,
+            "type": "secret",
+            "items": [
+                "boots_of_travel",
+                "heart_of_tarrasque",
+                "assault_cuirass",
+                "satanic",
+                "divine_rapier",
+                "tome_of_knowledge",
+                "refresher_shard",
+                "mask_of_madness",
+                "armlet",
+                "octarine_core",
+                "basher"
+            ]
+        },
+        {
+            "x": 1,
+            "y": 3,
+            "face_x": 0,
+            "face_y": 1,
+            "type": "normal",
+            "items": [
+                "belt_of_strength",
+                "blades_of_attack",
+                "boots_of_speed",
+                "morbid_mask",
+                "chainmail",
+                "enchanted_mango"
+            ]
+        },
+        {
+            "x": 11,
+            "y": 5,
+            "face_x": 0,
+            "face_y": -1,
+            "type": "normal",
+            "items": [
+                "belt_of_strength",
+                "blades_of_attack",
+                "boots_of_speed",
+                "morbid_mask",
+                "chainmail",
+                "enchanted_mango"
+            ]
+        }
+    ],
+    "runes": [
+        {
+            "x": 1,
+            "y": 1
+        }
+    ],
+    "monsters": [
+        {
+            "x": 5,
+            "y": 1,
+            "face_x": 1,
+            "face_y": 0
+        },
+        {
+            "x": 10,
+            "y": 8,
+            "face_x": -1,
+            "face_y": 0
+        }
+    ]
+}

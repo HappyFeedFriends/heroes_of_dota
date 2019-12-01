@@ -32,8 +32,14 @@ import {
     change_party_add_creep, change_party_add_hero,
     change_party_add_spell,
     find_empty_party_slot_index, push_party_change,
-    Map_Player_Party, Map_Player_Party_Slot, change_party_change_health, change_party_empty_slot
+    Map_Player_Party, change_party_change_health, change_party_empty_slot
 } from "./adventure_party";
+import {
+    find_battleground_by_id,
+    load_all_battlegrounds,
+    make_new_battleground,
+    save_battleground
+} from "./battleground";
 
 eval(readFileSync("dist/battle_sim.js", "utf8"));
 
@@ -245,6 +251,16 @@ function sequential_id_generator(): Id_Generator {
     let id = 0;
 
     return () => id++;
+}
+
+export function try_string_to_enum_value<T>(value: string, enum_values: [string, T][]): T | undefined {
+    const result = enum_values.find(([name]) => value == name);
+
+    if (!result) {
+        return undefined;
+    }
+
+    return result[1];
 }
 
 function try_authorize_steam_player_from_dedicated_server(steam_id: string, steam_name: string): [Player_Id, string] {
@@ -795,12 +811,18 @@ register_api_handler(Api_Request_Type.attack_player, req => {
             return;
         }
 
+        const battleground = find_battleground_by_id(0 as Battleground_Id);
+
+        if (!battleground) {
+            return;
+        }
+
         const id_generator = sequential_id_generator();
 
         const battle = start_battle(id_generator, [
             player_to_battle_participant(id_generator, player),
             player_to_battle_participant(id_generator, other_player)
-        ], battleground.forest());
+        ], battleground);
 
         transition_player_to_battle(player, battle);
         transition_player_to_battle(other_player, battle);
@@ -1081,12 +1103,18 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
         if (!entity) return;
         if (entity.definition.type != Adventure_Entity_Type.enemy) return;
 
+        const battleground = find_battleground_by_id(0 as Battleground_Id);
+
+        if (!battleground) {
+            return;
+        }
+
         const id_generator = sequential_id_generator();
 
         const battle = start_battle(id_generator, [
             player_to_adventure_battle_participant(id_generator, player.id, player.online),
             adventure_enemy_to_battle_participant(id_generator, entity.id, entity.definition)
-        ], battleground.forest());
+        ], battleground);
 
         transition_player_to_battle(player, battle);
 
@@ -1170,8 +1198,17 @@ function register_dev_handlers() {
         return make_ok(get_debug_ai_data());
     });
 
+    register_api_handler(Api_Request_Type.editor_create_battleground, req => {
+        const created = make_new_battleground();
+
+        return make_ok({
+            id: created.id,
+            battleground: copy<Battleground>(created)
+        });
+    });
+
     register_api_handler(Api_Request_Type.editor_submit_battleground, req => {
-        console.log("Submitted battleground", req.battleground);
+        save_battleground(req.id, req.battleground);
 
         return make_ok({});
     });
@@ -1371,7 +1408,27 @@ export function start_server(dev: boolean, seed: number) {
 
     setInterval(check_and_disconnect_offline_players, 1000);
 
-    load_all_adventures();
+    {
+        const ok = load_all_battlegrounds();
+
+        if (ok) {
+            console.log("Battlegrounds loaded");
+        } else {
+            console.error("Unable to load battlegrounds");
+            return;
+        }
+    }
+
+    {
+        const ok = load_all_adventures();
+
+        if (ok) {
+            console.log("Adventures loaded");
+        } else {
+            console.error("Unable to load adventures");
+            return;
+        }
+    }
 
     if (dev_mode){
         register_dev_handlers();

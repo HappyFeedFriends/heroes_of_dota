@@ -44,7 +44,8 @@ declare const enum Api_Request_Type {
     editor_get_room_details = 1001,
     editor_create_entity = 1002,
     editor_get_enemy_deck = 1003,
-    editor_submit_battleground = 1004
+    editor_create_battleground = 1004,
+    editor_submit_battleground = 1005
 }
 
 declare const enum Map_Entity_Type {
@@ -61,6 +62,7 @@ declare const enum Npc_Type {
 type Player_Id = number & { _player_id_brand: any };
 type Npc_Id = number & { _npc_id_brand: any };
 type Battle_Id = number & { _battle_id_brand: any };
+type Battleground_Id = number & { _battleground_id_brand: any };
 
 type Movement_History_Entry = {
     order_x: number

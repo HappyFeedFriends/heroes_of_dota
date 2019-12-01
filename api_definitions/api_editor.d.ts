@@ -34,8 +34,16 @@ type Editor_Handlers = {
         creeps: Creep_Type[]
     }
 } | {
+    type: Api_Request_Type.editor_create_battleground
+    request: {}
+    response: {
+        id: Battleground_Id
+        battleground: Battleground
+    }
+} | {
     type: Api_Request_Type.editor_submit_battleground
     request: {
+        id: Battleground_Id
         battleground: Battleground
     }
     response: {}

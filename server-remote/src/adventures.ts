@@ -1,4 +1,5 @@
 import {readFileSync, writeFileSync, readdirSync} from "fs";
+import {try_string_to_enum_value} from "./server";
 
 const storage_dir_path = "src/adventures";
 
@@ -99,48 +100,45 @@ export function create_room_entities(room: Adventure_Room): Adventure_Entity[] {
     return room.entities.map(enemy => adventure_entity_from_definition(get_next_entity_id(), enemy));
 }
 
-export function load_all_adventures() {
+export function load_all_adventures(): boolean {
     const files = readdirSync(storage_dir_path);
     const adventures_enum = enum_names_to_values<Adventure_Id>();
-
-    adventures.length = 0;
+    const new_adventures: Adventure[] = [];
 
     for (const full_name of files) {
         if (!full_name.endsWith(".json")) {
-            console.warn(`Garbage file '${full_name}' in ${storage_dir_path}`);
-            continue;
+            console.error(`Garbage file '${full_name}' in ${storage_dir_path}`);
+            return false;
         }
 
         const just_name = full_name.substring(0, full_name.lastIndexOf("."));
-
         const id = try_string_to_enum_value(just_name, adventures_enum);
 
         if (id == undefined) {
             console.error(`Adventure with id ${just_name} not found`);
-            continue;
+            return false;
         }
 
         console.log(`Loading adventure: '${just_name}'`);
 
-        const rooms = read_adventure_rooms_from_file(`${storage_dir_path}/${full_name}`);
+        const full_path = `${storage_dir_path}/${full_name}`;
+        const rooms = read_adventure_rooms_from_file(full_path);
 
-        if (rooms) {
-            adventures.push({
-                id: id,
-                rooms: rooms
-            });
+        if (!rooms) {
+            console.error(`Error while loading adventure from ${full_path}`);
+            return false;
         }
-    }
-}
 
-function try_string_to_enum_value<T>(value: string, enum_values: [string, T][]): T | undefined {
-    const result = enum_values.find(([name]) => value == name);
-
-    if (!result) {
-        return undefined;
+        new_adventures.push({
+            id: id,
+            rooms: rooms
+        });
     }
 
-    return result[1];
+    adventures.length = 0;
+    adventures.push(...new_adventures);
+
+    return true;
 }
 
 function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | undefined {
@@ -163,7 +161,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             const npc_type = try_string_to_enum_value(source_enemy.type, npc_enum);
 
             if (npc_type == undefined) {
-                console.error(`Npc with type ${source_enemy.type} not found`);
+                console.error(`Npc type ${source_enemy.type} not found while parsing ${file_path}`);
                 return;
             }
 
@@ -173,7 +171,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
                 const creep_type = try_string_to_enum_value(creep, creeps_enum);
 
                 if (creep_type == undefined) {
-                    console.error(`Creep with type ${creep} not found`);
+                    console.error(`Creep type ${creep} not found while parsing ${file_path}`);
                     return;
                 }
 
@@ -199,7 +197,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             const entity_type = try_string_to_enum_value(source_entity.type, entities_enum);
 
             if (entity_type == undefined) {
-                console.error(`Entity with type ${source_entity.type} not found`);
+                console.error(`Entity type ${source_entity.type} not found while parsing ${file_path}`);
                 return;
             }
 
@@ -261,7 +259,11 @@ function persist_adventure_to_file_system(adventure: Adventure) {
         })
     };
 
-    writeFileSync(`${storage_dir_path}/${enum_to_string(adventure.id)}.json`, JSON.stringify(file, (key, value) => value, "    "));
+    const path = `${storage_dir_path}/${enum_to_string(adventure.id)}.json`;
+
+    console.log(`Saving ${path}`);
+
+    writeFileSync(path, JSON.stringify(file, (key, value) => value, "    "));
 }
 
 export function interact_with_entity(adventure: Ongoing_Adventure, entity_id: Adventure_Entity_Id): Entity_Interaction_Result | undefined {
