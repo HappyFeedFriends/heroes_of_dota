@@ -362,7 +362,7 @@ function make_zone_facing_particle(editor: Battleground_Editor, min: XY, max: XY
     const arrow_position: XYZ = [
         world_min[0] + (world_max[0] - world_min[0]) / 2,
         world_min[1] + (world_max[1] - world_min[1]) / 2,
-        world_min[2] + (world_max[2] - world_min[2]) / 2 + 250,
+        world_min[2] + (world_max[2] - world_min[2]) / 2 + 128,
     ];
 
     Particles.SetParticleControl(facing_particle, 0, arrow_position);
@@ -604,6 +604,30 @@ function battleground_editor_set_deployment_brush_selection_state(editor: Battle
         battleground_editor_set_deployment_brush_selection_state(editor, brush, { active: false });
     }
 
+    function zone_button(zone: Deployment_Zone, text: string, action: () => void) {
+        const button = entity_button(text, action);
+        const particles: ParticleId[] = [];
+
+        button.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
+            for (let x = zone.min_x; x <= zone.max_x; x++) {
+                for (let y = zone.min_y; y <= zone.max_y; y++) {
+                    const center = battle_position_to_world_position_center(editor.grid_world_origin, xy(x, y));
+                    const particle = create_cell_particle_at(center);
+                    register_particle_for_reload(particle);
+
+                    Particles.SetParticleControl(particle, 2, zone_color);
+
+                    particles.push(particle);
+                }
+            }
+        });
+
+        button.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, () => {
+            particles.forEach(destroy_fx);
+            particles.length = 0;
+        });
+    }
+
     if (brush.selection.active) {
         const selection = brush.selection;
         const min = selection.min;
@@ -612,7 +636,7 @@ function battleground_editor_set_deployment_brush_selection_state(editor: Battle
         for (let index = 0; index < brush.zones.length; index++) {
             const zone = brush.zones[index];
 
-            entity_button(`Assign to zone ${index + 1}`, () => {
+            zone_button(zone, `Assign to zone ${index + 1}`, () => {
                 destroy_rect_outline(zone.outline);
                 destroy_fx(zone.facing_particle);
                 brush.zones[index] = make_new_zone(editor, min, max, selection.facing);
@@ -630,7 +654,7 @@ function battleground_editor_set_deployment_brush_selection_state(editor: Battle
         for (let index = 0; index < brush.zones.length; index++) {
             const zone = brush.zones[index];
 
-            entity_button(`Delete Zone ${index + 1}`, () => {
+            zone_button(zone, `Delete Zone ${index + 1}`, () => {
                 brush.zones.splice(index, 1);
                 destroy_rect_outline(zone.outline);
                 destroy_fx(zone.facing_particle);
@@ -1176,23 +1200,14 @@ function load_battleground_editor(for_battleground: Battleground_Id) {
 }
 
 function fill_battleground_editor_cells(grid_world_origin: { x: number, y: number, z: number }, w: number, h: number): Editor_Cell[][] {
-    const particle_bottom_left_origin: XYZ = [
-        grid_world_origin.x + battle_cell_size / 2,
-        grid_world_origin.y + battle_cell_size / 2,
-        grid_world_origin.z
-    ];
-
     const cells: Editor_Cell[][] = [];
 
     for (let x = 0; x < w; x++) {
         const by_x: Editor_Cell[] = [];
 
         for (let y = 0; y < h; y++) {
-            const particle = create_cell_particle_at([
-                particle_bottom_left_origin[0] + x * battle_cell_size,
-                particle_bottom_left_origin[1] + y * battle_cell_size,
-                particle_bottom_left_origin[2]
-            ]);
+            const center = battle_position_to_world_position_center(grid_world_origin, xy(x, y));
+            const particle = create_cell_particle_at(center);
 
             Particles.SetParticleControl(particle, 3, [ 10, 0, 0 ]);
 

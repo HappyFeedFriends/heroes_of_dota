@@ -582,19 +582,10 @@ function battle_process_state_transition(from: Player_State, new_state: Game_Net
 
         ui_shop_data = [];
 
-        const particle_bottom_left_origin: XYZ = [
-            battle.grid.world_origin.x + battle_cell_size / 2,
-            battle.grid.world_origin.y + battle_cell_size / 2,
-            battle.grid.world_origin.z
-        ];
-
         for (let x = 0; x < battle.grid.size.x; x++) {
             for (let y = 0; y < battle.grid.size.y; y++) {
-                const particle = create_cell_particle_at([
-                    particle_bottom_left_origin[0] + x * battle_cell_size,
-                    particle_bottom_left_origin[1] + y * battle_cell_size,
-                    particle_bottom_left_origin[2]
-                ]);
+                const center = battle_position_to_world_position_center(battle.grid.world_origin, xy(x, y));
+                const particle = create_cell_particle_at(center);
 
                 battle.grid.cells.push({
                     position: xy(x, y),
@@ -660,7 +651,7 @@ const color_yellow: XYZ = [ 255, 255, 0 ];
 function create_particle_for_outline_edge(edge: Edge, world_origin: { x: number, y: number, z: number }, from: XY, to: XY, color: XYZ) {
     const fx = Particles.CreateParticle("particles/ui/highlight_rope.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
     const half = battle_cell_size / 2;
-    const height = 160;
+    const height = 32;
 
     register_particle_for_reload(fx);
 
@@ -1551,7 +1542,7 @@ function battle_position_to_world_position_center(world_origin: { x: number, y: 
     return [
         world_origin.x + position.x * battle_cell_size + battle_cell_size / 2,
         world_origin.y + position.y * battle_cell_size + battle_cell_size / 2,
-        world_origin.z - 128
+        world_origin.z
     ]
 }
 
