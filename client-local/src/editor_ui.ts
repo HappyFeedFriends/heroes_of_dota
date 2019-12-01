@@ -1328,6 +1328,11 @@ function exit_current_editor() {
 
     switch (editor.type) {
         case Editor_Type.battleground: {
+            dispatch_editor_action({
+                type: Editor_Action_Type.submit_battleground,
+                spawns: []
+            });
+
             battleground_editor_cleanup_cells(editor);
             battleground_editor_cleanup_brush(editor);
             break;
