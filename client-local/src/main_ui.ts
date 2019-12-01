@@ -1,4 +1,5 @@
 type XYZ = { x: number, y: number, z: number };
+type RGB = [ number, number, number ] & { _color_id_brand: any };
 type Player_Name_Callback = (name: string) => void;
 
 $.Msg("TS initialized");
@@ -162,6 +163,10 @@ function xyz(x: number, y: number, z: number): XYZ {
 
 function xyz_to_array(xyz: XYZ): [ number, number, number ] {
     return [xyz.x, xyz.y, xyz.z];
+}
+
+function rgb(r: number, g: number, b: number): RGB {
+    return [r, g, b] as RGB;
 }
 
 function get_screen_world_position(cursor: [number, number]): XYZ | undefined {

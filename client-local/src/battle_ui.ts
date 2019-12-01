@@ -215,8 +215,6 @@ const hand: Card_Panel[] = [];
 
 let card_error_shown_at = 0;
 
-type RGB = [ number, number, number ] & { _color_id_brand: any };
-
 function set_selection(new_selection: Selection_State) {
     if (selection.type == Selection_Type.card) {
         Particles.DestroyParticleEffect(selection.targeting_fx, false);
@@ -643,10 +641,6 @@ function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | undefine
     // path.push(from);
 
     return path.reverse();
-}
-
-function rgb(r: number, g: number, b: number): RGB {
-    return [r, g, b] as RGB;
 }
 
 const color_nothing = rgb(255, 255, 255);
