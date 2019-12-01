@@ -1,4 +1,4 @@
-type XYZ = [number, number, number];
+type XYZ = { x: number, y: number, z: number };
 type Player_Name_Callback = (name: string) => void;
 
 $.Msg("TS initialized");
@@ -35,7 +35,33 @@ function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>,
     });
 }
 
-function local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>, callback: (response: Find_Local_Response<T>) => void) {
+function async_api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>): Promise<Find_Response<T>> {
+    return new Promise((resolve, reject) => {
+        $.AsyncWebRequest(remote_root + "/api" + type, {
+            type: "POST",
+            data: { json_data: JSON.stringify(body) },
+            timeout: 10000,
+            success: response => resolve(JSON.parse(response)),
+            error: () => {
+                reject();
+            }
+        });
+    });
+}
+
+function async_local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>): Promise<Find_Local_Response<T>> {
+    const promise = new Promise<Find_Local_Response<T>>((resolve, reject) => {
+        return local_api_request(type, body, data => {
+            resolve(data);
+        }, () => reject("Error"));
+    });
+
+    promise.catch(error => $.Msg("Error", error));
+
+    return promise;
+}
+
+function local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>, callback: (response: Find_Local_Response<T>) => void, error?: () => void) {
     const packet: Local_Api_Request_Packet = {
         type: type,
         body: body,
@@ -44,13 +70,26 @@ function local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find
 
     $.Msg(`Request ${enum_to_string<Local_Api_Request_Type>(type)}`);
 
-    // TODO handle timeout
+    const timeout = $.Schedule(10, () => {
+        if (!ongoing_local_requests[packet.request_id]) {
+            return;
+        }
+
+        delete ongoing_local_requests[packet.request_id];
+
+        if (error) {
+            error();
+        }
+    });
+
     ongoing_local_requests[packet.request_id] = (body: object) => {
         $.Msg(`Response for ${enum_to_string<Local_Api_Request_Type>(type)}: ${body}`);
 
         callback(body as Find_Local_Response<T>);
 
         delete ongoing_local_requests[packet.request_id];
+
+        $.CancelScheduled(timeout);
     };
 
     GameEvents.SendCustomGameEventToServer(Prefixes.local_api_request, packet);
@@ -115,6 +154,24 @@ function get_visualiser_delta_head(): number | undefined {
     }
 
     return undefined;
+}
+
+function xyz(x: number, y: number, z: number): XYZ {
+    return { x: x, y: y, z: z };
+}
+
+function xyz_to_array(xyz: XYZ): [ number, number, number ] {
+    return [xyz.x, xyz.y, xyz.z];
+}
+
+function get_screen_world_position(cursor: [number, number]): XYZ | undefined {
+    const position = GameUI.GetScreenWorldPosition(cursor);
+
+    if (!position) {
+        return;
+    }
+
+    return xyz(position[0], position[1], position[1]);
 }
 
 function subscribe_to_raw_custom_event<T extends object>(event_name: string, handler: (data: T) => void) {
@@ -245,8 +302,8 @@ const enum Align_V { top, center, bottom}
 function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, h: Align_H, v: Align_V) {
     const screen_ratio = Game.GetScreenHeight() / 1080;
 
-    const screen_x = Game.WorldToScreenX(position[0], position[1], position[2]);
-    const screen_y = Game.WorldToScreenY(position[0], position[1], position[2]);
+    const screen_x = Game.WorldToScreenX(position.x, position.y, position.z);
+    const screen_y = Game.WorldToScreenY(position.x, position.y, position.z);
 
     if (screen_x == -1 || screen_y == -1) {
         return;

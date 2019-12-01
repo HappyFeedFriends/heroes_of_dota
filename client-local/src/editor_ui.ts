@@ -9,7 +9,7 @@ const entrance_indicator = indicator.FindChildTraverse("editor_entrance_indicato
 const entity_buttons = entity_panel.FindChildTraverse("editor_entity_buttons");
 const entity_buttons_dropdown = entity_panel.FindChildTraverse("editor_entity_dropdown");
 
-const zone_color: XYZ = [ 64, 200, 255 ];
+const zone_color = rgb(64, 200, 255);
 
 // To prevent click-through
 entity_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
@@ -137,7 +137,7 @@ type Rect_Outline = {
     left: ParticleId
 }
 
-let pinned_context_menu_position: XYZ = [0, 0, 0];
+let pinned_context_menu_position = xyz(0, 0, 0);
 let context_menu_particle: ParticleId | undefined = undefined;
 let editor: Editor = { type: Editor_Type.none };
 
@@ -341,7 +341,7 @@ function destroy_rect_outline(rect: Rect_Outline) {
     destroy_fx(rect.right);
 }
 
-function make_rect_outline(world_origin: { x: number, y: number, z: number }, from: XY, to: XY, color: XYZ): Rect_Outline {
+function make_rect_outline(world_origin: { x: number, y: number, z: number }, from: XY, to: XY, color: RGB): Rect_Outline {
     const min = xy(Math.min(from.x, to.x), Math.min(from.y, to.y));
     const max = xy(Math.max(from.x, to.x), Math.max(from.y, to.y));
 
@@ -359,17 +359,17 @@ function make_zone_facing_particle(editor: Battleground_Editor, min: XY, max: XY
 
     const world_min = battle_position_to_world_position_center(editor.grid_world_origin, min);
     const world_max = battle_position_to_world_position_center(editor.grid_world_origin, max);
-    const arrow_position: XYZ = [
-        world_min[0] + (world_max[0] - world_min[0]) / 2,
-        world_min[1] + (world_max[1] - world_min[1]) / 2,
-        world_min[2] + (world_max[2] - world_min[2]) / 2 + 128,
-    ];
+    const arrow_position: XYZ = xyz(
+        world_min.x + (world_max.x - world_min.x) / 2,
+        world_min.y + (world_max.y - world_min.y) / 2,
+        world_min.z + (world_max.z - world_min.z) / 2 + 128,
+    );
 
-    Particles.SetParticleControl(facing_particle, 0, arrow_position);
+    Particles.SetParticleControl(facing_particle, 0, xyz_to_array(arrow_position));
     Particles.SetParticleControl(facing_particle, 2, [
-        arrow_position[0] + facing.x,
-        arrow_position[1] + facing.y,
-        arrow_position[2]
+        arrow_position.x + facing.x,
+        arrow_position.y + facing.y,
+        arrow_position.z
     ]);
 
     register_particle_for_reload(facing_particle);
@@ -400,7 +400,7 @@ function make_active_drag_state(drag_from: XY): Drag_State {
     };
 }
 
-function update_editor_cells_outline(editor: Battleground_Editor, cells: Editor_Cell[], outline: ParticleId[], color: XYZ = color_green) {
+function update_editor_cells_outline(editor: Battleground_Editor, cells: Editor_Cell[], outline: ParticleId[], color: RGB = color_green) {
     const indexed_cells: Editor_Cell[] = [];
     const highlighted_cells: boolean[] = [];
 
@@ -715,7 +715,7 @@ function battleground_editor_set_grid_brush_selection_state(editor: Battleground
 
 function battleground_editor_filter_mouse_click(editor: Battleground_Editor, event: MouseEvent, button: MouseButton | WheelScroll) {
     const cursor = GameUI.GetCursorPosition();
-    const world_position = GameUI.GetScreenWorldPosition(cursor);
+    const world_position = get_screen_world_position(cursor);
 
     if (!world_position) {
         return;
@@ -839,13 +839,14 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
     }
 
     if (button == MouseButton.RIGHT) {
-        const click_world_position = Game.ScreenXYToWorld(...GameUI.GetCursorPosition());
+        const click_world_position = get_screen_world_position(GameUI.GetCursorPosition());
+        if (!click_world_position) return true;
 
         context_menu.style.visibility = "visible";
         context_menu.RemoveAndDeleteChildren();
 
         context_menu_particle = Particles.CreateParticle("particles/ui_mouseactions/ping_waypoint.vpcf", ParticleAttachment_t.PATTACH_WORLDORIGIN, 0);
-        Particles.SetParticleControl(context_menu_particle, 0, click_world_position);
+        Particles.SetParticleControl(context_menu_particle, 0, xyz_to_array(click_world_position));
 
         if (editor.selection.selected) {
             context_menu_button(`Move here`, () => {
@@ -854,7 +855,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                 dispatch_editor_action({
                     type: Editor_Action_Type.set_entity_position,
                     entity_id: editor.selection.id,
-                    position: xy(click_world_position[0], click_world_position[1])
+                    position: xy(click_world_position.x, click_world_position.y)
                 });
             });
 
@@ -862,7 +863,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                 if (!editor.selection.selected) return;
 
                 const position = Entities.GetAbsOrigin(editor.selection.entity);
-                const delta = [click_world_position[0] - position[0], click_world_position[1] - position[1]];
+                const delta = [click_world_position.x - position[0], click_world_position.y - position[1]];
                 const length = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
                 const facing = length > 0 ? [delta[0] / length, delta[1] / length, 0] : [1, 0, 0];
 
@@ -882,7 +883,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                                 definition: {
                                     type: entity_type,
                                     npc_type: npc_type,
-                                    spawn_position: xy(click_world_position[0], click_world_position[1]),
+                                    spawn_position: xy(click_world_position.x, click_world_position.y),
                                     spawn_facing: xy(1, 0),
                                     creeps: []
                                 }
@@ -895,7 +896,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                             type: Editor_Action_Type.create_entity,
                             definition: {
                                 type: entity_type,
-                                spawn_position: xy(click_world_position[0], click_world_position[1]),
+                                spawn_position: xy(click_world_position.x, click_world_position.y),
                                 spawn_facing: xy(1, 0),
                             }
                         })
@@ -906,17 +907,17 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
             context_menu_button(`Set entrance to here`, () => {
                 api_request(Api_Request_Type.editor_action, {
                     type: Adventure_Editor_Action_Type.set_entrance,
-                    entrance: xy(click_world_position[0], click_world_position[1]),
+                    entrance: xy(click_world_position.x, click_world_position.y),
                     access_token: get_access_token()
                 }, () => {
-                    editor.room_entrance_location = xy(click_world_position[0], click_world_position[1]);
+                    editor.room_entrance_location = xy(click_world_position.x, click_world_position.y);
                 });
             });
 
             context_menu_button(`Teleport here`, () => {
                 dispatch_editor_action({
                     type: Editor_Action_Type.teleport,
-                    position: xy(click_world_position[0], click_world_position[1])
+                    position: xy(click_world_position.x, click_world_position.y)
                 })
             });
         }
@@ -934,7 +935,7 @@ function update_battleground_brush_from_cursor(editor: Battleground_Editor, posi
         case Battleground_Brush_Type.deployment:
         case Battleground_Brush_Type.select:
         case Battleground_Brush_Type.grid: {
-            const outline_color: Record<typeof brush.type, XYZ> = {
+            const outline_color: Record<typeof brush.type, RGB> = {
                 [Battleground_Brush_Type.select]: color_green,
                 [Battleground_Brush_Type.grid]: color_yellow,
                 [Battleground_Brush_Type.deployment]: color_green
@@ -1095,7 +1096,7 @@ function periodically_update_editor_ui() {
         }
 
         if (editor.room_entrance_location) {
-            const position_over: XYZ = [editor.room_entrance_location.x, editor.room_entrance_location.y, 256];
+            const position_over = xyz(editor.room_entrance_location.x, editor.room_entrance_location.y, 256);
 
             position_panel_over_position_in_the_world(entrance_indicator, position_over, Align_H.center, Align_V.top);
         }
@@ -1103,7 +1104,7 @@ function periodically_update_editor_ui() {
 
     if (editor.type == Editor_Type.battleground) {
         const cursor = GameUI.GetCursorPosition();
-        const world_position = GameUI.GetScreenWorldPosition(cursor);
+        const world_position = get_screen_world_position(cursor);
 
         if (editor.cell_under_cursor) {
             const should_paint_red = editor.brush.type == Battleground_Brush_Type.trees && GameUI.IsShiftDown();
@@ -1190,13 +1191,11 @@ function update_adventure_editor_buttons(editor: Adventure_Editor) {
     });
 }
 
-function load_battleground_editor(for_battleground: Battleground_Id) {
-    // TODO try async/await?
-    local_api_request(Local_Api_Request_Type.get_battle_position, {}, origin => {
-        api_request(Api_Request_Type.editor_get_battleground, { id: for_battleground }, response => {
-            enter_battleground_editor(origin, for_battleground, response.battleground);
-        })
-    });
+async function load_battleground_editor(for_battleground: Battleground_Id) {
+    const origin = await async_local_api_request(Local_Api_Request_Type.get_battle_position, {});
+    const response = await async_api_request(Api_Request_Type.editor_get_battleground, { id: for_battleground });
+
+    enter_battleground_editor(origin, for_battleground, response.battleground);
 }
 
 function fill_battleground_editor_cells(grid_world_origin: { x: number, y: number, z: number }, w: number, h: number): Editor_Cell[][] {

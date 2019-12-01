@@ -215,6 +215,8 @@ const hand: Card_Panel[] = [];
 
 let card_error_shown_at = 0;
 
+type RGB = [ number, number, number ] & { _color_id_brand: any };
+
 function set_selection(new_selection: Selection_State) {
     if (selection.type == Selection_Type.card) {
         Particles.DestroyParticleEffect(selection.targeting_fx, false);
@@ -507,7 +509,7 @@ function periodically_request_battle_deltas_when_in_battle() {
 function create_cell_particle_at(position: XYZ) {
     const particle = Particles.CreateParticle("particles/ui/square_overlay.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
 
-    Particles.SetParticleControl(particle, 0, position);
+    Particles.SetParticleControl(particle, 0, xyz_to_array(position));
     Particles.SetParticleControl(particle, 1, [battle_cell_size / 2, 0, 0]);
     Particles.SetParticleControl(particle, 2, [255, 255, 255]);
     Particles.SetParticleControl(particle, 3, [50, 0, 0]);
@@ -643,46 +645,50 @@ function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | undefine
     return path.reverse();
 }
 
-const color_nothing: XYZ = [ 255, 255, 255 ];
-const color_green: XYZ = [ 128, 255, 128 ];
-const color_red: XYZ = [ 255, 128, 128 ];
-const color_yellow: XYZ = [ 255, 255, 0 ];
+function rgb(r: number, g: number, b: number): RGB {
+    return [r, g, b] as RGB;
+}
 
-function create_particle_for_outline_edge(edge: Edge, world_origin: { x: number, y: number, z: number }, from: XY, to: XY, color: XYZ) {
+const color_nothing = rgb(255, 255, 255);
+const color_green = rgb(128, 255, 128);
+const color_red = rgb(255, 128, 128);
+const color_yellow = rgb(255, 255, 0);
+
+function create_particle_for_outline_edge(edge: Edge, world_origin: { x: number, y: number, z: number }, start: XY, finish: XY, color: RGB) {
     const fx = Particles.CreateParticle("particles/ui/highlight_rope.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
     const half = battle_cell_size / 2;
     const height = 32;
 
     register_particle_for_reload(fx);
 
-    const [fr_x, fr_y, fr_z] = battle_position_to_world_position_center(world_origin, from);
-    const [to_x, to_y, to_z] = battle_position_to_world_position_center(world_origin, to);
+    const fr = battle_position_to_world_position_center(world_origin, start);
+    const to = battle_position_to_world_position_center(world_origin, finish);
 
     switch (edge) {
         case Edge.bottom: {
-            Particles.SetParticleControl(fx, 0, [fr_x - half, fr_y - half, fr_z + height]);
-            Particles.SetParticleControl(fx, 1, [to_x + half, to_y - half, to_z + height]);
+            Particles.SetParticleControl(fx, 0, [fr.x - half, fr.y - half, fr.z + height]);
+            Particles.SetParticleControl(fx, 1, [to.x + half, to.y - half, to.z + height]);
 
             break;
         }
 
         case Edge.top: {
-            Particles.SetParticleControl(fx, 0, [fr_x + half, fr_y + half, fr_z + height]);
-            Particles.SetParticleControl(fx, 1, [to_x - half, to_y + half, to_z + height]);
+            Particles.SetParticleControl(fx, 0, [fr.x + half, fr.y + half, fr.z + height]);
+            Particles.SetParticleControl(fx, 1, [to.x - half, to.y + half, to.z + height]);
 
             break;
         }
 
         case Edge.left: {
-            Particles.SetParticleControl(fx, 0, [fr_x - half, fr_y + half, fr_z + height]);
-            Particles.SetParticleControl(fx, 1, [to_x - half, to_y - half, to_z + height]);
+            Particles.SetParticleControl(fx, 0, [fr.x - half, fr.y + half, fr.z + height]);
+            Particles.SetParticleControl(fx, 1, [to.x - half, to.y - half, to.z + height]);
 
             break;
         }
 
         case Edge.right: {
-            Particles.SetParticleControl(fx, 0, [fr_x + half, fr_y - half, fr_z + height]);
-            Particles.SetParticleControl(fx, 1, [to_x + half, to_y + half, to_z + height]);
+            Particles.SetParticleControl(fx, 0, [fr.x + half, fr.y - half, fr.z + height]);
+            Particles.SetParticleControl(fx, 1, [to.x + half, to.y + half, to.z + height]);
 
             break;
         }
@@ -693,7 +699,7 @@ function create_particle_for_outline_edge(edge: Edge, world_origin: { x: number,
     return fx;
 }
 
-function highlight_outline<T extends Cell_Like>(grid: World_Grid<T>, cell_index_to_highlight: boolean[], color: XYZ): ParticleId[] {
+function highlight_outline<T extends Cell_Like>(grid: World_Grid<T>, cell_index_to_highlight: boolean[], color: RGB): ParticleId[] {
     const cell_index_to_edges: Array<{ edge: Edge, from: XY, to: XY, deleted: boolean }[]> = [];
     const unique_edges: { edge: Edge, from: XY, to: XY, deleted: boolean }[] = [];
 
@@ -770,7 +776,7 @@ function highlight_outline<T extends Cell_Like>(grid: World_Grid<T>, cell_index_
     return particles;
 }
 
-function highlight_outline_temporarily(grid: UI_Grid, cell_index_to_highlight: boolean[], color: XYZ, highlight_time: number) {
+function highlight_outline_temporarily(grid: UI_Grid, cell_index_to_highlight: boolean[], color: RGB, highlight_time: number) {
     const particles = highlight_outline(grid, cell_index_to_highlight, color);
 
     $.Schedule(highlight_time, () => {
@@ -866,15 +872,15 @@ function selection_to_grid_selection(): Grid_Selection {
     }
 }
 
-function color_cell(cell: UI_Cell, color: XYZ, alpha: number) {
+function color_cell(cell: UI_Cell, color: RGB, alpha: number) {
     Particles.SetParticleControl(cell.associated_particle, 2, color);
     Particles.SetParticleControl(cell.associated_particle, 3, [ alpha, 0, 0 ]);
 }
 
-function compute_unit_cell_color(unit_in_cell: Unit): [ XYZ, number ] {
+function compute_unit_cell_color(unit_in_cell: Unit): [RGB, number] {
     const your_turn = battle.this_player == battle.turning_player;
 
-    let cell_color: XYZ;
+    let cell_color: RGB;
 
     if (player_owns_unit(battle.this_player, unit_in_cell)) {
         if (your_turn) {
@@ -899,7 +905,7 @@ function compute_unit_cell_color(unit_in_cell: Unit): [ XYZ, number ] {
     return [ cell_color, alpha ];
 }
 
-function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, cell_index: number): [XYZ, number] {
+function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, cell_index: number): [RGB, number] {
     const rune_in_cell = battle.cell_index_to_rune[cell_index];
     const cost = path.cell_index_to_cost[cell_index];
 
@@ -918,7 +924,7 @@ function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, 
     return [color_nothing, 20];
 }
 
-function update_outline<T extends Cell_Like>(grid: World_Grid<T>, storage: ParticleId[], cell_index_to_highlight: boolean[], color: XYZ): ParticleId[] {
+function update_outline<T extends Cell_Like>(grid: World_Grid<T>, storage: ParticleId[], cell_index_to_highlight: boolean[], color: RGB): ParticleId[] {
     for (const old_particle of storage) {
         Particles.DestroyParticleEffect(old_particle, false);
         Particles.ReleaseParticleIndex(old_particle);
@@ -965,7 +971,7 @@ function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell
     for (const cell of battle.grid.cells) {
         const index = grid_cell_index(battle.grid, cell.position);
 
-        let cell_color: XYZ = color_nothing;
+        let cell_color: RGB = color_nothing;
         let alpha = 20;
 
         const unit_in_cell = battle.cell_index_to_unit[index];
@@ -1075,7 +1081,7 @@ function update_grid_visuals_for_card_selection(selection: Grid_Selection_Card, 
         const index = grid_cell_index(battle.grid, cell.position);
         const unit_in_cell = battle.cell_index_to_unit[index];
 
-        let cell_color: XYZ = color_nothing;
+        let cell_color: RGB = color_nothing;
         let alpha = 20;
 
         if (unit_in_cell) {
@@ -1099,7 +1105,7 @@ function update_grid_visuals_for_no_selection(cell_index_to_shop_highlight: bool
         const index = grid_cell_index(battle.grid, cell.position);
         const unit_in_cell = battle.cell_index_to_unit[index];
 
-        let cell_color: XYZ = color_nothing;
+        let cell_color: RGB = color_nothing;
         let alpha = 20;
 
         if (unit_in_cell) {
@@ -1533,23 +1539,23 @@ function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In
 
 function world_position_to_battle_position(world_origin: XY, position: XYZ): XY {
     return {
-        x: Math.floor((position[0] - world_origin.x) / battle_cell_size),
-        y: Math.floor((position[1] - world_origin.y) / battle_cell_size)
+        x: Math.floor((position.x - world_origin.x) / battle_cell_size),
+        y: Math.floor((position.y - world_origin.y) / battle_cell_size)
     }
 }
 
-function battle_position_to_world_position_center(world_origin: { x: number, y: number, z: number }, position: XY): XYZ {
-    return [
-        world_origin.x + position.x * battle_cell_size + battle_cell_size / 2,
-        world_origin.y + position.y * battle_cell_size + battle_cell_size / 2,
-        world_origin.z
-    ]
+function battle_position_to_world_position_center(world_origin: XYZ, position: XY): XYZ {
+    return {
+        x: world_origin.x + position.x * battle_cell_size + battle_cell_size / 2,
+        y: world_origin.y + position.y * battle_cell_size + battle_cell_size / 2,
+        z: world_origin.z
+    }
 }
 
 function move_order_particle(world_position: XYZ) {
     const particle = Particles.CreateParticle("particles/ui_mouseactions/clicked_moveto.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
 
-    Particles.SetParticleControl(particle, 0, [ world_position[0], world_position[1], world_position[2] + 32 ]);
+    Particles.SetParticleControl(particle, 0, [ world_position.x, world_position.y, world_position.z + 32 ]);
     Particles.SetParticleControl(particle, 1, [ 128, 255, 128 ]);
 
     Particles.ReleaseParticleIndex(particle);
@@ -2196,7 +2202,7 @@ function position_panel_over_entity_in_the_world(panel: Panel, entity_id: Entity
 
     if (!entity_origin) return;
 
-    position_panel_over_position_in_the_world(panel, [entity_origin[0] + offset_x, entity_origin[1], entity_origin[2] + offset_z], Align_H.center, Align_V.bottom);
+    position_panel_over_position_in_the_world(panel, xyz(entity_origin[0] + offset_x, entity_origin[1], entity_origin[2] + offset_z), Align_H.center, Align_V.bottom);
 }
 
 function update_stat_bar_positions() {
@@ -2305,7 +2311,7 @@ function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
     if (event == "pressed" || event == "doublepressed") {
         const click_behaviors = GameUI.GetClickBehaviors();
         const cursor = GameUI.GetCursorPosition();
-        const world_position = GameUI.GetScreenWorldPosition(cursor);
+        const world_position = get_screen_world_position(cursor);
 
         if (!world_position) {
             return true;
@@ -2318,7 +2324,7 @@ function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
 
         if (button == MouseButton.LEFT && selection.type == Selection_Type.none && cursor_entity == null) {
             const particle = Particles.CreateParticle("particles/ui/ground_click.vpcf", ParticleAttachment_t.PATTACH_WORLDORIGIN, 0);
-            Particles.SetParticleControl(particle, 0, world_position);
+            Particles.SetParticleControl(particle, 0, xyz_to_array(world_position));
             Particles.ReleaseParticleIndex(particle);
         }
 
@@ -2501,7 +2507,7 @@ function get_hovered_battle_position(): XY | undefined {
         }
     }
 
-    const world_position = GameUI.GetScreenWorldPosition(cursor);
+    const world_position = get_screen_world_position(cursor);
 
     if (!world_position) {
         return;
