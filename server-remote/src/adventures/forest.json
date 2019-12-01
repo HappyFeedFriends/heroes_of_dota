@@ -1,0 +1,41 @@
+{
+    "rooms": [
+        {
+            "entrance": [
+                -13878.25,
+                6870.33447265625
+            ],
+            "enemies": [
+                {
+                    "type": "spider",
+                    "position": [
+                        -13493.653320313,
+                        8863.71875
+                    ],
+                    "facing": [
+                        0.19509035348892,
+                        -0.98078525066376
+                    ],
+                    "creeps": [
+                        "spider_matriarch",
+                        "small_spider",
+                        "small_spider"
+                    ]
+                }
+            ],
+            "other_entities": [
+                {
+                    "type": "lost_creep",
+                    "position": [
+                        -13653.481445313,
+                        8150.3916015625
+                    ],
+                    "facing": [
+                        0.69675379991531,
+                        -0.71731036901474
+                    ]
+                }
+            ]
+        }
+    ]
+}

@@ -24,7 +24,7 @@ import {
     adventure_by_id,
     apply_editor_action,
     create_room_entities,
-    reload_adventures_from_file,
+    load_all_adventures,
     room_by_id, editor_create_entity, interact_with_entity, Party_Event_Type
 } from "./adventures";
 import {check_and_try_perform_ai_actions} from "./ai";
@@ -1371,7 +1371,7 @@ export function start_server(dev: boolean, seed: number) {
 
     setInterval(check_and_disconnect_offline_players, 1000);
 
-    reload_adventures_from_file();
+    load_all_adventures();
 
     if (dev_mode){
         register_dev_handlers();
