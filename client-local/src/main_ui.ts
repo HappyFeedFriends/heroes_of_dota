@@ -176,7 +176,7 @@ function get_screen_world_position(cursor: [number, number]): XYZ | undefined {
         return;
     }
 
-    return xyz(position[0], position[1], position[1]);
+    return xyz(position[0], position[1], position[2]);
 }
 
 function subscribe_to_raw_custom_event<T extends object>(event_name: string, handler: (data: T) => void) {
