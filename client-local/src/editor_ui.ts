@@ -434,6 +434,8 @@ function update_editor_cells_outline(editor: Battleground_Editor, cells: Editor_
 function battleground_editor_update_buttons_after_selection_change(editor: Battleground_Editor, brush: Battleground_Select_Brush) {
     entity_buttons.RemoveAndDeleteChildren();
 
+    const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
+
     brush.selection_outline = update_editor_cells_outline(editor, brush.selected, brush.selection_outline);
 
     const selected = brush.selected;
@@ -496,6 +498,8 @@ function battleground_editor_update_buttons_after_selection_change(editor: Battl
 
     if (selected.length > 0) {
         if (all_empty) {
+            selection_label.text = "Empty";
+
             entity_create_button("Create tree", at => ({
                 type: Spawn_Type.tree,
                 at: at
@@ -525,8 +529,15 @@ function battleground_editor_update_buttons_after_selection_change(editor: Battl
                 const spawn = editor_spawn_at_xy(editor, the_only_cell.position);
 
                 if (spawn) {
+                    const type_name = enum_to_string(spawn.type);
+                    selection_label.text = type_name[0].toUpperCase() + type_name.slice(1);
+
                     create_spawn_specific_buttons(spawn);
                 }
+            } else {
+                const cells_with_entities = selected.reduce((counter, cell) => counter + (editor_spawn_at_xy(editor, cell.position) ? 1 : 0), 0);
+
+                selection_label.text = `${cells_with_entities} ${cells_with_entities == 1 ? "entity" : "entities"}`;
             }
 
             entity_button("Delete", () => {
