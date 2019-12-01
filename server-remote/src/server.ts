@@ -35,7 +35,8 @@ import {
     Map_Player_Party, change_party_change_health, change_party_empty_slot
 } from "./adventure_party";
 import {
-    find_battleground_by_id,
+    delete_battleground_by_id,
+    find_battleground_by_id, get_all_battlegrounds,
     load_all_battlegrounds,
     make_new_battleground,
     save_battleground
@@ -1222,6 +1223,26 @@ function register_dev_handlers() {
 
         return make_ok({
             battleground: battleground
+        });
+    });
+
+    register_api_handler(Api_Request_Type.editor_delete_battleground, req => {
+        delete_battleground_by_id(req.id);
+
+        return make_ok({});
+    });
+
+    register_api_handler(Api_Request_Type.editor_list_battlegrounds, req => {
+        const battlegrounds = get_all_battlegrounds().map(bg => ({
+            id: bg.id,
+            size: {
+                x: bg.grid_size.x,
+                y: bg.grid_size.y
+            }
+        }));
+
+        return make_ok({
+            battlegrounds: battlegrounds
         });
     });
 

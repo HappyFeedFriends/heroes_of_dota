@@ -4,10 +4,14 @@ const indicator = editor_root.FindChildTraverse("editor_indicator");
 const entity_panel = indicator.FindChildTraverse("editor_entity_panel");
 const context_menu = indicator.FindChildTraverse("editor_context_menu");
 const brushes_root = indicator.FindChildTraverse("editor_brushes");
+const toolbar_root = indicator.FindChildTraverse("editor_toolbar");
 const entrance_indicator = indicator.FindChildTraverse("editor_entrance_indicator");
 
 const entity_buttons = entity_panel.FindChildTraverse("editor_entity_buttons");
 const entity_buttons_dropdown = entity_panel.FindChildTraverse("editor_entity_dropdown");
+
+const toolbar_buttons = toolbar_root.FindChildTraverse("editor_toolbar_buttons");
+const toolbar_buttons_dropdown = toolbar_root.FindChildTraverse("editor_toolbar_dropdown");
 
 const zone_color = rgb(64, 200, 255);
 
@@ -334,6 +338,10 @@ function context_menu_button(text: string, action: () => void) {
     });
 }
 
+function toolbar_button(text: string, action: (btn: Panel) => void) {
+    return text_button(toolbar_buttons, "toolbar_button", text, action);
+}
+
 function destroy_rect_outline(rect: Rect_Outline) {
     destroy_fx(rect.bottom);
     destroy_fx(rect.left);
@@ -437,6 +445,7 @@ function battleground_editor_update_buttons_after_selection_change(editor: Battl
 
             battleground_editor_update_buttons_after_selection_change(editor, brush);
             submit_editor_battleground_for_repaint(editor);
+            submit_battleground_state_to_server(editor);
         });
     }
 
@@ -527,6 +536,7 @@ function battleground_editor_update_buttons_after_selection_change(editor: Battl
 
                 battleground_editor_update_buttons_after_selection_change(editor, brush);
                 submit_editor_battleground_for_repaint(editor);
+                submit_battleground_state_to_server(editor);
             }, "editor_entity_delete_button");
         }
     }
@@ -709,6 +719,7 @@ function battleground_editor_set_grid_brush_selection_state(editor: Battleground
             editor.cells = fill_battleground_editor_cells(editor.grid_world_origin, editor.grid_size.x, editor.grid_size.y);
             battleground_editor_set_grid_brush_selection_state(editor, brush, { active: false });
             submit_editor_battleground_for_repaint(editor);
+            submit_battleground_state_to_server(editor);
         });
     }
 }
@@ -1007,6 +1018,7 @@ function update_battleground_brush_from_cursor(editor: Battleground_Editor, posi
             }
 
             submit_editor_battleground_for_repaint(editor);
+            submit_battleground_state_to_server(editor);
 
             break;
         }
@@ -1321,6 +1333,67 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
     });
 
     update_brush_button_styles();
+
+    toolbar_button("New", async () => {
+        const response = await async_api_request(Api_Request_Type.editor_create_battleground, {});
+        const origin = await async_local_api_request(Local_Api_Request_Type.get_battle_position, {});
+
+        exit_current_editor();
+        enter_battleground_editor(origin, response.id, response.battleground);
+    });
+
+    function dropdown_button(text: string, action: () => void) {
+        return text_button(toolbar_buttons_dropdown, "toolbar_dropdown_button", text, action);
+    }
+
+    let dropdown_opened_by: Panel | undefined = undefined;
+    const all_dropdown_opening_buttons: Panel[] = [];
+
+    function dropdown_opening_button(text: string, action: (close: () => void) => void) {
+        const button = toolbar_button(text, async button => {
+            toolbar_buttons_dropdown.RemoveAndDeleteChildren();
+
+            const opened = dropdown_opened_by != button;
+
+            dropdown_opened_by = opened ? button : undefined;
+
+            for (const other_button of all_dropdown_opening_buttons) {
+                other_button.SetHasClass("active", dropdown_opened_by == other_button);
+            }
+
+            if (opened) {
+                action(() => {
+                    toolbar_buttons_dropdown.RemoveAndDeleteChildren();
+                    button.SetHasClass("active", false);
+                    dropdown_opened_by = undefined;
+                });
+            }
+        });
+
+        all_dropdown_opening_buttons.push(button);
+    }
+
+    dropdown_opening_button("Open", async () => {
+        const response = await async_api_request(Api_Request_Type.editor_list_battlegrounds, {});
+
+        for (const bg of response.battlegrounds) {
+            dropdown_button(`#${bg.id} (${bg.size.x}x${bg.size.y})`, () => {
+                exit_current_editor();
+                load_battleground_editor(bg.id);
+            });
+        }
+    });
+
+    dropdown_opening_button("Delete", async close_dropdown => {
+        dropdown_button("Confirm", async () => {
+            await async_api_request(Api_Request_Type.editor_delete_battleground, { id: id });
+            exit_current_editor();
+            await load_battleground_editor(0 as Battleground_Id);
+        });
+
+        dropdown_button("Cancel", () => close_dropdown());
+    });
+
     submit_editor_battleground_for_repaint(editor);
     update_state_from_editor_mode(current_state, editor);
 }
@@ -1339,6 +1412,8 @@ function enter_adventure_editor() {
 
 function exit_current_editor() {
     brushes_root.RemoveAndDeleteChildren();
+    toolbar_buttons.RemoveAndDeleteChildren();
+    toolbar_buttons_dropdown.RemoveAndDeleteChildren();
 
     switch (editor.type) {
         case Editor_Type.battleground: {
@@ -1426,8 +1501,6 @@ function submit_editor_battleground_for_repaint(editor: Battleground_Editor) {
         type: Editor_Action_Type.submit_battleground,
         spawns: flattened_spawns
     });
-
-    submit_battleground_state_to_server(editor);
 }
 
 function exit_editor() {

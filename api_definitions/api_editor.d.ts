@@ -55,6 +55,24 @@ type Editor_Handlers = {
     response: {
         battleground: Battleground
     }
+} | {
+    type: Api_Request_Type.editor_list_battlegrounds
+    request: {}
+    response: {
+        battlegrounds: {
+            id: Battleground_Id
+            size: {
+                x: number
+                y: number
+            }
+        }[]
+    }
+} | {
+    type: Api_Request_Type.editor_delete_battleground
+    request: {
+        id: Battleground_Id
+    }
+    response: {}
 }
 
 type Adventure_Editor_Action = {

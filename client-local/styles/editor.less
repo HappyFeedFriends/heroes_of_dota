@@ -157,6 +157,42 @@
     }
   }
 
+  #editor_toolbar {
+    align: left top;
+    margin: 40px;
+    margin-top: 120px;
+    flow-children: right;
+
+    #editor_toolbar_buttons {
+      flow-children: down;
+
+      .toolbar_button {
+        margin: 6px;
+        width: 150px;
+        height: 30px;
+
+        &.active {
+          border: 2px solid #c8fcff;
+          box-shadow: #c8fcff 0 0 4px 0;
+        }
+
+        #button(#7abaff, 20px);
+      }
+    }
+
+    #editor_toolbar_dropdown {
+      flow-children: down;
+
+      .toolbar_dropdown_button {
+        width: 180px;
+        height: 30px;
+        margin: 4px;
+
+        #button(#76cdff, 16px);
+      }
+    }
+  }
+
   #editor_brushes {
     align: center bottom;
     flow-children: right;

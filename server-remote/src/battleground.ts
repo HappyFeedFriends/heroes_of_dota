@@ -1,4 +1,4 @@
-import {readdirSync, readFileSync, writeFileSync} from "fs";
+import {readdirSync, readFileSync, writeFileSync, unlinkSync} from "fs";
 import {try_string_to_enum_value} from "./server";
 
 type Persistent_Battleground =  Battleground & {
@@ -54,6 +54,20 @@ let id_auto_increment = 0;
 
 export function find_battleground_by_id(id: Battleground_Id) {
     return battlegrounds.find(bg => bg.id == id);
+}
+
+export function delete_battleground_by_id(id: Battleground_Id) {
+    const index = battlegrounds.findIndex(bg => bg.id == id);
+
+    if (index != -1) {
+        unlinkSync(`${storage_dir_path}/${id.toString(10)}.json`);
+
+        battlegrounds.splice(index, 1);
+    }
+}
+
+export function get_all_battlegrounds() {
+    return battlegrounds;
 }
 
 export function make_new_battleground(): Persistent_Battleground {
