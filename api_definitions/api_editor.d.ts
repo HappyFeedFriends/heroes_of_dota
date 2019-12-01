@@ -47,6 +47,14 @@ type Editor_Handlers = {
         battleground: Battleground
     }
     response: {}
+} | {
+    type: Api_Request_Type.editor_get_battleground
+    request: {
+        id: Battleground_Id
+    }
+    response: {
+        battleground: Battleground
+    }
 }
 
 type Adventure_Editor_Action = {

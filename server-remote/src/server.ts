@@ -1213,6 +1213,18 @@ function register_dev_handlers() {
         return make_ok({});
     });
 
+    register_api_handler(Api_Request_Type.editor_get_battleground, req => {
+        const battleground = find_battleground_by_id(req.id);
+
+        if (!battleground) {
+            return make_error(400);
+        }
+
+        return make_ok({
+            battleground: battleground
+        });
+    });
+
     register_api_handler(Api_Request_Type.editor_action, req => {
         return with_player_in_request(req, player => {
             if (player.online.state != Player_State.on_adventure) return;

@@ -35,6 +35,7 @@ type Adventure_Editor = {
 }
 
 type Battleground_Editor = {
+    current_id: Battleground_Id
     type: Editor_Type.battleground
     cells: Editor_Cell[][]
     grid_world_origin: {
@@ -435,7 +436,7 @@ function battleground_editor_update_buttons_after_selection_change(editor: Battl
             action();
 
             battleground_editor_update_buttons_after_selection_change(editor, brush);
-            submit_editor_battleground(editor);
+            submit_editor_battleground_for_repaint(editor);
         });
     }
 
@@ -525,7 +526,7 @@ function battleground_editor_update_buttons_after_selection_change(editor: Battl
                 }
 
                 battleground_editor_update_buttons_after_selection_change(editor, brush);
-                submit_editor_battleground(editor);
+                submit_editor_battleground_for_repaint(editor);
             }, "editor_entity_delete_button");
         }
     }
@@ -595,6 +596,8 @@ function battleground_editor_set_deployment_brush_selection_state(editor: Battle
 
     function update_editor_zones() {
         editor.deployment_zones = brush.zones.map(zone => copy<Deployment_Zone>(zone));
+
+        submit_battleground_state_to_server(editor);
     }
 
     function deselect() {
@@ -681,7 +684,7 @@ function battleground_editor_set_grid_brush_selection_state(editor: Battleground
             battleground_editor_cleanup_cells(editor);
             editor.cells = fill_battleground_editor_cells(editor.grid_world_origin, editor.grid_size.x, editor.grid_size.y);
             battleground_editor_set_grid_brush_selection_state(editor, brush, { active: false });
-            submit_editor_battleground(editor);
+            submit_editor_battleground_for_repaint(editor);
         });
     }
 }
@@ -978,7 +981,7 @@ function update_battleground_brush_from_cursor(editor: Battleground_Editor, posi
                 });
             }
 
-            submit_editor_battleground(editor);
+            submit_editor_battleground_for_repaint(editor);
 
             break;
         }
@@ -1163,8 +1166,13 @@ function update_adventure_editor_buttons(editor: Adventure_Editor) {
     });
 }
 
-function load_battleground_editor() {
-    local_api_request(Local_Api_Request_Type.get_battle_position, {}, enter_battleground_editor);
+function load_battleground_editor(for_battleground: Battleground_Id) {
+    // TODO try async/await?
+    local_api_request(Local_Api_Request_Type.get_battle_position, {}, origin => {
+        api_request(Api_Request_Type.editor_get_battleground, { id: for_battleground }, response => {
+            enter_battleground_editor(origin, for_battleground, response.battleground);
+        })
+    });
 }
 
 function fill_battleground_editor_cells(grid_world_origin: { x: number, y: number, z: number }, w: number, h: number): Editor_Cell[][] {
@@ -1210,9 +1218,9 @@ function battleground_editor_cleanup_cells(editor: Battleground_Editor) {
     }
 }
 
-function enter_battleground_editor(grid_world_origin: { x: number, y: number, z: number }) {
-    const grid_w = 14;
-    const grid_h = 10;
+function enter_battleground_editor(grid_world_origin: { x: number, y: number, z: number }, id: Battleground_Id, battleground: Battleground) {
+    const grid_w = battleground.grid_size.x;
+    const grid_h = battleground.grid_size.y;
 
     const default_selection_brush: Battleground_Brush = {
         type: Battleground_Brush_Type.select,
@@ -1223,13 +1231,18 @@ function enter_battleground_editor(grid_world_origin: { x: number, y: number, z:
 
     const new_editor: Battleground_Editor = {
         type: Editor_Type.battleground,
+        current_id: id,
         cells: fill_battleground_editor_cells(grid_world_origin, grid_w, grid_h),
         grid_size: xy(grid_w, grid_h),
         spawns: [],
         grid_world_origin: grid_world_origin,
         brush: default_selection_brush,
-        deployment_zones: []
+        deployment_zones: battleground.deployment_zones
     };
+
+    for (const spawn of battleground.spawns) {
+        editor_set_spawn_at(new_editor, spawn.at, spawn);
+    }
 
     editor = new_editor;
 
@@ -1294,7 +1307,7 @@ function enter_battleground_editor(grid_world_origin: { x: number, y: number, z:
     });
 
     update_brush_button_styles();
-    submit_editor_battleground(editor);
+    submit_editor_battleground_for_repaint(editor);
     update_state_from_editor_mode(current_state, editor);
 }
 
@@ -1349,7 +1362,7 @@ function update_editor_buttons(state: Player_State) {
         });
     } else {
         editor_button("Battleground editor", () => {
-            load_battleground_editor();
+            load_battleground_editor(0 as Battleground_Id);
         });
     }
 
@@ -1371,7 +1384,22 @@ function update_editor_buttons(state: Player_State) {
     }
 }
 
-function submit_editor_battleground(editor: Battleground_Editor) {
+function submit_battleground_state_to_server(editor: Battleground_Editor) {
+    const flattened_spawns: Battleground_Spawn[] = [];
+
+    for_each_editor_spawn(editor.spawns, spawn => flattened_spawns.push(spawn));
+
+    api_request(Api_Request_Type.editor_submit_battleground, {
+        id: editor.current_id,
+        battleground: {
+            grid_size: editor.grid_size,
+            deployment_zones: editor.deployment_zones,
+            spawns: flattened_spawns
+        }
+    }, () => {});
+}
+
+function submit_editor_battleground_for_repaint(editor: Battleground_Editor) {
     const flattened_spawns: Battleground_Spawn[] = [];
 
     for_each_editor_spawn(editor.spawns, spawn => flattened_spawns.push(spawn));
@@ -1379,6 +1407,8 @@ function submit_editor_battleground(editor: Battleground_Editor) {
         type: Editor_Action_Type.submit_battleground,
         spawns: flattened_spawns
     });
+
+    submit_battleground_state_to_server(editor);
 }
 
 function exit_editor() {

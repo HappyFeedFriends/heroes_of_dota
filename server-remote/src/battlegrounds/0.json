@@ -15,7 +15,7 @@
         {
             "min_x": 10,
             "min_y": 1,
-            "max_x": 13,
+            "max_x": 12,
             "max_y": 5,
             "face_x": -1,
             "face_y": 0
@@ -24,6 +24,22 @@
     "trees": [
         {
             "x": 0,
+            "y": 0
+        },
+        {
+            "x": 0,
+            "y": 1
+        },
+        {
+            "x": 0,
+            "y": 2
+        },
+        {
+            "x": 1,
+            "y": 0
+        },
+        {
+            "x": 1,
             "y": 2
         },
         {
@@ -35,24 +51,20 @@
             "y": 0
         },
         {
+            "x": 4,
+            "y": 3
+        },
+        {
+            "x": 4,
+            "y": 8
+        },
+        {
+            "x": 4,
+            "y": 9
+        },
+        {
             "x": 8,
             "y": 1
-        },
-        {
-            "x": 1,
-            "y": 2
-        },
-        {
-            "x": 0,
-            "y": 1
-        },
-        {
-            "x": 1,
-            "y": 0
-        },
-        {
-            "x": 0,
-            "y": 0
         },
         {
             "x": 10,
@@ -65,21 +77,24 @@
         {
             "x": 12,
             "y": 7
-        },
-        {
-            "x": 4,
-            "y": 3
-        },
-        {
-            "x": 4,
-            "y": 9
-        },
-        {
-            "x": 4,
-            "y": 8
         }
     ],
     "shops": [
+        {
+            "x": 1,
+            "y": 3,
+            "face_x": 0,
+            "face_y": 1,
+            "type": "normal",
+            "items": [
+                "belt_of_strength",
+                "blades_of_attack",
+                "boots_of_speed",
+                "morbid_mask",
+                "chainmail",
+                "enchanted_mango"
+            ]
+        },
         {
             "x": 6,
             "y": 8,
@@ -98,21 +113,6 @@
                 "armlet",
                 "octarine_core",
                 "basher"
-            ]
-        },
-        {
-            "x": 1,
-            "y": 3,
-            "face_x": 0,
-            "face_y": 1,
-            "type": "normal",
-            "items": [
-                "belt_of_strength",
-                "blades_of_attack",
-                "boots_of_speed",
-                "morbid_mask",
-                "chainmail",
-                "enchanted_mango"
             ]
         },
         {
