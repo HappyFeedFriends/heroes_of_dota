@@ -183,7 +183,7 @@ type Hover_State_Ability = {
 type UI_Grid = World_Grid<UI_Cell>;
 
 type World_Grid<T extends Cell_Like> = Grid<T> & {
-    world_origin: { x: number, y: number, z: number }
+    world_origin: XYZ
 }
 
 let battle: UI_Battle;
@@ -648,7 +648,7 @@ const color_green = rgb(128, 255, 128);
 const color_red = rgb(255, 128, 128);
 const color_yellow = rgb(255, 255, 0);
 
-function create_particle_for_outline_edge(edge: Edge, world_origin: { x: number, y: number, z: number }, start: XY, finish: XY, color: RGB) {
+function create_particle_for_outline_edge(edge: Edge, world_origin: XYZ, start: XY, finish: XY, color: RGB) {
     const fx = Particles.CreateParticle("particles/ui/highlight_rope.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
     const half = battle_cell_size / 2;
     const height = 32;

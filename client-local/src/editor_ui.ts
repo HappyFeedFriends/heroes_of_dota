@@ -341,7 +341,7 @@ function destroy_rect_outline(rect: Rect_Outline) {
     destroy_fx(rect.right);
 }
 
-function make_rect_outline(world_origin: { x: number, y: number, z: number }, from: XY, to: XY, color: RGB): Rect_Outline {
+function make_rect_outline(world_origin: XYZ, from: XY, to: XY, color: RGB): Rect_Outline {
     const min = xy(Math.min(from.x, to.x), Math.min(from.y, to.y));
     const max = xy(Math.max(from.x, to.x), Math.max(from.y, to.y));
 
@@ -1198,7 +1198,7 @@ async function load_battleground_editor(for_battleground: Battleground_Id) {
     enter_battleground_editor(origin, for_battleground, response.battleground);
 }
 
-function fill_battleground_editor_cells(grid_world_origin: { x: number, y: number, z: number }, w: number, h: number): Editor_Cell[][] {
+function fill_battleground_editor_cells(grid_world_origin: XYZ, w: number, h: number): Editor_Cell[][] {
     const cells: Editor_Cell[][] = [];
 
     for (let x = 0; x < w; x++) {
@@ -1232,7 +1232,7 @@ function battleground_editor_cleanup_cells(editor: Battleground_Editor) {
     }
 }
 
-function enter_battleground_editor(grid_world_origin: { x: number, y: number, z: number }, id: Battleground_Id, battleground: Battleground) {
+function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, battleground: Battleground) {
     const grid_w = battleground.grid_size.x;
     const grid_h = battleground.grid_size.y;
 
