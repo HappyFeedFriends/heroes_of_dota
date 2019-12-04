@@ -3,7 +3,8 @@ declare const enum Adventure_Editor_Action_Type {
     set_entity_facing = 1,
     delete_entity = 2,
     set_entrance = 3,
-    edit_enemy_deck = 4
+    edit_enemy_deck = 4,
+    set_enemy_battleground = 5
 }
 
 type Editor_Handlers = {
@@ -26,12 +27,13 @@ type Editor_Handlers = {
     } & With_Token
     response: Adventure_Entity
 } | {
-    type: Api_Request_Type.editor_get_enemy_deck
+    type: Api_Request_Type.editor_get_enemy_data
     request: {
         entity_id: Adventure_Entity_Id
     } & With_Token
     response: {
         creeps: Creep_Type[]
+        battleground: Battleground_Id
     }
 } | {
     type: Api_Request_Type.editor_create_battleground
@@ -102,6 +104,10 @@ type Adventure_Editor_Action = {
     type: Adventure_Editor_Action_Type.edit_enemy_deck
     entity_id: Adventure_Entity_Id
     creeps: Creep_Type[]
+} | {
+    type: Adventure_Editor_Action_Type.set_enemy_battleground
+    entity_id: Adventure_Entity_Id
+    battleground: Battleground_Id
 }
 
 declare const enum Spawn_Type {

@@ -52,6 +52,13 @@ type Battleground_Editor = {
     spawns: Battleground_Spawn[][]
     brush: Battleground_Brush
     deployment_zones: Deployment_Zone[]
+    enemy_data?: Editor_Enemy_Battleground_Data
+}
+
+type Editor_Enemy_Battleground_Data = {
+    id: Adventure_Entity_Id
+    name: string
+    current_battleground_id: Battleground_Id
 }
 
 type Editor_Cell = {
@@ -69,7 +76,6 @@ type Adventure_Editor_Selection = {
     type: Adventure_Entity_Type.enemy
     entity: EntityId
     particle: ParticleId
-    creeps: Creep_Type[]
     highlighted_creep_button?: Panel
 } | {
     selected: true
@@ -216,7 +222,15 @@ function dropdown_button(text: string, action: () => void) {
     return text_button(entity_buttons_dropdown, "editor_entity_dropdown_button", text, action);
 }
 
-function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, adventure_entity_id: Adventure_Entity_Id, creeps: Creep_Type[], reselect: () => void) {
+function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, id: Adventure_Entity_Id, name: string, battleground: Battleground_Id, creeps: Creep_Type[], reselect: () => void) {
+    entity_button(`Battleground: #${id}`, () => {
+        load_battleground_editor(battleground, {
+            current_battleground_id: battleground,
+            id: id,
+            name: name
+        })
+    });
+
     for (let index = 0; index < creeps.length + 1; index++) {
         const creep = creeps[index];
         const text = index < creeps.length ? enum_to_string(creep) : "Add a creep";
@@ -250,7 +264,7 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, adventure
 
                     api_request(Api_Request_Type.editor_action, {
                         type: Adventure_Editor_Action_Type.edit_enemy_deck,
-                        entity_id: adventure_entity_id,
+                        entity_id: id,
                         creeps: creeps,
                         access_token: get_access_token()
                     }, reselect);
@@ -275,7 +289,7 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Entity
     }
 
     if (entity_type == Adventure_Entity_Type.enemy) {
-        api_request(Api_Request_Type.editor_get_enemy_deck, {
+        api_request(Api_Request_Type.editor_get_enemy_data, {
             entity_id: adventure_entity_id,
             access_token: get_access_token()
         }, data => {
@@ -288,14 +302,13 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Entity
                 type: Adventure_Entity_Type.enemy,
                 id: adventure_entity_id,
                 entity: entity,
-                particle: fx,
-                creeps: data.creeps
+                particle: fx
             };
 
             const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
             selection_label.text = `Selected: ${name}`;
 
-            create_adventure_enemy_menu_buttons(editor, adventure_entity_id, data.creeps, () => {
+            create_adventure_enemy_menu_buttons(editor, adventure_entity_id, name, data.battleground, data.creeps, () => {
                 adventure_editor_select_entity(editor, entity, adventure_entity_id, entity_type, name);
             });
 
@@ -904,6 +917,7 @@ function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: Mo
                                 type: Editor_Action_Type.create_entity,
                                 definition: {
                                     type: entity_type,
+                                    battleground: 0 as Battleground_Id,
                                     npc_type: npc_type,
                                     spawn_position: xy(click_world_position.x, click_world_position.y),
                                     spawn_facing: xy(1, 0),
@@ -1214,11 +1228,11 @@ function update_adventure_editor_buttons(editor: Adventure_Editor) {
     });
 }
 
-async function load_battleground_editor(for_battleground: Battleground_Id) {
+async function load_battleground_editor(for_battleground: Battleground_Id, enemy?: Editor_Enemy_Battleground_Data) {
     const origin = await async_local_api_request(Local_Api_Request_Type.get_battle_position, {});
     const response = await async_api_request(Api_Request_Type.editor_get_battleground, { id: for_battleground });
 
-    enter_battleground_editor(origin, for_battleground, response.battleground);
+    enter_battleground_editor(origin, for_battleground, response.battleground, enemy);
 }
 
 function fill_battleground_editor_cells(grid_world_origin: XYZ, w: number, h: number): Editor_Cell[][] {
@@ -1255,7 +1269,7 @@ function battleground_editor_cleanup_cells(editor: Battleground_Editor) {
     }
 }
 
-function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, battleground: Battleground) {
+function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, battleground: Battleground, enemy?: Editor_Enemy_Battleground_Data) {
     const grid_w = battleground.grid_size.x;
     const grid_h = battleground.grid_size.y;
 
@@ -1274,14 +1288,15 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
         spawns: [],
         grid_world_origin: grid_world_origin,
         brush: default_selection_brush,
-        deployment_zones: battleground.deployment_zones
+        deployment_zones: battleground.deployment_zones,
+        enemy_data: enemy
     };
 
     for (const spawn of battleground.spawns) {
         editor_set_spawn_at(new_editor, spawn.at, spawn);
     }
 
-    editor = new_editor;
+    set_current_editor(new_editor);
 
     const buttons: Brush_Button[] = [];
 
@@ -1349,12 +1364,21 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
         const response = await async_api_request(Api_Request_Type.editor_create_battleground, {});
         const origin = await async_local_api_request(Local_Api_Request_Type.get_battle_position, {});
 
-        exit_current_editor();
+        cleanup_current_editor();
         enter_battleground_editor(origin, response.id, response.battleground);
     });
 
     function dropdown_button(text: string, action: () => void) {
         return text_button(toolbar_buttons_dropdown, "toolbar_dropdown_button", text, action);
+    }
+
+    async function set_enemy_battleground(enemy: Editor_Enemy_Battleground_Data, battleground: Battleground_Id) {
+        await async_api_request(Api_Request_Type.editor_action, {
+            type: Adventure_Editor_Action_Type.set_enemy_battleground,
+            entity_id: enemy.id,
+            battleground: battleground,
+            access_token: get_access_token()
+        });
     }
 
     let dropdown_opened_by: Panel | undefined = undefined;
@@ -1382,6 +1406,8 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
         });
 
         all_dropdown_opening_buttons.push(button);
+
+        return button;
     }
 
     dropdown_opening_button("Open", async () => {
@@ -1389,8 +1415,8 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
 
         for (const bg of response.battlegrounds) {
             dropdown_button(`#${bg.id} (${bg.size.x}x${bg.size.y})`, () => {
-                exit_current_editor();
-                load_battleground_editor(bg.id);
+                cleanup_current_editor();
+                load_battleground_editor(bg.id, enemy);
             });
         }
     });
@@ -1398,19 +1424,67 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
     dropdown_opening_button("Delete", async close_dropdown => {
         dropdown_button("Confirm", async () => {
             await async_api_request(Api_Request_Type.editor_delete_battleground, { id: id });
-            exit_current_editor();
-            await load_battleground_editor(0 as Battleground_Id);
+
+            if (enemy) {
+                await set_enemy_battleground(enemy, 0 as Battleground_Id);
+            }
+
+            cleanup_current_editor();
+            await load_battleground_editor(0 as Battleground_Id, enemy);
         });
 
         dropdown_button("Cancel", () => close_dropdown());
     });
 
-    submit_editor_battleground_for_repaint(editor);
+    if (enemy) {
+        const label = $.CreatePanel("Label", toolbar_buttons, "");
+        label.text = `Editing ${enemy.name}`;
+
+        if (enemy.current_battleground_id != id) {
+            const assign_button = dropdown_opening_button("Assign battleground", async close_dropdown => {
+                dropdown_button("Confirm", async () => {
+                    await set_enemy_battleground(enemy, id);
+
+                    close_dropdown();
+
+                    enemy.current_battleground_id = id;
+
+                    assign_button.DeleteAsync(0);
+                });
+
+                dropdown_button("Cancel", () => close_dropdown());
+            });
+
+            toolbar_button(`Open current`, () => {
+                cleanup_current_editor();
+                load_battleground_editor(enemy.current_battleground_id, enemy);
+            });
+        }
+
+        // TODO doesn't work properly because of tech issuse
+        //      https://trello.com/c/4ZAJpnlH/239-tech-remake-all-adventure-editor-requests-to-accept-adventure-room-id
+        toolbar_button("Back to adventure", () => {
+            cleanup_current_editor();
+            enter_adventure_editor();
+        });
+    }
+
+    submit_editor_battleground_for_repaint(new_editor);
     update_state_from_editor_mode(current_state, editor);
 }
 
+function set_current_editor(new_editor: Editor) {
+    brushes_root.RemoveAndDeleteChildren();
+    entity_buttons.RemoveAndDeleteChildren();
+    entity_buttons_dropdown.RemoveAndDeleteChildren();
+    toolbar_buttons.RemoveAndDeleteChildren();
+    toolbar_buttons_dropdown.RemoveAndDeleteChildren();
+
+    editor = new_editor;
+}
+
 function enter_adventure_editor() {
-    editor = adventure_editor;
+    set_current_editor(adventure_editor);
 
     api_request(Api_Request_Type.editor_get_room_details, {
         access_token: get_access_token()
@@ -1421,11 +1495,7 @@ function enter_adventure_editor() {
     });
 }
 
-function exit_current_editor() {
-    brushes_root.RemoveAndDeleteChildren();
-    toolbar_buttons.RemoveAndDeleteChildren();
-    toolbar_buttons_dropdown.RemoveAndDeleteChildren();
-
+function cleanup_current_editor() {
     switch (editor.type) {
         case Editor_Type.battleground: {
             dispatch_editor_action({
@@ -1515,9 +1585,9 @@ function submit_editor_battleground_for_repaint(editor: Battleground_Editor) {
 }
 
 function exit_editor() {
-    exit_current_editor();
+    cleanup_current_editor();
 
-    editor = { type: Editor_Type.none };
+    set_current_editor({ type: Editor_Type.none });
 }
 
 function init_editor_ui() {

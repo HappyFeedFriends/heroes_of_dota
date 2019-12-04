@@ -166,9 +166,18 @@
     #editor_toolbar_buttons {
       flow-children: down;
 
+      &>Label {
+        color: white;
+        font-family: @font-regular;
+        font-size: 22px;
+        margin-top: 20px;
+        margin-bottom: 10px;
+        horizontal-align: center;
+      }
+
       .toolbar_button {
         margin: 6px;
-        width: 150px;
+        width: 180px;
         height: 30px;
 
         &.active {

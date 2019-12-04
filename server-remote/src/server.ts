@@ -1104,7 +1104,7 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
         if (!entity) return;
         if (entity.definition.type != Adventure_Entity_Type.enemy) return;
 
-        const battleground = find_battleground_by_id(0 as Battleground_Id);
+        const battleground = find_battleground_by_id(entity.definition.battleground);
 
         if (!battleground) {
             return;
@@ -1227,6 +1227,10 @@ function register_dev_handlers() {
     });
 
     register_api_handler(Api_Request_Type.editor_delete_battleground, req => {
+        if (req.id == 0) {
+            return make_error(400); // Some things rely on 0th bg existing
+        }
+
         delete_battleground_by_id(req.id);
 
         return make_ok({});
@@ -1279,7 +1283,7 @@ function register_dev_handlers() {
         });
     });
 
-    register_api_handler(Api_Request_Type.editor_get_enemy_deck, req => {
+    register_api_handler(Api_Request_Type.editor_get_enemy_data, req => {
         return with_player_in_request(req, player => {
             if (player.online.state != Player_State.on_adventure) return;
 
@@ -1288,7 +1292,8 @@ function register_dev_handlers() {
             if (entity.definition.type != Adventure_Entity_Type.enemy) return;
 
             return {
-                creeps: entity.definition.creeps
+                creeps: entity.definition.creeps,
+                battleground: entity.definition.battleground
             };
         });
     });

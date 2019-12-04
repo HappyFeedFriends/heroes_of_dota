@@ -109,6 +109,7 @@ type Adventure_Enemy_Definition = Adventure_Entity_Definition_Base & {
     type: Adventure_Entity_Type.enemy
     npc_type: Npc_Type
     creeps: Creep_Type[]
+    battleground: Battleground_Id
 }
 
 type Adventure_Lost_Creep_Definition = Adventure_Entity_Definition_Base & {

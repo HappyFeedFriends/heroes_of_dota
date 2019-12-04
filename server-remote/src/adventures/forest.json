@@ -20,7 +20,8 @@
                         "spider_matriarch",
                         "small_spider",
                         "small_spider"
-                    ]
+                    ],
+                    "battleground": 3
                 }
             ],
             "other_entities": [

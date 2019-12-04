@@ -34,6 +34,7 @@ type Adventure_File = {
             position: [number, number]
             facing: [number, number],
             creeps: string[]
+            battleground: number
         }>
         other_entities?: Array<{
             type: string
@@ -181,6 +182,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             entities.push({
                 type: Adventure_Entity_Type.enemy,
                 npc_type: npc_type,
+                battleground: source_enemy.battleground as Battleground_Id,
                 spawn_position: {
                     x: source_enemy.position[0],
                     y: source_enemy.position[1]
@@ -233,7 +235,8 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                         type: enum_to_string(entity.npc_type),
                         position: [entity.spawn_position.x, entity.spawn_position.y],
                         facing: [entity.spawn_facing.x, entity.spawn_facing.y],
-                        creeps: entity.creeps.map(type => enum_to_string<Creep_Type>(type))
+                        creeps: entity.creeps.map(type => enum_to_string<Creep_Type>(type)),
+                        battleground: entity.battleground
                     })
                 }
             }
@@ -343,6 +346,16 @@ export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventur
             if (enemy.definition.type != Adventure_Entity_Type.enemy) return;
 
             enemy.definition.creeps = action.creeps;
+
+            break;
+        }
+
+        case Adventure_Editor_Action_Type.set_enemy_battleground: {
+            const enemy = ongoing.entities.find(entity => entity.id == action.entity_id);
+            if (!enemy) return;
+            if (enemy.definition.type != Adventure_Entity_Type.enemy) return;
+
+            enemy.definition.battleground = action.battleground;
 
             break;
         }
