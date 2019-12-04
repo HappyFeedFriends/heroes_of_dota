@@ -35,7 +35,7 @@ import {
     Map_Player_Party, change_party_change_health, change_party_empty_slot
 } from "./adventure_party";
 import {
-    delete_battleground_by_id,
+    delete_battleground_by_id, duplicate_battleground,
     find_battleground_by_id, get_all_battlegrounds,
     load_all_battlegrounds,
     make_new_battleground,
@@ -1234,6 +1234,20 @@ function register_dev_handlers() {
         delete_battleground_by_id(req.id);
 
         return make_ok({});
+    });
+
+    register_api_handler(Api_Request_Type.editor_duplicate_battleground, req => {
+        const battleground = find_battleground_by_id(req.id);
+
+        if (!battleground) {
+            return make_error(400);
+        }
+
+        const new_id = duplicate_battleground(battleground);
+
+        return make_ok({
+            new_id: new_id
+        });
     });
 
     register_api_handler(Api_Request_Type.editor_list_battlegrounds, req => {

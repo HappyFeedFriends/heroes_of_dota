@@ -66,6 +66,21 @@ export function delete_battleground_by_id(id: Battleground_Id) {
     }
 }
 
+export function duplicate_battleground(battleground: Persistent_Battleground): Battleground_Id {
+    const file_object = battleground_to_file_object(battleground);
+    const copy = load_battleground_from_file("dummy", file_object)!;
+    const new_id = fetch_new_battleground_id();
+
+    battlegrounds.push({
+        id: new_id,
+        ...copy
+    });
+
+    persist_battleground_to_file_system(new_id, copy);
+
+    return new_id;
+}
+
 export function get_all_battlegrounds() {
     return battlegrounds;
 }
@@ -131,7 +146,8 @@ export function load_all_battlegrounds(): boolean {
         console.log(`Loading battleground #${id}`);
 
         const full_path = `${storage_dir_path}/${full_name}`;
-        const battleground = load_battleground_from_file(full_path);
+        const file = JSON.parse(readFileSync(full_path, "utf8")) as Battleground_File;
+        const battleground = load_battleground_from_file(full_path, file);
 
         if (!battleground) {
             console.error(`Error while loading battleground from '${full_path}'`);
@@ -152,7 +168,7 @@ export function load_all_battlegrounds(): boolean {
     return true;
 }
 
-function persist_battleground_to_file_system(id: Battleground_Id, battleground: Battleground) {
+function battleground_to_file_object(battleground: Battleground) {
     const file: Battleground_File = {
         grid_size: copy<XY>(battleground.grid_size),
         deployment_zones: battleground.deployment_zones.map(zone => copy<Battleground_File["deployment_zones"][0]>(zone)),
@@ -210,6 +226,11 @@ function persist_battleground_to_file_system(id: Battleground_Id, battleground: 
         }
     }
 
+    return file;
+}
+
+function persist_battleground_to_file_system(id: Battleground_Id, battleground: Battleground) {
+    const file = battleground_to_file_object(battleground);
     const path = `${storage_dir_path}/${id.toString(10)}.json`;
 
     console.log(`Saving ${path}`);
@@ -217,8 +238,7 @@ function persist_battleground_to_file_system(id: Battleground_Id, battleground: 
     writeFileSync(path, JSON.stringify(file, (key, value) => value, "    "));
 }
 
-function load_battleground_from_file(file_path: string): Battleground | undefined {
-    const battleground = JSON.parse(readFileSync(file_path, "utf8")) as Battleground_File;
+function load_battleground_from_file(file_path: string, battleground: Battleground_File): Battleground | undefined {
     const spawns: Battleground_Spawn[] = [];
     const shop_types = enum_names_to_values<Shop_Type>();
     const item_ids = enum_names_to_values<Item_Id>();

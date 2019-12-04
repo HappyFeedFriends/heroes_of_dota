@@ -223,7 +223,7 @@ function dropdown_button(text: string, action: () => void) {
 }
 
 function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, id: Adventure_Entity_Id, name: string, battleground: Battleground_Id, creeps: Creep_Type[], reselect: () => void) {
-    entity_button(`Battleground: #${id}`, () => {
+    entity_button(`Battleground: #${battleground}`, () => {
         load_battleground_editor(battleground, {
             current_battleground_id: battleground,
             id: id,
@@ -1360,14 +1360,6 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
 
     update_brush_button_styles();
 
-    toolbar_button("New", async () => {
-        const response = await async_api_request(Api_Request_Type.editor_create_battleground, {});
-        const origin = await async_local_api_request(Local_Api_Request_Type.get_battle_position, {});
-
-        cleanup_current_editor();
-        enter_battleground_editor(origin, response.id, response.battleground);
-    });
-
     function dropdown_button(text: string, action: () => void) {
         return text_button(toolbar_buttons_dropdown, "toolbar_dropdown_button", text, action);
     }
@@ -1409,6 +1401,24 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
 
         return button;
     }
+
+    const label = $.CreatePanel("Label", toolbar_buttons, "");
+    label.text = `Battleground #${id}`;
+
+    toolbar_button("New", async () => {
+        const response = await async_api_request(Api_Request_Type.editor_create_battleground, {});
+        const origin = await async_local_api_request(Local_Api_Request_Type.get_battle_position, {});
+
+        cleanup_current_editor();
+        enter_battleground_editor(origin, response.id, response.battleground, enemy);
+    });
+
+    toolbar_button("Duplicate", async () => {
+        const response = await async_api_request(Api_Request_Type.editor_duplicate_battleground, { id: id });
+
+        cleanup_current_editor();
+        load_battleground_editor(response.new_id, enemy);
+    });
 
     dropdown_opening_button("Open", async () => {
         const response = await async_api_request(Api_Request_Type.editor_list_battlegrounds, {});

@@ -75,6 +75,14 @@ type Editor_Handlers = {
         id: Battleground_Id
     }
     response: {}
+} | {
+    type: Api_Request_Type.editor_duplicate_battleground
+    request: {
+        id: Battleground_Id
+    }
+    response: {
+        new_id: Battleground_Id
+    }
 }
 
 type Adventure_Editor_Action = {
