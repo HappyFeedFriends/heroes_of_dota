@@ -1450,6 +1450,15 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
         const label = $.CreatePanel("Label", toolbar_buttons, "");
         label.text = `Editing ${enemy.name}`;
 
+        toolbar_button(`Playtest`, () => {
+            exit_editor();
+            dispatch_editor_action({
+                type: Editor_Action_Type.playtest_battleground,
+                enemy: enemy.id,
+                battleground: id
+            })
+        });
+
         if (enemy.current_battleground_id != id) {
             const assign_button = dropdown_opening_button("Assign battleground", async close_dropdown => {
                 dropdown_button("Confirm", async () => {

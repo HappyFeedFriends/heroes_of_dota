@@ -253,6 +253,20 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
 
             break;
         }
+
+        case Editor_Action_Type.playtest_battleground: {
+            const new_state = api_request(Api_Request_Type.editor_playtest_battleground, {
+                battleground: event.battleground,
+                enemy: event.enemy,
+                access_token: game.token
+            });
+
+            if (new_state) {
+                try_submit_state_transition(game, new_state);
+            }
+
+            break;
+        }
     }
 }
 

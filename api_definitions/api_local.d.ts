@@ -298,7 +298,8 @@ declare const enum Editor_Action_Type {
     set_entity_position = 6,
     teleport = 7,
     exit_adventure = 8,
-    submit_battleground = 9
+    submit_battleground = 9,
+    playtest_battleground = 10
 }
 
 type Editor_Action = {
@@ -348,4 +349,8 @@ type Editor_Action = {
 } | {
     type: Editor_Action_Type.submit_battleground
     spawns: Battleground_Spawn[]
+} | {
+    type: Editor_Action_Type.playtest_battleground
+    battleground: Battleground_Id
+    enemy: Adventure_Entity_Id
 }

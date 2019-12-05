@@ -87,6 +87,7 @@ type Map_Player_State = {
     battle: Battle_Record
     battle_player: Battle_Player
     previous_state: Map_Player_State
+    in_playtest: boolean
 } | {
     state: Player_State.not_logged_in
 } | Map_Player_On_Adventure
@@ -506,7 +507,7 @@ function adventure_enemy_to_battle_participant(next_id: Id_Generator, id: Advent
     }
 }
 
-function transition_player_to_battle(player: Map_Player, battle: Battle_Record) {
+function transition_player_to_battle(player: Map_Player, battle: Battle_Record, for_playtest = false) {
     for (const battle_player of battle.players) {
         const entity = battle_player.map_entity;
         if (entity.type == Map_Entity_Type.player) {
@@ -514,7 +515,8 @@ function transition_player_to_battle(player: Map_Player, battle: Battle_Record) 
                 state: Player_State.in_battle,
                 battle: battle,
                 battle_player: battle_player,
-                previous_state: player.online
+                previous_state: player.online,
+                in_playtest: for_playtest
             };
         }
     }
@@ -646,25 +648,29 @@ export function report_battle_over(battle: Battle_Record, winner_entity: Battle_
                 const player_won = entity == winner_entity;
 
                 if (player && player.online.state == Player_State.in_battle) {
+                    const was_a_playtest = player.online.in_playtest;
+
                     player.online = player.online.previous_state;
 
-                    if (player.online.state == Player_State.on_adventure) {
-                        if (player_won) {
-                            defeat_adventure_enemies(player.online.ongoing_adventure);
-                            update_player_adventure_state_from_battle(player.online, battle_player);
-                        } else {
-                            submit_chat_message(player, `${player.name} lost, their adventure is over`);
+                    if (!was_a_playtest) {
+                        if (player.online.state == Player_State.on_adventure) {
+                            if (player_won) {
+                                defeat_adventure_enemies(player.online.ongoing_adventure);
+                                update_player_adventure_state_from_battle(player.online, battle_player);
+                            } else {
+                                submit_chat_message(player, `${player.name} lost, their adventure is over`);
 
-                            player.online = {
-                                state: Player_State.on_global_map,
-                                current_location: player.online.previous_global_map_location,
-                                movement_history: []
+                                player.online = {
+                                    state: Player_State.on_global_map,
+                                    current_location: player.online.previous_global_map_location,
+                                    movement_history: []
+                                }
                             }
                         }
-                    }
 
-                    if (entity == winner_entity) {
-                        submit_chat_message(player, `Battle over! ${player.name} wins`);
+                        if (entity == winner_entity) {
+                            submit_chat_message(player, `Battle over! ${player.name} wins`);
+                        }
                     }
                 }
 
@@ -1261,6 +1267,34 @@ function register_dev_handlers() {
 
         return make_ok({
             battlegrounds: battlegrounds
+        });
+    });
+
+    register_api_handler(Api_Request_Type.editor_playtest_battleground, req => {
+        return with_player_in_request(req, player => {
+            if (player.online.state != Player_State.on_adventure) return;
+
+            const entity = player.online.ongoing_adventure.entities.find(entity => entity.id == req.enemy);
+
+            if (!entity) return;
+            if (entity.definition.type != Adventure_Entity_Type.enemy) return;
+
+            const battleground = find_battleground_by_id(req.battleground);
+
+            if (!battleground) {
+                return;
+            }
+
+            const id_generator = sequential_id_generator();
+
+            const battle = start_battle(id_generator, [
+                player_to_adventure_battle_participant(id_generator, player.id, player.online),
+                adventure_enemy_to_battle_participant(id_generator, entity.id, entity.definition)
+            ], battleground);
+
+            transition_player_to_battle(player, battle, true);
+
+            return player_to_player_state_object(player);
         });
     });
 

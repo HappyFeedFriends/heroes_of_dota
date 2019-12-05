@@ -83,6 +83,13 @@ type Editor_Handlers = {
     response: {
         new_id: Battleground_Id
     }
+} | {
+    type: Api_Request_Type.editor_playtest_battleground
+    request: {
+        enemy: Adventure_Entity_Id
+        battleground: Battleground_Id
+    } & With_Token
+    response: Player_State_Data
 }
 
 type Adventure_Editor_Action = {
