@@ -10,7 +10,7 @@ type Editor_Battleground_Entity = Battleground_Spawn & {
 
 type Indexed_Entities = Record<number, Record<number, Editor_Battleground_Entity>>
 
-function update_editor_battleground(editor: Editor_State, spawns: Battleground_Spawn[]) {
+function update_editor_battleground(editor: Editor_State, origin: Vector, spawns: Battleground_Spawn[]) {
     function set_entity_at(index: Indexed_Entities, xy: XY, spawn: Editor_Battleground_Entity) {
         let by_x = index[xy.x];
 
@@ -42,22 +42,22 @@ function update_editor_battleground(editor: Editor_State, spawns: Battleground_S
         switch (spawn.type) {
             case Spawn_Type.monster: return {
                 ...spawn,
-                handle: create_world_handle_for_battle_unit(battle.world_origin, { supertype: Unit_Supertype.monster }, spawn.at, spawn.facing)
+                handle: create_world_handle_for_battle_unit(origin, { supertype: Unit_Supertype.monster }, spawn.at, spawn.facing)
             };
 
             case Spawn_Type.rune: return {
                 ...spawn,
-                handle: create_world_handle_for_rune(battle.world_origin, Rune_Type.bounty, spawn.at)
+                handle: create_world_handle_for_rune(origin, Rune_Type.bounty, spawn.at)
             };
 
             case Spawn_Type.shop: return {
                 ...spawn,
-                handle: create_world_handle_for_shop(battle.world_origin, spawn.shop_type, spawn.at, spawn.facing)
+                handle: create_world_handle_for_shop(origin, spawn.shop_type, spawn.at, spawn.facing)
             };
 
             case Spawn_Type.tree: return {
                 ...spawn,
-                handle: create_world_handle_for_tree(battle.world_origin, 0, 0 as Tree_Id, spawn.at)
+                handle: create_world_handle_for_tree(origin, 0, 0 as Tree_Id, spawn.at)
             };
         }
     }
@@ -86,6 +86,9 @@ function update_editor_battleground(editor: Editor_State, spawns: Battleground_S
         if (existing_entity && entities_are_essentially_the_same(existing_entity, spawn)) {
             remove_entity_at(old_index, existing_entity.at);
             set_entity_at(new_index, existing_entity.at, existing_entity);
+
+            const world_location = battle_position_to_world_position_center(origin, spawn.at);
+            existing_entity.handle.SetAbsOrigin(world_location);
 
             if (spawn.type == Spawn_Type.monster || spawn.type == Spawn_Type.shop) {
                 existing_entity.handle.SetForwardVector(Vector(spawn.facing.x, spawn.facing.y));
@@ -131,7 +134,8 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
             if (event.camera.free) {
                 set_camera_override(undefined, 0.15);
             } else {
-                const look_at = get_camera_look_at_for_battle(battle.world_origin, event.camera.grid_size.x, event.camera.grid_size.y);
+                const origin = event.camera.world_origin;
+                const look_at = get_camera_look_at_for_battle(Vector(origin.x, origin.y, origin.z), event.camera.grid_size.x, event.camera.grid_size.y);
                 editor.camera_dummy.SetAbsOrigin(look_at);
 
                 set_camera_override(editor.camera_dummy, 0.15);
@@ -249,7 +253,9 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
         }
 
         case Editor_Action_Type.submit_battleground: {
-            update_editor_battleground(editor, from_client_array(event.spawns));
+            const origin = Vector(event.origin.x, event.origin.y, event.origin.z);
+
+            update_editor_battleground(editor, origin, from_client_array(event.spawns));
 
             break;
         }

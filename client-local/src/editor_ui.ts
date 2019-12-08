@@ -719,7 +719,7 @@ function battleground_editor_set_grid_brush_selection_state(editor: Battleground
     }
 
     if (selection.active) {
-        entity_button("Crop grid", () => {
+        entity_button("Crop grid", async () => {
             const old_spawns = editor.spawns;
             editor.spawns = [];
 
@@ -736,11 +736,15 @@ function battleground_editor_set_grid_brush_selection_state(editor: Battleground
                 }
             });
 
+            const new_world_x = editor.grid_world_origin.x + battle_cell_size * selection.min.x;
+            const new_world_y = editor.grid_world_origin.y + battle_cell_size * selection.min.y;
+            const new_world_z = await async_local_api_request(Local_Api_Request_Type.get_ground_z, { x: new_world_x, y: new_world_y });
+
+            editor.grid_world_origin = { x: new_world_x, y: new_world_y, z: new_world_z.z };
             editor.grid_size.x = selection.max.x - selection.min.x + 1;
             editor.grid_size.y = selection.max.y - selection.min.y + 1;
 
-            battleground_editor_cleanup_cells(editor);
-            editor.cells = fill_battleground_editor_cells(editor.grid_world_origin, editor.grid_size.x, editor.grid_size.y);
+            battleground_editor_recreate_cells(editor);
             battleground_editor_set_grid_brush_selection_state(editor, brush, { active: false });
             submit_editor_battleground_for_repaint(editor);
             submit_battleground_state_to_server(editor);
@@ -1192,6 +1196,7 @@ function periodically_update_editor_camera_state() {
                 type: Editor_Action_Type.set_camera,
                 camera: {
                     free: false,
+                    world_origin: editor.grid_world_origin,
                     grid_size: editor.grid_size
                 }
             });
@@ -1229,10 +1234,9 @@ function update_adventure_editor_buttons(editor: Adventure_Editor) {
 }
 
 async function load_battleground_editor(for_battleground: Battleground_Id, enemy?: Editor_Enemy_Battleground_Data) {
-    const origin = await async_local_api_request(Local_Api_Request_Type.get_battle_position, {});
     const response = await async_api_request(Api_Request_Type.editor_get_battleground, { id: for_battleground });
 
-    enter_battleground_editor(origin, for_battleground, response.battleground, enemy);
+    enter_battleground_editor(for_battleground, response.battleground, enemy);
 }
 
 function fill_battleground_editor_cells(grid_world_origin: XYZ, w: number, h: number): Editor_Cell[][] {
@@ -1261,6 +1265,11 @@ function fill_battleground_editor_cells(grid_world_origin: XYZ, w: number, h: nu
     return cells;
 }
 
+function battleground_editor_recreate_cells(editor: Battleground_Editor) {
+    battleground_editor_cleanup_cells(editor);
+    editor.cells = fill_battleground_editor_cells(editor.grid_world_origin, editor.grid_size.x, editor.grid_size.y);
+}
+
 function battleground_editor_cleanup_cells(editor: Battleground_Editor) {
     for (const by_x of editor.cells) {
         for (const cell of by_x) {
@@ -1269,7 +1278,7 @@ function battleground_editor_cleanup_cells(editor: Battleground_Editor) {
     }
 }
 
-function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, battleground: Battleground, enemy?: Editor_Enemy_Battleground_Data) {
+function enter_battleground_editor(id: Battleground_Id, battleground: Battleground, enemy?: Editor_Enemy_Battleground_Data) {
     const grid_w = battleground.grid_size.x;
     const grid_h = battleground.grid_size.y;
 
@@ -1283,10 +1292,10 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
     const new_editor: Battleground_Editor = {
         type: Editor_Type.battleground,
         current_id: id,
-        cells: fill_battleground_editor_cells(grid_world_origin, grid_w, grid_h),
+        cells: fill_battleground_editor_cells(battleground.world_origin, grid_w, grid_h),
         grid_size: xy(grid_w, grid_h),
         spawns: [],
-        grid_world_origin: grid_world_origin,
+        grid_world_origin: battleground.world_origin,
         brush: default_selection_brush,
         deployment_zones: battleground.deployment_zones,
         enemy_data: enemy
@@ -1406,11 +1415,13 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
     label.text = `Battleground #${id}`;
 
     toolbar_button("New", async () => {
-        const response = await async_api_request(Api_Request_Type.editor_create_battleground, {});
-        const origin = await async_local_api_request(Local_Api_Request_Type.get_battle_position, {});
+        const positions = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
+        const response = await async_api_request(Api_Request_Type.editor_create_battleground, {
+            world_origin: positions[0].origin
+        });
 
         cleanup_current_editor();
-        enter_battleground_editor(origin, response.id, response.battleground, enemy);
+        enter_battleground_editor(response.id, response.battleground, enemy);
     });
 
     toolbar_button("Duplicate", async () => {
@@ -1442,6 +1453,22 @@ function enter_battleground_editor(grid_world_origin: XYZ, id: Battleground_Id, 
             cleanup_current_editor();
             await load_battleground_editor(0 as Battleground_Id, enemy);
         });
+
+        dropdown_button("Cancel", () => close_dropdown());
+    });
+
+    dropdown_opening_button("Select location", async close_dropdown => {
+        const locations = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
+
+        for (const location of from_server_array(locations)) {
+            dropdown_button(location.name, () => {
+                new_editor.grid_world_origin = location.origin;
+
+                battleground_editor_recreate_cells(new_editor);
+                submit_battleground_state_to_server(new_editor);
+                submit_editor_battleground_for_repaint(new_editor);
+            });
+        }
 
         dropdown_button("Cancel", () => close_dropdown());
     });
@@ -1519,6 +1546,7 @@ function cleanup_current_editor() {
         case Editor_Type.battleground: {
             dispatch_editor_action({
                 type: Editor_Action_Type.submit_battleground,
+                origin: editor.grid_world_origin,
                 spawns: []
             });
 
@@ -1586,6 +1614,7 @@ function submit_battleground_state_to_server(editor: Battleground_Editor) {
     api_request(Api_Request_Type.editor_submit_battleground, {
         id: editor.current_id,
         battleground: {
+            world_origin: editor.grid_world_origin,
             grid_size: editor.grid_size,
             deployment_zones: editor.deployment_zones,
             spawns: flattened_spawns
@@ -1599,6 +1628,7 @@ function submit_editor_battleground_for_repaint(editor: Battleground_Editor) {
     for_each_editor_spawn(editor.spawns, spawn => flattened_spawns.push(spawn));
     dispatch_editor_action({
         type: Editor_Action_Type.submit_battleground,
+        origin: editor.grid_world_origin,
         spawns: flattened_spawns
     });
 }

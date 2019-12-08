@@ -1,5 +1,6 @@
 declare const enum Local_Api_Request_Type {
-    get_battle_position = 0
+    list_battle_locations = 0,
+    get_ground_z = 1
 }
 
 declare const enum To_Server_Event_Type {
@@ -99,13 +100,22 @@ type To_Client_Event = {
 }
 
 type Local_Api_Request = {
-    type: Local_Api_Request_Type.get_battle_position
+    type: Local_Api_Request_Type.list_battle_locations
     request: {
     }
 
     response: {
+        name: string
+        origin: World_Origin
+    }[]
+} | {
+    type: Local_Api_Request_Type.get_ground_z
+    request: {
         x: number
         y: number
+    }
+
+    response: {
         z: number
     }
 }
@@ -313,6 +323,7 @@ type Editor_Action = {
         free: true
     } | {
         free: false
+        world_origin: World_Origin
         grid_size: {
             x: number
             y: number
@@ -348,6 +359,7 @@ type Editor_Action = {
     type: Editor_Action_Type.exit_adventure
 } | {
     type: Editor_Action_Type.submit_battleground
+    origin: World_Origin
     spawns: Battleground_Spawn[]
 } | {
     type: Editor_Action_Type.playtest_battleground

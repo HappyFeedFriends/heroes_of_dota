@@ -6,6 +6,12 @@ type Persistent_Battleground =  Battleground & {
 }
 
 type Battleground_File = {
+    world_origin: {
+        x: number
+        y: number
+        z: number
+    }
+
     grid_size: {
         x: number
         y: number
@@ -85,10 +91,11 @@ export function get_all_battlegrounds() {
     return battlegrounds;
 }
 
-export function make_new_battleground(): Persistent_Battleground {
+export function make_new_battleground(world_origin: World_Origin): Persistent_Battleground {
     const id = fetch_new_battleground_id();
     const bg = {
         id: id,
+        world_origin: world_origin,
         grid_size: { x: 10, y: 10 },
         deployment_zones: [],
         spawns: []
@@ -170,7 +177,8 @@ export function load_all_battlegrounds(): boolean {
 
 function battleground_to_file_object(battleground: Battleground) {
     const file: Battleground_File = {
-        grid_size: copy<XY>(battleground.grid_size),
+        world_origin: copy<Battleground_File["world_origin"]>(battleground.world_origin),
+        grid_size: copy<Battleground_File["grid_size"]>(battleground.grid_size),
         deployment_zones: battleground.deployment_zones.map(zone => copy<Battleground_File["deployment_zones"][0]>(zone)),
         trees: [],
         shops: [],
@@ -314,6 +322,7 @@ function load_battleground_from_file(file_path: string, battleground: Battlegrou
     }
 
     return {
+        world_origin: battleground.world_origin,
         grid_size: battleground.grid_size,
         deployment_zones: battleground.deployment_zones,
         spawns: spawns

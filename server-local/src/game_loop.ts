@@ -333,8 +333,10 @@ function process_state_transition(game: Game, current_state: Player_State, next_
     if (next_state.state == Player_State.in_battle) {
         print("Battle started");
 
+        const origin = next_state.battle_world_origin;
+
         clean_battle_world_handles(battle);
-        reinitialize_battle(battle.world_origin, battle.camera_dummy);
+        reinitialize_battle(Vector(origin.x, origin.y, origin.z), battle.camera_dummy);
 
         battle.id = next_state.battle_id;
         battle.random_seed = next_state.random_seed;
@@ -401,12 +403,11 @@ function try_submit_state_transition(game: Game, new_state: Player_State_Data) {
     }
 }
 
-function get_default_battleground_data(): [Vector, CDOTA_BaseNPC] {
-    const origin = Entities.FindByName(undefined, "battle_bottom_left").GetAbsOrigin();
+function create_battle_camera_entity() {
     const camera_entity = CreateUnitByName("npc_dummy_unit", Vector(), true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
     camera_entity.AddNewModifier(camera_entity, undefined, "Modifier_Dummy", {});
 
-    return [origin, camera_entity];
+    return camera_entity;
 }
 
 function set_camera_location_on_unit_blocking(player_id: PlayerID, target: CDOTA_BaseNPC) {
@@ -480,7 +481,7 @@ function reconnect_loop(game: Game) {
 }
 
 function register_local_api_handler<T extends Local_Api_Request_Type>(type: T, callback: (request: Find_Local_Request<T>) => Find_Local_Response<T>) {
-    local_api_handlers[type] = callback;
+    local_api_handlers[type] = body => callback(body as Find_Local_Request<T>);
 }
 
 function main() {
@@ -535,7 +536,9 @@ function game_loop() {
         neutrals: {}
     };
 
-    reinitialize_battle(...get_default_battleground_data());
+    const camera_entity = create_battle_camera_entity();
+
+    reinitialize_battle(Vector(), camera_entity);
 
     on_player_connected_async(id => player_id = id);
 
@@ -633,12 +636,23 @@ function game_loop() {
 
         subscribe_to_editor_events(game);
 
-        register_local_api_handler(Local_Api_Request_Type.get_battle_position, () => {
-            return {
-                x: battle.world_origin.x,
-                y: battle.world_origin.y,
-                z: battle.world_origin.z
+        register_local_api_handler(Local_Api_Request_Type.list_battle_locations, () => {
+            function entity_to_battle_location(name: string, entity_name: string) {
+                const origin = Entities.FindByName(undefined, entity_name).GetAbsOrigin();
+
+                return {
+                    name: name,
+                    origin: { x: origin.x, y: origin.y, z: origin.z }
+                }
             }
+
+            return [
+                entity_to_battle_location("Forest", "battle_bottom_left")
+            ]
+        });
+
+        register_local_api_handler(Local_Api_Request_Type.get_ground_z, req => {
+            return { z: GetGroundHeight(Vector(req.x, req.y), undefined) };
         })
     }
 

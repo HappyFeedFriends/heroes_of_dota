@@ -190,7 +190,7 @@ function merge_delta_paths_from_client(battle: Battle, delta_paths: Move_Delta_P
     }
 }
 
-function battle_position_to_world_position_center(world_origin: Vector, position: { x: number, y: number }): Vector {
+function battle_position_to_world_position_center(world_origin: Vector, position: XY): Vector {
     const x = world_origin.x + position.x * battle_cell_size + battle_cell_size / 2;
     const y = world_origin.y + position.y * battle_cell_size + battle_cell_size / 2;
 

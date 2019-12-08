@@ -37,7 +37,7 @@ function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>,
 }
 
 function async_api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>): Promise<Find_Response<T>> {
-    return new Promise((resolve, reject) => {
+    const promise = new Promise<Find_Response<T>>((resolve, reject) => {
         $.AsyncWebRequest(remote_root + "/api" + type, {
             type: "POST",
             data: { json_data: JSON.stringify(body) },
@@ -48,21 +48,13 @@ function async_api_request<T extends Api_Request_Type>(type: T, body: Find_Reque
             }
         });
     });
-}
-
-function async_local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>): Promise<Find_Local_Response<T>> {
-    const promise = new Promise<Find_Local_Response<T>>((resolve, reject) => {
-        return local_api_request(type, body, data => {
-            resolve(data);
-        }, () => reject("Error"));
-    });
 
     promise.catch(error => $.Msg("Error", error));
 
     return promise;
 }
 
-function local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>, callback: (response: Find_Local_Response<T>) => void, error?: () => void) {
+function async_local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>): Promise<Find_Local_Response<T>> {
     const packet: Local_Api_Request_Packet = {
         type: type,
         body: body,
@@ -71,29 +63,33 @@ function local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find
 
     $.Msg(`Request ${enum_to_string<Local_Api_Request_Type>(type)}`);
 
-    const timeout = $.Schedule(10, () => {
-        if (!ongoing_local_requests[packet.request_id]) {
-            return;
-        }
+    const promise = new Promise<Find_Local_Response<T>>((resolve, reject) => {
+        const timeout = $.Schedule(10, () => {
+            if (!ongoing_local_requests[packet.request_id]) {
+                return;
+            }
 
-        delete ongoing_local_requests[packet.request_id];
+            delete ongoing_local_requests[packet.request_id];
 
-        if (error) {
-            error();
-        }
+            reject();
+        });
+
+        ongoing_local_requests[packet.request_id] = (body: any) => {
+            $.Msg(`Response for ${enum_to_string<Local_Api_Request_Type>(type)}: ${body}`);
+
+            resolve(body);
+
+            delete ongoing_local_requests[packet.request_id];
+
+            $.CancelScheduled(timeout);
+        };
+
+        GameEvents.SendCustomGameEventToServer(Prefixes.local_api_request, packet);
     });
 
-    ongoing_local_requests[packet.request_id] = (body: object) => {
-        $.Msg(`Response for ${enum_to_string<Local_Api_Request_Type>(type)}: ${body}`);
+    promise.catch(error => $.Msg("Error", error));
 
-        callback(body as Find_Local_Response<T>);
-
-        delete ongoing_local_requests[packet.request_id];
-
-        $.CancelScheduled(timeout);
-    };
-
-    GameEvents.SendCustomGameEventToServer(Prefixes.local_api_request, packet);
+    return promise;
 }
 
 function async_get_player_name(player_id: Player_Id, callback: Player_Name_Callback): void {

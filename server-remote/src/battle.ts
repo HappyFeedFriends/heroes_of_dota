@@ -14,6 +14,7 @@ export type Battle_Record = Battle & {
     deferred_actions: Deferred_Action[]
     monster_targets: Map<Monster, Unit>
     end_turn_queued: boolean
+    world_origin: World_Origin
 }
 
 export type Battle_Participant = {
@@ -2061,6 +2062,7 @@ export function start_battle(id_generator: Id_Generator, participants: Battle_Pa
         finished: false,
         monster_targets: new Map(),
         end_turn_queued: false,
+        world_origin: battleground.world_origin,
         receive_event: on_battle_event
     };
 

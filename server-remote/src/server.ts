@@ -328,7 +328,8 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                 grid_size: {
                     width: battle.grid.size.x,
                     height: battle.grid.size.y
-                }
+                },
+                battle_world_origin: battle.world_origin
             }
         }
 
@@ -1206,7 +1207,7 @@ function register_dev_handlers() {
     });
 
     register_api_handler(Api_Request_Type.editor_create_battleground, req => {
-        const created = make_new_battleground();
+        const created = make_new_battleground(req.world_origin);
 
         return make_ok({
             id: created.id,

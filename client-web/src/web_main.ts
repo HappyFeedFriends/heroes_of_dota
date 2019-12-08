@@ -1458,6 +1458,7 @@ function draw_battle_list(global_map: Game_On_Global_Map) {
 
         if (button(text, top_left_x, top_left_y, font_size_px, padding)) {
             game = game_from_state({
+                battle_world_origin: { x: 0, y: 0, z: 0 },
                 state: Player_State.in_battle,
                 battle_id: battle.id,
                 battle_player_id: -1 as Battle_Player_Id,

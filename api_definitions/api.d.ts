@@ -111,6 +111,7 @@ type Player_State_In_Battle = {
         height: number
     }
     participants: Battle_Participant_Info[]
+    battle_world_origin: World_Origin
 }
 
 type Player_State_Data =
@@ -325,6 +326,7 @@ type Battle_Info = {
     participants: Battle_Participant_Info[]
 }
 
+type World_Origin = { x: number, y: number, z: number }
 
 type Debug_AI_Data = {
     unit_debug: {
