@@ -306,7 +306,13 @@ function draw_header(game: Game) {
 
     ctx.font = `${font_size_px}px Open Sans`;
     ctx.fillStyle = "black";
-    ctx.fillText(enum_to_string(game.state), 30, 30);
+
+    if (game.state != Player_State.not_logged_in) {
+        const name = get_or_request_player_name(game, game.player_id);
+        ctx.fillText(`${name}: ${enum_to_string(game.state)}`, 30, 30);
+    } else {
+        ctx.fillText(enum_to_string(game.state), 30, 30);
+    }
 }
 
 async function accept_chat_messages(game: Game, messages: Chat_Message[]) {
@@ -1570,6 +1576,40 @@ function do_one_frame(time: number) {
     draw_chat(game);
 
     switch (game.state) {
+        case Player_State.not_logged_in: {
+            const font_size_px = 18;
+            const padding = 8;
+            const margin = 4;
+
+            let height_offset = 0;
+
+            const logins: [string, string][] = [
+                ["Mister Guy", "3637"],
+                ["Dogster", "1337"]
+            ];
+
+            for (const [name, id] of logins) {
+                const top_left_x = 30, top_left_y = 70 + height_offset;
+
+                if (button(`Login as ${name}`, top_left_x, top_left_y, font_size_px, padding)) {
+                    api_request(Api_Request_Type.authorize_steam_user, {
+                        dedicated_server_key: "",
+                        steam_id: id,
+                        steam_user_name: name
+                    }).then(auth => {
+                        game.access_token = auth.token;
+                        game.player_id = auth.id;
+
+                        check_and_try_request_player_state(game, time);
+                    });
+                }
+
+                height_offset += margin + padding + font_size_px + padding + margin;
+            }
+
+            break;
+        }
+
         case Player_State.on_global_map: {
             draw_entity_list(game);
             draw_battle_list(game);
@@ -1629,14 +1669,12 @@ function do_one_frame(time: number) {
 
             break;
         }
-
-        case Player_State.not_logged_in: {
-            break;
-        }
     }
 
-    check_and_try_request_player_state(game, time);
-    check_and_try_request_chat(game, time);
+    if (game.state != Player_State.not_logged_in) {
+        check_and_try_request_player_state(game, time);
+        check_and_try_request_chat(game, time);
+    }
 
     game.mouse.clicked = false;
     game.any_button_clicked_this_frame = false;
@@ -1745,17 +1783,11 @@ async function start_game() {
 
     fix_canvas_dpi_scale(canvas, context);
 
-    const auth = await api_request(Api_Request_Type.authorize_steam_user, {
-        dedicated_server_key: "",
-        steam_id: "3637",
-        steam_user_name: "Mister Guy"
-    });
-
     game = game_from_state({ state: Player_State.not_logged_in }, {
         canvas_width: canvas.width,
         canvas_height: canvas.height,
         ctx: context,
-        access_token: auth.token,
+        access_token: "",
         requested_player_state_at: Number.MIN_SAFE_INTEGER,
         requested_chat_at: Number.MIN_SAFE_INTEGER,
         any_button_clicked_this_frame: false,
@@ -1766,7 +1798,7 @@ async function start_game() {
             button: 0,
             clicked: false
         },
-        player_id: auth.id
+        player_id: -1 as Player_Id
     });
 
     const cursor_position_on_canvas = (event: MouseEvent) => {
