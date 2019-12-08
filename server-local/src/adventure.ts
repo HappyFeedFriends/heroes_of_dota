@@ -146,7 +146,10 @@ function update_adventure_enemy(game: Game, enemy: Adventure_Materialized_Enemy)
             lock_state_transition(() => {
                 enemy_handle.Stop();
 
-                const stun = player_handle.AddNewModifier(player_handle, undefined, "modifier_stunned", {});
+                const stun = player_handle.AddNewModifier(player_handle, undefined, "Modifier_Stunned", {});
+                player_handle.FaceTowards(enemy_actual_location);
+                add_activity_override({ handle: player_handle }, GameActivity_t.ACT_DOTA_ATTACK, 1.0);
+
                 const animation = fork(() => {
                     enemy_handle.EmitSound(get_npc_definition(enemy.npc_type).attack_sound);
                     enemy_handle.StartGestureWithPlaybackRate(GameActivity_t.ACT_DOTA_ATTACK, 1);

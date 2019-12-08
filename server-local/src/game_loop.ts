@@ -510,6 +510,7 @@ function main() {
     link_modifier("Modifier_Activity_Translation", "modifiers/modifier_activity_translation");
     link_modifier("Modifier_Activity_Override", "modifiers/modifier_activity_override");
     link_modifier("Modifier_Dummy", "modifiers/modifier_dummy");
+    link_modifier("Modifier_Stunned", "modifiers/modifier_stunned");
 
     if (IsInToolsMode()) {
         link_modifier("Modifier_Editor_Npc_Type", "modifiers/modifier_editor");
