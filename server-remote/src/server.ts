@@ -511,7 +511,7 @@ function adventure_enemy_to_battle_participant(next_id: Id_Generator, id: Advent
 function transition_player_to_battle(player: Map_Player, battle: Battle_Record, for_playtest = false) {
     for (const battle_player of battle.players) {
         const entity = battle_player.map_entity;
-        if (entity.type == Map_Entity_Type.player) {
+        if (entity.type == Map_Entity_Type.player && entity.player_id == player.id) {
             player.online = {
                 state: Player_State.in_battle,
                 battle: battle,
