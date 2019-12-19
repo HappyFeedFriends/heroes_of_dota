@@ -84,7 +84,7 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
                     enemy: target,
                     cell: cell.position,
                     weight: weight,
-                    costs: populate_path_costs(ai.battle, cell.position)!
+                    costs: populate_path_costs(ai.battle, cell.position)
                 });
 
                 const size = cell_size * 0.2;
@@ -230,7 +230,7 @@ function take_ai_action(battle: Battle_Record, player: Battle_Player) {
         };
 
         for (const unit of battle.units) {
-            const costs = populate_path_costs(battle, unit.position)!;
+            const costs = populate_path_costs(battle, unit.position);
 
             ai.pathing_costs_by_unit.set(unit, costs);
         }

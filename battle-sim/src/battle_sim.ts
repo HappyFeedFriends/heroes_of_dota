@@ -461,130 +461,122 @@ function make_battle(players: Battle_Player[], grid_width: number, grid_height: 
     }
 }
 
-// TODO replace with a more efficient A* implementation
-function can_find_path(battle: Battle, from: XY, to: XY, ignore_runes = false): [boolean, number] {
-    const indices_already_checked: boolean[] = [];
+type Path_Iterator = {
+    battle: Battle
+    indices_already_checked: boolean[]
+    indices_not_checked: number[]
+    ignore_runes: boolean
+}
+
+function path_iterator(battle: Battle, from: XY, ignore_runes: boolean): Path_Iterator {
+    const iterator: Path_Iterator = {
+        battle: battle,
+        ignore_runes: ignore_runes,
+        indices_already_checked: [],
+        indices_not_checked: []
+    };
+
     const from_index = grid_cell_index(battle.grid, from);
 
-    let indices_not_checked: number[] = [];
+    iterator.indices_not_checked.push(from_index);
+    iterator.indices_already_checked[from_index] = true;
 
-    indices_not_checked.push(from_index);
-    indices_already_checked[from_index] = true;
+    return iterator;
+}
 
-    for (let current_cost = 0; indices_not_checked.length > 0; current_cost++) {
+function path_iterator_check_neighbor(iter: Path_Iterator, neighbor: Cell | undefined): number | undefined {
+    if (!neighbor) return;
+
+    const neighbor_index = grid_cell_index(iter.battle.grid, neighbor.position);
+
+    if (iter.indices_already_checked[neighbor_index]) return;
+
+    let neighbor_occupied = neighbor.occupied;
+
+    if (iter.ignore_runes) {
+        const occupied_by_rune = !!rune_at(iter.battle, neighbor.position);
+
+        neighbor_occupied = neighbor.occupied && !occupied_by_rune;
+    }
+
+    iter.indices_already_checked[neighbor_index] = true;
+
+    if (neighbor_occupied) {
+        return;
+    } else {
+        return neighbor_index;
+    }
+}
+
+// TODO replace with a more efficient A* implementation
+function can_find_path(battle: Battle, from: XY, to: XY, ignore_runes = false): { found: false } | { found: true, cost: number } {
+    const iterator = path_iterator(battle, from, ignore_runes);
+
+    for (let current_cost = 0; iterator.indices_not_checked.length > 0; current_cost++) {
         const new_indices: number[] = [];
 
-        for (const index of indices_not_checked) {
+        for (const index of iterator.indices_not_checked) {
             const cell = battle.grid.cells[index];
             const at = cell.position;
 
             if (xy_equal(to, at)) {
-                return [true, current_cost];
+                return {
+                    found: true,
+                    cost: current_cost
+                }
             }
 
             const neighbors = grid_cell_neighbors(battle.grid, at);
 
             for (const neighbor of neighbors) {
-                if (!neighbor) continue;
+                const index = path_iterator_check_neighbor(iterator, neighbor);
+                if (index == undefined) continue;
 
-                const neighbor_index = grid_cell_index(battle.grid, neighbor.position);
-
-                if (indices_already_checked[neighbor_index]) continue;
-
-                let neighbor_occupied = neighbor.occupied;
-
-                if (ignore_runes) {
-                    const occupied_by_rune = !!rune_at(battle, neighbor.position);
-
-                    neighbor_occupied = neighbor.occupied && !occupied_by_rune;
-                }
-
-                if (neighbor_occupied) {
-                    indices_already_checked[neighbor_index] = true;
-                    continue;
-                }
-
-                new_indices.push(neighbor_index);
-
-                indices_already_checked[neighbor_index] = true;
+                new_indices.push(index);
             }
         }
 
-        indices_not_checked = new_indices;
+        iterator.indices_not_checked = new_indices;
     }
 
-    return [false, Number.MAX_SAFE_INTEGER];
+    return { found: false };
 }
 
-// TODO the relation between to == undefined and Cost_Population_Result == undefined produces too many non-null asserts
-function populate_path_costs(battle: Battle, from: XY, to: XY | undefined = undefined, ignore_runes = false): Cost_Population_Result | undefined {
+function populate_path_costs(battle: Battle, from: XY, ignore_runes = false): Cost_Population_Result {
     const cell_index_to_cost: number[] = [];
     const cell_index_to_parent_index: number[] = [];
-    const indices_already_checked: boolean[] = [];
     const from_index = grid_cell_index(battle.grid, from);
-
-    let indices_not_checked: number[] = [];
-
-    indices_not_checked.push(from_index);
-    indices_already_checked[from_index] = true;
     cell_index_to_cost[from_index] = 0;
 
-    for (let current_cost = 0; indices_not_checked.length > 0; current_cost++) {
+    const iterator = path_iterator(battle, from, ignore_runes);
+
+    for (let current_cost = 0; iterator.indices_not_checked.length > 0; current_cost++) {
         const new_indices: number[] = [];
 
-        for (const index of indices_not_checked) {
+        for (const index of iterator.indices_not_checked) {
             const cell = battle.grid.cells[index];
             const at = cell.position;
 
             cell_index_to_cost[index] = current_cost;
 
-            if (to && xy_equal(to, at)) {
-                return {
-                    cell_index_to_cost: cell_index_to_cost,
-                    cell_index_to_parent_index: cell_index_to_parent_index
-                };
-            }
-
             const neighbors = grid_cell_neighbors(battle.grid, at);
 
             for (const neighbor of neighbors) {
-                if (!neighbor) continue;
+                const index = path_iterator_check_neighbor(iterator, neighbor);
+                if (index == undefined) continue;
 
-                const neighbor_cell_index = grid_cell_index(battle.grid, neighbor.position);
-
-                if (indices_already_checked[neighbor_cell_index]) continue;
-
-                let neighbor_occupied = neighbor.occupied;
-
-                if (ignore_runes) {
-                    const occupied_by_rune = !!rune_at(battle, neighbor.position);
-
-                    neighbor_occupied = neighbor.occupied && !occupied_by_rune;
-                }
-
-                if (neighbor_occupied) {
-                    indices_already_checked[neighbor_cell_index] = true;
-                    continue;
-                }
-
-                new_indices.push(neighbor_cell_index);
-
-                cell_index_to_parent_index[neighbor_cell_index] = index;
-                indices_already_checked[neighbor_cell_index] = true;
+                new_indices.push(index);
+                cell_index_to_parent_index[index] = index;
             }
         }
 
-        indices_not_checked = new_indices;
+        iterator.indices_not_checked = new_indices;
     }
 
-    if (to) {
-        return undefined;
-    } else {
-        return {
-            cell_index_to_cost: cell_index_to_cost,
-            cell_index_to_parent_index: cell_index_to_parent_index
-        };
-    }
+    return {
+        cell_index_to_cost: cell_index_to_cost,
+        cell_index_to_parent_index: cell_index_to_parent_index
+    };
 }
 
 function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, from: XY, check_at: XY): boolean {

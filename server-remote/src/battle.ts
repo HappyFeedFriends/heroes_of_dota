@@ -1645,7 +1645,7 @@ function defer_monster_try_retaliate(battle: Battle_Record, monster: Monster, ta
             return;
         }
 
-        const costs = populate_path_costs(battle, monster.position)!;
+        const costs = populate_path_costs(battle, monster.position);
 
         for (const cell of battle.grid.cells) {
             const index = grid_cell_index(battle.grid, cell.position);

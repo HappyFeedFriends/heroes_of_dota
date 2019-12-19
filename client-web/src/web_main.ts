@@ -599,10 +599,10 @@ function get_hero_name(type: Hero_Type): string {
 }
 
 function can_find_path_and_go(battle: Battle, from: XY, to: XY, maximum_distance: number, ignore_runes?: boolean): boolean {
-    const [can_go, cost] = can_find_path(battle, from, to, ignore_runes);
+    const path = can_find_path(battle, from, to, ignore_runes);
 
-    if (can_go) {
-        return cost <= maximum_distance;
+    if (path.found) {
+        return path.cost <= maximum_distance;
     }
 
     return false;

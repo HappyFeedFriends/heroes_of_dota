@@ -617,13 +617,12 @@ function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | undefine
         return;
     }
 
-    const populated = populate_path_costs(battle, from, to, ignore_runes);
-
-    if (!populated) {
-        return;
-    }
+    // TODO population can exit when reaching 'to' to work in a more efficient manner
+    const populated = populate_path_costs(battle, from, ignore_runes);
 
     let current_cell_index = populated.cell_index_to_parent_index[grid_cell_index(battle.grid, to)];
+    if (current_cell_index == undefined) return;
+
     const to_index = grid_cell_index(battle.grid, from);
     const path = [];
 
@@ -831,7 +830,7 @@ function selection_to_grid_selection(): Grid_Selection {
         case Selection_Type.none: return none();
 
         case Selection_Type.unit: {
-            const selected_entity_path = populate_path_costs(battle, selection.unit.position)!;
+            const selected_entity_path = populate_path_costs(battle, selection.unit.position);
 
             return {
                 type: Selection_Type.unit,
@@ -851,7 +850,7 @@ function selection_to_grid_selection(): Grid_Selection {
         case Selection_Type.shop: {
             return {
                 type: Selection_Type.shop,
-                path: populate_path_costs(battle, selection.unit.position)!,
+                path: populate_path_costs(battle, selection.unit.position),
                 unit: selection.unit,
                 shop: selection.shop
             }
@@ -907,10 +906,11 @@ function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, 
         return [color_green, 35];
     }
 
+    // TODO @Performance seems awfully inefficient if we have a lot of runes, consider populating paths twice and using that
     if (rune_in_cell) {
-        const [can_go, cost] = can_find_path(battle, unit.position, rune_in_cell.position, true);
+        const path = can_find_path(battle, unit.position, rune_in_cell.position, true);
 
-        if (can_go && cost <= unit.move_points) {
+        if (path.found && cost <= unit.move_points) {
             return [color_green, 35];
         }
     }

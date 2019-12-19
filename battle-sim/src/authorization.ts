@@ -448,15 +448,15 @@ function authorize_order_unit(act_on_unit: Act_On_Unit_Permission): Order_Unit_A
 
 function authorize_move_order(order_unit: Order_Unit_Permission, to: XY, ignore_runes: boolean): Move_Order_Auth {
     const { battle, unit } = order_unit;
-    const [could_find_path, cost] = can_find_path(battle, unit.position, to, ignore_runes);
+    const path = can_find_path(battle, unit.position, to, ignore_runes);
 
-    if (!could_find_path) return { ok: false, kind: Move_Order_Error.path_not_found };
-    if (cost > unit.move_points)  return { ok: false, kind: Move_Order_Error.not_enough_move_points };
+    if (!path.found) return { ok: false, kind: Move_Order_Error.path_not_found };
+    if (path.cost > unit.move_points)  return { ok: false, kind: Move_Order_Error.not_enough_move_points };
     if (xy_equal(unit.position, to)) return { ok: false, kind: Move_Order_Error.other };
 
     return {
         ...order_unit,
-        cost: cost
+        cost: path.cost
     }
 }
 
