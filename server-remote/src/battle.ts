@@ -1,15 +1,14 @@
-import {Id_Generator, random, report_battle_over} from "./server";
-import {readFileSync} from "fs";
+import {Id_Generator, import_battle_sim, report_battle_over} from "./server";
 import {XY} from "./common";
+import {Random} from "./random";
 
-eval(readFileSync("dist/battle_sim.js", "utf8"));
-
-let battle_id_auto_increment = 0;
+import_battle_sim();
 
 export type Battle_Record = Battle & {
     id: Battle_Id
     id_generator: Id_Generator
     finished: boolean
+    random: Random
     random_seed: number
     deferred_actions: Deferred_Action[]
     monster_targets: Map<Monster, Unit>
@@ -41,48 +40,7 @@ export type Spell_Spawn = {
     spell: Spell_Id
 }
 
-const battles: Battle_Record[] = [];
-
 type Deferred_Action = () => void
-
-export function random_int_range(lower_bound: number, upper_bound: number) {
-    const range = upper_bound - lower_bound;
-
-    return lower_bound + Math.floor(random() * range);
-}
-
-export function random_int_up_to(upper_bound: number) {
-    return Math.floor(random() * upper_bound);
-}
-
-export function random_in_array<T>(array: T[], length = array.length): T | undefined {
-    if (length == 0) return;
-
-    return array[random_int_up_to(length)];
-}
-
-function pick_n_random<T>(array: T[], n: number): T[] {
-    return pick_n_random_mutable(array.slice(), n);
-}
-
-function pick_n_random_mutable<T>(array: T[], n: number): T[] {
-    const result: T[] = [];
-
-    if (array.length == 0) {
-        return result;
-    }
-
-    for (; n > 0; n--) {
-        const item_index = random_int_up_to(array.length);
-        result.push(array.splice(item_index, 1)[0]);
-
-        if (array.length == 0) {
-            return result;
-        }
-    }
-
-    return result;
-}
 
 function defer(battle: Battle_Record, action: () => void) {
     battle.deferred_actions.push(action);
@@ -280,7 +238,7 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
         }
 
         case Spell_Id.call_to_arms: {
-            const spawn_points = pick_n_random_mutable(find_unoccupied_cells_in_deployment_zone_for_player(battle, player), spell.creeps_to_summon);
+            const spawn_points = battle.random.pick_n_mutable(find_unoccupied_cells_in_deployment_zone_for_player(battle, player), spell.creeps_to_summon);
 
             return {
                 ...base,
@@ -449,7 +407,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
             let remaining_damage = ability.damage;
 
             for (; remaining_damage > 0 && remaining_targets > 0; remaining_damage--) {
-                const target_index = random_int_up_to(remaining_targets);
+                const target_index = battle.random.int_up_to(remaining_targets);
                 const random_target = targets[target_index];
 
                 random_target.damage_applied++;
@@ -676,7 +634,7 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
             let remaining_beams = ability.total_beams;
 
             for (; remaining_beams > 0 && remaining_targets > 0; remaining_beams--) {
-                const target_index = random_int_up_to(remaining_targets);
+                const target_index = battle.random.int_up_to(remaining_targets);
                 const random_target = targets[target_index];
 
                 random_target.beams_applied++;
@@ -707,7 +665,7 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
             const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
             const enemies = targets.filter(target => !are_units_allies(unit, target));
             const allies = targets.filter(target => are_units_allies(unit, target));
-            const target = enemies.length > 0 ? random_in_array(enemies) : random_in_array(allies);
+            const target = enemies.length > 0 ? battle.random.in_array(enemies) : battle.random.in_array(allies);
 
             if (target) {
                 return {
@@ -758,7 +716,7 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
                 const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
                 const enemies = targets.filter(target => !are_units_allies(unit, target));
                 const allies = targets.filter(target => are_units_allies(unit, target));
-                const extra_target = enemies.length > 0 ? random_in_array(enemies) : random_in_array(allies);
+                const extra_target = enemies.length > 0 ? battle.random.in_array(enemies) : battle.random.in_array(allies);
 
                 if (extra_target) {
                     return apply_ability_effect_delta({
@@ -1203,7 +1161,7 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
                     const targets = query_units_for_no_target_ability(battle, target, ability.secondary_targeting);
                     const allies = targets.filter(target => are_units_allies(source, target) && target != source);
                     const enemies = targets.filter(target => !are_units_allies(source, target));
-                    const glaive_target = enemies.length > 0 ? random_in_array(enemies) : random_in_array(allies);
+                    const glaive_target = enemies.length > 0 ? battle.random.in_array(enemies) : battle.random.in_array(allies);
 
                     if (glaive_target) {
                         return apply_ability_effect_delta({
@@ -1490,9 +1448,7 @@ function spawn_creep(id: Unit_Id, owner: Battle_Player, at_position: XY, type: C
     };
 }
 
-function spawn_monster(battle: Battle_Record, at_position: XY, facing: XY): Delta_Monster_Spawn {
-    const id = get_next_entity_id(battle) as Unit_Id;
-
+function spawn_monster(id: Unit_Id, at_position: XY, facing: XY): Delta_Monster_Spawn {
     return {
         type: Delta_Type.monster_spawn,
         at_position: at_position,
@@ -1501,9 +1457,7 @@ function spawn_monster(battle: Battle_Record, at_position: XY, facing: XY): Delt
     };
 }
 
-function spawn_tree(battle: Battle_Record, at_position: XY): Delta_Tree_Spawn {
-    const id = get_next_entity_id(battle) as Tree_Id;
-
+function spawn_tree(id: Tree_Id, at_position: XY): Delta_Tree_Spawn {
     return {
         type: Delta_Type.tree_spawn,
         tree_id: id,
@@ -1561,7 +1515,7 @@ function try_compute_battle_winner(battle: Battle_Record): Battle_Player | undef
     return last_alive_unit_owner;
 }
 
-function get_gold_for_killing(target: Unit): number {
+function get_gold_for_killing(battle: Battle_Record, target: Unit): number {
     switch (target.supertype) {
         case Unit_Supertype.hero: {
             return 4 * target.level;
@@ -1572,7 +1526,7 @@ function get_gold_for_killing(target: Unit): number {
         }
 
         case Unit_Supertype.monster: {
-            return random_int_range(4, 6);
+            return battle.random.int_range(4, 6);
         }
     }
 }
@@ -1689,7 +1643,7 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
 
             if (dead) {
                 if (!are_units_allies(attacker, target) && attacker.supertype != Unit_Supertype.monster) {
-                    const bounty = get_gold_for_killing(target);
+                    const bounty = get_gold_for_killing(battle, target);
 
                     defer_delta(battle, () => ({
                         type: Delta_Type.gold_change,
@@ -1739,13 +1693,13 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                                     }
                                 }
 
-                                const target_cell = random_in_array(free_cells);
+                                const target_cell = battle.random.in_array(free_cells);
 
                                 if (target_cell) {
                                     return apply_ability_effect_delta({
                                         ability_id: Ability_Id.monster_spawn_spiderlings,
                                         source_unit_id: target.id,
-                                        summons: pick_n_random_mutable(free_cells, ability.how_many).map(cell => ({
+                                        summons: battle.random.pick_n_mutable(free_cells, ability.how_many).map(cell => ({
                                             owner_id: target.owner.id,
                                             unit_id: get_next_entity_id(battle) as Unit_Id,
                                             creep_type: Creep_Type.spiderling,
@@ -1897,7 +1851,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         defer_delta_by_unit(battle, unit, () => {
             if (is_unit_disarmed(unit)) return;
 
-            const target = random_in_array(
+            const target = battle.random.in_array(
                 query_units_for_no_target_ability(battle, unit, ability.targeting).filter(target => !are_units_allies(unit, target))
             );
 
@@ -1977,7 +1931,7 @@ function get_next_turning_player_id(battle: Battle_Record): Battle_Player_Id {
     return battle.players[next_index].id;
 }
 
-function submit_battle_deltas(battle: Battle_Record, battle_deltas: Delta[]) {
+export function submit_battle_deltas(battle: Battle_Record, battle_deltas: Delta[]) {
     battle.deltas.push(...battle_deltas);
 
     while (battle.deltas.length != battle.delta_head || battle.deferred_actions.length > 0) {
@@ -2012,14 +1966,6 @@ export function get_battle_deltas_after(battle: Battle, head: number): Delta[] {
     return battle.deltas.slice(head);
 }
 
-export function find_battle_by_id(id: Battle_Id): Battle_Record | undefined {
-    return battles.find(battle => battle.id == id);
-}
-
-export function get_all_battles(): Battle_Record[] {
-    return battles;
-}
-
 export function surrender_player_forces(battle: Battle_Record, battle_player: Battle_Player) {
     const player_units = battle.units.filter(unit => unit.supertype != Unit_Supertype.monster && unit.owner == battle_player);
 
@@ -2036,15 +1982,90 @@ export function surrender_player_forces(battle: Battle_Record, battle_player: Ba
     }));
 }
 
-export function start_battle(id_generator: Id_Generator, participants: Battle_Participant[], battleground: Battleground): Battle_Record {
-    let entity_id_auto_increment = 0;
+function battleground_spawns_to_spawn_deltas(next_id: Id_Generator, random: Random, spawns: Battleground_Spawn[]): Delta[] {
+    const spawn_deltas: Delta[] = [];
 
+    for (const spawn of spawns) {
+        switch (spawn.type) {
+            case Spawn_Type.rune: {
+                const random_rune = random.in_array(enum_values<Rune_Type>())!;
+
+                spawn_deltas.push({
+                    type: Delta_Type.rune_spawn,
+                    rune_type: random_rune,
+                    rune_id: next_id() as Rune_Id,
+                    at: spawn.at
+                });
+
+                break;
+            }
+
+            case Spawn_Type.shop: {
+                const items = random.pick_n(spawn.item_pool, 3);
+
+                spawn_deltas.push({
+                    type: Delta_Type.shop_spawn,
+                    shop_type: spawn.shop_type,
+                    shop_id: next_id() as Shop_Id,
+                    item_pool: items,
+                    at: spawn.at,
+                    facing: spawn.facing
+                });
+
+                break;
+            }
+
+            case Spawn_Type.monster: {
+                spawn_deltas.push(spawn_monster(next_id() as Unit_Id, spawn.at, spawn.facing));
+
+                break;
+            }
+
+            case Spawn_Type.tree: {
+                spawn_deltas.push(spawn_tree(next_id() as Tree_Id, spawn.at));
+
+                break
+            }
+
+            default: unreachable(spawn);
+        }
+    }
+
+    return spawn_deltas;
+}
+
+export function make_battle_record(battle_id: Battle_Id,
+                                   id_generator: Id_Generator,
+                                   random: Random,
+                                   players: Battle_Player[],
+                                   grid_size: XY,
+                                   world_origin: World_Origin): Battle_Record {
+    const battle: Battle_Record = {
+        ...make_battle(players, grid_size.x, grid_size.y),
+        id: battle_id,
+        id_generator: id_generator,
+        deferred_actions: [],
+        random: random,
+        random_seed: random.int_range(0, 65536),
+        finished: false,
+        monster_targets: new Map(),
+        end_turn_queued: false,
+        world_origin: world_origin,
+        receive_event: on_battle_event
+    };
+
+    fill_grid(battle);
+
+    return battle;
+}
+
+export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, random: Random, participants: Battle_Participant[], battleground: Battleground): Battle_Record {
     const battle_players: Battle_Player[] = [];
     const battle_player_and_participant_pairs: [Battle_Player, Battle_Participant][] = [];
 
     for (const participant of participants) {
         const battle_player = make_battle_player({
-            id: entity_id_auto_increment++ as Battle_Player_Id,
+            id: id_generator() as Battle_Player_Id,
             deployment_zone: participant == participants[0] ? battleground.deployment_zones[0] : battleground.deployment_zones[1],
             map_entity: participant.map_entity
         });
@@ -2053,20 +2074,7 @@ export function start_battle(id_generator: Id_Generator, participants: Battle_Pa
         battle_players.push(battle_player);
     }
 
-    const battle: Battle_Record = {
-        ...make_battle(battle_players, battleground.grid_size.x, battleground.grid_size.y),
-        id: battle_id_auto_increment++ as Battle_Id,
-        id_generator: id_generator,
-        deferred_actions: [],
-        random_seed: random_int_range(0, 65536),
-        finished: false,
-        monster_targets: new Map(),
-        end_turn_queued: false,
-        world_origin: battleground.world_origin,
-        receive_event: on_battle_event
-    };
-
-    fill_grid(battle);
+    const battle = make_battle_record(battle_id, id_generator, random, battle_players, battleground.grid_size, battleground.world_origin);
 
     function get_starting_gold(player: Battle_Player): Delta_Gold_Change {
         return {
@@ -2078,59 +2086,20 @@ export function start_battle(id_generator: Id_Generator, participants: Battle_Pa
 
     const spawn_deltas: Delta[] = [];
 
-    for (const spawn of battleground.spawns) {
-        switch (spawn.type) {
-            case Spawn_Type.rune: {
-                const random_rune = random_in_array(enum_values<Rune_Type>())!;
-
-                spawn_deltas.push({
-                    type: Delta_Type.rune_spawn,
-                    rune_type: random_rune,
-                    rune_id: get_next_entity_id(battle) as Rune_Id,
-                    at: spawn.at
-                });
-
-                break;
-            }
-
-            case Spawn_Type.shop: {
-                const items = pick_n_random(spawn.item_pool, 3);
-
-                spawn_deltas.push({
-                    type: Delta_Type.shop_spawn,
-                    shop_type: spawn.shop_type,
-                    shop_id: get_next_entity_id(battle) as Shop_Id,
-                    item_pool: items,
-                    at: spawn.at,
-                    facing: spawn.facing
-                });
-
-                break;
-            }
-
-            case Spawn_Type.monster: {
-                spawn_deltas.push(spawn_monster(battle, spawn.at, spawn.facing));
-
-                break;
-            }
-
-            case Spawn_Type.tree: {
-                spawn_deltas.push(spawn_tree(battle, spawn.at));
-
-                break
-            }
-
-            default: unreachable(spawn);
-        }
-    }
+    spawn_deltas.push(...battleground_spawns_to_spawn_deltas(id_generator, random, battleground.spawns));
 
     for (const [player, participant] of battle_player_and_participant_pairs) {
         const heroes = participant.heroes;
         const creeps = participant.creeps;
 
+        // TODO this code is unsound
+        //      1. Doesn't account for trees or any obstacles (at this point trees haven't spawned yet)
+        //      2. Doesn't account for intersection deployment zones or players sharing the same zone
+        //      The solution here is deferring each spawn or making separate deltas which figure out
+        //      where to spawn by themselves
         const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, player);
-        const hero_spawn_points = pick_n_random_mutable(free_cells, heroes.length);
-        const creep_spawn_points = pick_n_random_mutable(free_cells, creeps.length);
+        const hero_spawn_points = battle.random.pick_n_mutable(free_cells, heroes.length);
+        const creep_spawn_points = battle.random.pick_n_mutable(free_cells, creeps.length);
 
         for (let index = 0; index < hero_spawn_points.length; index++) {
             const hero = heroes[index];
@@ -2149,8 +2118,6 @@ export function start_battle(id_generator: Id_Generator, participants: Battle_Pa
     spawn_deltas.push({ type: Delta_Type.game_start });
 
     submit_battle_deltas(battle, spawn_deltas);
-
-    battles.push(battle);
 
     return battle;
 }
@@ -2306,7 +2273,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
                     case "r": return Rune_Type.regeneration;
                     case "d": return Rune_Type.double_damage;
                     case "b": return Rune_Type.bounty;
-                    default: return random_in_array(enum_values<Rune_Type>())!
+                    default: return battle.random.in_array(enum_values<Rune_Type>())!
                 }
             }
 
@@ -2350,7 +2317,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
             const deltas: Delta[] = [];
 
             for (const creep of creeps) {
-                const random_cell = pick_n_random_mutable(free_cells, 1);
+                const random_cell = battle.random.pick_n_mutable(free_cells, 1);
 
                 if (random_cell) {
                     deltas.push(spawn_creep(get_next_entity_id(battle) as Unit_Id, battle_player, random_cell[0].position, creep, creep_definition_by_type(creep).health));

@@ -1,12 +1,10 @@
-import {readFileSync} from "fs";
 import {
     Battle_Record,
     find_unoccupied_cells_in_deployment_zone_for_player,
-    random_in_array,
     try_take_turn_action
 } from "./battle";
 import {performance} from "perf_hooks";
-import {random_seed} from "./server";
+import {import_battle_sim, random_seed} from "./server";
 import {
     cell_size,
     debug,
@@ -16,7 +14,7 @@ import {
     clear_debug_ai_data
 } from "./debug_draw";
 
-eval(readFileSync("dist/battle_sim.js", "utf8"));
+import_battle_sim();
 
 type AI = {
     battle: Battle_Record
@@ -194,10 +192,10 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
 }
 
 function try_use_any_card(battle: Battle_Record, ai: Battle_Player) {
-    const random_hero_card = random_in_array(ai.hand.filter(card => card.type == Card_Type.hero));
+    const random_hero_card = battle.random.in_array(ai.hand.filter(card => card.type == Card_Type.hero));
 
     if (random_hero_card) {
-        const random_unoccupied_position = random_in_array(find_unoccupied_cells_in_deployment_zone_for_player(battle, ai));
+        const random_unoccupied_position = battle.random.in_array(find_unoccupied_cells_in_deployment_zone_for_player(battle, ai));
 
         if (random_unoccupied_position) {
             try_take_turn_action(battle, ai, {

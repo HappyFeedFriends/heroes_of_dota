@@ -1,11 +1,16 @@
+import {readFileSync} from "fs";
+const battle_sim_code = readFileSync("dist/battle_sim.js", "utf8");
+
+export function import_battle_sim() {
+    eval.call(process, battle_sim_code);
+}
+
 import {createServer} from "http";
 import {randomBytes} from "crypto"
 import {
     Battle_Participant,
     Battle_Record,
     cheat,
-    find_battle_by_id,
-    get_all_battles,
     get_battle_deltas_after,
     start_battle,
     surrender_player_forces,
@@ -14,8 +19,6 @@ import {
 import {unreachable, XY, xy} from "./common";
 import {pull_pending_chat_messages_for_player, submit_chat_message} from "./chat";
 import {performance} from "perf_hooks"
-import {readFileSync} from "fs";
-import * as battleground from "./battleground";
 import {get_debug_ai_data} from "./debug_draw";
 import {get_nearby_neutrals} from "./npc_controller";
 import {
@@ -41,8 +44,9 @@ import {
     make_new_battleground,
     save_battleground
 } from "./battleground";
+import {Random} from "./random";
 
-eval(readFileSync("dist/battle_sim.js", "utf8"));
+import_battle_sim();
 
 const enum Result_Type {
     ok = 0,
@@ -126,6 +130,7 @@ export type Id_Generator = () => number;
 let dev_mode = false;
 
 const players: Map_Player[] = [];
+const battles: Battle_Record[] = [];
 const token_to_player_login = new Map<string, Map_Player_Login>();
 const steam_id_to_player = new Map<string, Map_Player>();
 const api_handlers: ((body: object) => Request_Result<object>)[] = [];
@@ -134,10 +139,11 @@ const cards_per_page = 8;
 const heroes_in_deck = 3;
 const spells_in_deck = 5;
 
-const player_id_generator = sequential_id_generator();
-const ongoing_adventure_id_generator = sequential_id_generator();
+const player_id_generator = typed_sequential_id_generator<Player_Id>();
+const ongoing_adventure_id_generator = typed_sequential_id_generator<Ongoing_Adventure_Id>();
+const battle_id_generator = typed_sequential_id_generator<Battle_Id>();
 
-export let random: () => number;
+let random: Random;
 export let random_seed: number;
 
 function generate_access_token() {
@@ -175,7 +181,7 @@ function make_new_player(steam_id: string, name: string): Map_Player {
 
     return {
         steam_id: steam_id,
-        id: player_id_generator() as Player_Id,
+        id: player_id_generator(),
         name: name,
         active_logins: 0,
         deck: deck,
@@ -247,6 +253,16 @@ function with_player_in_request<T>(req: With_Token, do_what: (player: Map_Player
 
 function player_by_id(player_id: Player_Id) {
     return players.find(player => player.id == player_id);
+}
+
+function battle_by_id(id: Battle_Id): Battle_Record | undefined {
+    return battles.find(battle => battle.id == id);
+}
+
+function typed_sequential_id_generator<T extends number>(): () => T {
+    let id = 0;
+
+    return () => id++ as T;
 }
 
 function sequential_id_generator(): Id_Generator {
@@ -827,10 +843,12 @@ register_api_handler(Api_Request_Type.attack_player, req => {
 
         const id_generator = sequential_id_generator();
 
-        const battle = start_battle(id_generator, [
+        const battle = start_battle(battle_id_generator(), id_generator, random, [
             player_to_battle_participant(id_generator, player),
             player_to_battle_participant(id_generator, other_player)
         ], battleground);
+
+        battles.push(battle);
 
         transition_player_to_battle(player, battle);
         transition_player_to_battle(other_player, battle);
@@ -841,7 +859,7 @@ register_api_handler(Api_Request_Type.attack_player, req => {
 
 register_api_handler(Api_Request_Type.query_battle_deltas, req => {
     return with_player_in_request(req, () => {
-        const battle = find_battle_by_id(req.battle_id);
+        const battle = battle_by_id(req.battle_id);
 
         if (!battle) {
             console.error(`Battle #${req.battle_id} was not found`);
@@ -884,7 +902,7 @@ register_api_handler(Api_Request_Type.query_battles, req => {
         }
 
         return {
-            battles: get_all_battles().map(battle => ({
+            battles: battles.map(battle => ({
                 id: battle.id,
                 random_seed: battle.random_seed,
                 grid_size: {
@@ -1060,7 +1078,7 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
         player.online = {
             state: Player_State.on_adventure,
             ongoing_adventure: {
-                id: ongoing_adventure_id_generator() as Ongoing_Adventure_Id,
+                id: ongoing_adventure_id_generator(),
                 adventure: adventure,
                 current_room: starting_room,
                 entities: starting_room.type == Adventure_Room_Type.combat ? create_room_entities(starting_room) : [],
@@ -1119,10 +1137,12 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
 
         const id_generator = sequential_id_generator();
 
-        const battle = start_battle(id_generator, [
+        const battle = start_battle(battle_id_generator(), id_generator, random, [
             player_to_adventure_battle_participant(id_generator, player.id, player.online),
             adventure_enemy_to_battle_participant(id_generator, entity.id, entity.definition)
         ], battleground);
+
+        battles.push(battle);
 
         transition_player_to_battle(player, battle);
 
@@ -1288,10 +1308,12 @@ function register_dev_handlers() {
 
             const id_generator = sequential_id_generator();
 
-            const battle = start_battle(id_generator, [
+            const battle = start_battle(battle_id_generator(), id_generator, random, [
                 player_to_adventure_battle_participant(id_generator, player.id, player.online),
                 adventure_enemy_to_battle_participant(id_generator, entity.id, entity.definition)
             ], battleground);
+
+            battles.push(battle);
 
             transition_player_to_battle(player, battle, true);
 
@@ -1480,12 +1502,12 @@ export function start_server(dev: boolean, seed: number) {
 
     // TODO this is xorshift32, replace with a better algo
     //      https://github.com/bryc/code/blob/master/jshash/PRNGs.md
-    random = function(a) {
+    random = new Random(function(a) {
         return function() {
             a ^= a << 25; a ^= a >>> 7; a ^= a << 2;
             return (a >>> 0) / 4294967296;
         }
-    }(seed);
+    }(seed));
 
     random_seed = seed;
 

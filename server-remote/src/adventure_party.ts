@@ -1,5 +1,5 @@
-import {readFileSync} from "fs";
 import {unreachable} from "./common";
+import {import_battle_sim} from "./server";
 
 export type Map_Player_Party = {
     currency: number
@@ -25,7 +25,7 @@ export type Map_Player_Party_Slot = {
     card_id: Card_Id
 }
 
-eval(readFileSync("dist/battle_sim.js", "utf8"));
+import_battle_sim();
 
 export function find_empty_party_slot_index(party: Map_Player_Party): number {
     return party.slots.findIndex(slot => slot.type == Adventure_Party_Slot_Type.empty);
