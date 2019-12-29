@@ -7,7 +7,7 @@
     "alwaysStrict": false,
     "noImplicitUseStrict": true,
     "strictNullChecks": true,
-    "sourceMap": false,
+    "sourceMap": true,
     "declaration": true,
     "outDir": "dist",
     "outFile": "dist/battle_sim.js",

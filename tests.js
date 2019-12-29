@@ -19,5 +19,7 @@ const exec = require("child_process").exec;
 
     emitter.on("exit", function (code) {
         console.timeEnd("Run tests");
+
+        process.exit(code);
     });
 })();

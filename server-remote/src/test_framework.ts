@@ -210,8 +210,12 @@ export function run_tests(tests: Test[]) {
 
     if (failed == 0) {
         console.log(`${clr(green, "TESTS PASSED")} (${total_time_string}ms)`);
+
+        process.exit(0);
     } else {
         console.log(`${clr(red, "TESTS FAILED")} (${total_time_string}ms)`);
+
+        process.exit(1);
     }
 }
 

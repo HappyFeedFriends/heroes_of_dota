@@ -52,7 +52,21 @@ exports.compile = function(...modules) {
 };
 
 exports.copy_sim = function(to) {
-    copy("battle-sim/dist/battle_sim.js", to);
+    const source_file = "battle-sim/dist/battle_sim.js";
+
+    copy(source_file, to);
+
+    const source_map = JSON.parse(fs.readFileSync("battle-sim/dist/battle_sim.js.map", "utf8"));
+    const source_files = source_map.sources;
+    const source_directory = path.dirname(source_file);
+    const target_directory = path.dirname(to);
+
+    source_map.sources = source_files
+        .map(source_file => path.relative(target_directory, path.resolve(source_directory, source_file)));
+
+    const new_source_map = JSON.stringify(source_map);
+
+    fs.writeFileSync(`${to}.map`, new_source_map);
 };
 
 exports.deploy_web_version = function() {
