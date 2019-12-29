@@ -529,10 +529,10 @@ function can_find_path(battle: Battle, from: XY, to: XY, ignore_runes = false): 
             const neighbors = grid_cell_neighbors(battle.grid, at);
 
             for (const neighbor of neighbors) {
-                const index = path_iterator_check_neighbor(iterator, neighbor);
-                if (index == undefined) continue;
+                const neighbor_index = path_iterator_check_neighbor(iterator, neighbor);
+                if (neighbor_index == undefined) continue;
 
-                new_indices.push(index);
+                new_indices.push(neighbor_index);
             }
         }
 
@@ -562,11 +562,11 @@ function populate_path_costs(battle: Battle, from: XY, ignore_runes = false): Co
             const neighbors = grid_cell_neighbors(battle.grid, at);
 
             for (const neighbor of neighbors) {
-                const index = path_iterator_check_neighbor(iterator, neighbor);
-                if (index == undefined) continue;
+                const neighbor_index = path_iterator_check_neighbor(iterator, neighbor);
+                if (neighbor_index == undefined) continue;
 
-                new_indices.push(index);
-                cell_index_to_parent_index[index] = index;
+                new_indices.push(neighbor_index);
+                cell_index_to_parent_index[neighbor_index] = index;
             }
         }
 
