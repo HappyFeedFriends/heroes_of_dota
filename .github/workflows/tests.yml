@@ -1,0 +1,33 @@
+name: Tests
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [12.x]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Use Node ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+    - name: Install codegen dependencies
+      working-directory: codegen
+      run: npm ci
+    - name: Install server-remote dependencies
+      working-directory: server-remote
+      run: npm ci
+    - name: Build
+      run: |
+        node compile-battle-sim
+        node compile-everything
+    - name: Run tests
+      working-directory: server-remote
+      run: node dist/tests.js
+      
