@@ -29,6 +29,7 @@ type Source = Source_None | Source_Unit | Source_Item | Source_Player
 
 type Battle = {
     has_started: boolean
+    has_finished: boolean
     delta_head: number
     units: Unit[]
     runes: Rune[]
@@ -445,6 +446,7 @@ function make_battle_player(participant: Battle_Participant_Info) {
 function make_battle(players: Battle_Player[], grid_width: number, grid_height: number): Battle {
     return {
         has_started: false,
+        has_finished: false,
         delta_head: 0,
         units: [],
         runes: [],
@@ -1940,6 +1942,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
         }
 
         case Delta_Type.game_over: {
+            battle.has_finished = true;
             break;
         }
 

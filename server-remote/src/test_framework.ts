@@ -73,14 +73,21 @@ class For_Player {
     }
 
     spawn_hero(hero: Hero_Type, at: XY) {
+        const id = this.battle.id_generator() as Unit_Id;
+
         submit_battle_deltas(this.battle, [{
             type: Delta_Type.hero_spawn,
             hero_type: hero,
             at_position: at,
             health: hero_definition_by_type(hero).health,
             owner_id: this.player.id,
-            unit_id: this.battle.id_generator() as Unit_Id
+            unit_id: id
         }]);
+
+        const unit = find_unit_by_id(this.battle, id);
+        if (!unit) throw "Hero spawn failed";
+
+        return new For_Player_Unit(this.battle, this.player, unit);
     }
 
     spawn_creep(creep: Creep_Type, at: XY) {
@@ -147,10 +154,23 @@ class For_Player_Unit {
             new_value: value,
             value_delta: 0
         }]);
+
+        return this;
     }
 
     kill() {
         this.set_health(0);
+        return this;
+    }
+
+    order_move(to: XY) {
+        try_take_turn_action(this.battle, this.player, {
+            type: Action_Type.move,
+            unit_id: this.unit.id,
+            to: to
+        });
+
+        return this;
     }
 }
 

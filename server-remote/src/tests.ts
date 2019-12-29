@@ -37,6 +37,18 @@ function test_player_cant_spawn_hero_outside_deployment_zone() {
     }
 }
 
+function test_player_can_perform_a_simple_move_command() {
+    const battle = test_battle();
+    const move_target = xy(3, 1);
+    const hero = battle.for_test_player()
+        .spawn_hero(Hero_Type.dark_seer, xy(1, 1))
+        .order_move(xy(3, 1));
+
+    if (!xy_equal(hero.unit.position, move_target)) {
+        throw "Unit hasn't moved";
+    }
+}
+
 function test_game_doesnt_end_on_matriarch_ability() {
     const battle = test_battle();
 
@@ -53,13 +65,35 @@ function test_game_doesnt_end_on_matriarch_ability() {
         throw "Spiderlings not spawned";
     }
 
-    if (battle.battle.finished) {
+    if (battle.battle.has_finished) {
         throw "Battle shouldn't be over";
+    }
+}
+
+function test_game_over_when_all_enemies_die() {
+    const battle = test_battle();
+
+    battle.for_test_player()
+        .spawn_hero(Hero_Type.dark_seer, xy(1, 1));
+
+    const enemies = [
+        battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(2, 2)),
+        battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(3, 3))
+    ];
+
+    battle.start();
+
+    enemies.forEach(enemy => enemy.kill());
+
+    if (!battle.battle.has_finished) {
+        throw "Battle should be over";
     }
 }
 
 run_tests([
     test_player_can_spawn_hero_from_hand,
     test_player_cant_spawn_hero_outside_deployment_zone,
-    test_game_doesnt_end_on_matriarch_ability
+    test_player_can_perform_a_simple_move_command,
+    test_game_doesnt_end_on_matriarch_ability,
+    test_game_over_when_all_enemies_die
 ]);

@@ -7,7 +7,6 @@ import_battle_sim();
 export type Battle_Record = Battle & {
     id: Battle_Id
     id_generator: Id_Generator
-    finished: boolean
     random: Random
     random_seed: number
     deferred_actions: Deferred_Action[]
@@ -1880,12 +1879,10 @@ function resolve_end_turn_effects(battle: Battle_Record) {
 }
 
 function finish_battle(battle: Battle_Record, winner: Battle_Player) {
-    defer_delta(battle, () => ({
+    submit_battle_deltas(battle, [{
         type: Delta_Type.game_over,
         winner_player_id: winner.id
-    }));
-
-    battle.finished = true;
+    }]);
 
     report_battle_over(battle, winner.map_entity);
 }
@@ -1899,8 +1896,7 @@ function check_battle_over(battle: Battle_Record) {
 }
 
 export function try_take_turn_action(battle: Battle_Record, player: Battle_Player, action: Turn_Action): Delta[] | undefined {
-    // TODO move battle.finished to battle_sim and use Game_Over delta to set it
-    if (battle.finished) {
+    if (battle.has_finished) {
         return;
     }
 
@@ -1937,10 +1933,6 @@ export function submit_battle_deltas(battle: Battle_Record, battle_deltas: Delta
     while (battle.deltas.length != battle.delta_head || battle.deferred_actions.length > 0) {
         catch_up_to_head(battle);
 
-        if (!battle.finished) {
-            check_battle_over(battle);
-        }
-
         const action = battle.deferred_actions.shift();
 
         if (action) {
@@ -1955,6 +1947,10 @@ export function submit_battle_deltas(battle: Battle_Record, battle_deltas: Delta
             type: Delta_Type.end_turn,
             start_turn_of_player_id: get_next_turning_player_id(battle)
         }]);
+    }
+
+    if (!battle.has_finished) {
+        check_battle_over(battle);
     }
 }
 
@@ -2047,7 +2043,6 @@ export function make_battle_record(battle_id: Battle_Id,
         deferred_actions: [],
         random: random,
         random_seed: random.int_range(0, 65536),
-        finished: false,
         monster_targets: new Map(),
         end_turn_queued: false,
         world_origin: world_origin,
