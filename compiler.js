@@ -34,7 +34,10 @@ function compile_file(module) {
         emitter.stderr.on("data", data => process.stderr.write(data.toString()));
 
         emitter.on("exit", function (code) {
-            resolve(`${code === 0 ? yellow_module_name : red_module_name}: ${Number((performance.now() - start_time) / 1000).toFixed(2)}s`);
+            resolve({
+                ok: code === 0,
+                message: `${code === 0 ? yellow_module_name : red_module_name}: ${Number((performance.now() - start_time) / 1000).toFixed(2)}s`
+            });
 
             if (code !== 0) {
                 console.error(`${bright}${red}Error${reset} when compiling module ${yellow_module_name}`);
@@ -46,8 +49,10 @@ function compile_file(module) {
 exports.panorama_scripts_dir = "dist/content/panorama/scripts/custom_game";
 
 exports.compile = function(...modules) {
-    return Promise.all(modules.map(compile_file)).then(values => {
-        values.forEach(value => console.log(value));
+    return Promise.all(modules.map(compile_file)).then(results => {
+        results.forEach(result => console.log(result.message));
+
+        return results.every(result => result.ok);
     })
 };
 

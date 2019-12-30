@@ -5,11 +5,13 @@ const { compile, copy_sim, copy_code_shared_with_lua, panorama_scripts_dir } = r
 
     copy_code_shared_with_lua();
 
-    await compile("battle-sim");
+    const ok = await compile("battle-sim");
 
     copy_sim("client-web/dist/battle_sim.js");
     copy_sim("server-remote/dist/battle_sim.js");
     copy_sim(`${panorama_scripts_dir}/battle_sim.js`);
 
     console.timeEnd("Compile");
+
+    if (!ok) process.exit(1);
 })();

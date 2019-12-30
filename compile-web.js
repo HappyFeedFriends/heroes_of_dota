@@ -3,7 +3,7 @@ const { compile, copy_sim, deploy_web_version } = require("./compiler");
 (async () => {
     console.time("Compile");
 
-    await compile("battle-sim", "client-web", "server-remote");
+    const ok = await compile("battle-sim", "client-web", "server-remote");
 
     copy_sim("client-web/dist/battle_sim.js");
     copy_sim("server-remote/dist/battle_sim.js");
@@ -11,4 +11,6 @@ const { compile, copy_sim, deploy_web_version } = require("./compiler");
     deploy_web_version();
 
     console.timeEnd("Compile");
+
+    if (!ok) process.exit(1);
 })();
