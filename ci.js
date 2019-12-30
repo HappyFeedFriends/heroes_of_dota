@@ -1,4 +1,8 @@
-const exec = require("child_process").execSync;
+const { compile, copy_sim } = require("./compiler");
 
-exec("npm install", { cwd: "server-remote", stdio: "inherit" });
-exec("npm install", { cwd: "codegen", stdio: "inherit" });
+(async () => {
+    await compile("battle-sim");
+    await compile("server-remote");
+
+    copy_sim("server-remote/dist/battle_sim.js");
+})();

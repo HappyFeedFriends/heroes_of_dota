@@ -24,9 +24,7 @@ jobs:
       working-directory: server-remote
       run: npm ci
     - name: Build
-      run: |
-        node compile-battle-sim
-        node compile-everything
+      run: node ci
     - name: Run tests
       working-directory: server-remote
       run: node dist/tests.js
