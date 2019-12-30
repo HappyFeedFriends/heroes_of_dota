@@ -28,4 +28,5 @@ jobs:
     - name: Run tests
       working-directory: server-remote
       run: node dist/tests.js
+      timeout-minutes: 1
       
