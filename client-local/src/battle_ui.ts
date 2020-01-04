@@ -136,14 +136,16 @@ type Stat_Indicator = {
 type Hero_Row = {
     unit_id: Unit_Id
     panel: Panel
+    ability_buttons_panel: Panel
     ability_buttons: Hero_Ability_Button[]
     health_label: LabelPanel
     level_bar: Level_Bar
 }
 
 type Hero_Ability_Button = {
-    ability: Ability_Id;
-    ability_panel: Panel;
+    ability: Ability_Id
+    ability_panel: Panel
+    ability_image: Panel
     charges_label: LabelPanel
     overlay: Panel
 }
@@ -1494,9 +1496,15 @@ function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In
             leftover_entity_ids.splice(present_id_index, 1);
         }
 
+        const u = find_unit_by_id(battle, new_data.id);
+        if (u && u.supertype == Unit_Supertype.creep) {
+            $.Msg(enum_to_string(u.type), " ", u.state_unselectable_counter, " ", u.modifiers.length);
+
+
+        }
         if (existing_data && new_data.supertype == existing_data.supertype) {
             update_unit_stat_bar_data(existing_data, new_data);
-        } else {
+        } else if (new_data.state_unselectable_counter == 0) {
             const created_data = create_ui_unit_data(new_data);
             update_unit_stat_bar_data(created_data, new_data);
 
@@ -1698,6 +1706,10 @@ function get_ability_tooltip(a: Ability): string {
         case Ability_Id.dark_seer_ion_shell: return `Apply a shield which deals ${a.damage_per_turn} damage per turn to the targets around the carrier for ${a.duration} turns`;
         case Ability_Id.dark_seer_surge: return `Give target ${a.move_points_bonus} move points for their turn`;
         case Ability_Id.dark_seer_vacuum: return `Pull all targets in the area towards point`;
+        case Ability_Id.ember_searing_chains: return `Root ${a.targets} random targets in the area. Prioritizes enemies`;
+        case Ability_Id.ember_sleight_of_fist: return `Attack all targets around`;
+        case Ability_Id.ember_fire_remnant: return `Launch a fire remnant to the target location. Reactivate to move to that remnant`;
+        case Ability_Id.ember_activate_fire_remnant: return `Instantly move to the fire remnant location`;
 
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
@@ -1739,6 +1751,10 @@ function get_ability_icon(ability_id: Ability_Id): string {
         case Ability_Id.dark_seer_ion_shell: return "dark_seer_ion_shell";
         case Ability_Id.dark_seer_surge: return "dark_seer_surge";
         case Ability_Id.dark_seer_vacuum: return "dark_seer_vacuum";
+        case Ability_Id.ember_searing_chains: return "ember_spirit_searing_chains";
+        case Ability_Id.ember_sleight_of_fist: return "ember_spirit_sleight_of_fist";
+        case Ability_Id.ember_fire_remnant: return "ember_spirit_fire_remnant";
+        case Ability_Id.ember_activate_fire_remnant: return "ember_spirit_activate_fire_remnant";
 
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
@@ -1788,6 +1804,9 @@ function get_modifier_icon(modifier_id: Modifier_Id): string {
         case Modifier_Id.venge_wave_of_terror: return from_ability(Ability_Id.venge_wave_of_terror);
         case Modifier_Id.dark_seer_ion_shell: return from_ability(Ability_Id.dark_seer_ion_shell);
         case Modifier_Id.dark_seer_surge: return from_ability(Ability_Id.dark_seer_surge);
+        case Modifier_Id.ember_searing_chains: return from_ability(Ability_Id.ember_searing_chains);
+        case Modifier_Id.ember_fire_remnant: return from_ability(Ability_Id.ember_fire_remnant);
+        case Modifier_Id.ember_fire_remnant_caster: return from_ability(Ability_Id.ember_activate_fire_remnant);
 
         case Modifier_Id.spell_euls_scepter: return "items/cyclone";
         case Modifier_Id.spell_buckler: return "items/buckler";
@@ -1831,6 +1850,93 @@ function update_level_bar(level_bar: Level_Bar, level: number) {
     });
 }
 
+function sync_ability_buttons_with_abilities(row: Hero_Row, hero: Hero) {
+    function create_hero_ability_button(ability: Ability): Hero_Ability_Button {
+        const ability_panel = $.CreatePanel("Button", row.ability_buttons_panel, "");
+        ability_panel.AddClass("ability_button");
+
+        const ability_image = $.CreatePanel("Panel", ability_panel, "ability_image");
+        safely_set_panel_background_image(ability_image, get_full_ability_icon_path(ability.id));
+
+        const charges_label = $.CreatePanel("Label", ability_panel, "charges");
+        charges_label.hittest = false;
+
+        const overlay = $.CreatePanel("Panel", ability_panel, "overlay");
+
+        return {
+            ability: ability.id,
+            ability_panel: ability_panel,
+            ability_image: ability_image,
+            charges_label: charges_label,
+            overlay: overlay
+        };
+    }
+
+    for (let index = 0; index < hero.abilities.length; index++) {
+        const ability = hero.abilities[index];
+
+        if (index >= row.ability_buttons.length) {
+            const button = create_hero_ability_button(ability);
+            update_ability_button_ui(button, hero, ability);
+
+            row.ability_buttons.push(button);
+        } else {
+            const button = row.ability_buttons[index];
+
+            if (button.ability != ability.id) {
+                update_ability_button_ui(button, hero, ability);
+            }
+        }
+    }
+
+    const remaining_buttons = row.ability_buttons.splice(hero.abilities.length);
+
+    for (const button of remaining_buttons) {
+        button.ability_panel.DeleteAsync(0);
+    }
+}
+
+function update_ability_button_ui(button: Hero_Ability_Button, hero: Hero, ability: Ability) {
+    const ability_panel = button.ability_panel;
+
+    ability_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        const entity_data = find_unit_entity_data_by_unit_id(battle, hero.id);
+
+        if (entity_data) {
+            const [ id ] = entity_data;
+
+            select_unit(id);
+            try_select_unit_ability(hero, ability);
+        }
+    });
+
+    ability_panel.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
+        if (!hero.dead) {
+            hover = {
+                type: Hover_Type.ability,
+                unit: hero,
+                ability: ability
+            };
+
+            update_grid_visuals();
+        }
+
+        $.DispatchEvent("DOTAShowTextTooltip", ability_panel, get_ability_tooltip(ability));
+    });
+
+    ability_panel.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, () => {
+        if (hover.type == Hover_Type.ability && hover.ability == ability) {
+            hover = { type: Hover_Type.none };
+
+            update_grid_visuals();
+        }
+
+        $.DispatchEvent("DOTAHideTextTooltip");
+    });
+
+    safely_set_panel_background_image(button.ability_image, get_full_ability_icon_path(ability.id));
+}
+
 function add_spawned_hero_to_control_panel(hero: Hero) {
     function create_indicator(parent: Panel, id: string, value: number): LabelPanel {
         const indicator = $.CreatePanel("Panel", parent, id);
@@ -1858,71 +1964,16 @@ function add_spawned_hero_to_control_panel(hero: Hero) {
     const indicators = $.CreatePanel("Panel", portrait, "indicators");
     const health = create_indicator(indicators, "health_indicator", hero.health);
     const level = create_level_bar(indicators, "level_indicator");
-
-    const ability_buttons: Hero_Ability_Button[] = [];
-
-    for (const ability of hero.abilities) {
-        const ability_panel = $.CreatePanel("Button", abilities, "");
-        ability_panel.AddClass("ability_button");
-
-        ability_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-            const entity_data = find_unit_entity_data_by_unit_id(battle, hero.id);
-
-            if (entity_data) {
-                const [ id ] = entity_data;
-
-                select_unit(id);
-                try_select_unit_ability(hero, ability);
-            }
-        });
-
-        ability_panel.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
-            if (!hero.dead) {
-                hover = {
-                    type: Hover_Type.ability,
-                    unit: hero,
-                    ability: ability
-                };
-
-                update_grid_visuals();
-            }
-
-            $.DispatchEvent("DOTAShowTextTooltip", ability_panel, get_ability_tooltip(ability));
-        });
-
-        ability_panel.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, () => {
-            if (hover.type == Hover_Type.ability && hover.ability == ability) {
-                hover = { type: Hover_Type.none };
-
-                update_grid_visuals();
-            }
-
-            $.DispatchEvent("DOTAHideTextTooltip");
-        });
-
-        const ability_image = $.CreatePanel("Panel", ability_panel, "ability_image");
-        safely_set_panel_background_image(ability_image, get_full_ability_icon_path(ability.id));
-
-        const charges_label = $.CreatePanel("Label", ability_panel, "charges");
-        charges_label.hittest = false;
-
-        const overlay = $.CreatePanel("Panel", ability_panel, "overlay");
-
-        ability_buttons.push({
-            ability: ability.id,
-            ability_panel: ability_panel,
-            charges_label: charges_label,
-            overlay: overlay
-        })
-    }
-
     const new_row: Hero_Row = {
         panel: hero_row,
         unit_id: hero.id,
-        ability_buttons: ability_buttons,
+        ability_buttons_panel: abilities,
+        ability_buttons: [],
         health_label: health,
         level_bar: level
     };
+
+    sync_ability_buttons_with_abilities(new_row, hero);
 
     control_panel.hero_rows.push(new_row);
 }
@@ -1957,6 +2008,7 @@ function update_hero_control_panel_state(row: Hero_Row, hero: Hero) {
     row.health_label.text = hero.health.toString();
 
     update_level_bar(row.level_bar, hero.level);
+    sync_ability_buttons_with_abilities(row, hero);
 
     for (const ability_button of row.ability_buttons) {
         const ability = find_unit_ability(hero, ability_button.ability);

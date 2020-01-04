@@ -54,6 +54,16 @@ function apply_modifier_field_change(target: Unit_Stats, change: Modifier_Change
             break;
         }
 
+        case Modifier_Field.state_rooted_counter: {
+            target.state_rooted_counter += delta;
+            break;
+        }
+
+        case Modifier_Field.state_unselectable_counter: {
+            target.state_unselectable_counter += delta;
+            break;
+        }
+
         default: unreachable(change.field);
     }
 }

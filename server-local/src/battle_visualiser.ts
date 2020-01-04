@@ -1,8 +1,3 @@
-type XY = {
-    x: number
-    y: number
-}
-
 type Battle = {
     id: Battle_Id
     this_player_id: Battle_Player_Id
@@ -277,6 +272,10 @@ function creep_type_to_model_and_scale(creep_type: Creep_Type): [string, number]
             "models/heroes/broodmother/spiderling.vmdl",
             0.4
         ];
+        case Creep_Type.ember_fire_remnant: return [
+            `models/heroes/ember_spirit/ember_spirit.vmdl`,
+            1
+        ];
     }
 }
 
@@ -427,10 +426,12 @@ function unit_base(unit_id: Unit_Id, info: Unit_Creation_Info, definition: Unit_
         attack_damage: definition.attack_damage,
         attack_bonus: 0,
         armor: 0,
+        state_rooted_counter: 0,
         state_stunned_counter: 0,
         state_silenced_counter: 0,
         state_disarmed_counter: 0,
         state_out_of_the_game_counter: 0,
+        state_unselectable_counter: 0,
         move_points: definition.move_points,
         move_points_bonus: 0,
         max_move_points: definition.move_points,
@@ -460,6 +461,10 @@ function spawn_hero_for_battle(hero_type: Hero_Type, unit_id: Unit_Id, owner_id:
         owner_remote_id: owner_id,
         level: 1
     };
+}
+
+function register_unit(battle: Battle, unit: Unit) {
+    battle.units.push(unit);
 }
 
 function spawn_creep_for_battle(type: Creep_Type, unit_id: Unit_Id, owner_id: Battle_Player_Id, at: XY, facing: XY): Creep {
@@ -615,7 +620,7 @@ type Replace_Target_Unit_Id<T> = Omit<T, "target_unit_id"> & { unit: Unit };
 function filter_and_map_existing_units<T extends { target_unit_id: Unit_Id }>(array: T[]): Replace_Target_Unit_Id<T>[] {
     const result: Replace_Target_Unit_Id<T>[] = [];
 
-    for (const member of array) {
+    for (const member of from_client_array(array)) {
         const unit = find_unit_by_id(member.target_unit_id);
 
         if (unit) {
@@ -923,6 +928,7 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
             case Hero_Type.skywrath_mage: return "Hero_SkywrathMage.PreAttack";
             case Hero_Type.dragon_knight: return "Hero_DragonKnight.PreAttack";
             case Hero_Type.dark_seer: return "Hero_DarkSeer.PreAttack";
+            case Hero_Type.ember_spirit: return "Hero_EmberSpirit.PreAttack";
         }
     }
 
@@ -939,6 +945,7 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
             case Hero_Type.mirana: return "Hero_Mirana.Attack";
             case Hero_Type.vengeful_spirit: return "Hero_VengefulSpirit.Attack";
             case Hero_Type.dark_seer: return "Hero_DarkSeer.Attack";
+            case Hero_Type.ember_spirit: return "Hero_EmberSpirit.Attack";
         }
     }
 
@@ -1185,7 +1192,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
 
             // TODO @VoiceOver
 
-            const targets = filter_and_map_existing_units(from_client_array(cast.targets));
+            const targets = filter_and_map_existing_units(cast.targets);
             const forks: Fork[] = [];
 
             // @HardcodedConstant
@@ -1316,7 +1323,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             const fx = "particles/units/heroes/hero_vengeful/vengeful_wave_of_terror.vpcf";
             const from = unit.position;
             const to = cast.target_position;
-            const targets = filter_and_map_existing_units(from_client_array(cast.targets));
+            const targets = filter_and_map_existing_units(cast.targets);
 
             linear_projectile_with_targets(from, to, 2000, distance, fx, targets, target => target.unit.handle.GetAbsOrigin(), target => {
                 change_health(game, unit, target.unit, target.change);
@@ -1338,7 +1345,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
                 .with_point_value(1, (radius + 0.5) * battle_cell_size)
                 .release();
 
-            const targets = filter_and_map_existing_units(from_client_array(cast.targets));
+            const targets = filter_and_map_existing_units(cast.targets);
 
             wait_for_all_forks(targets.map(target => fork(() => {
                 const world_from = target.unit.handle.GetAbsOrigin();
@@ -1365,6 +1372,18 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
                 target.unit.position = target.move_to;
                 target.unit.handle.SetAbsOrigin(world_to_actual);
             })));
+
+            break;
+        }
+
+        case Ability_Id.ember_fire_remnant: {
+            // TODO Should be able to cast this ability as a monster as well
+            if (unit.supertype == Unit_Supertype.monster) break;
+
+            const remnant = spawn_creep_for_battle(cast.remnant.type, cast.remnant.id, unit.owner_remote_id, cast.target_position, direction);
+            register_unit(battle, remnant);
+            apply_modifier(game, remnant, cast.remnant.modifier);
+            apply_modifier(game, unit, cast.modifier);
 
             break;
         }
@@ -1436,6 +1455,7 @@ function modifier_id_to_visuals(id: Modifier_Id): Modifier_Visuals_Complex | Mod
                 .with_point_value(1, 50, 50, 50)
         );
         case Modifier_Id.dark_seer_surge: return follow("particles/units/heroes/hero_dark_seer/dark_seer_surge.vpcf");
+        case Modifier_Id.ember_searing_chains: return follow("particles/units/heroes/hero_ember_spirit/ember_spirit_searing_chains_debuff.vpcf");
         case Modifier_Id.rune_double_damage: return follow("particles/generic_gameplay/rune_doubledamage_owner.vpcf");
         case Modifier_Id.rune_haste: return follow("particles/generic_gameplay/rune_haste_owner.vpcf");
         case Modifier_Id.item_satanic: return follow("particles/items2_fx/satanic_buff.vpcf");
@@ -1515,7 +1535,7 @@ function spawn_unit_with_fx<T extends Unit>(at: XY, supplier: () => T): T {
     show_damage_effect_on_target(new_unit);
     fx_by_unit("particles/dev/library/base_dust_hit.vpcf", new_unit).release();
 
-    battle.units.push(new_unit);
+    register_unit(battle, new_unit);
 
     return new_unit;
 }
@@ -1787,7 +1807,7 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
                 .to_unit_origin(2, unit)
                 .to_unit_origin(3, unit);
 
-            const beam_targets = filter_and_map_existing_units(from_client_array(cast.targets))
+            const beam_targets = filter_and_map_existing_units(cast.targets)
                 .filter(target => target.change.value_delta != 0)
                 .map(target => ({
                     target: target,
@@ -1913,13 +1933,91 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
             fx_by_unit("particles/units/heroes/hero_mirana/mirana_starfall_circle.vpcf", unit).release();
             unit_emit_sound(unit, "Ability.Starfall");
 
-            wait_for_all_forks(from_client_array(cast.targets).map(target => fork(() => {
-                const target_unit = find_unit_by_id(target.target_unit_id);
-
-                if (target_unit) {
-                    starfall_drop_star_on_unit(game, unit, target_unit, target.change);
-                }
+            wait_for_all_forks(filter_and_map_existing_units(cast.targets).map(target => fork(() => {
+                starfall_drop_star_on_unit(game, unit, target.unit, target.change);
             })));
+
+            break;
+        }
+
+        case Ability_Id.ember_searing_chains: {
+            unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_1, 0.2);
+            unit_emit_sound(unit, "Hero_EmberSpirit.SearingChains.Cast");
+            fx_by_unit("particles/units/heroes/hero_ember_spirit/ember_spirit_searing_chains_cast.vpcf", unit)
+                .with_point_value(1, 300)
+                .release();
+
+            // Forking here is not really required since all projectiles arrive at the same point, but w/e
+            wait_for_all_forks(filter_and_map_existing_units(cast.targets).map(target => fork(() => {
+                fx("particles/units/heroes/hero_ember_spirit/ember_spirit_searing_chains_start.vpcf")
+                    .to_unit_attach_point(0, unit, "attach_hitloc")
+                    .to_unit_attach_point(1, target.unit, "attach_hitloc")
+                    .release();
+
+                wait(0.25);
+                apply_modifier(game, target.unit, target.modifier);
+                unit_emit_sound(target.unit, "Hero_EmberSpirit.SearingChains.Target");
+            })));
+
+            break;
+        }
+
+        case Ability_Id.ember_sleight_of_fist: {
+            // TODO @VoiceOver
+
+            const remnant_fx = fx("particles/units/heroes/hero_ember_spirit/ember_spirit_sleight_of_fist_caster.vpcf")
+                .with_vector_value(0, unit.handle.GetAbsOrigin())
+                .with_forward_vector(1, unit.handle.GetForwardVector())
+                .follow_unit_origin(1, unit);
+
+            unit.handle.AddNoDraw();
+
+            unit_emit_sound(unit, "Hero_EmberSpirit.SleightOfFist.Cast");
+
+            const targets = filter_and_map_existing_units(cast.targets).map(target => ({
+                ...target,
+                particle: fx_by_unit("particles/units/heroes/hero_ember_spirit/ember_spirit_sleight_of_fist_targetted_marker.vpcf", target.unit)
+                    .follow_unit_overhead(0, target.unit)
+            }));
+
+            for (let index = 0; index < targets.length; index++) {
+                wait(0.2);
+
+                const previous_target = index == 0 ? unit : targets[index - 1].unit;
+                const target = targets[index];
+
+                unit_emit_sound(target.unit, "Hero_EmberSpirit.SleightOfFist.Damage");
+
+                fx_follow_unit("particles/units/heroes/hero_ember_spirit/ember_spirit_sleightoffist_tgt.vpcf", target.unit)
+                    .release();
+
+                fx("particles/units/heroes/hero_ember_spirit/ember_spirit_sleightoffist_trail.vpcf")
+                    .to_location(0, previous_target.position)
+                    .to_location(1, target.unit.position)
+                    .release();
+
+                target.particle.destroy_and_release(false);
+
+                change_health(game, unit, target.unit, target.change);
+            }
+
+            remnant_fx.destroy_and_release(false);
+            unit.handle.RemoveNoDraw();
+
+            break;
+        }
+
+        case Ability_Id.ember_activate_fire_remnant: {
+            if (!cast.action) break;
+
+            const remnant = find_unit_by_id(cast.action.remnant_id);
+
+            if (remnant) {
+                kill_unit(remnant, remnant);
+            }
+
+            unit.position = cast.action.move_to;
+            unit.handle.SetAbsOrigin(battle_position_to_world_position_center(battle.world_origin, unit.position));
 
             break;
         }
@@ -1933,7 +2031,7 @@ function play_no_target_spell_delta(game: Game, cast: Delta_Use_No_Target_Spell)
         case Spell_Id.mekansm: {
             battle_emit_sound("DOTA_Item.Mekansm.Activate");
 
-            for (const target of filter_and_map_existing_units(from_client_array(cast.targets))) {
+            for (const target of filter_and_map_existing_units(cast.targets)) {
                 fx_follow_unit("particles/items2_fx/mekanism.vpcf", target.unit).release();
                 unit_emit_sound(target.unit, "DOTA_Item.Mekansm.Target");
                 change_health(game, target.unit, target.unit, target.change);
@@ -1945,7 +2043,7 @@ function play_no_target_spell_delta(game: Game, cast: Delta_Use_No_Target_Spell)
         case Spell_Id.buckler: {
             battle_emit_sound("DOTA_Item.Buckler.Activate");
 
-            for (const target of filter_and_map_existing_units(from_client_array(cast.targets))) {
+            for (const target of filter_and_map_existing_units(cast.targets)) {
                 apply_modifier(game, target.unit, target.modifier);
             }
 
@@ -1955,7 +2053,7 @@ function play_no_target_spell_delta(game: Game, cast: Delta_Use_No_Target_Spell)
         case Spell_Id.drums_of_endurance: {
             battle_emit_sound("DOTA_Item.DoE.Activate");
 
-            for (const target of filter_and_map_existing_units(from_client_array(cast.targets))) {
+            for (const target of filter_and_map_existing_units(cast.targets)) {
                 apply_modifier(game, target.unit, target.modifier);
             }
 
@@ -2132,10 +2230,9 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
 
         case Ability_Id.dark_seer_ion_shell: {
             const source = find_unit_by_id(effect.source_unit_id);
-            const targets = filter_and_map_existing_units(from_client_array(effect.targets));
 
             if (source) {
-                for (const target of targets) {
+                for (const target of filter_and_map_existing_units(effect.targets)) {
                     change_health(game, source, target.unit, target.change);
                     fx("particles/units/heroes/hero_dark_seer/dark_seer_ion_shell_damage.vpcf")
                         .follow_unit_origin(0, source)
@@ -2201,7 +2298,7 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
 
                     if (direction.Length2D() == 0) {
                         const creep = spawn_creep_for_battle(summon.creep_type, summon.unit_id, summon.owner_id, spawn_at, RandomVector(1));
-                        battle.units.push(creep);
+                        register_unit(battle, creep);
 
                         return;
                     }
@@ -2209,7 +2306,7 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
                     const creep = spawn_creep_for_battle(summon.creep_type, summon.unit_id, summon.owner_id, spawn_at, { x: direction.x, y: direction.y });
                     const world_target = battle_position_to_world_position_center(battle.world_origin, summon.at);
 
-                    battle.units.push(creep);
+                    register_unit(battle, creep);
 
                     while (true) {
                         creep.handle.MoveToPosition(world_target);
@@ -2505,6 +2602,29 @@ function apply_special_death_effects(target: Unit) {
     }
 }
 
+function kill_unit(source: Unit, target: Unit) {
+    // TODO gold earning could have an actual source, it's probably where we should spawn the particle
+    if (source.supertype != Unit_Supertype.monster && !are_units_allies(source, target)) {
+        fx("particles/generic_gameplay/lasthit_coins.vpcf").to_unit_origin(1, target).release();
+        fx_follow_unit("particles/generic_gameplay/lasthit_coins_local.vpcf", source)
+            .to_unit_origin(1, target)
+            .to_unit_attach_point(2, source, "attach_hitloc")
+            .release();
+    }
+
+    if (source.supertype != Unit_Supertype.monster && target.supertype != Unit_Supertype.monster) {
+        if (source.owner_remote_id == target.owner_remote_id) {
+            try_play_random_sound_for_hero(source, sounds => sounds.deny);
+        }
+    }
+
+    try_play_random_sound_for_hero(source, sounds => sounds.kill);
+    apply_special_death_effects(target);
+
+    target.handle.ForceKill(false);
+    target.dead = true;
+}
+
 function change_health(game: Game, source: Unit, target: Unit, change: Health_Change) {
     function number_particle(amount: number, r: number, g: number, b: number) {
         fx("particles/msg_damage.vpcf")
@@ -2537,26 +2657,7 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
     update_game_net_table(game);
 
     if (target.health == 0 && !target.dead) {
-        // TODO gold earning could have an actual source, it's probably where we should spawn the particle
-        if (source.supertype != Unit_Supertype.monster && !are_units_allies(source, target)) {
-            fx("particles/generic_gameplay/lasthit_coins.vpcf").to_unit_origin(1, target).release();
-            fx_follow_unit("particles/generic_gameplay/lasthit_coins_local.vpcf", source)
-                .to_unit_origin(1, target)
-                .to_unit_attach_point(2, source, "attach_hitloc")
-                .release();
-        }
-
-        if (source.supertype != Unit_Supertype.monster && target.supertype != Unit_Supertype.monster) {
-            if (source.owner_remote_id == target.owner_remote_id) {
-                try_play_random_sound_for_hero(source, sounds => sounds.deny);
-            }
-        }
-
-        try_play_random_sound_for_hero(source, sounds => sounds.kill);
-        apply_special_death_effects(target);
-
-        target.handle.ForceKill(false);
-        target.dead = true;
+        kill_unit(source, target);
     }
 }
 
@@ -2742,7 +2843,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
 
             show_damage_effect_on_target(unit);
 
-            battle.units.push(unit);
+            register_unit(battle, unit);
 
             wait(0.25);
 

@@ -404,6 +404,47 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             }
         }
 
+        case Hero_Type.ember_spirit: {
+            return {
+                health: 10,
+                attack: basic_attack(1),
+                attack_damage: 3,
+                move_points: 3,
+                abilities: [
+                    active_ability<Ability_Ember_Searing_Chains>({
+                        available_since_level: 1,
+                        targeting: target_rect_area_around_caster(2),
+                        flags: [],
+                        charges: 1,
+                        targets: 2
+                    }),
+                    active_ability<Ability_Ember_Sleight_Of_Fist>({
+                        available_since_level: 2,
+                        targeting: target_rect_area_around_caster(2),
+                        flags: [],
+                        charges: 1
+                    }),
+                    active_ability<Ability_Ember_Fire_Remnant>({
+                        available_since_level: 3,
+                        targeting: target_in_manhattan_distance(5),
+                        flags: [],
+                        charges: 1
+                    })
+                ],
+                ability_bench: [
+                    active_ability<Ability_Ember_Activate_Fire_Remnant>({
+                        available_since_level: 3,
+                        charges: 1,
+                        targeting: {
+                            type: Ability_Targeting_Type.any_free_cell,
+                            selector: single_target()
+                        },
+                        flags: [ Ability_Flag.does_not_consume_action ]
+                    })
+                ]
+            }
+        }
+
         default: return unreachable(type);
     }
 }
@@ -509,6 +550,14 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
                 move_points: 3,
                 attack: basic_attack(1),
                 abilities: []
+            }
+        }
+
+        case Creep_Type.ember_fire_remnant: {
+            return {
+                attack_damage: 0,
+                health: 1,
+                move_points: 0
             }
         }
     }

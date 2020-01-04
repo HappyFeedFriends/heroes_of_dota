@@ -122,6 +122,7 @@ function move_order_error_reason(error: Action_Error<Move_Order_Error>): Error_R
     switch (error.kind) {
         case Move_Order_Error.not_enough_move_points: return custom_error("Not enough move points");
         case Move_Order_Error.path_not_found: return custom_error("Can't move here");
+        case Move_Order_Error.rooted: return custom_error("Can't move while rooted");
         case Move_Order_Error.other: return custom_error("Error");
     }
 }

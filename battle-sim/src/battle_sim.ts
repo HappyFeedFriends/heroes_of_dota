@@ -55,7 +55,8 @@ const enum Battle_Event_Type {
     health_changed,
     modifier_applied,
     card_added_to_hand,
-    unit_spawned
+    unit_spawned,
+    ember_remnant_spawned
 }
 
 type Battle_Event = {
@@ -75,8 +76,14 @@ type Battle_Event = {
     card: Card
 } | {
     type: Battle_Event_Type.unit_spawned
+    source: Source
     unit: Unit
     at: XY
+} | {
+    type: Battle_Event_Type.ember_remnant_spawned
+    by: Unit
+    remnant: Creep
+    modifier_handle: Modifier_Handle_Id
 }
 
 type Cell = {
@@ -158,11 +165,6 @@ type Ability_Active = Ability_Definition_Active & {
 }
 
 type Ability = Ability_Passive | Ability_Active;
-
-type XY = {
-    x: number;
-    y: number;
-}
 
 type Cost_Population_Result = {
     cell_index_to_cost: number[];
@@ -298,6 +300,10 @@ function is_unit_out_of_the_game(unit: Unit) {
 
 function is_unit_stunned(unit: Unit) {
     return unit.state_stunned_counter > 0;
+}
+
+function is_unit_rooted(unit: Unit) {
+    return unit.state_rooted_counter > 0;
 }
 
 function is_unit_silenced(unit: Unit) {
@@ -878,23 +884,26 @@ function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base 
         max_health: definition.health,
         max_move_points: definition.move_points,
         move_points_bonus: 0,
+        state_rooted_counter: 0,
         state_stunned_counter: 0,
         state_silenced_counter: 0,
         state_disarmed_counter: 0,
         state_out_of_the_game_counter: 0,
+        state_unselectable_counter: 0,
         armor: 0
     }
 }
 
-function unit_spawn_event(unit: Unit, at: XY): Battle_Event {
+function unit_spawn_event(source: Source, unit: Unit, at: XY): Battle_Event {
     return {
         type: Battle_Event_Type.unit_spawned,
+        source: source,
         unit: unit,
         at: at
     }
 }
 
-function create_creep(battle: Battle, owner: Battle_Player, unit_id: Unit_Id, type: Creep_Type, at: XY): Creep {
+function create_creep(battle: Battle, source: Source, owner: Battle_Player, unit_id: Unit_Id, type: Creep_Type, at: XY): Creep {
     const creep: Creep = {
         ...unit_base(unit_id, creep_definition_by_type(type), at),
         supertype: Unit_Supertype.creep,
@@ -906,7 +915,7 @@ function create_creep(battle: Battle, owner: Battle_Player, unit_id: Unit_Id, ty
 
     occupy_cell(battle, at);
 
-    battle.receive_event(battle, unit_spawn_event(creep, at));
+    battle.receive_event(battle, unit_spawn_event(source, creep, at));
 
     return creep;
 }
@@ -1062,11 +1071,14 @@ function collapse_ability_effect(battle: Battle, effect: Ability_Effect) {
         }
 
         case Ability_Id.monster_spawn_spiderlings: {
+            const source = find_unit_by_id(battle, effect.source_unit_id);
+            if (!source) return;
+
             for (const summon of effect.summons) {
                 const owner = find_player_by_id(battle, summon.owner_id);
 
                 if (owner) {
-                    create_creep(battle, owner, summon.unit_id, summon.creep_type, summon.at);
+                    create_creep(battle, unit_source(source, effect.ability_id), owner, summon.unit_id, summon.creep_type, summon.at);
                 }
             }
 
@@ -1239,6 +1251,30 @@ function collapse_no_target_ability_use(battle: Battle, unit: Unit, cast: Delta_
             break;
         }
 
+        case Ability_Id.ember_searing_chains: {
+            apply_modifier_multiple(battle, source, cast.targets);
+
+            break;
+        }
+
+        case Ability_Id.ember_sleight_of_fist: {
+            change_health_multiple(battle, source, cast.targets);
+
+            break;
+        }
+
+        case Ability_Id.ember_activate_fire_remnant: {
+            if (!cast.action) return;
+
+            const remnant = find_unit_by_id(battle, cast.action.remnant_id);
+            if (!remnant) return;
+
+            change_health(battle, no_source(), remnant, { new_value: 0, value_delta: -remnant.health });
+            move_unit(battle, unit, cast.action.move_to);
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }
@@ -1327,6 +1363,24 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
             break;
         }
 
+        case Ability_Id.ember_fire_remnant: {
+            // TODO Figure out how to fix this stuff, how come we can't make monsters which spawn other things?
+            if (caster.supertype == Unit_Supertype.monster) return;
+
+            const remnant = create_creep(battle, source, caster.owner, cast.remnant.id, cast.remnant.type, cast.target_position);
+            apply_modifier(battle, source, remnant, cast.remnant.modifier);
+            apply_modifier(battle, source, caster, cast.modifier);
+
+            battle.receive_event(battle, {
+                type: Battle_Event_Type.ember_remnant_spawned,
+                by: caster,
+                remnant: remnant,
+                modifier_handle: cast.modifier.modifier_handle_id
+            });
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }
@@ -1353,7 +1407,7 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
 
         case Spell_Id.call_to_arms: {
             for (const summon of cast.summons) {
-                create_creep(battle, caster, summon.unit_id, summon.unit_type, summon.at);
+                create_creep(battle, source, caster, summon.unit_id, summon.unit_type, summon.at);
             }
 
             break;
@@ -1366,7 +1420,7 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
 function collapse_ground_target_spell_use(battle: Battle, caster: Battle_Player, at: XY, cast: Delta_Use_Ground_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.pocket_tower: {
-            create_creep(battle, caster, cast.new_unit_id, cast.new_unit_type, at);
+            create_creep(battle, player_source(caster), caster, cast.new_unit_id, cast.new_unit_type, at);
 
             break;
         }
@@ -1622,7 +1676,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
             occupy_cell(battle, delta.at_position);
 
-            battle.receive_event(battle, unit_spawn_event(hero, delta.at_position));
+            battle.receive_event(battle, unit_spawn_event(no_source(), hero, delta.at_position));
 
             break;
         }
@@ -1637,7 +1691,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
             occupy_cell(battle, delta.at_position);
 
-            battle.receive_event(battle, unit_spawn_event(monster, delta.at_position));
+            battle.receive_event(battle, unit_spawn_event(no_source(), monster, delta.at_position));
 
             break;
         }
@@ -1646,7 +1700,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             const owner = find_player_by_id(battle, delta.owner_id);
             if (!owner) break;
 
-            const creep = create_creep(battle, owner, delta.unit_id, delta.creep_type, delta.at_position);
+            const creep = create_creep(battle, no_source(), owner, delta.unit_id, delta.creep_type, delta.at_position);
             creep.health = delta.health;
 
             break;

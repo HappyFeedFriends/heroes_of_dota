@@ -151,6 +151,23 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             purchase: range("_purch", 2)
         };
 
+        case Hero_Type.ember_spirit: return {
+            file: "soundevents/voscripts/game_sounds_vo_ember_spirit.vsndevts",
+            spawn: range("ember_spirit_embr_spawn", 7),
+            move: range("ember_spirit_embr_move", 26),
+            attack: range("ember_spirit_embr_attack", 10),
+            level_up: range("ember_spirit_embr_levelup", 21),
+            kill: range("ember_spirit_embr_kill", 20),
+            deny: range("ember_spirit_embr_deny", 22),
+            not_yet: range("ember_spirit_embr_notyet", 9),
+            pain: range("ember_spirit_embr_pain", 10),
+            purchase: [
+                "ember_spirit_embr_purch_01",
+                "ember_spirit_embr_purch_02",
+                "ember_spirit_embr_purch_04"
+            ]
+        }
+
         // ^".*
     }
 }
@@ -168,5 +185,6 @@ function get_hero_dota_name(type: Hero_Type): string {
         case Hero_Type.mirana: return "mirana";
         case Hero_Type.vengeful_spirit: return "vengefulspirit";
         case Hero_Type.dark_seer: return "dark_seer";
+        case Hero_Type.ember_spirit: return "ember_spirit";
     }
 }

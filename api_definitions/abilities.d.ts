@@ -28,6 +28,10 @@ declare const enum Ability_Id {
     dark_seer_ion_shell = 28,
     dark_seer_surge = 29,
     dark_seer_vacuum = 30,
+    ember_searing_chains = 31,
+    ember_sleight_of_fist = 32,
+    ember_fire_remnant = 33,
+    ember_activate_fire_remnant = 34,
 
     pocket_tower_attack = 1000,
     deployment_zone = 1001,
@@ -57,6 +61,9 @@ declare const enum Modifier_Id {
     venge_wave_of_terror = 11,
     dark_seer_ion_shell = 12,
     dark_seer_surge = 13,
+    ember_searing_chains = 14,
+    ember_fire_remnant_caster = 15,
+    ember_fire_remnant = 16,
 
     item_boots_of_travel = 100,
     item_heart_of_tarrasque = 101,
@@ -276,6 +283,27 @@ type Ability_Dark_Seer_Vacuum = Ability_Definition_Active_Base & {
     type: Ability_Type.target_ground
 }
 
+type Ability_Ember_Searing_Chains = Ability_Definition_Active_Base & {
+    id: Ability_Id.ember_searing_chains
+    type: Ability_Type.no_target
+    targets: number
+}
+
+type Ability_Ember_Sleight_Of_Fist = Ability_Definition_Active_Base & {
+    id: Ability_Id.ember_sleight_of_fist
+    type: Ability_Type.no_target
+}
+
+type Ability_Ember_Fire_Remnant = Ability_Definition_Active_Base & {
+    id: Ability_Id.ember_fire_remnant
+    type: Ability_Type.target_ground
+}
+
+type Ability_Ember_Activate_Fire_Remnant = Ability_Definition_Active_Base & {
+    id: Ability_Id.ember_activate_fire_remnant
+    type: Ability_Type.no_target
+}
+
 type Ability_Pocket_Tower_Attack = Ability_Definition_Passive_Base & {
     id: Ability_Id.pocket_tower_attack
     targeting: Ability_Targeting
@@ -305,7 +333,8 @@ type Ability_Ground_Target =
     Ability_Mirana_Arrow |
     Ability_Mirana_Leap |
     Ability_Venge_Wave_Of_Terror |
-    Ability_Dark_Seer_Vacuum
+    Ability_Dark_Seer_Vacuum |
+    Ability_Ember_Fire_Remnant
 
 type Ability_Unit_Target =
     Ability_Pudge_Dismember |
@@ -327,7 +356,10 @@ type Ability_No_Target =
     Ability_Luna_Eclipse |
     Ability_Skywrath_Concussive_Shot |
     Ability_Dragon_Knight_Elder_Dragon_Form |
-    Ability_Mirana_Starfall
+    Ability_Mirana_Starfall |
+    Ability_Ember_Searing_Chains |
+    Ability_Ember_Sleight_Of_Fist |
+    Ability_Ember_Activate_Fire_Remnant
 
 type Ability_Definition_Active = Ability_Ground_Target | Ability_Unit_Target | Ability_No_Target
 
@@ -358,7 +390,8 @@ type Delta_Ground_Target_Ability =
     Delta_Ability_Mirana_Arrow |
     Delta_Ability_Mirana_Leap |
     Delta_Ability_Venge_Wave_Of_Terror |
-    Delta_Ability_Dark_Seer_Vacuum
+    Delta_Ability_Dark_Seer_Vacuum |
+    Delta_Ability_Ember_Fire_Remnant
 
 type Delta_Unit_Target_Ability =
     Delta_Ability_Pudge_Dismember |
@@ -380,7 +413,10 @@ type Delta_Use_No_Target_Ability =
     Delta_Ability_Luna_Eclipse |
     Delta_Ability_Skywrath_Concussive_Shot |
     Delta_Ability_Dragon_Knight_Elder_Dragon_Form |
-    Delta_Ability_Mirana_Starfall
+    Delta_Ability_Mirana_Starfall |
+    Delta_Ability_Ember_Searing_Chains |
+    Delta_Ability_Ember_Sleight_Of_Fist |
+    Delta_Ability_Ember_Activate_Fire_Remnant
 
 
 type Basic_Attack_Hit = {
@@ -398,18 +434,12 @@ type Pudge_Hook_Hit = {
     hit: true
     target_unit_id: Unit_Id
     damage_dealt: Health_Change
-    move_target_to: {
-        x: number
-        y: number
-    }
+    move_target_to: XY
 }
 
 type Line_Ability_Miss = {
     hit: false
-    final_point: {
-        x: number
-        y: number
-    }
+    final_point: XY
 }
 
 type Delta_Ability_Pudge_Hook = Delta_Ground_Target_Ability_Base & {
@@ -460,7 +490,7 @@ type Delta_Ability_Tide_Ravage = Delta_Use_No_Target_Ability_Base & {
 }
 
 type Delta_Ability_Luna_Lucent_Beam = Delta_Unit_Target_Ability_Base & {
-    ability_id: Ability_Id.luna_lucent_beam,
+    ability_id: Ability_Id.luna_lucent_beam
     damage_dealt: Health_Change
 }
 
@@ -481,7 +511,7 @@ type Delta_Ability_Skywrath_Concussive_Shot = Delta_Use_No_Target_Ability_Base &
 }
 
 type Delta_Ability_Skywrath_Ancient_Seal = Delta_Unit_Target_Ability_Base & {
-    ability_id: Ability_Id.skywrath_ancient_seal,
+    ability_id: Ability_Id.skywrath_ancient_seal
     modifier: Modifier_Application
 }
 
@@ -532,11 +562,8 @@ type Ablity_Effect_Monster_Spawn_Spiderlings = {
     summons: {
         owner_id: Battle_Player_Id
         unit_id: Unit_Id
-        creep_type: Creep_Type,
-        at: {
-            x: number
-            y: number
-        }
+        creep_type: Creep_Type
+        at: XY
     }[]
 }
 
@@ -587,6 +614,35 @@ type Delta_Ability_Mirana_Starfall = Delta_Use_No_Target_Ability_Base & {
     targets: Unit_Health_Change[]
 }
 
+type Delta_Ability_Ember_Searing_Chains = Delta_Use_No_Target_Ability_Base & {
+    ability_id: Ability_Id.ember_searing_chains
+    targets: Unit_Modifier_Application[]
+}
+
+type Delta_Ability_Ember_Sleight_Of_Fist = Delta_Use_No_Target_Ability_Base & {
+    ability_id: Ability_Id.ember_sleight_of_fist
+    targets: Unit_Health_Change[]
+}
+
+type Delta_Ability_Ember_Fire_Remnant = Delta_Ground_Target_Ability_Base & {
+    ability_id: Ability_Id.ember_fire_remnant
+    modifier: Modifier_Application
+
+    remnant: {
+        id: Unit_Id
+        type: Creep_Type
+        modifier: Modifier_Application
+    }
+}
+
+type Delta_Ability_Ember_Activate_Fire_Remnant = Delta_Use_No_Target_Ability_Base & {
+    ability_id: Ability_Id.ember_activate_fire_remnant
+    action?: {
+        remnant_id: Unit_Id
+        move_to: XY
+    }
+}
+
 type Mirana_Arrow_Hit = {
     hit: true
     stun: Unit_Modifier_Application
@@ -627,11 +683,8 @@ type Delta_Ability_Dark_Seer_Surge = Delta_Unit_Target_Ability_Base & {
 }
 
 type Vacuum_Target = {
-    target_unit_id: Unit_Id,
-    move_to: {
-        x: number,
-        y: number
-    }
+    target_unit_id: Unit_Id
+    move_to: XY
 }
 
 type Delta_Ability_Dark_Seer_Vacuum = Delta_Ground_Target_Ability_Base & {

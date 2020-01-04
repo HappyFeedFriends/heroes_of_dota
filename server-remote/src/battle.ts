@@ -13,6 +13,12 @@ export type Battle_Record = Battle & {
     monster_targets: Map<Monster, Unit>
     end_turn_queued: boolean
     world_origin: World_Origin
+
+    hero_to_fire_remnant: {
+        hero: Unit
+        remnant: Creep
+        modifier: Modifier_Handle_Id
+    }[]
 }
 
 export type Battle_Participant = {
@@ -574,6 +580,30 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
                 targets: vacuum_targets
             }
         }
+
+        case Ability_Id.ember_fire_remnant: {
+            return {
+                ...base,
+                ability_id: ability.id,
+                modifier: {
+                    modifier_id: Modifier_Id.ember_fire_remnant_caster,
+                    modifier_handle_id: get_next_entity_id(battle) as Modifier_Handle_Id,
+                    changes: [{
+                        type: Modifier_Change_Type.ability_swap,
+                        swap_to: Ability_Id.ember_activate_fire_remnant,
+                        original_ability: Ability_Id.ember_fire_remnant
+                    }]
+                },
+                remnant: {
+                    id: get_next_entity_id(battle) as Unit_Id,
+                    type: Creep_Type.ember_fire_remnant,
+                    modifier: new_modifier(battle, Modifier_Id.ember_fire_remnant,
+                        [Modifier_Field.state_out_of_the_game_counter, 1],
+                        [Modifier_Field.state_unselectable_counter, 1]
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -736,6 +766,52 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
                     target_unit_id: target.id,
                     change: health_change(target, -ability.damage)
                 }))
+            }
+        }
+
+        case Ability_Id.ember_searing_chains: {
+            const all_targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+            const enemies = battle.random.pick_n_mutable(all_targets.filter(target => !are_units_allies(unit, target)), ability.targets);
+            const allies = battle.random.pick_n_mutable(all_targets.filter(target => are_units_allies(unit, target)), ability.targets);
+            const targets = [...enemies, ...allies].slice(0, ability.targets);
+
+            return {
+                ...base,
+                ability_id: ability.id,
+                targets: targets.map(target => ({
+                    target_unit_id: target.id,
+                    modifier: new_timed_modifier(battle, Modifier_Id.ember_searing_chains, 1, [Modifier_Field.state_rooted_counter, 1])
+                }))
+            }
+        }
+
+        case Ability_Id.ember_sleight_of_fist: {
+            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+
+            return {
+                ...base,
+                ability_id: ability.id,
+                targets: targets.map(target => unit_health_change(target, -calculate_basic_attack_damage_to_target(unit, target)))
+            }
+        }
+
+        case Ability_Id.ember_activate_fire_remnant: {
+            const bond = battle.hero_to_fire_remnant.find(bond => bond.hero == unit);
+
+            if (bond) {
+                return {
+                    ...base,
+                    ability_id: ability.id,
+                    action: {
+                        remnant_id: bond.remnant.id,
+                        move_to: bond.remnant.position
+                    }
+                }
+            } else {
+                return {
+                    ...base,
+                    ability_id: ability.id
+                }
             }
         }
     }
@@ -1628,6 +1704,14 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
     // TODO figure out how to make this properly typed
     const battle: Battle_Record = battle_base as Battle_Record;
 
+    if (event.type == Battle_Event_Type.ember_remnant_spawned) {
+        battle.hero_to_fire_remnant.push({
+            hero: event.by,
+            remnant: event.remnant,
+            modifier: event.modifier_handle
+        });
+    }
+
     if (event.type == Battle_Event_Type.health_changed) {
         const { source, target, change, dead } = event;
 
@@ -1670,6 +1754,21 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
         }
 
         if (dead) {
+            if (target.supertype == Unit_Supertype.creep && target.type == Creep_Type.ember_fire_remnant) {
+                const bond_index = battle.hero_to_fire_remnant.findIndex(bond => bond.remnant == target);
+
+                if (bond_index != -1) {
+                    const bond = battle.hero_to_fire_remnant[bond_index];
+
+                    defer_delta(battle, () => ({
+                        type: Delta_Type.modifier_removed,
+                        modifier_handle_id: bond.modifier
+                    }));
+
+                    battle.hero_to_fire_remnant.splice(bond_index, 1);
+                }
+            }
+
             if (target.supertype != Unit_Supertype.monster) {
                 for (const ability of target.abilities) {
                     switch (ability.id) {
@@ -2046,7 +2145,9 @@ export function make_battle_record(battle_id: Battle_Id,
         monster_targets: new Map(),
         end_turn_queued: false,
         world_origin: world_origin,
-        receive_event: on_battle_event
+        receive_event: on_battle_event,
+
+        hero_to_fire_remnant: []
     };
 
     fill_grid(battle);

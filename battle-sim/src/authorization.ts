@@ -72,7 +72,8 @@ declare const enum Ability_Use_Error {
 declare const enum Move_Order_Error {
     other = 0,
     not_enough_move_points = 1,
-    path_not_found = 2
+    path_not_found = 2,
+    rooted = 3
 }
 
 declare const enum Rune_Pickup_Order_Error {
@@ -448,6 +449,9 @@ function authorize_order_unit(act_on_unit: Act_On_Unit_Permission): Order_Unit_A
 
 function authorize_move_order(order_unit: Order_Unit_Permission, to: XY, ignore_runes: boolean): Move_Order_Auth {
     const { battle, unit } = order_unit;
+
+    if (is_unit_rooted(unit)) return { ok: false, kind: Move_Order_Error.rooted };
+
     const path = can_find_path(battle, unit.position, to, ignore_runes);
 
     if (!path.found) return { ok: false, kind: Move_Order_Error.path_not_found };

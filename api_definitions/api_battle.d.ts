@@ -63,7 +63,8 @@ declare const enum Hero_Type {
     lion = 7,
     mirana = 8,
     vengeful_spirit = 9,
-    dark_seer = 10
+    dark_seer = 10,
+    ember_spirit = 11
 }
 
 declare const enum Creep_Type {
@@ -75,7 +76,9 @@ declare const enum Creep_Type {
     small_spider = 102,
     large_spider = 103,
     spider_matriarch = 104,
-    spiderling = 105
+    spiderling = 105,
+
+    ember_fire_remnant = 1000
 }
 
 declare const enum Shop_Type {
@@ -97,7 +100,9 @@ declare const enum Modifier_Field {
     state_silenced_counter = 5,
     state_stunned_counter = 6,
     state_disarmed_counter = 7,
-    state_out_of_the_game_counter = 8
+    state_out_of_the_game_counter = 8,
+    state_rooted_counter = 9,
+    state_unselectable_counter = 10
 }
 
 declare const enum Rune_Type {
@@ -162,6 +167,11 @@ type Modifier_Handle_Id = number & Modifier_Handle_Id_Brand;
 declare const enum Battle_Player_Id_Brand { _ = "" }
 type Battle_Player_Id = number & Battle_Player_Id_Brand;
 
+type XY = {
+    x: number
+    y: number
+}
+
 type Unit_Stats = {
     armor: number
     health: number
@@ -171,10 +181,12 @@ type Unit_Stats = {
     move_points_bonus: number
     max_move_points: number
     attack_bonus: number
+    state_rooted_counter: number
     state_stunned_counter: number
     state_silenced_counter: number
     state_disarmed_counter: number
     state_out_of_the_game_counter: number
+    state_unselectable_counter: number
 }
 
 type Unit_Definition = {
@@ -251,10 +263,7 @@ type Ability_Targeting =
 type Action_Move = {
     type: Action_Type.move
     unit_id: Unit_Id
-    to: {
-        x: number
-        y: number
-    }
+    to: XY
 }
 
 type Action_End_Turn = {
@@ -265,10 +274,7 @@ type Action_Ground_Target_Ability = {
     type: Action_Type.ground_target_ability
     ability_id: Ability_Id
     unit_id: Unit_Id
-    to: {
-        x: number
-        y: number
-    }
+    to: XY
 }
 
 type Action_Unit_Target_Ability = {
@@ -287,19 +293,13 @@ type Action_No_Target_Ability = {
 type Action_Use_Hero_Card = {
     type: Action_Type.use_hero_card
     card_id: Card_Id
-    at: {
-        x: number
-        y: number
-    }
+    at: XY
 }
 
 type Action_Use_Existing_Hero_Card = {
     type: Action_Type.use_existing_hero_card
     card_id: Card_Id
-    at: {
-        x: number
-        y: number
-    }
+    at: XY
 }
 
 type Action_Use_No_Target_Spell = {
@@ -316,10 +316,7 @@ type Action_Use_Unit_Target_Spell = {
 type Action_Use_Ground_Target_Spell = {
     type: Action_Type.use_ground_target_spell_card
     card_id: Card_Id
-    at: {
-        x: number
-        y: number
-    }
+    at: XY
 }
 
 type Action_Pick_Up_Rune = {
@@ -409,10 +406,7 @@ type Delta_Move = {
     type: Delta_Type.unit_move
     unit_id: Unit_Id
     move_cost: number
-    to_position: {
-        x: number
-        y: number
-    }
+    to_position: XY
 }
 
 type Delta_Hero_Spawn = {
@@ -421,33 +415,21 @@ type Delta_Hero_Spawn = {
     unit_id: Unit_Id
     owner_id: Battle_Player_Id
     health: number
-    at_position: {
-        x: number
-        y: number
-    }
+    at_position: XY
 }
 
 type Delta_Hero_Spawn_From_Hand = {
     type: Delta_Type.hero_spawn_from_hand
     source_spell_id: Spell_Id
     hero_id: Unit_Id
-    at_position: {
-        x: number
-        y: number
-    }
+    at_position: XY
 }
 
 type Delta_Monster_Spawn = {
     type: Delta_Type.monster_spawn
     unit_id: Unit_Id
-    at_position: {
-        x: number
-        y: number
-    }
-    facing: {
-        x: number
-        y: number
-    }
+    at_position: XY
+    facing: XY
 }
 
 type Delta_Creep_Spawn = {
@@ -456,28 +438,19 @@ type Delta_Creep_Spawn = {
     unit_id: Unit_Id
     owner_id: Battle_Player_Id
     health: number
-    at_position: {
-        x: number
-        y: number
-    }
+    at_position: XY
 }
 
 type Delta_Tree_Spawn = {
     type: Delta_Type.tree_spawn
     tree_id: Tree_Id
-    at_position: {
-        x: number
-        y: number
-    }
+    at_position: XY
 }
 
 type Delta_Ground_Target_Ability_Base = {
     type: Delta_Type.use_ground_target_ability
     unit_id: Unit_Id
-    target_position: {
-        x: number
-        y: number
-    }
+    target_position: XY
 }
 
 type Delta_Unit_Target_Ability_Base = {
@@ -552,24 +525,15 @@ type Delta_Shop_Spawn = {
     shop_type: Shop_Type
     shop_id: Shop_Id
     item_pool: Item_Id[]
-    at: {
-        x: number
-        y: number
-    }
-    facing: {
-        x: number
-        y: number
-    }
+    at: XY
+    facing: XY
 }
 
 type Delta_Rune_Spawn = {
     type: Delta_Type.rune_spawn
     rune_type: Rune_Type
     rune_id: Rune_Id
-    at: {
-        x: number
-        y: number
-    }
+    at: XY
 }
 
 type Delta_Rune_Pick_Up_Base = {
