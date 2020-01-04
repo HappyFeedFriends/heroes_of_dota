@@ -400,12 +400,9 @@ function make_zone_facing_particle(editor: Battleground_Editor, min: XY, max: XY
 
 function make_new_zone(editor: Battleground_Editor, min: XY, max: XY, facing: XY): UI_Deployment_Zone {
     return {
-        min_x: min.x,
-        min_y: min.y,
-        max_x: max.x,
-        max_y: max.y,
-        face_x: facing.x,
-        face_y: facing.y,
+        min: min,
+        max: max,
+        face: facing,
         outline: make_rect_outline(editor.grid_world_origin, min, max, zone_color),
         facing_particle: make_zone_facing_particle(editor, min, max, facing)
     };
@@ -643,8 +640,8 @@ function battleground_editor_set_deployment_brush_selection_state(editor: Battle
         const particles: ParticleId[] = [];
 
         button.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
-            for (let x = zone.min_x; x <= zone.max_x; x++) {
-                for (let y = zone.min_y; y <= zone.max_y; y++) {
+            for (let x = zone.min.x; x <= zone.max.x; x++) {
+                for (let y = zone.min.y; y <= zone.max.y; y++) {
                     const center = battle_position_to_world_position_center(editor.grid_world_origin, xy(x, y));
                     const particle = create_cell_particle_at(center);
                     register_particle_for_reload(particle);
@@ -1333,9 +1330,9 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
             if (new_brush.type == Battleground_Brush_Type.deployment) {
                 new_brush.zones = new_editor.deployment_zones.map(zone => make_new_zone(
                     new_editor,
-                    xy(zone.min_x, zone.min_y),
-                    xy(zone.max_x, zone.max_y),
-                    xy(zone.face_x, zone.face_y)
+                    xy(zone.min.x, zone.min.y),
+                    xy(zone.max.x, zone.max.y),
+                    xy(zone.face.x, zone.face.y)
                 ));
 
                 battleground_editor_set_deployment_brush_selection_state(new_editor, new_brush, { active: false });

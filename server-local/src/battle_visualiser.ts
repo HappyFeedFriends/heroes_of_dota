@@ -148,8 +148,8 @@ function find_player_deployment_zone_facing(id: Battle_Player_Id): XY | undefine
     if (!participant) return;
 
     return {
-        x: participant.deployment_zone.face_x,
-        y: participant.deployment_zone.face_y
+        x: participant.deployment_zone.face.x,
+        y: participant.deployment_zone.face.y
     };
 }
 
@@ -2787,7 +2787,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             if (!owner) break;
 
             spawn_unit_with_fx(delta.at_position, () => {
-                const facing = { x: owner.deployment_zone.face_x, y: owner.deployment_zone.face_y };
+                const facing = { x: owner.deployment_zone.face.x, y: owner.deployment_zone.face.y };
                 const unit = spawn_hero_for_battle(delta.hero_type, delta.unit_id, delta.owner_id, delta.at_position, facing);
                 unit.health = delta.health;
 
@@ -2820,7 +2820,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             if (!owner) break;
 
             spawn_unit_with_fx(delta.at_position, () => {
-                const facing = { x: owner.deployment_zone.face_x, y: owner.deployment_zone.face_y };
+                const facing = { x: owner.deployment_zone.face.x, y: owner.deployment_zone.face.y };
                 const unit = spawn_creep_for_battle(delta.creep_type, delta.unit_id, delta.owner_id, delta.at_position, facing);
                 unit.health = delta.health;
                 unit.handle.ForcePlayActivityOnce(GameActivity_t.ACT_DOTA_SPAWN);

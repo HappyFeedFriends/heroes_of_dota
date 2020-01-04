@@ -529,8 +529,8 @@ function on_battle_event(battle: UI_Battle, event: Battle_Event) {
             const owner = event.unit.owner;
 
             battle.unit_id_to_facing[event.unit.id] = {
-                x: owner.deployment_zone.face_x,
-                y: owner.deployment_zone.face_y
+                x: owner.deployment_zone.face.x,
+                y: owner.deployment_zone.face.y
             };
         }
     }

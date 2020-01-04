@@ -65,24 +65,15 @@ type To_Client_Event = {
     payload: {
         unit_id: Unit_Id
         ability_id: Ability_Id
-        from: {
-            x: number
-            y: number
-        }
-        to: {
-            x: number
-            y: number
-        }
+        from: XY
+        to: XY
     }
 } | {
     type: To_Client_Event_Type.grid_highlight_no_target_ability
     payload: {
         unit_id: Unit_Id
         ability_id: Ability_Id
-        from: {
-            x: number
-            y: number
-        }
+        from: XY
     }
 } | {
     type: To_Client_Event_Type.show_start_turn_ui
@@ -139,7 +130,7 @@ type Find_Local_Response<T> = Find_By_Type<Local_Api_Request, T>["response"]
 type Find_To_Server_Payload<T> = Find_By_Type<To_Server_Event, T>["payload"]
 type Find_To_Client_Payload<T> = Find_By_Type<To_Client_Event, T>["payload"]
 
-type Move_Delta_Paths = Record<number, { x: number, y: number }[]>
+type Move_Delta_Paths = Record<number, XY[]>
 
 type Visualizer_Unit_Data_Base = Unit_Stats & {
     id: Unit_Id
@@ -229,14 +220,8 @@ type Player_Snapshot = {
 type Unit_Snapshot_Base = Unit_Stats & {
     id: Unit_Id
     modifiers: Modifier_Data[]
-    position: {
-        x: number
-        y: number
-    }
-    facing: {
-        x: number
-        y: number
-    }
+    position: XY
+    facing: XY
 }
 
 type Hero_Snapshot = Unit_Snapshot_Base & {
@@ -261,31 +246,19 @@ type Unit_Snapshot = Hero_Snapshot | Monster_Snapshot | Creep_Snapshot
 type Rune_Snapshot = {
     id: Rune_Id
     type: Rune_Type
-    position: {
-        x: number
-        y: number
-    }
+    position: XY
 }
 
 type Shop_Snapshot = {
     id: Shop_Id
     type: Shop_Type
-    position: {
-        x: number
-        y: number
-    }
-    facing: {
-        x: number
-        y: number
-    }
+    position: XY
+    facing: XY
 }
 
 type Tree_Snapshot = {
     id: Tree_Id
-    position: {
-        x: number
-        y: number
-    }
+    position: XY
 }
 
 type Battle_Snapshot = {
@@ -324,10 +297,7 @@ type Editor_Action = {
     } | {
         free: false
         world_origin: World_Origin
-        grid_size: {
-            x: number
-            y: number
-        }
+        grid_size: XY
     }
 } | {
     type: Editor_Action_Type.set_entity_position

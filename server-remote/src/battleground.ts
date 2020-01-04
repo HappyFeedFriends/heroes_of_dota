@@ -179,7 +179,14 @@ function battleground_to_file_object(battleground: Battleground) {
     const file: Battleground_File = {
         world_origin: copy<Battleground_File["world_origin"]>(battleground.world_origin),
         grid_size: copy<Battleground_File["grid_size"]>(battleground.grid_size),
-        deployment_zones: battleground.deployment_zones.map(zone => copy<Battleground_File["deployment_zones"][0]>(zone)),
+        deployment_zones: battleground.deployment_zones.map(zone => ({
+            min_x: zone.min.x,
+            min_y: zone.min.y,
+            max_x: zone.max.x,
+            max_y: zone.max.y,
+            face_x: zone.face.x,
+            face_y: zone.face.y
+        })),
         trees: [],
         shops: [],
         runes: [],
@@ -324,7 +331,11 @@ function load_battleground_from_file(file_path: string, battleground: Battlegrou
     return {
         world_origin: battleground.world_origin,
         grid_size: battleground.grid_size,
-        deployment_zones: battleground.deployment_zones,
+        deployment_zones: battleground.deployment_zones.map(zone => ({
+            min: { x: zone.min_x, y: zone.min_y },
+            max: { x: zone.max_x, y: zone.max_y },
+            face: { x: zone.face_x, y: zone.face_y }
+        })),
         spawns: spawns
     }
 }

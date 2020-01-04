@@ -179,10 +179,7 @@ type Delta_Spell_Call_To_Arms = Delta_Use_No_Target_Spell_Base & {
     summons: {
         unit_id: Unit_Id
         unit_type: Creep_Type,
-        at: {
-            x: number
-            y: number
-        }
+        at: XY
     }[]
 }
 

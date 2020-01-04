@@ -245,12 +245,9 @@ export function make_test_battle() {
         return {
             id: id_generator() as Battle_Player_Id,
             deployment_zone: {
-                min_y: 0,
-                min_x: 0,
-                max_x: 1,
-                max_y: 1,
-                face_x: 1,
-                face_y: 0
+                min: { x: 0, y: 0 },
+                max: { x: 1, y: 1},
+                face: { x: 1, y: 0 }
             },
             gold: 0,
             has_used_a_card_this_turn: false,

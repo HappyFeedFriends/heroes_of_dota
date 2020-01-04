@@ -65,10 +65,7 @@ type Editor_Handlers = {
     response: {
         battlegrounds: {
             id: Battleground_Id
-            size: {
-                x: number
-                y: number
-            }
+            size: XY
         }[]
     }
 } | {
@@ -136,38 +133,20 @@ declare const enum Spawn_Type {
 
 type Battleground_Spawn = {
     type: Spawn_Type.rune
-    at: {
-        x: number
-        y: number
-    }
+    at: XY
 } | {
     type: Spawn_Type.shop
     shop_type: Shop_Type
-    at: {
-        x: number
-        y: number
-    }
-    facing: {
-        x: number
-        y: number
-    }
+    at: XY
+    facing: XY
     item_pool: Item_Id[]
 } | {
     type: Spawn_Type.monster
-    at: {
-        x: number
-        y: number
-    }
-    facing: {
-        x: number
-        y: number
-    }
+    at: XY
+    facing: XY
 } | {
     type: Spawn_Type.tree
-    at: {
-        x: number
-        y: number
-    }
+    at: XY
 }
 
 type Battleground = {

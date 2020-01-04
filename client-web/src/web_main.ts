@@ -474,7 +474,7 @@ function on_cell_right_clicked(game: Game_In_Battle, player: Battle_Player, x: n
         case Selection_Type.card: {
             const zone = player.deployment_zone;
 
-            if (x < zone.max_x && x >= zone.min_x && y < zone.max_y && y >= zone.min_y) {
+            if (x < zone.max.x && x >= zone.min.x && y < zone.max.y && y >= zone.min.y) {
                 take_battle_action(game, {
                     type: Action_Type.use_hero_card,
                     at: {x: x, y: y},
@@ -1132,10 +1132,10 @@ function draw_grid(game: Game_In_Battle, player: Battle_Player | undefined, high
         ctx.strokeStyle = "yellow";
         ctx.lineWidth = 3;
         ctx.strokeRect(
-            zone.min_x * cell_size,
-            zone.min_y * cell_size,
-            (zone.max_x - zone.min_x) * cell_size,
-            (zone.max_y - zone.min_y) * cell_size
+            zone.min.x * cell_size,
+            zone.min.y * cell_size,
+            (zone.max.x - zone.min.x) * cell_size,
+            (zone.max.y - zone.min.y) * cell_size
         );
     }
 

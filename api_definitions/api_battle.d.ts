@@ -367,12 +367,9 @@ type Card_Existing_Hero = {
 type Card = Card_Unknown | Card_Hero | Card_Existing_Hero | Card_Spell
 
 type Deployment_Zone = {
-    min_x: number
-    min_y: number
-    max_x: number
-    max_y: number
-    face_x: number
-    face_y: number
+    min: XY
+    max: XY
+    face: XY
 }
 
 type Battle_Participant_Map_Entity = {
