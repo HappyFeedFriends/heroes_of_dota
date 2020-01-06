@@ -901,6 +901,8 @@ function compute_unit_cell_color(unit_in_cell: Unit): [RGB, number] {
 }
 
 function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, cell_index: number): [RGB, number] {
+    if (is_unit_rooted(unit)) return [color_nothing, 20];
+
     const rune_in_cell = battle.cell_index_to_rune[cell_index];
     const cost = path.cell_index_to_cost[cell_index];
 
