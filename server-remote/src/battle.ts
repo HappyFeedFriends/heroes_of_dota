@@ -13,12 +13,6 @@ export type Battle_Record = Battle & {
     monster_targets: Map<Monster, Unit>
     end_turn_queued: boolean
     world_origin: World_Origin
-
-    hero_to_fire_remnant: {
-        hero: Unit
-        remnant: Creep
-        modifier: Modifier_Handle_Id
-    }[]
 }
 
 export type Battle_Participant = {
@@ -572,12 +566,17 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
         }
 
         case Ability_Id.ember_fire_remnant: {
+            const remnant_id = get_next_entity_id(battle) as Unit_Id;
+
             return {
                 ...base,
                 ability_id: ability.id,
-                modifier: modifier(battle, { id: Modifier_Id.ember_fire_remnant_caster }),
+                modifier: modifier(battle, {
+                    id: Modifier_Id.ember_fire_remnant_caster,
+                    remnant_unit_id: remnant_id
+                }),
                 remnant: {
-                    id: get_next_entity_id(battle) as Unit_Id,
+                    id: remnant_id,
                     type: Creep_Type.ember_fire_remnant,
                     modifier: modifier(battle, { id: Modifier_Id.ember_fire_remnant })
                 }
@@ -767,23 +766,38 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
         }
 
         case Ability_Id.ember_activate_fire_remnant: {
-            const bond = battle.hero_to_fire_remnant.find(bond => bond.hero == unit);
+            for (const applied of unit.modifiers) {
+                if (applied.modifier.id == Modifier_Id.ember_fire_remnant_caster) {
+                    const remnant = find_unit_by_id(battle, applied.modifier.remnant_unit_id);
+                    if (!remnant) break;
 
-            if (bond) {
-                return {
-                    ...base,
-                    ability_id: ability.id,
-                    action: {
-                        remnant_id: bond.remnant.id,
-                        move_to: bond.remnant.position
+                    defer_delta(battle, () => ({
+                        type: Delta_Type.set_ability_charges_remaining,
+                        unit_id: unit.id,
+                        ability_id: Ability_Id.ember_activate_fire_remnant,
+                        charges_remaining: 1
+                    }));
+
+                    defer_delta(battle, () => ({
+                        type: Delta_Type.modifier_removed,
+                        modifier_handle_id: applied.handle_id
+                    }));
+
+                    return {
+                        ...base,
+                        ability_id: ability.id,
+                        action: {
+                            remnant_id: remnant.id,
+                            move_to: remnant.position
+                        }
                     }
                 }
-            } else {
-                return {
-                    ...base,
-                    ability_id: ability.id
-                }
             }
+
+            return {
+                ...base,
+                ability_id: ability.id
+            } ;
         }
     }
 }
@@ -1710,14 +1724,6 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
     // TODO figure out how to make this properly typed
     const battle: Battle_Record = battle_base as Battle_Record;
 
-    if (event.type == Battle_Event_Type.ember_remnant_spawned) {
-        battle.hero_to_fire_remnant.push({
-            hero: event.by,
-            remnant: event.remnant,
-            modifier: event.modifier_handle
-        });
-    }
-
     if (event.type == Battle_Event_Type.health_changed) {
         const { source, target, change, dead } = event;
 
@@ -1760,28 +1766,6 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
         }
 
         if (dead) {
-            if (target.supertype == Unit_Supertype.creep && target.type == Creep_Type.ember_fire_remnant) {
-                const bond_index = battle.hero_to_fire_remnant.findIndex(bond => bond.remnant == target);
-
-                if (bond_index != -1) {
-                    const bond = battle.hero_to_fire_remnant[bond_index];
-
-                    defer_delta(battle, () => ({
-                        type: Delta_Type.set_ability_charges_remaining,
-                        unit_id: bond.hero.id,
-                        ability_id: Ability_Id.ember_activate_fire_remnant,
-                        charges_remaining: 1
-                    }));
-
-                    defer_delta(battle, () => ({
-                        type: Delta_Type.modifier_removed,
-                        modifier_handle_id: bond.modifier
-                    }));
-
-                    battle.hero_to_fire_remnant.splice(bond_index, 1);
-                }
-            }
-
             if (target.supertype != Unit_Supertype.monster) {
                 for (const ability of target.abilities) {
                     switch (ability.id) {
@@ -2154,9 +2138,7 @@ export function make_battle_record(battle_id: Battle_Id,
         monster_targets: new Map(),
         end_turn_queued: false,
         world_origin: world_origin,
-        receive_event: on_battle_event,
-
-        hero_to_fire_remnant: []
+        receive_event: on_battle_event
     };
 
     fill_grid(battle);

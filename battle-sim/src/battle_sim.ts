@@ -28,7 +28,7 @@ type Source_Item = {
 
 type Source_Modifier = {
     type: Source_Type.modifier
-    modifier_handle_id: Modifier_Handle_Id
+    applied: Applied_Modifier
 }
 
 type Source = Source_None | Source_Unit | Source_Item | Source_Player | Source_Modifier
@@ -61,8 +61,7 @@ const enum Battle_Event_Type {
     health_changed,
     modifier_applied,
     card_added_to_hand,
-    unit_spawned,
-    ember_remnant_spawned
+    unit_spawned
 }
 
 type Battle_Event = {
@@ -85,11 +84,6 @@ type Battle_Event = {
     source: Source
     unit: Unit
     at: XY
-} | {
-    type: Battle_Event_Type.ember_remnant_spawned
-    by: Unit
-    remnant: Creep
-    modifier_handle: Modifier_Handle_Id
 }
 
 type Cell = {
@@ -414,10 +408,10 @@ function item_source(item_id: Item_Id): Source_Item {
     }
 }
 
-function modifier_source(modifier_handle_id: Modifier_Handle_Id): Source_Modifier {
+function modifier_source(applied: Applied_Modifier): Source_Modifier {
     return {
         type: Source_Type.modifier,
-        modifier_handle_id: modifier_handle_id
+        applied: applied
     }
 }
 
@@ -946,7 +940,12 @@ function apply_modifier(battle: Battle, source: Source, target: Unit, applicatio
 }
 
 function collapse_modifier_effect(battle: Battle, effect: Delta_Modifier_Effect_Applied) {
-    const source = modifier_source(effect.handle_id);
+    const found = find_modifier_by_handle_id(battle, effect.handle_id);
+    if (!found) return;
+
+    const [, applied] = found;
+
+    const source = modifier_source(applied);
 
     switch (effect.modifier_id) {
         case Modifier_Id.item_heart_of_tarrasque: {
@@ -1349,13 +1348,6 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
             const remnant = create_creep(battle, source, caster.owner, cast.remnant.id, cast.remnant.type, cast.target_position);
             apply_modifier(battle, source, remnant, cast.remnant.modifier);
             apply_modifier(battle, source, caster, cast.modifier);
-
-            battle.receive_event(battle, {
-                type: Battle_Event_Type.ember_remnant_spawned,
-                by: caster,
-                remnant: remnant,
-                modifier_handle: cast.modifier.modifier_handle_id
-            });
 
             break;
         }

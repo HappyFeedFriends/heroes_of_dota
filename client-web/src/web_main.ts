@@ -721,6 +721,7 @@ namespace clr {
             case Source_Type.unit: return unit_name(source.unit);
             case Source_Type.item: return txt(enum_to_string(source.item_id), "gray");
             case Source_Type.player: return player_name(source.player);
+            case Source_Type.modifier: return txt(enum_to_string(source.applied.modifier.id), "gray");
         }
     }
 

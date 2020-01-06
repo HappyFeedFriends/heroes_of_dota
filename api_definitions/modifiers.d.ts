@@ -87,6 +87,7 @@ type Modifier = {
     id: Modifier_Id.ember_searing_chains
 } | {
     id: Modifier_Id.ember_fire_remnant_caster
+    remnant_unit_id: Unit_Id
 } | {
     id: Modifier_Id.ember_fire_remnant
 } | {
