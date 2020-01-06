@@ -578,7 +578,10 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
                 remnant: {
                     id: remnant_id,
                     type: Creep_Type.ember_fire_remnant,
-                    modifier: modifier(battle, { id: Modifier_Id.ember_fire_remnant })
+                    modifier: modifier(battle, {
+                        id: Modifier_Id.ember_fire_remnant,
+                        remnant_owner_unit_id: unit.id
+                    })
                 }
             }
         }

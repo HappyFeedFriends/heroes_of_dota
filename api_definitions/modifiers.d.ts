@@ -90,6 +90,7 @@ type Modifier = {
     remnant_unit_id: Unit_Id
 } | {
     id: Modifier_Id.ember_fire_remnant
+    remnant_owner_unit_id: Unit_Id
 } | {
     id: Modifier_Id.item_boots_of_travel
     move_bonus: number

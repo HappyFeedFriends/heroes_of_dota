@@ -169,6 +169,11 @@ function manhattan(from: XY, to: XY) {
     return Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
 }
 
+function parabolic(x: number) {
+    const nx = (x * 2 - 1);
+    return 1 - nx * nx;
+}
+
 function merge_battle_deltas(battle: Battle, head_before_merge: number, deltas: Delta[]) {
     for (let index = 0; index < deltas.length; index++) {
         battle.deltas[head_before_merge + index] = deltas[index];
@@ -273,7 +278,7 @@ function creep_type_to_model_and_scale(creep_type: Creep_Type): [string, number]
             0.4
         ];
         case Creep_Type.ember_fire_remnant: return [
-            `models/heroes/ember_spirit/ember_spirit.vmdl`,
+            `models/development/invisiblebox.vmdl`,
             1
         ];
     }
@@ -556,6 +561,22 @@ function toss_target_up(target: Unit) {
     });
 
     gesture.fade();
+}
+
+function linear_projectile_end_to_end(from: XY, to: XY, travel_speed: number, fx_path: string): [FX, number] {
+    const world_from = battle_position_to_world_position_center(battle.world_origin, from);
+    const world_to = battle_position_to_world_position_center(battle.world_origin, to);
+    const world_delta = Vector(world_to.x - world_from.x, world_to.y - world_from.y);
+    const direction = world_delta.Normalized();
+    const travel_distance = world_delta.Length();
+    const time_to_travel = travel_distance / travel_speed;
+
+    const particle = fx(fx_path)
+        .with_vector_value(0, world_from)
+        .with_forward_vector(0, direction)
+        .with_vector_value(1, direction * travel_speed as Vector);
+
+    return [particle, time_to_travel];
 }
 
 function linear_projectile_with_targets<T>(
@@ -882,7 +903,7 @@ function try_play_random_sound_for_hero(unit: Unit, supplier: (sounds: Hero_Soun
         return;
     }
 
-    // TODO use pseudo random
+    // TODO use pseudo @Random
     const sounds = supplier(hero_sounds_by_hero_type(unit.type));
     const random_sound = sounds[RandomInt(0, sounds.length - 1)];
 
@@ -1280,13 +1301,6 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             const animation_length = 0.5;
             const animation_speed = animation_length / time_to_travel;
 
-            print(peak_height);
-
-            function parabolic(x: number) {
-                const nx = (x * 2 - 1);
-                return 1 - nx * nx;
-            }
-
             unit_emit_sound(unit, "Ability.Leap");
 
             const leap = unit_start_gesture(unit, GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_3, animation_speed);
@@ -1381,10 +1395,23 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             // TODO Should be able to cast this ability as a monster as well
             if (unit.supertype == Unit_Supertype.monster) break;
 
+            unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_4, 0);
+            unit_emit_sound(unit, "Hero_EmberSpirit.FireRemnant.Cast");
+
+            const particle_path = "particles/units/heroes/hero_ember_spirit/ember_spirit_fire_remnant_trail.vpcf";
+            const [fx, travel_time] = linear_projectile_end_to_end(unit.position, cast.target_position, 1000, particle_path);
+
+            fx.follow_unit_origin(0, unit);
+
+            wait(travel_time);
+
+            fx.destroy_and_release(false);
+
             const remnant = spawn_creep_for_battle(cast.remnant.type, cast.remnant.id, unit.owner_remote_id, cast.target_position, direction);
             register_unit(battle, remnant);
             apply_modifier(game, remnant, cast.remnant.modifier);
             apply_modifier(game, unit, cast.modifier);
+            unit_emit_sound(remnant, "Hero_EmberSpirit.FireRemnant.Create");
 
             break;
         }
@@ -1403,7 +1430,7 @@ type Modifier_Visuals_Simple = {
     fx_applier: (this: void, unit: Unit) => FX
 }
 
-function modifier_id_to_visuals(id: Modifier_Id): Modifier_Visuals_Complex | Modifier_Visuals_Simple | undefined {
+function modifier_to_visuals(modifier: Modifier): Modifier_Visuals_Complex | Modifier_Visuals_Simple | undefined {
     function complex(name: string): Modifier_Visuals_Complex {
         return {
             complex: true,
@@ -1422,7 +1449,7 @@ function modifier_id_to_visuals(id: Modifier_Id): Modifier_Visuals_Complex | Mod
         return simple(target => fx_follow_unit(path, target));
     }
 
-    switch (id) {
+    switch (modifier.id) {
         case Modifier_Id.tide_gush: return complex("Modifier_Tide_Gush");
         case Modifier_Id.skywrath_ancient_seal: return simple(target =>
             fx("particles/units/heroes/hero_skywrath_mage/skywrath_mage_ancient_seal_debuff.vpcf")
@@ -1448,11 +1475,27 @@ function modifier_id_to_visuals(id: Modifier_Id): Modifier_Visuals_Complex | Mod
         case Modifier_Id.spell_euls_scepter: return complex("Modifier_Euls_Scepter");
         case Modifier_Id.spell_buckler: return follow("particles/items_fx/buckler.vpcf");
         case Modifier_Id.spell_drums_of_endurance: return follow("particles/items_fx/drum_of_endurance_buff.vpcf");
+        case Modifier_Id.ember_fire_remnant: return simple(
+            target => {
+                // TODO proper predictable @Random
+                const animations = [ 39, 40, 41 ]; // Sequence numbers of GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_4 for ember
+                const fx = fx_follow_unit("particles/units/heroes/hero_ember_spirit/ember_spirit_fire_remnant.vpcf", target)
+                    .with_point_value(2, animations[RandomInt(0, animations.length)]);
+
+                const owner = find_unit_by_id(modifier.remnant_owner_unit_id);
+
+                if (owner) {
+                    fx.follow_unit_origin(1, owner);
+                }
+
+                return fx;
+            }
+        );
     }
 }
 
-function try_apply_modifier_visuals(target: Unit, modifier_id: Modifier_Id) {
-    const visuals = modifier_id_to_visuals(modifier_id);
+function try_apply_modifier_visuals(target: Unit, modifier: Modifier) {
+    const visuals = modifier_to_visuals(modifier);
 
     if (!visuals) {
         return;
@@ -1463,9 +1506,30 @@ function try_apply_modifier_visuals(target: Unit, modifier_id: Modifier_Id) {
     } else {
         battle.modifier_tied_fxs.push({
             unit_id: target.id,
-            modifier_id: modifier_id,
+            modifier_id: modifier.id,
             fx: visuals.fx_applier(target)
         })
+    }
+}
+
+function try_remove_modifier_visuals(target: Unit, modifier: Modifier) {
+    const modifier_visuals = modifier_to_visuals(modifier);
+    if (!modifier_visuals) return;
+
+    if (modifier_visuals.complex) {
+        target.handle.RemoveModifierByName(modifier_visuals.native_modifier_name);
+    } else {
+        for (let fx_index = 0; fx_index < battle.modifier_tied_fxs.length; fx_index++) {
+            const fx = battle.modifier_tied_fxs[fx_index];
+
+            if (fx.modifier_id == modifier.id && fx.unit_id == target.id) {
+                fx.fx.destroy_and_release(false);
+
+                battle.modifier_tied_fxs.splice(fx_index, 1);
+
+                break;
+            }
+        }
     }
 }
 
@@ -1483,7 +1547,7 @@ function update_unit_state_from_modifiers(unit: Unit) {
 function apply_modifier(game: Game, target: Unit, application: Modifier_Application) {
     print(`Apply and record ${application.modifier_handle_id} to ${target.handle.GetName()}`);
 
-    try_apply_modifier_visuals(target, application.modifier.id);
+    try_apply_modifier_visuals(target, application.modifier);
 
     target.modifiers.push({
         modifier: application.modifier,
@@ -2003,13 +2067,44 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
             if (!cast.action) break;
 
             const remnant = find_unit_by_id(cast.action.remnant_id);
+            if (!remnant) break;
 
-            if (remnant) {
-                kill_unit(remnant, remnant);
-            }
+            const world_from = battle_position_to_world_position_center(battle.world_origin, unit.position);
+            const world_to = battle_position_to_world_position_center(battle.world_origin, cast.action.move_to);
+            const world_delta = world_to - world_from as Vector;
+            const distance = world_delta.Length();
+            const direction = world_delta.Normalized();
+            const time_to_travel = 0.3;
+            const peak_height = Math.min(250, distance / 5);
+
+            turn_unit_towards_target(unit, cast.action.move_to);
+
+            const particle = fx("particles/units/heroes/hero_ember_spirit/ember_spirit_remnant_dash.vpcf")
+                .follow_unit_origin(0, unit)
+                .follow_unit_origin(1, unit);
+
+            unit_emit_sound(unit, "Hero_EmberSpirit.FireRemnant.Activate");
+
+            unit.handle.AddNoDraw();
+
+            do_each_frame_for(time_to_travel, progress => {
+                const position_now = world_from + (direction * distance * progress) as Vector;
+                position_now.z = world_from.z + parabolic(progress) * peak_height;
+
+                unit.handle.SetAbsOrigin(position_now);
+            });
+
+            unit_emit_sound(unit, "Hero_EmberSpirit.FireRemnant.Explode");
+            unit_emit_sound(unit, "Hero_EmberSpirit.FireRemnant.Stop");
+
+            kill_unit(remnant, remnant);
+
+            unit.handle.RemoveNoDraw();
+
+            particle.destroy_and_release(false);
 
             unit.position = cast.action.move_to;
-            unit.handle.SetAbsOrigin(battle_position_to_world_position_center(battle.world_origin, unit.position));
+            unit.handle.SetAbsOrigin(world_to);
 
             break;
         }
@@ -2612,6 +2707,10 @@ function kill_unit(source: Unit, target: Unit) {
         }
     }
 
+    for (const applied of target.modifiers) {
+        try_remove_modifier_visuals(target, applied.modifier);
+    }
+
     try_play_random_sound_for_hero(source, sounds => sounds.kill);
     apply_special_death_effects(target);
 
@@ -2718,29 +2817,9 @@ function on_modifier_removed(unit: Unit, modifier_id: Modifier_Id) {
 }
 
 function remove_modifier(game: Game, unit: Unit, applied: Modifier_Data, array_index: number) {
-    const modifier_visuals = modifier_id_to_visuals(applied.modifier.id);
+    print(`Remove modifier ${enum_to_string(applied.modifier.id)} from ${unit.handle.GetName()}`);
 
-    if (modifier_visuals) {
-        print(`Remove modifier ${applied.modifier_handle_id} ${modifier_visuals} from ${unit.handle.GetName()}`);
-
-        if (modifier_visuals.complex) {
-            unit.handle.RemoveModifierByName(modifier_visuals.native_modifier_name);
-        } else {
-            for (let fx_index = 0; fx_index < battle.modifier_tied_fxs.length; fx_index++) {
-                const fx = battle.modifier_tied_fxs[fx_index];
-
-                if (fx.modifier_id == applied.modifier.id && fx.unit_id == unit.id) {
-                    fx.fx.destroy_and_release(false);
-
-                    battle.modifier_tied_fxs.splice(fx_index, 1);
-
-                    break;
-                }
-            }
-        }
-
-    }
-
+    try_remove_modifier_visuals(unit, applied.modifier);
     on_modifier_removed(unit, applied.modifier.id);
 
     unit.modifiers.splice(array_index, 1);
@@ -2908,6 +2987,10 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
 
             if (!unit.handle.IsAlive()) {
                 unit.handle.RespawnHero(false, false);
+
+                for (const applied of unit.modifiers) {
+                    try_apply_modifier_visuals(unit, applied.modifier);
+                }
             }
 
             const world_at = battle_position_to_world_position_center(battle.world_origin, delta.at_position);
@@ -3352,8 +3435,8 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
     for (const unit of battle.units) {
         update_unit_state_from_modifiers(unit);
 
-        for (const modifier of unit.modifiers) {
-            try_apply_modifier_visuals(unit, modifier.modifier.id);
+        for (const applied of unit.modifiers) {
+            try_apply_modifier_visuals(unit, applied.modifier);
         }
     }
 }
