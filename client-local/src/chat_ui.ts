@@ -69,7 +69,7 @@ function hack_into_game_chat() {
                                 access_token: get_access_token(),
                                 cheat: text.substring(1),
                                 selected_unit_id: unit ? unit.id : -1 as Unit_Id
-                            }, response => response);
+                            }, request_battle_deltas);
                         } else if (current_state == Player_State.on_adventure) {
                             const head = adventure_ui.party.changes.length;
 
