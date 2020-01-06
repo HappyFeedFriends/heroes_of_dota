@@ -43,11 +43,6 @@ type Delta_Equip_Item =
     Delta_Equip_Refresher_Shard |
     Delta_Equip_Enchanted_Mango
 
-type Delta_Item_Effect_Applied =
-    Delta_Heart_Of_Tarrasque_Effect |
-    Delta_Item_Lifesteal_Effect |
-    Delta_Basher_Effect
-
 type Item_Base = {
     gold_cost: number
 }
@@ -178,23 +173,4 @@ type Delta_Equip_Enchanted_Mango = Delta_Equip_Item_Base & {
         ability_id: Ability_Id
         charges_remaining: number
     } | undefined
-}
-
-type Delta_Heart_Of_Tarrasque_Effect = {
-    type: Delta_Type.item_effect_applied
-    item_id: Item_Id.heart_of_tarrasque
-    heal: Unit_Health_Change
-}
-
-type Delta_Item_Lifesteal_Effect = {
-    type: Delta_Type.item_effect_applied
-    item_id: Item_Id.morbid_mask | Item_Id.satanic | Item_Id.octarine_core
-    heal: Unit_Health_Change
-}
-
-type Delta_Basher_Effect = {
-    type: Delta_Type.item_effect_applied
-    item_id: Item_Id.basher
-    target_unit_id: Unit_Id
-    modifier: Modifier_Application
 }

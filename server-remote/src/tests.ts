@@ -108,7 +108,7 @@ function test_ember_spirit_fire_remnant_ability_swap_working_correctly() {
 
     battle.for_test_player().end_turn();
     battle.for_enemy_player().end_turn();
-    
+
     hero.order_cast_no_target(Ability_Id.ember_activate_fire_remnant);
 
     hero.assert()

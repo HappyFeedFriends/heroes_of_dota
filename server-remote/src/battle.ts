@@ -1022,7 +1022,8 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 item_id: item.id,
                 modifier: modifier(battle, {
                     id: Modifier_Id.item_heart_of_tarrasque,
-                    health: item.health_bonus
+                    health: item.health_bonus,
+                    regeneration_per_turn: item.regeneration_per_turn
                 })
             }
         }
@@ -1055,7 +1056,8 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 item_id: item.id,
                 modifier: modifier(battle, {
                     id: Modifier_Id.item_armlet,
-                    health: item.health_bonus
+                    health: item.health_bonus,
+                    health_loss_per_turn: item.health_loss_per_turn
                 })
             }
         }
@@ -1077,7 +1079,10 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: modifier(battle, { id: Modifier_Id.item_morbid_mask })
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_morbid_mask,
+                    health_restored_per_attack: item.health_restored_per_attack
+                })
             }
         }
 
@@ -1167,15 +1172,13 @@ function pick_up_rune(battle: Battle_Record, hero: Hero, rune: Rune, move_cost: 
 function on_target_dealt_damage_by_ability(battle: Battle_Record, source: Unit, target: Unit, damage: number): void {
     if (source.supertype == Unit_Supertype.hero) {
         defer_delta(battle, () => {
-            for (const item of source.items) {
-                if (item.id == Item_Id.octarine_core) {
+            for (const applied of source.modifiers) {
+                if (applied.modifier.id == Modifier_Id.item_octarine_core) {
                     return {
-                        type: Delta_Type.item_effect_applied,
-                        item_id: item.id,
-                        heal: {
-                            target_unit_id: source.id,
-                            change: health_change(source, damage)
-                        }
+                        type: Delta_Type.modifier_effect_applied,
+                        modifier_id: applied.modifier.id,
+                        handle_id: applied.handle_id,
+                        heal: unit_health_change(source, damage)
                     };
                 }
             }
@@ -1188,41 +1191,38 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
 
     if (source.supertype == Unit_Supertype.hero) {
         defer_delta(battle, () => {
-            for (const item of source.items) {
-                if (item.id == Item_Id.satanic) {
+            for (const applied of source.modifiers) {
+                if (applied.modifier.id == Modifier_Id.item_satanic) {
                     return {
-                        type: Delta_Type.item_effect_applied,
-                        item_id: item.id,
-                        heal: {
-                            target_unit_id: source.id,
-                            change: health_change(source, damage_only)
-                        }
+                        type: Delta_Type.modifier_effect_applied,
+                        modifier_id: applied.modifier.id,
+                        handle_id: applied.handle_id,
+                        heal: unit_health_change(source, damage_only)
                     };
                 }
             }
         });
 
         defer_delta(battle, () => {
-            for (const item of source.items) {
-                if (item.id == Item_Id.morbid_mask) {
+            for (const applied of source.modifiers) {
+                if (applied.modifier.id == Modifier_Id.item_morbid_mask) {
                     return {
-                        type: Delta_Type.item_effect_applied,
-                        item_id: item.id,
-                        heal: {
-                            target_unit_id: source.id,
-                            change: health_change(source, item.health_restored_per_attack)
-                        }
+                        type: Delta_Type.modifier_effect_applied,
+                        modifier_id: applied.modifier.id,
+                        handle_id: applied.handle_id,
+                        heal: unit_health_change(source, applied.modifier.health_restored_per_attack)
                     };
                 }
             }
         });
 
         defer_delta(battle, () => {
-            for (const item of source.items) {
-                if (item.id == Item_Id.basher) {
+            for (const applied of source.modifiers) {
+                if (applied.modifier.id == Modifier_Id.item_basher_bearer) {
                     return {
-                        type: Delta_Type.item_effect_applied,
-                        item_id: item.id,
+                        type: Delta_Type.modifier_effect_applied,
+                        modifier_id: applied.modifier.id,
+                        handle_id: applied.handle_id,
                         target_unit_id: target.id,
                         modifier: modifier(battle, { id: Modifier_Id.item_basher_target }, 1)
                     };
@@ -1831,7 +1831,7 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
 
 function resolve_end_turn_effects(battle: Battle_Record) {
     const item_to_units = new Map<Item_Id, [Hero, Item][]>();
-    const modifiers_to_units = new Map<Modifier_Id, [Unit, Source, Modifier][]>();
+    const modifiers_to_units = new Map<Modifier_Id, [Unit, Applied_Modifier, Modifier][]>();
     const ability_to_units = new Map<Ability_Id, [Unit, Ability][]>();
 
     for (const unit of battle.units) {
@@ -1858,7 +1858,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
                 modifiers_to_units.set(applied.modifier.id, modifier_units);
             }
 
-            modifier_units.push([unit, applied.source, applied.modifier]);
+            modifier_units.push([unit, applied, applied.modifier]);
         }
 
         for (const ability of unit.abilities) {
@@ -1894,12 +1894,12 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }
     }
 
-    function for_units_with_modifier<T extends Modifier_Id>(modifier_id: Modifier_Id, action: (unit: Unit, source: Source, modifier: Find_By_Id<Modifier, T>) => void) {
+    function for_units_with_modifier<T extends Modifier_Id>(modifier_id: T, action: (unit: Unit, applied: Applied_Modifier, modifier: Find_By_Id<Modifier, T>) => void) {
         const modifier_units = modifiers_to_units.get(modifier_id);
 
         if (modifier_units) {
-            for (const [unit, source, modifier] of modifier_units) {
-                action(unit, source, modifier as Find_By_Id<Modifier, T>);
+            for (const [unit, applied, modifier] of modifier_units) {
+                action(unit, applied, modifier as Find_By_Id<Modifier, T>);
             }
         }
     }
@@ -1915,33 +1915,29 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }
     }
 
-    // TODO replace with for_units_with_modifier
-    for_heroes_with_item(Item_Id.heart_of_tarrasque, (hero, item) => {
-        defer_delta_by_unit(battle, hero, () => ({
-            type: Delta_Type.item_effect_applied,
-            item_id: item.id,
-            heal: {
-                target_unit_id: hero.id,
-                change: health_change(hero, item.regeneration_per_turn)
-            }
+    for_units_with_modifier(Modifier_Id.item_heart_of_tarrasque, (unit, applied, modifier) => {
+        defer_delta_by_unit(battle, unit, () => ({
+            type: Delta_Type.modifier_effect_applied,
+            handle_id: applied.handle_id,
+            modifier_id: modifier.id,
+            change: unit_health_change(unit, modifier.regeneration_per_turn)
         }));
     });
 
-    // TODO replace with for_units_with_modifier
-    for_heroes_with_item(Item_Id.armlet, (hero, item) => {
-        defer_delta_by_unit(battle, hero, () => ({
-            type: Delta_Type.health_change,
-            source_unit_id: hero.id,
-            target_unit_id: hero.id,
-            ...health_change(hero, -Math.min(item.health_loss_per_turn, hero.health - 1))
+    for_units_with_modifier(Modifier_Id.item_armlet, (unit, applied, modifier) => {
+        defer_delta_by_unit(battle, unit, () => ({
+            type: Delta_Type.modifier_effect_applied,
+            handle_id: applied.handle_id,
+            modifier_id: modifier.id,
+            change: unit_health_change(unit, -Math.min(modifier.health_loss_per_turn, unit.health - 1))
         }));
     });
 
-    for_units_with_modifier(Modifier_Id.dark_seer_ion_shell, (unit, source) => {
+    for_units_with_modifier(Modifier_Id.dark_seer_ion_shell, (unit, applied) => {
         defer_delta_by_unit(battle, unit, () => {
-            if (source.type != Source_Type.unit) return;
+            if (applied.source.type != Source_Type.unit) return;
 
-            for (const ability of source.unit.abilities) {
+            for (const ability of applied.source.unit.abilities) {
                 if (ability.id != Ability_Id.dark_seer_ion_shell) continue;
 
                 const targets = query_units_for_no_target_ability(battle, unit, ability.shield_targeting);

@@ -876,8 +876,8 @@ function delta_to_colored_line(game: Game_In_Battle, delta: Delta): Colored_Line
             ]
         }
 
-        case Delta_Type.item_effect_applied: {
-            const id: Item_Id = delta.item_id;
+        case Delta_Type.modifier_effect_applied: {
+            const id = delta.modifier_id;
 
             return [
                 clr.txt(enum_to_string(id), "gray"),

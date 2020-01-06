@@ -2140,19 +2140,19 @@ function play_unit_target_spell_delta(game: Game, caster: Battle_Player, target:
     }
 }
 
-function play_item_effect_delta(game: Game, delta: Delta_Item_Effect_Applied) {
-    switch (delta.item_id) {
-        case Item_Id.morbid_mask:
-        case Item_Id.satanic: {
-            const target = find_unit_by_id(delta.heal.target_unit_id);
+function play_modifier_effect_delta(game: Game, delta: Delta_Modifier_Effect_Applied) {
+    switch (delta.modifier_id) {
+        case Modifier_Id.item_heart_of_tarrasque:
+        case Modifier_Id.item_armlet: {
+            const target = find_unit_by_id(delta.change.target_unit_id);
             if (!target) break;
 
-            change_health(game, target, target, delta.heal.change);
-            fx_by_unit("particles/generic_gameplay/generic_lifesteal.vpcf", target).release();
+            change_health(game, target, target, delta.change.change);
 
             break;
         }
-        case Item_Id.octarine_core: {
+
+        case Modifier_Id.item_octarine_core: {
             const target = find_unit_by_id(delta.heal.target_unit_id);
             if (!target) break;
 
@@ -2162,16 +2162,18 @@ function play_item_effect_delta(game: Game, delta: Delta_Item_Effect_Applied) {
             break;
         }
 
-        case Item_Id.heart_of_tarrasque: {
+        case Modifier_Id.item_morbid_mask:
+        case Modifier_Id.item_satanic: {
             const target = find_unit_by_id(delta.heal.target_unit_id);
             if (!target) break;
 
             change_health(game, target, target, delta.heal.change);
+            fx_by_unit("particles/generic_gameplay/generic_lifesteal.vpcf", target).release();
 
             break;
         }
 
-        case Item_Id.basher: {
+        case Modifier_Id.item_basher_bearer: {
             const target = find_unit_by_id(delta.target_unit_id);
             if (!target) break;
 
@@ -3159,8 +3161,8 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             break;
         }
 
-        case Delta_Type.item_effect_applied: {
-            play_item_effect_delta(game, delta);
+        case Delta_Type.modifier_effect_applied: {
+            play_modifier_effect_delta(game, delta);
 
             break;
         }

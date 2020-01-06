@@ -2,7 +2,8 @@ declare const enum Source_Type {
     none = 0,
     unit = 1,
     player = 2,
-    item = 3
+    item = 3,
+    modifier = 4
 }
 
 type Source_None = {
@@ -25,7 +26,12 @@ type Source_Item = {
     item_id: Item_Id
 }
 
-type Source = Source_None | Source_Unit | Source_Item | Source_Player
+type Source_Modifier = {
+    type: Source_Type.modifier
+    modifier_handle_id: Modifier_Handle_Id
+}
+
+type Source = Source_None | Source_Unit | Source_Item | Source_Player | Source_Modifier
 
 type Battle = {
     has_started: boolean
@@ -405,6 +411,13 @@ function item_source(item_id: Item_Id): Source_Item {
     return {
         type: Source_Type.item,
         item_id: item_id
+    }
+}
+
+function modifier_source(modifier_handle_id: Modifier_Handle_Id): Source_Modifier {
+    return {
+        type: Source_Type.modifier,
+        modifier_handle_id: modifier_handle_id
     }
 }
 
@@ -932,21 +945,21 @@ function apply_modifier(battle: Battle, source: Source, target: Unit, applicatio
     });
 }
 
-function collapse_item_effect(battle: Battle, effect: Delta_Item_Effect_Applied) {
-    const source = item_source(effect.item_id);
+function collapse_modifier_effect(battle: Battle, effect: Delta_Modifier_Effect_Applied) {
+    const source = modifier_source(effect.handle_id);
 
-    switch (effect.item_id) {
-        case Item_Id.heart_of_tarrasque: {
-            const target = find_unit_by_id(battle, effect.heal.target_unit_id);
-
-            if (target) {
-                change_health(battle, source, target, effect.heal.change);
-            }
-
+    switch (effect.modifier_id) {
+        case Modifier_Id.item_heart_of_tarrasque: {
+            change_unit_health(battle, source, effect.change);
             break;
         }
 
-        case Item_Id.basher: {
+        case Modifier_Id.item_armlet: {
+            change_unit_health(battle, source, effect.change);
+            break;
+        }
+
+        case Modifier_Id.item_basher_bearer: {
             const target = find_unit_by_id(battle, effect.target_unit_id);
 
             if (target) {
@@ -956,9 +969,9 @@ function collapse_item_effect(battle: Battle, effect: Delta_Item_Effect_Applied)
             break;
         }
 
-        case Item_Id.satanic:
-        case Item_Id.octarine_core:
-        case Item_Id.morbid_mask: {
+        case Modifier_Id.item_satanic:
+        case Modifier_Id.item_octarine_core:
+        case Modifier_Id.item_morbid_mask: {
             const target = find_unit_by_id(battle, effect.heal.target_unit_id);
 
             if (target) {
@@ -1055,6 +1068,14 @@ function change_health_multiple(battle: Battle, source: Source, changes: Unit_He
         if (target) {
             change_health(battle, source, target, change.change);
         }
+    }
+}
+
+function change_unit_health(battle: Battle, source: Source, change: Unit_Health_Change) {
+    const target = find_unit_by_id(battle, change.target_unit_id);
+
+    if (target) {
+        change_health(battle, source, target, change.change);
     }
 }
 
@@ -1869,8 +1890,8 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             break;
         }
 
-        case Delta_Type.item_effect_applied: {
-            collapse_item_effect(battle, delta);
+        case Delta_Type.modifier_effect_applied: {
+            collapse_modifier_effect(battle, delta);
 
             break;
         }

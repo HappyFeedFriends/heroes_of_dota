@@ -95,6 +95,7 @@ type Modifier = {
 } | {
     id: Modifier_Id.item_heart_of_tarrasque
     health: number
+    regeneration_per_turn: number
 } | {
     id: Modifier_Id.item_assault_cuirass
     armor: number
@@ -109,6 +110,7 @@ type Modifier = {
 } | {
     id: Modifier_Id.item_armlet
     health: number
+    health_loss_per_turn: number
 } | {
     id: Modifier_Id.item_boots_of_speed
     move_bonus: number
@@ -120,6 +122,7 @@ type Modifier = {
     health: number
 } | {
     id: Modifier_Id.item_morbid_mask
+    health_restored_per_attack: number
 } | {
     id: Modifier_Id.item_chainmail
     armor: number
@@ -140,3 +143,26 @@ type Modifier = {
 } | {
     id: Modifier_Id.returned_to_hand
 }
+
+type Delta_Modifier_Effect_Applied_Base = {
+    type: Delta_Type.modifier_effect_applied
+    handle_id: Modifier_Handle_Id
+}
+
+type Delta_Modifier_Effect_Applied = Delta_Modifier_Effect_Applied_Base & ({
+    modifier_id: Modifier_Id.item_armlet
+    change: Unit_Health_Change
+} | {
+    modifier_id: Modifier_Id.item_heart_of_tarrasque
+    change: Unit_Health_Change
+} | {
+    modifier_id: Modifier_Id.item_octarine_core
+    heal: Unit_Health_Change
+} | {
+    modifier_id: Modifier_Id.item_morbid_mask | Modifier_Id.item_satanic | Modifier_Id.item_octarine_core
+    heal: Unit_Health_Change
+} | {
+    modifier_id: Modifier_Id.item_basher_bearer
+    target_unit_id: Unit_Id
+    modifier: Modifier_Application
+});
