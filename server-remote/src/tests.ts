@@ -90,10 +90,82 @@ function test_game_over_when_all_enemies_die() {
     }
 }
 
+function test_ember_spirit_fire_remnant_ability_swap_working_correctly() {
+    const battle = test_battle();
+    const hero = battle.for_test_player()
+        .spawn_hero(Hero_Type.ember_spirit, xy(1, 1))
+        .set_level(3);
+
+    hero.assert()
+        .has_ability(Ability_Id.ember_fire_remnant)
+        .has_benched_ability_bench(Ability_Id.ember_activate_fire_remnant);
+
+    hero.order_cast_on_ground(Ability_Id.ember_fire_remnant, xy(2, 1));
+
+    hero.assert()
+        .has_ability(Ability_Id.ember_activate_fire_remnant)
+        .has_benched_ability_bench(Ability_Id.ember_fire_remnant);
+
+    console.time("endt");
+    battle.for_test_player().end_turn();
+    battle.for_enemy_player().end_turn();
+console.timeEnd("endt");
+    hero.order_cast_no_target(Ability_Id.ember_activate_fire_remnant);
+
+    hero.assert()
+        .has_ability(Ability_Id.ember_fire_remnant)
+        .has_benched_ability_bench(Ability_Id.ember_activate_fire_remnant);
+}
+
+function test_health_modifiers_increase_current_health_along_with_maximum() {
+    const battle = test_battle();
+    const hero = battle.for_test_player().spawn_hero(Hero_Type.dark_seer, xy(1, 1));
+    const starting_health = hero.unit.health;
+    const bonus = 5;
+
+    const health_modifier = hero.apply_modifier({
+        id: Modifier_Id.item_belt_of_strength,
+        health: bonus
+    });
+
+    hero.assert()
+        .has_max_health(starting_health + bonus)
+        .has_health(starting_health + bonus);
+
+    hero.remove_modifier(health_modifier);
+
+    hero.assert()
+        .has_max_health(starting_health)
+        .has_health(starting_health);
+}
+
+function test_health_modifiers_decrease_health_properly() {
+    const battle = test_battle();
+    const hero = battle.for_test_player().spawn_hero(Hero_Type.dark_seer, xy(1, 1));
+    const starting_health = 3;
+    const bonus = 5;
+
+    hero.set_health(starting_health);
+
+    hero.assert().has_health(starting_health);
+
+    const health_modifier = hero.apply_modifier({
+        id: Modifier_Id.item_belt_of_strength,
+        health: bonus
+    });
+
+    hero.assert().has_health(starting_health + bonus);
+    hero.remove_modifier(health_modifier);
+    hero.assert().has_health(starting_health + bonus);
+}
+
 run_tests([
     test_player_can_spawn_hero_from_hand,
     test_player_cant_spawn_hero_outside_deployment_zone,
     test_player_can_perform_a_simple_move_command,
     test_game_doesnt_end_on_matriarch_ability,
-    test_game_over_when_all_enemies_die
+    test_game_over_when_all_enemies_die,
+    test_ember_spirit_fire_remnant_ability_swap_working_correctly,
+    test_health_modifiers_increase_current_health_along_with_maximum,
+    test_health_modifiers_decrease_health_properly
 ]);

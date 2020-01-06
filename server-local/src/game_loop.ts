@@ -151,11 +151,10 @@ function create_map_unit_with_model(at: XY, facing: XY, model: string, scale: nu
 }
 
 function unit_to_visualizer_unit_data(unit: Unit): Visualizer_Unit_Data {
-    // TODO some of those properties are not actually needed
     const base: Visualizer_Unit_Data_Base = {
         ...copy(unit as Unit_Stats),
         id: unit.id,
-        modifiers: unit.modifiers.map(data => data.modifier_id),
+        modifiers: unit.modifiers.map(data => data.modifier.id),
         hidden: unit.hidden
     };
 

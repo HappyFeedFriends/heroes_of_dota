@@ -421,20 +421,21 @@ function unit_base(unit_id: Unit_Id, info: Unit_Creation_Info, definition: Unit_
         handle: create_world_handle_for_battle_unit(battle. world_origin, info, at, facing),
         id: unit_id,
         position: at,
+        base: {
+            armor: 0,
+            attack_damage: definition.attack_damage,
+            max_health: definition.health,
+            max_move_points: definition.move_points
+        },
+        bonus: {
+            armor: 0,
+            attack_damage: 0,
+            max_health: 0,
+            max_move_points: 0
+        },
         health: definition.health,
-        max_health: definition.health,
-        attack_damage: definition.attack_damage,
-        attack_bonus: 0,
-        armor: 0,
-        state_rooted_counter: 0,
-        state_stunned_counter: 0,
-        state_silenced_counter: 0,
-        state_disarmed_counter: 0,
-        state_out_of_the_game_counter: 0,
-        state_unselectable_counter: 0,
+        status: starting_unit_status(),
         move_points: definition.move_points,
-        move_points_bonus: 0,
-        max_move_points: definition.move_points,
         modifiers: [],
         dead: false,
         hidden: false
@@ -1392,23 +1393,6 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
     }
 }
 
-function apply_modifier_changes(game: Game, target: Unit, changes: Modifier_Change[], invert: boolean) {
-    for (const change of changes) {
-        switch (change.type) {
-            case Modifier_Change_Type.field_change: {
-                apply_modifier_field_change(target, change, invert);
-                break;
-            }
-            
-            case Modifier_Change_Type.ability_swap: {
-                break;
-            }
-        }
-    }
-
-    update_state_visuals(target);
-}
-
 type Modifier_Visuals_Complex = {
     complex: true
     native_modifier_name: string
@@ -1485,20 +1469,28 @@ function try_apply_modifier_visuals(target: Unit, modifier_id: Modifier_Id) {
     }
 }
 
-function apply_modifier(game: Game, target: Unit, modifier: Modifier_Application) {
-    const modifier_changes = from_client_array(modifier.changes);
+function update_unit_state_from_modifiers(unit: Unit) {
+    const recalculated = recalculate_unit_stats_from_modifiers(unit, unit.modifiers.map(applied => applied.modifier));
 
-    print(`Apply and record ${modifier.modifier_handle_id} to ${target.handle.GetName()}`);
+    unit.bonus = recalculated.bonus;
+    unit.status = recalculated.status;
+    unit.health = recalculated.health;
+    unit.move_points = recalculated.move_points;
 
-    try_apply_modifier_visuals(target, modifier.modifier_id);
+    update_state_visuals(unit);
+}
+
+function apply_modifier(game: Game, target: Unit, application: Modifier_Application) {
+    print(`Apply and record ${application.modifier_handle_id} to ${target.handle.GetName()}`);
+
+    try_apply_modifier_visuals(target, application.modifier.id);
 
     target.modifiers.push({
-        modifier_id: modifier.modifier_id,
-        modifier_handle_id: modifier.modifier_handle_id,
-        changes: modifier_changes
+        modifier: application.modifier,
+        modifier_handle_id: application.modifier_handle_id
     });
 
-    apply_modifier_changes(game, target, modifier_changes, false);
+    update_unit_state_from_modifiers(target);
     update_game_net_table(game);
 }
 
@@ -2521,8 +2513,8 @@ function turn_unit_towards_target(unit: Unit, towards: XY) {
     }
 }
 
-function update_specific_state_visuals(unit: Unit, counter: number, associated_modifier: string) {
-    if (counter > 0) {
+function update_specific_state_visuals(unit: Unit, flag: boolean, associated_modifier: string) {
+    if (flag) {
         if (!unit.handle.HasModifier(associated_modifier)) {
             unit.handle.AddNewModifier(unit.handle, undefined, associated_modifier, {});
         }
@@ -2532,21 +2524,21 @@ function update_specific_state_visuals(unit: Unit, counter: number, associated_m
 }
 
 function update_state_visuals(unit: Unit) {
-    update_specific_state_visuals(unit, unit.state_stunned_counter, "modifier_stunned");
-    update_specific_state_visuals(unit, unit.state_silenced_counter, "modifier_silence");
+    update_specific_state_visuals(unit, is_unit_stunned(unit), "modifier_stunned");
+    update_specific_state_visuals(unit, is_unit_silenced(unit), "modifier_silence");
 
     const was_hidden = unit.hidden;
 
     let unit_hidden = false;
 
-    for (const modifier of unit.modifiers) {
-        if (modifier.modifier_id == Modifier_Id.returned_to_hand) {
+    for (const applied of unit.modifiers) {
+        if (applied.modifier.id == Modifier_Id.returned_to_hand) {
             unit_hidden = true;
         }
     }
 
     unit.hidden = unit_hidden;
-    unit.handle.SetBaseMoveSpeed(Math.max(100, 500 + unit.move_points_bonus * 100));
+    unit.handle.SetBaseMoveSpeed(Math.max(100, 500 + unit.bonus.max_move_points * 100));
 
     if (was_hidden != unit_hidden) {
         if (unit_hidden) {
@@ -2652,7 +2644,7 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
         number_particle(-value_delta, 250, 70, 70);
     }
 
-    target.health = Math.max(0, Math.min(target.max_health, change.new_value));
+    target.health = Math.max(0, Math.min(get_max_health(target), change.new_value));
 
     update_game_net_table(game);
 
@@ -2723,11 +2715,11 @@ function on_modifier_removed(unit: Unit, modifier_id: Modifier_Id) {
     }
 }
 
-function remove_modifier(game: Game, unit: Unit, modifier: Modifier_Data, array_index: number) {
-    const modifier_visuals = modifier_id_to_visuals(modifier.modifier_id);
+function remove_modifier(game: Game, unit: Unit, applied: Modifier_Data, array_index: number) {
+    const modifier_visuals = modifier_id_to_visuals(applied.modifier.id);
 
     if (modifier_visuals) {
-        print(`Remove modifier ${modifier.modifier_handle_id} ${modifier_visuals} from ${unit.handle.GetName()}`);
+        print(`Remove modifier ${applied.modifier_handle_id} ${modifier_visuals} from ${unit.handle.GetName()}`);
 
         if (modifier_visuals.complex) {
             unit.handle.RemoveModifierByName(modifier_visuals.native_modifier_name);
@@ -2735,7 +2727,7 @@ function remove_modifier(game: Game, unit: Unit, modifier: Modifier_Data, array_
             for (let fx_index = 0; fx_index < battle.modifier_tied_fxs.length; fx_index++) {
                 const fx = battle.modifier_tied_fxs[fx_index];
 
-                if (fx.modifier_id == modifier.modifier_id && fx.unit_id == unit.id) {
+                if (fx.modifier_id == applied.modifier.id && fx.unit_id == unit.id) {
                     fx.fx.destroy_and_release(false);
 
                     battle.modifier_tied_fxs.splice(fx_index, 1);
@@ -2747,11 +2739,11 @@ function remove_modifier(game: Game, unit: Unit, modifier: Modifier_Data, array_
 
     }
 
-    on_modifier_removed(unit, modifier.modifier_id);
+    on_modifier_removed(unit, applied.modifier.id);
 
     unit.modifiers.splice(array_index, 1);
 
-    apply_modifier_changes(game, unit, modifier.changes, true);
+    update_unit_state_from_modifiers(unit);
 }
 
 function add_activity_translation(target: Unit, translation: Activity_Translation, duration: number) {
@@ -2909,7 +2901,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             const facing = find_player_deployment_zone_facing(unit.owner_remote_id);
             if (!facing) break;
 
-            const in_hand_modifier = array_find_index(unit.modifiers, modifier => modifier.modifier_id == Modifier_Id.returned_to_hand);
+            const in_hand_modifier = array_find_index(unit.modifiers, modifier => modifier.modifier.id == Modifier_Id.returned_to_hand);
             if (in_hand_modifier == -1) break;
 
             if (!unit.handle.IsAlive()) {
@@ -3098,7 +3090,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
 
         case Delta_Type.end_turn: {
             for (const unit of battle.units) {
-                unit.move_points = unit.max_move_points + unit.move_points_bonus;
+                unit.move_points = get_max_move_points(unit);
             }
 
             update_game_net_table(game);
@@ -3129,6 +3121,15 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             if (source && target) {
                 change_health(game, source, target, delta); // TODO use Health_Change
             }
+
+            break;
+        }
+
+        case Delta_Type.modifier_applied: {
+            const unit = find_unit_by_id(delta.unit_id);
+            if (!unit) break;
+
+            apply_modifier(game, unit, delta.application);
 
             break;
         }
@@ -3269,17 +3270,20 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
 
     battle.units = snapshot.units.map(unit => {
         const base: Unit_Base = {
-            ...copy(unit as Unit_Stats),
             id: unit.id,
             dead: unit.health <= 0,
             position: unit.position,
             handle: create_world_handle_for_battle_unit(battle.world_origin, unit, unit.position, unit.facing),
-            modifiers: from_client_array(unit.modifiers).map(modifier => ({
-                modifier_id: modifier.modifier_id,
-                modifier_handle_id: modifier.modifier_handle_id,
-                changes: from_client_array(modifier.changes)
-            })),
-            hidden: false // We will update it in update_state_visuals
+            modifiers: from_client_array(unit.modifiers),
+            hidden: false, // We will update it in update_state_visuals,
+
+            health: unit.health,
+            move_points: unit.move_points,
+            base: unit.base,
+            bonus: unit.bonus,
+
+            // We will recalculate stats and update those at the end
+            status: starting_unit_status()
         };
 
         switch (unit.supertype) {
@@ -3344,10 +3348,10 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
     wait_one_frame();
 
     for (const unit of battle.units) {
-        update_state_visuals(unit);
+        update_unit_state_from_modifiers(unit);
 
         for (const modifier of unit.modifiers) {
-            try_apply_modifier_visuals(unit, modifier.modifier_id);
+            try_apply_modifier_visuals(unit, modifier.modifier.id);
         }
     }
 }

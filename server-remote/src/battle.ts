@@ -164,34 +164,15 @@ function unit_health_change(target: Unit, change: number): Unit_Health_Change {
 
 function health_change(target: Unit, change: number): Health_Change {
     return {
-        new_value: Math.max(0, Math.min(target.max_health, target.health + change)),
+        new_value: Math.max(0, Math.min(get_max_health(target), target.health + change)),
         value_delta: change
     }
 }
 
-function convert_field_changes(changes: [Modifier_Field, number][]): Modifier_Change_Field_Change[] {
-    return changes.map(change => {
-        return <Modifier_Change_Field_Change> {
-            type: Modifier_Change_Type.field_change,
-            field: change[0],
-            delta: change[1]
-        };
-    });
-}
-
-function new_modifier(battle: Battle_Record, id: Modifier_Id, ...changes: [Modifier_Field, number][]): Modifier_Application {
+function modifier(battle: Battle_Record, modifier: Modifier, duration?: number): Modifier_Application {
     return {
-        modifier_id: id,
+        modifier: modifier,
         modifier_handle_id: get_next_entity_id(battle) as Modifier_Handle_Id,
-        changes: convert_field_changes(changes)
-    }
-}
-
-function new_timed_modifier(battle: Battle_Record, id: Modifier_Id, duration: number, ...changes: [Modifier_Field, number][]): Modifier_Application {
-    return {
-        modifier_id: id,
-        modifier_handle_id: get_next_entity_id(battle) as Modifier_Handle_Id,
-        changes: convert_field_changes(changes),
         duration: duration
     }
 }
@@ -224,7 +205,10 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
                 spell_id: spell.spell_id,
                 targets: owned_units.map(target => ({
                     target_unit_id: target.id,
-                    modifier: new_timed_modifier(battle, Modifier_Id.spell_buckler, spell.duration, [Modifier_Field.armor_bonus, spell.armor])
+                    modifier: modifier(battle,{
+                        id: Modifier_Id.spell_buckler,
+                        armor: spell.armor
+                    }, spell.duration)
                 }))
             }
         }
@@ -237,7 +221,10 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
                 spell_id: spell.spell_id,
                 targets: owned_units.map(target => ({
                     target_unit_id: target.id,
-                    modifier: new_timed_modifier(battle, Modifier_Id.spell_drums_of_endurance, 1, [Modifier_Field.move_points_bonus, spell.move_points_bonus])
+                    modifier: modifier(battle, {
+                        id: Modifier_Id.spell_drums_of_endurance,
+                        move_bonus: spell.move_points_bonus
+                    }, 1)
                 }))
             }
         }
@@ -272,8 +259,8 @@ function perform_spell_cast_unit_target(battle: Battle_Record, player: Battle_Pl
                 spell_id: spell.spell_id,
                 new_card_id: get_next_entity_id(battle) as Card_Id,
                 gold_change: -get_buyback_cost(target),
-                heal: { new_value: target.max_health, value_delta: 0 },
-                modifier: new_modifier(battle, Modifier_Id.returned_to_hand, [ Modifier_Field.state_out_of_the_game_counter, 1 ])
+                heal: { new_value: get_max_health(target), value_delta: 0 },
+                modifier: modifier(battle, { id: Modifier_Id.returned_to_hand })
             }
         }
 
@@ -282,8 +269,8 @@ function perform_spell_cast_unit_target(battle: Battle_Record, player: Battle_Pl
                 ...base,
                 spell_id: spell.spell_id,
                 new_card_id: get_next_entity_id(battle) as Card_Id,
-                heal: { new_value: target.max_health, value_delta: 0 },
-                modifier: new_modifier(battle, Modifier_Id.returned_to_hand, [ Modifier_Field.state_out_of_the_game_counter, 1 ])
+                heal: { new_value: get_max_health(target), value_delta: 0 },
+                modifier: modifier(battle, { id: Modifier_Id.returned_to_hand })
             }
         }
 
@@ -291,7 +278,7 @@ function perform_spell_cast_unit_target(battle: Battle_Record, player: Battle_Pl
             return {
                 ...base,
                 spell_id: spell.spell_id,
-                modifier: new_timed_modifier(battle, Modifier_Id.spell_euls_scepter, 1, [ Modifier_Field.state_out_of_the_game_counter, 1 ])
+                modifier: modifier(battle, { id: Modifier_Id.spell_euls_scepter }, 1)
             }
         }
 
@@ -339,7 +326,7 @@ function perform_spell_cast_ground_target(battle: Battle_Record, player: Battle_
 }
 
 function calculate_basic_attack_damage_to_target(source: Unit, target: Unit) {
-    return Math.max(0, source.attack_damage + source.attack_bonus - target.armor);
+    return Math.max(0, get_attack_damage(source) - get_armor(target));
 }
 
 function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: Ability_Ground_Target, target: XY): Delta_Ground_Target_Ability {
@@ -461,7 +448,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
             const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting).map(target => ({
                 target_unit_id: target.id,
                 change: health_change(target, -ability.damage),
-                modifier: new_timed_modifier(battle, Modifier_Id.lion_impale, 1, [Modifier_Field.state_stunned_counter, 1])
+                modifier: modifier(battle, { id: Modifier_Id.lion_impale }, 1)
             }));
 
             return {
@@ -482,7 +469,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
                         hit: true,
                         stun: {
                             target_unit_id: scan.unit.id,
-                            modifier: new_timed_modifier(battle, Modifier_Id.mirana_arrow, 1, [ Modifier_Field.state_stunned_counter, 1 ])
+                            modifier: modifier(battle, { id: Modifier_Id.mirana_arrow }, 1)
                         }
                     }
                 };
@@ -509,7 +496,10 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
             const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting).map(target => ({
                 target_unit_id: target.id,
                 change: health_change(target, -ability.damage),
-                modifier: new_timed_modifier(battle, Modifier_Id.venge_wave_of_terror, ability.duration, [Modifier_Field.armor_bonus, -ability.armor_reduction])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.venge_wave_of_terror,
+                    armor_reduction: ability.armor_reduction
+                }, ability.duration)
             }));
 
             return {
@@ -585,22 +575,11 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
             return {
                 ...base,
                 ability_id: ability.id,
-                modifier: {
-                    modifier_id: Modifier_Id.ember_fire_remnant_caster,
-                    modifier_handle_id: get_next_entity_id(battle) as Modifier_Handle_Id,
-                    changes: [{
-                        type: Modifier_Change_Type.ability_swap,
-                        swap_to: Ability_Id.ember_activate_fire_remnant,
-                        original_ability: Ability_Id.ember_fire_remnant
-                    }]
-                },
+                modifier: modifier(battle, { id: Modifier_Id.ember_fire_remnant_caster }),
                 remnant: {
                     id: get_next_entity_id(battle) as Unit_Id,
                     type: Creep_Type.ember_fire_remnant,
-                    modifier: new_modifier(battle, Modifier_Id.ember_fire_remnant,
-                        [Modifier_Field.state_out_of_the_game_counter, 1],
-                        [Modifier_Field.state_unselectable_counter, 1]
-                    )
+                    modifier: modifier(battle, { id: Modifier_Id.ember_fire_remnant })
                 }
             }
         }
@@ -629,7 +608,10 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
             const targets = query_units_for_no_target_ability(battle, unit, ability.targeting).map(target => ({
                 target_unit_id: target.id,
                 change: health_change(target, -ability.damage),
-                modifier: new_timed_modifier(battle, Modifier_Id.tide_anchor_smash, 1, [Modifier_Field.attack_bonus, -ability.attack_reduction])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.tide_anchor_smash,
+                    attack_reduction: ability.attack_reduction
+                }, 1)
             }));
 
             return {
@@ -643,7 +625,7 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
             const targets = query_units_for_no_target_ability(battle, unit, ability.targeting).map(target => ({
                 target_unit_id: target.id,
                 change: health_change(target, -ability.damage),
-                modifier: new_timed_modifier(battle, Modifier_Id.tide_ravage, 1, [Modifier_Field.state_stunned_counter, 1])
+                modifier: modifier(battle, { id: Modifier_Id.tide_ravage }, 1)
             }));
 
             return {
@@ -704,12 +686,10 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
                         hit: true,
                         target_unit_id: target.id,
                         damage: health_change(target, -ability.damage),
-                        modifier: new_timed_modifier(
-                            battle,
-                            Modifier_Id.skywrath_concussive_shot,
-                            ability.duration,
-                            [Modifier_Field.move_points_bonus, -ability.move_points_reduction]
-                        )
+                        modifier: modifier(battle, {
+                                id: Modifier_Id.skywrath_concussive_shot,
+                                move_reduction: ability.move_points_reduction
+                        }, ability.duration)
                     }
                 }
             } else {
@@ -727,16 +707,7 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
             return {
                 ...base,
                 ability_id: ability.id,
-                modifier: {
-                    modifier_id: Modifier_Id.dragon_knight_elder_dragon_form,
-                    modifier_handle_id: get_next_entity_id(battle) as Modifier_Handle_Id,
-                    changes: [{
-                        type: Modifier_Change_Type.ability_swap,
-                        swap_to: Ability_Id.dragon_knight_elder_dragon_form_attack,
-                        original_ability: Ability_Id.basic_attack
-                    }],
-                    duration: ability.duration
-                },
+                modifier: modifier(battle, { id: Modifier_Id.dragon_knight_elder_dragon_form }, ability.duration),
             }
         }
 
@@ -780,7 +751,7 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
                 ability_id: ability.id,
                 targets: targets.map(target => ({
                     target_unit_id: target.id,
-                    modifier: new_timed_modifier(battle, Modifier_Id.ember_searing_chains, 1, [Modifier_Field.state_rooted_counter, 1])
+                    modifier: modifier(battle, { id: Modifier_Id.ember_searing_chains }, 1)
                 }))
             }
         }
@@ -838,7 +809,10 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
             return {
                 ...base,
                 ability_id: ability.id,
-                modifier: new_timed_modifier(battle, Modifier_Id.tide_gush, 1, [Modifier_Field.move_points_bonus, -ability.move_points_reduction]),
+                modifier: modifier(battle, {
+                    id: Modifier_Id.tide_gush,
+                    move_reduction: ability.move_points_reduction
+                }, 1),
                 damage_dealt: health_change(target, -ability.damage),
             };
         }
@@ -855,7 +829,7 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
             return {
                 ...base,
                 ability_id: ability.id,
-                modifier: new_timed_modifier(battle, Modifier_Id.skywrath_ancient_seal, ability.duration, [Modifier_Field.state_silenced_counter, 1]),
+                modifier: modifier(battle, { id: Modifier_Id.skywrath_ancient_seal }, ability.duration),
             }
         }
 
@@ -863,7 +837,7 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
             return {
                 ...base,
                 ability_id: ability.id,
-                modifier: new_timed_modifier(battle, Modifier_Id.dragon_knight_dragon_tail, 1, [Modifier_Field.state_stunned_counter, 1]),
+                modifier: modifier(battle, { id: Modifier_Id.dragon_knight_dragon_tail }, 1),
                 damage_dealt: health_change(target, -ability.damage)
             }
         }
@@ -872,11 +846,10 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
             return {
                 ...base,
                 ability_id: ability.id,
-                modifier: new_timed_modifier(battle, Modifier_Id.lion_hex, ability.duration,
-                    [Modifier_Field.state_silenced_counter, 1],
-                    [Modifier_Field.state_disarmed_counter, 1],
-                    [Modifier_Field.move_points_bonus, -ability.move_points_reduction]
-                )
+                modifier: modifier(battle, {
+                    id: Modifier_Id.lion_hex,
+                    move_reduction: ability.move_points_reduction
+                }, ability.duration)
             }
         }
 
@@ -892,7 +865,7 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
             return {
                 ...base,
                 ability_id: ability.id,
-                modifier: new_timed_modifier(battle, Modifier_Id.venge_magic_missile, 1, [Modifier_Field.state_stunned_counter, 1]),
+                modifier: modifier(battle, { id: Modifier_Id.venge_magic_missile }, 1),
                 damage_dealt: health_change(target, -ability.damage)
             }
         }
@@ -908,7 +881,7 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
             return {
                 ...base,
                 ability_id: ability.id,
-                modifier: new_timed_modifier(battle, Modifier_Id.dark_seer_ion_shell, ability.duration)
+                modifier: modifier(battle, { id: Modifier_Id.dark_seer_ion_shell }, ability.duration)
             }
         }
 
@@ -916,7 +889,10 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
             return {
                 ...base,
                 ability_id: ability.id,
-                modifier: new_timed_modifier(battle, Modifier_Id.dark_seer_surge, 1, [Modifier_Field.move_points_bonus, ability.move_points_bonus]),
+                modifier: modifier(battle, {
+                    id: Modifier_Id.dark_seer_surge,
+                    move_bonus: ability.move_points_bonus
+                }, 1),
             }
         }
     }
@@ -975,7 +951,10 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_boots_of_travel, [Modifier_Field.move_points_bonus, item.move_points_bonus])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_boots_of_travel,
+                    move_bonus: item.move_points_bonus
+                })
             }
         }
 
@@ -984,7 +963,10 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_boots_of_speed, [Modifier_Field.move_points_bonus, item.move_points_bonus])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_boots_of_speed,
+                    move_bonus: item.move_points_bonus
+                })
             }
         }
 
@@ -993,7 +975,10 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_blades_of_attack, [Modifier_Field.attack_bonus, item.damage_bonus])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_blades_of_attack,
+                    attack: item.damage_bonus
+                })
             }
         }
 
@@ -1002,7 +987,10 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_divine_rapier, [Modifier_Field.attack_bonus, item.damage_bonus])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_divine_rapier,
+                    attack: item.damage_bonus
+                })
             }
         }
 
@@ -1011,7 +999,10 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_assault_cuirass, [Modifier_Field.armor_bonus, item.armor_bonus])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_assault_cuirass,
+                    armor: item.armor_bonus
+                })
             }
         }
 
@@ -1029,7 +1020,10 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_heart_of_tarrasque, [Modifier_Field.health_bonus, item.health_bonus])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_heart_of_tarrasque,
+                    health: item.health_bonus
+                })
             }
         }
 
@@ -1038,7 +1032,7 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_satanic)
+                modifier: modifier(battle, { id: Modifier_Id.item_satanic })
             }
         }
 
@@ -1047,10 +1041,10 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_mask_of_madness,
-                    [Modifier_Field.state_silenced_counter, 1],
-                    [Modifier_Field.attack_bonus, item.damage_bonus]
-                )
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_mask_of_madness,
+                    attack: item.damage_bonus
+                })
             }
         }
 
@@ -1059,7 +1053,10 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_armlet, [Modifier_Field.health_bonus, item.health_bonus])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_armlet,
+                    health: item.health_bonus
+                })
             }
         }
 
@@ -1068,7 +1065,10 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_belt_of_strength, [Modifier_Field.health_bonus, item.health_bonus])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_belt_of_strength,
+                    health: item.health_bonus
+                })
             }
         }
 
@@ -1077,7 +1077,7 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_morbid_mask)
+                modifier: modifier(battle, { id: Modifier_Id.item_morbid_mask })
             }
         }
 
@@ -1086,7 +1086,7 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_octarine_core)
+                modifier: modifier(battle, { id: Modifier_Id.item_octarine_core })
             }
         }
 
@@ -1095,7 +1095,10 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_chainmail, [Modifier_Field.armor_bonus, item.armor_bonus])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_chainmail,
+                    armor: item.armor_bonus
+                })
             }
         }
 
@@ -1104,7 +1107,7 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                modifier: new_modifier(battle, Modifier_Id.item_basher_bearer)
+                modifier: modifier(battle, { id: Modifier_Id.item_basher_bearer })
             }
         }
 
@@ -1134,7 +1137,7 @@ function pick_up_rune(battle: Battle_Record, hero: Hero, rune: Rune, move_cost: 
                 ...base,
                 type: Delta_Type.rune_pick_up,
                 rune_type: rune.type,
-                heal: health_change(hero, hero.max_health - hero.health)
+                heal: health_change(hero, get_max_health(hero) - hero.health)
             };
         }
 
@@ -1143,7 +1146,10 @@ function pick_up_rune(battle: Battle_Record, hero: Hero, rune: Rune, move_cost: 
                 ...base,
                 type: Delta_Type.rune_pick_up,
                 rune_type: rune.type,
-                modifier: new_modifier(battle, Modifier_Id.rune_haste, [Modifier_Field.move_points_bonus, 3])
+                modifier: modifier(battle, {
+                    id: Modifier_Id.rune_haste,
+                    move_bonus: 3
+                })
             };
         }
 
@@ -1152,7 +1158,7 @@ function pick_up_rune(battle: Battle_Record, hero: Hero, rune: Rune, move_cost: 
                 ...base,
                 type: Delta_Type.rune_pick_up,
                 rune_type: rune.type,
-                modifier: new_modifier(battle, Modifier_Id.rune_double_damage, [Modifier_Field.attack_bonus, hero.attack_damage])
+                modifier: modifier(battle, { id: Modifier_Id.rune_double_damage })
             };
         }
     }
@@ -1218,7 +1224,7 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
                         type: Delta_Type.item_effect_applied,
                         item_id: item.id,
                         target_unit_id: target.id,
-                        modifier: new_timed_modifier(battle, Modifier_Id.item_basher_target, 1, [ Modifier_Field.state_stunned_counter, 1 ])
+                        modifier: modifier(battle, { id: Modifier_Id.item_basher_target }, 1)
                     };
                 }
             }
@@ -1761,6 +1767,13 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                     const bond = battle.hero_to_fire_remnant[bond_index];
 
                     defer_delta(battle, () => ({
+                        type: Delta_Type.set_ability_charges_remaining,
+                        unit_id: bond.hero.id,
+                        ability_id: Ability_Id.ember_activate_fire_remnant,
+                        charges_remaining: 1
+                    }));
+
+                    defer_delta(battle, () => ({
                         type: Delta_Type.modifier_removed,
                         modifier_handle_id: bond.modifier
                     }));
@@ -1818,7 +1831,7 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
 
 function resolve_end_turn_effects(battle: Battle_Record) {
     const item_to_units = new Map<Item_Id, [Hero, Item][]>();
-    const modifiers_to_units = new Map<Modifier_Id, [Unit, Modifier][]>();
+    const modifiers_to_units = new Map<Modifier_Id, [Unit, Source, Modifier][]>();
     const ability_to_units = new Map<Ability_Id, [Unit, Ability][]>();
 
     for (const unit of battle.units) {
@@ -1836,16 +1849,16 @@ function resolve_end_turn_effects(battle: Battle_Record) {
             }
         }
 
-        for (const modifier of unit.modifiers) {
-            let modifier_units = modifiers_to_units.get(modifier.id);
+        for (const applied of unit.modifiers) {
+            let modifier_units = modifiers_to_units.get(applied.modifier.id);
 
             if (!modifier_units) {
                 modifier_units = [];
 
-                modifiers_to_units.set(modifier.id, modifier_units);
+                modifiers_to_units.set(applied.modifier.id, modifier_units);
             }
 
-            modifier_units.push([unit, modifier]);
+            modifier_units.push([unit, applied.source, applied.modifier]);
         }
 
         for (const ability of unit.abilities) {
@@ -1881,19 +1894,19 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }
     }
 
-    function for_units_with_modifier(modifier_id: Modifier_Id, action: (unit: Unit, modifier: Modifier) => void) {
+    function for_units_with_modifier<T extends Modifier_Id>(modifier_id: Modifier_Id, action: (unit: Unit, source: Source, modifier: Find_By_Id<Modifier, T>) => void) {
         const modifier_units = modifiers_to_units.get(modifier_id);
 
         if (modifier_units) {
-            for (const [unit, modifier] of modifier_units) {
-                action(unit, modifier);
+            for (const [unit, source, modifier] of modifier_units) {
+                action(unit, source, modifier as Find_By_Id<Modifier, T>);
             }
         }
     }
 
     for (const unit of battle.units) {
         for (const modifier of unit.modifiers) {
-            if (!modifier.permanent && modifier.duration_remaining == 0) {
+            if (modifier.duration_remaining != undefined && modifier.duration_remaining == 0) {
                 defer_delta(battle, () => ({
                     type: Delta_Type.modifier_removed,
                     modifier_handle_id: modifier.handle_id
@@ -1902,6 +1915,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }
     }
 
+    // TODO replace with for_units_with_modifier
     for_heroes_with_item(Item_Id.heart_of_tarrasque, (hero, item) => {
         defer_delta_by_unit(battle, hero, () => ({
             type: Delta_Type.item_effect_applied,
@@ -1913,6 +1927,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }));
     });
 
+    // TODO replace with for_units_with_modifier
     for_heroes_with_item(Item_Id.armlet, (hero, item) => {
         defer_delta_by_unit(battle, hero, () => ({
             type: Delta_Type.health_change,
@@ -1922,10 +1937,8 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }));
     });
 
-    for_units_with_modifier(Modifier_Id.dark_seer_ion_shell, (unit, modifier) => {
+    for_units_with_modifier(Modifier_Id.dark_seer_ion_shell, (unit, source) => {
         defer_delta_by_unit(battle, unit, () => {
-            const source = modifier.source;
-
             if (source.type != Source_Type.unit) return;
 
             for (const ability of source.unit.abilities) {
@@ -2227,8 +2240,8 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
                 type: Delta_Type.health_change,
                 source_unit_id: unit.id,
                 target_unit_id: unit.id,
-                new_value: unit.max_health,
-                value_delta: unit.max_health - unit.health
+                new_value: get_max_health(unit),
+                value_delta: get_max_health(unit) - unit.health
             }
         ];
 

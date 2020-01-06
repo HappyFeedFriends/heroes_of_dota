@@ -24,17 +24,18 @@ declare const enum Delta_Type {
 
     hero_spawn_from_hand = 18,
     unit_move = 19,
-    modifier_removed = 20,
-    set_ability_charges_remaining = 21,
-    ability_effect_applied = 22,
-    item_effect_applied = 23,
-    rune_pick_up = 24,
-    purchase_item = 25,
-    equip_item = 26,
+    modifier_applied = 20,
+    modifier_removed = 21,
+    set_ability_charges_remaining = 22,
+    ability_effect_applied = 23,
+    item_effect_applied = 24,
+    rune_pick_up = 25,
+    purchase_item = 26,
+    equip_item = 27,
 
-    end_turn = 27,
-    game_start = 28,
-    game_over = 29,
+    end_turn = 28,
+    game_start = 29,
+    game_over = 30,
 }
 
 declare const enum Action_Type {
@@ -92,19 +93,6 @@ declare const enum Unit_Supertype {
     creep = 2
 }
 
-declare const enum Modifier_Field {
-    health_bonus = 1,
-    attack_bonus = 2,
-    armor_bonus = 3,
-    move_points_bonus = 4,
-    state_silenced_counter = 5,
-    state_stunned_counter = 6,
-    state_disarmed_counter = 7,
-    state_out_of_the_game_counter = 8,
-    state_rooted_counter = 9,
-    state_unselectable_counter = 10
-}
-
 declare const enum Rune_Type {
     double_damage = 0,
     regeneration = 1,
@@ -141,11 +129,6 @@ declare const enum Card_Type {
     existing_hero = 3
 }
 
-declare const enum Modifier_Change_Type {
-    field_change = 0,
-    ability_swap = 1
-}
-
 declare const enum Unit_Id_Brand { _ = "" }
 type Unit_Id = number & Unit_Id_Brand;
 
@@ -172,21 +155,33 @@ type XY = {
     y: number
 }
 
+declare const enum Unit_Status {
+    rooted = 0,
+    silenced = 1,
+    stunned = 2,
+    disarmed = 3,
+    out_of_the_game = 4,
+    unselectable = 5
+}
+
 type Unit_Stats = {
-    armor: number
     health: number
-    max_health: number
-    attack_damage: number
     move_points: number
-    move_points_bonus: number
-    max_move_points: number
-    attack_bonus: number
-    state_rooted_counter: number
-    state_stunned_counter: number
-    state_silenced_counter: number
-    state_disarmed_counter: number
-    state_out_of_the_game_counter: number
-    state_unselectable_counter: number
+    status: Record<Unit_Status, boolean>
+
+    base: {
+        readonly armor: number
+        readonly max_health: number
+        readonly attack_damage: number
+        readonly max_move_points: number
+    }
+
+    bonus: {
+        armor: number
+        max_health: number
+        attack_damage: number
+        max_move_points: number
+    }
 }
 
 type Unit_Definition = {
@@ -472,6 +467,12 @@ type Delta_Level_Change = {
     new_level: number
 }
 
+type Delta_Modifier_Applied = {
+    type: Delta_Type.modifier_applied
+    unit_id: Unit_Id
+    application: Modifier_Application
+}
+
 type Delta_Modifier_Removed = {
     type: Delta_Type.modifier_removed
     modifier_handle_id: Modifier_Handle_Id
@@ -598,6 +599,7 @@ type Delta =
     Delta_Use_Ground_Target_Spell |
     Delta_Use_No_Target_Spell |
     Delta_Level_Change |
+    Delta_Modifier_Applied |
     Delta_Modifier_Removed |
     Delta_Set_Ability_Charges_Remaining |
     Delta_Ability_Effect_Applied<Ability_Effect> |
@@ -613,23 +615,8 @@ type Delta =
     Delta_Game_Start |
     Delta_Game_Over
 
-type Modifier_Change_Field_Change = {
-    type: Modifier_Change_Type.field_change
-    field: Modifier_Field
-    delta: number
-}
-
-type Modifier_Change_Ability_Swap = {
-    type: Modifier_Change_Type.ability_swap
-    original_ability: Ability_Id
-    swap_to: Ability_Id
-}
-
-type Modifier_Change = Modifier_Change_Field_Change | Modifier_Change_Ability_Swap
-
 type Modifier_Application = {
     modifier_handle_id: Modifier_Handle_Id
-    modifier_id: Modifier_Id
-    changes: Modifier_Change[]
+    modifier: Modifier
     duration?: number
 }

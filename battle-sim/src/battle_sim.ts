@@ -100,7 +100,8 @@ type Unit_Base = Unit_Stats & {
     attack?: Ability;
     abilities: Ability[]
     ability_bench: Ability[]
-    modifiers: Modifier[]
+    modifiers: Applied_Modifier[]
+    ability_overrides: Ability_Override[]
 }
 
 type Unit = Hero | Monster | Creep
@@ -141,23 +142,12 @@ type Tree = {
     position: XY
 }
 
-type Modifier_Base = {
-    id: Modifier_Id
+type Applied_Modifier = {
     handle_id: Modifier_Handle_Id
     source: Source
-    changes: Modifier_Change[]
+    modifier: Modifier
+    duration_remaining?: number
 }
-
-type Permanent_Modifier = Modifier_Base & {
-    permanent: true
-}
-
-type Expiring_Modifier = Modifier_Base & {
-    permanent: false
-    duration_remaining: number
-}
-
-type Modifier = Permanent_Modifier | Expiring_Modifier;
 
 type Ability_Passive = Ability_Definition_Passive;
 type Ability_Active = Ability_Definition_Active & {
@@ -294,26 +284,6 @@ function shop_at(battle: Battle, at: XY) : Shop | undefined {
     return battle.shops.find(shop => xy_equal(shop.position, at));
 }
 
-function is_unit_out_of_the_game(unit: Unit) {
-    return unit.state_out_of_the_game_counter > 0;
-}
-
-function is_unit_stunned(unit: Unit) {
-    return unit.state_stunned_counter > 0;
-}
-
-function is_unit_rooted(unit: Unit) {
-    return unit.state_rooted_counter > 0;
-}
-
-function is_unit_silenced(unit: Unit) {
-    return unit.state_silenced_counter > 0;
-}
-
-function is_unit_disarmed(unit: Unit) {
-    return unit.state_disarmed_counter > 0;
-}
-
 function is_point_in_shop_range(xy: XY, shop: Shop) {
     return rectangular(xy, shop.position) <= shop_range;
 }
@@ -378,7 +348,7 @@ function find_player_card_by_id(player: Battle_Player, card_id: Card_Id): Card |
     return player.hand.find(card => card.id == card_id);
 }
 
-function find_modifier_by_handle_id(battle: Battle, id: Modifier_Handle_Id): [ Unit, Modifier ] | undefined {
+function find_modifier_by_handle_id(battle: Battle, id: Modifier_Handle_Id): [ Unit, Applied_Modifier ] | undefined {
     for (const unit of battle.units) {
         for (const modifier of unit.modifiers) {
             if (modifier.handle_id == id) {
@@ -778,7 +748,7 @@ function end_turn(battle: Battle, next_turning_player: Battle_Player) {
     for (const unit of battle.units) {
         if (unit.supertype == Unit_Supertype.monster || unit.owner == battle.turning_player) {
             for (const modifier of unit.modifiers) {
-                if (!modifier.permanent) {
+                if (modifier.duration_remaining != undefined) {
                     if (modifier.duration_remaining > 0) {
                         modifier.duration_remaining--;
                     }
@@ -872,7 +842,6 @@ function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base 
         id: id,
         position: at,
         attack: definition.attack ? ability_definition_to_ability(definition.attack) : undefined,
-        attack_damage: definition.attack_damage,
         move_points: definition.move_points,
         health: definition.health,
         dead: false,
@@ -880,17 +849,20 @@ function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base 
         abilities: definition.abilities ? definition.abilities.map(ability_definition_to_ability) : [],
         ability_bench: definition.ability_bench ? definition.ability_bench.map(ability_definition_to_ability) : [],
         modifiers: [],
-        attack_bonus: 0,
-        max_health: definition.health,
-        max_move_points: definition.move_points,
-        move_points_bonus: 0,
-        state_rooted_counter: 0,
-        state_stunned_counter: 0,
-        state_silenced_counter: 0,
-        state_disarmed_counter: 0,
-        state_out_of_the_game_counter: 0,
-        state_unselectable_counter: 0,
-        armor: 0
+        ability_overrides: [],
+        status: starting_unit_status(),
+        base: {
+            armor: 0,
+            attack_damage: definition.attack_damage,
+            max_health: definition.health,
+            max_move_points: definition.move_points
+        },
+        bonus: {
+            armor: 0,
+            attack_damage: 0,
+            max_health: 0,
+            max_move_points: 0
+        }
     }
 }
 
@@ -920,57 +892,43 @@ function create_creep(battle: Battle, source: Source, owner: Battle_Player, unit
     return creep;
 }
 
-function apply_modifier_changes(target: Unit, changes: Modifier_Change[], invert: boolean) {
-    for (const change of changes) {
-        switch (change.type) {
-            case Modifier_Change_Type.field_change: {
-                apply_modifier_field_change(target, change, invert);
+function update_unit_state_from_modifiers(unit: Unit) {
+    const recalculated = recalculate_unit_stats_from_modifiers(unit, unit.modifiers.map(applied => applied.modifier));
+    unit.bonus = recalculated.bonus;
+    unit.status = recalculated.status;
+    unit.health = recalculated.health;
+    unit.move_points = recalculated.move_points;
 
-                break;
-            }
-
-            case Modifier_Change_Type.ability_swap: {
-                const swap_from = invert ? change.swap_to : change.original_ability;
-                const swap_to = invert ? change.original_ability : change.swap_to;
-
-                replace_ability(target, swap_from, swap_to);
-
-                break;
-            }
-
-            default: unreachable(change);
-        }
+    // The most naive method: cancel all old overrides and then reapply all new ones
+    // lower @Performance than it could possibly be, but it does the job
+    for (const override of unit.ability_overrides) {
+        replace_ability(unit, override.override, override.original);
     }
+
+    for (const override of recalculated.overrides) {
+        replace_ability(unit, override.original, override.override);
+    }
+
+    unit.ability_overrides = recalculated.overrides;
 }
 
-function apply_modifier(battle: Battle, source: Source, target: Unit, modifier: Modifier_Application) {
-    const modifier_base: Modifier_Base = {
-        id: modifier.modifier_id,
-        handle_id: modifier.modifier_handle_id,
+function apply_modifier(battle: Battle, source: Source, target: Unit, application: Modifier_Application) {
+    const applied: Applied_Modifier = {
+        handle_id: application.modifier_handle_id,
         source: source,
-        changes: modifier.changes
+        modifier: application.modifier,
+        duration_remaining: application.duration
     };
 
-    if (modifier.duration) {
-        target.modifiers.push({
-            ...modifier_base,
-            permanent: false,
-            duration_remaining: modifier.duration,
-        });
-    } else {
-        target.modifiers.push({
-            ...modifier_base,
-            permanent: true
-        });
-    }
+    target.modifiers.push(applied);
 
-    apply_modifier_changes(target, modifier.changes, false);
+    update_unit_state_from_modifiers(target);
 
     battle.receive_event(battle, {
         type: Battle_Event_Type.modifier_applied,
         source: source,
         target: target,
-        modifier: modifier
+        modifier: application
     });
 }
 
@@ -1710,13 +1668,12 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             const hero = find_hero_by_id(battle, delta.hero_id);
             if (!hero) break;
 
-            const in_hand_modifier = hero.modifiers.findIndex(modifier => modifier.id == Modifier_Id.returned_to_hand);
+            const in_hand_modifier = hero.modifiers.findIndex(applied => applied.modifier.id == Modifier_Id.returned_to_hand);
             if (in_hand_modifier == -1) break;
-
-            apply_modifier_changes(hero, hero.modifiers[in_hand_modifier].changes, true);
 
             hero.modifiers.splice(in_hand_modifier, 1);
 
+            update_unit_state_from_modifiers(hero);
             move_unit(battle, hero, delta.at_position);
             occupy_cell(battle, delta.at_position);
 
@@ -1851,7 +1808,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                     unit.attack.charges_remaining = unit.attack.charges;
                 }
 
-                unit.move_points = unit.max_move_points + unit.move_points_bonus;
+                unit.move_points = get_max_move_points(unit);
                 unit.has_taken_an_action_this_turn = false;
             }
 
@@ -1868,6 +1825,15 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             break;
         }
 
+        case Delta_Type.modifier_applied: {
+            const unit = find_unit_by_id(battle, delta.unit_id);
+            if (!unit) break;
+
+            apply_modifier(battle, no_source(), unit, delta.application);
+
+            break;
+        }
+
         case Delta_Type.modifier_removed: {
             const result = find_modifier_by_handle_id(battle, delta.modifier_handle_id);
 
@@ -1877,7 +1843,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
                 unit.modifiers.splice(index, 1);
 
-                apply_modifier_changes(unit, modifier.changes, true);
+                update_unit_state_from_modifiers(unit);
             }
 
             break;

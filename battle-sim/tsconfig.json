@@ -27,6 +27,7 @@
     "../api_definitions/api_adventure.d.ts",
     "../api_definitions/api_editor.d.ts",
     "../api_definitions/abilities.d.ts",
+    "../api_definitions/modifiers.d.ts",
     "../api_definitions/api_local.d.ts",
     "../api_definitions/spells.d.ts",
     "../api_definitions/items.d.ts"

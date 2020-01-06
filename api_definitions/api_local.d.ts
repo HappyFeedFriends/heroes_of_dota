@@ -159,9 +159,8 @@ type Visualizer_Player_Data = {
 }
 
 type Modifier_Data = {
-    modifier_id: Modifier_Id
     modifier_handle_id: Modifier_Handle_Id
-    changes: Modifier_Change[]
+    modifier: Modifier
 }
 
 type Player_Net_Table_Base = {

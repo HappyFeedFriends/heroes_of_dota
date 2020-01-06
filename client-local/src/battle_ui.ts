@@ -130,7 +130,7 @@ type Control_Panel = {
 type Stat_Indicator = {
     label: LabelPanel
     displayed_value: number
-    value_provider(unit: Unit_Stats): number
+    value_provider(stats: Unit_Stats): number
 }
 
 type Hero_Row = {
@@ -1288,7 +1288,7 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
 
         return [
             stat_indicator(label, unit => unit.health),
-            stat_indicator(max_label, unit => unit.max_health)
+            stat_indicator(max_label, get_max_health)
         ];
     }
 
@@ -1302,7 +1302,7 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
 
         return [
             stat_indicator(label, unit => unit.move_points),
-            stat_indicator(max_label, unit => unit.max_move_points + unit.move_points_bonus)
+            stat_indicator(max_label, get_max_move_points)
         ];
     }
 
@@ -1312,7 +1312,7 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
         $.CreatePanel("Panel", attack_container, "attack_icon").AddClass("stat_icon");
         attack_container.AddClass("container");
 
-        return stat_indicator(attack_label, unit => unit.attack_damage + unit.attack_bonus);
+        return stat_indicator(attack_label, get_attack_damage);
     }
 
     function create_modifier_container(): Panel {
@@ -1323,7 +1323,7 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
         return bar;
     }
 
-    function stat_indicator(label: LabelPanel, value_provider: (unit: Unit_Stats) => number): Stat_Indicator {
+    function stat_indicator(label: LabelPanel, value_provider: (stats: Unit_Stats) => number): Stat_Indicator {
         return {
             displayed_value: value_provider(data),
             value_provider: value_provider,
@@ -1496,15 +1496,9 @@ function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In
             leftover_entity_ids.splice(present_id_index, 1);
         }
 
-        const u = find_unit_by_id(battle, new_data.id);
-        if (u && u.supertype == Unit_Supertype.creep) {
-            $.Msg(enum_to_string(u.type), " ", u.state_unselectable_counter, " ", u.modifiers.length);
-
-
-        }
         if (existing_data && new_data.supertype == existing_data.supertype) {
             update_unit_stat_bar_data(existing_data, new_data);
-        } else if (new_data.state_unselectable_counter == 0) {
+        } else if (!new_data.status[Unit_Status.unselectable]) {
             const created_data = create_ui_unit_data(new_data);
             update_unit_stat_bar_data(created_data, new_data);
 
@@ -1578,10 +1572,11 @@ function make_battle_snapshot(): Battle_Snapshot {
                     id: unit.id,
                     position: unit.position,
                     facing: battle.unit_id_to_facing[unit.id],
+                    base: unit.base,
+                    bonus: unit.bonus,
                     modifiers: unit.modifiers.map(modifier => ({
-                        modifier_id: modifier.id,
                         modifier_handle_id: modifier.handle_id,
-                        changes: modifier.changes
+                        modifier: modifier.modifier
                     }))
                 };
 
@@ -1885,6 +1880,8 @@ function sync_ability_buttons_with_abilities(row: Hero_Row, hero: Hero) {
 
             if (button.ability != ability.id) {
                 update_ability_button_ui(button, hero, ability);
+
+                button.ability = ability.id;
             }
         }
     }
@@ -2490,7 +2487,7 @@ function create_card_ui(root: Panel, card: Card) {
             const unit = find_hero_by_id(battle, card.hero_id);
 
             if (unit) {
-                create_hero_card_ui_base(container, unit.type, unit.max_health, unit.attack_damage, unit.max_move_points);
+                create_hero_card_ui_base(container, unit.type, unit.base.max_health, unit.base.attack_damage, unit.base.max_move_points);
             }
 
             break;
@@ -2609,7 +2606,7 @@ function recreate_overlay_unit_selection(selection: Card_Selection) {
 
         if (unit.supertype == Unit_Supertype.hero) {
             const card_panel = create_card_container_ui(container, true, Card_Type.hero);
-            create_hero_card_ui_base(card_panel, unit.type, unit.max_health, unit.attack_damage, unit.max_move_points);
+            create_hero_card_ui_base(card_panel, unit.type, unit.base.max_health, unit.base.attack_damage, unit.base.max_move_points);
 
             if (spell_use_on_unit_permission.spell.spell_id == Spell_Id.buyback) {
                 const cost_panel = $.CreatePanel("Panel", card_panel, "gold_cost");

@@ -70,7 +70,7 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
             if (!use_permission.ok) continue;
 
             if (ability_targeting_fits(ai.battle, ability.targeting, cell.position, target.position)) {
-                const damage = actor.attack_damage + actor.attack_bonus - target.armor;
+                const damage = get_attack_damage(actor) - get_armor(target);
 
                 let weight = damage / target.health;
 

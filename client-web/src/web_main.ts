@@ -905,12 +905,12 @@ function delta_to_colored_line(game: Game_In_Battle, delta: Delta): Colored_Line
 
         case Delta_Type.modifier_removed: {
             for (const unit of game.battle.units) {
-                for (const modifier of unit.modifiers) {
-                    if (modifier.handle_id == delta.modifier_handle_id) {
+                for (const applied of unit.modifiers) {
+                    if (applied.handle_id == delta.modifier_handle_id) {
                         return [
                             clr.unit_name(unit),
                             clr.plain(" loses "),
-                            clr.txt(enum_to_string(modifier.id), "gray"),
+                            clr.txt(enum_to_string(applied.modifier.id), "gray"),
                             clr.plain(" modifier")
                         ];
                     }
@@ -1041,7 +1041,7 @@ async function process_battle_events_to_log(log: Colored_Line[], event: Battle_E
             const lines = [
                 clr.source_name(source),
                 clr.plain(" applies "),
-                clr.txt(enum_to_string(modifier.modifier_id), "gray"),
+                clr.txt(enum_to_string(modifier.modifier.id), "gray"),
                 clr.plain(" to "),
                 clr.unit_name(target)
             ];
