@@ -788,14 +788,9 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
                         }
                     });
 
-                    return;
+                    break;;
                 }
             }
-
-            submit_battle_delta(battle, {
-                ...base,
-                ability_id: ability.id
-            });
 
             break;
         }

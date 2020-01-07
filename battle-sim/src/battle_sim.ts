@@ -1258,8 +1258,6 @@ function collapse_no_target_ability_use(battle: Battle, unit: Unit, cast: Delta_
         }
 
         case Ability_Id.ember_activate_fire_remnant: {
-            if (!cast.action) return;
-
             const remnant = find_unit_by_id(battle, cast.action.remnant_id);
             if (!remnant) return;
 

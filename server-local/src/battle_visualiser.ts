@@ -2064,8 +2064,6 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
         }
 
         case Ability_Id.ember_activate_fire_remnant: {
-            if (!cast.action) break;
-
             const remnant = find_unit_by_id(cast.action.remnant_id);
             if (!remnant) break;
 

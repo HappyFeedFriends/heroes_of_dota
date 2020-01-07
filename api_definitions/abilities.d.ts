@@ -591,7 +591,7 @@ type Delta_Ability_Ember_Fire_Remnant = Delta_Ground_Target_Ability_Base & {
 
 type Delta_Ability_Ember_Activate_Fire_Remnant = Delta_Use_No_Target_Ability_Base & {
     ability_id: Ability_Id.ember_activate_fire_remnant
-    action?: {
+    action: {
         remnant_id: Unit_Id
         move_to: XY
     }
