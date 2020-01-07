@@ -104,7 +104,7 @@ declare const enum Ability_Targeting_Type {
     line = 0,
     unit_in_manhattan_distance = 2,
     rectangular_area_around_caster = 3,
-    any_free_cell = 4
+    any_cell = 4
 }
 
 declare const enum Ability_Target_Selector_Type {
@@ -193,27 +193,37 @@ type Unit_Definition = {
     ability_bench?: Ability_Definition[]
 }
 
+declare const enum Ability_Targeting_Flag {
+    only_free_cells = 0,
+    include_caster = 1
+}
+
+type Ability_Targeting_Flag_Field = Record<Ability_Targeting_Flag, boolean>
+
 type Ability_Targeting_Line = {
     type: Ability_Targeting_Type.line
     line_length: number
+    flags: Ability_Targeting_Flag_Field
     selector: Ability_Target_Selector
 }
 
 type Ability_Targeting_Target_In_Manhattan_Distance = {
     type: Ability_Targeting_Type.unit_in_manhattan_distance
     distance: number
-    include_caster: boolean
+    flags: Ability_Targeting_Flag_Field
     selector: Ability_Target_Selector
 }
 
 type Ability_Targeting_Rectangular_Area_Around_Caster = {
     type: Ability_Targeting_Type.rectangular_area_around_caster
     area_radius: number
+    flags: Ability_Targeting_Flag_Field
     selector: Ability_Target_Selector
 }
 
-type Ability_Targeting_Any_Free_Cell = {
-    type: Ability_Targeting_Type.any_free_cell
+type Ability_Targeting_Any_Cell = {
+    type: Ability_Targeting_Type.any_cell
+    flags: Ability_Targeting_Flag_Field
     selector: Ability_Target_Selector
 }
 
@@ -253,7 +263,7 @@ type Ability_Targeting =
     Ability_Targeting_Line |
     Ability_Targeting_Target_In_Manhattan_Distance |
     Ability_Targeting_Rectangular_Area_Around_Caster |
-    Ability_Targeting_Any_Free_Cell
+    Ability_Targeting_Any_Cell
 
 type Action_Move = {
     type: Action_Type.move

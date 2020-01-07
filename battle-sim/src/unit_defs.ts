@@ -18,7 +18,11 @@ function target_line(length: number, selector: Ability_Target_Selector = single_
     return {
         type: Ability_Targeting_Type.line,
         line_length: length,
-        selector: selector
+        selector: selector,
+        flags: {
+            [Ability_Targeting_Flag.include_caster]: false,
+            [Ability_Targeting_Flag.only_free_cells]: false
+        }
     }
 }
 
@@ -49,12 +53,21 @@ function targets_in_line(length: number): Ability_Target_Selector_Line {
     }
 }
 
-function target_in_manhattan_distance(distance: number, selector: Ability_Target_Selector = single_target(), include_yourself = false): Ability_Targeting_Target_In_Manhattan_Distance {
+function target_in_manhattan_distance(distance: number, selector: Ability_Target_Selector = single_target(), ...flags: Ability_Targeting_Flag[]): Ability_Targeting_Target_In_Manhattan_Distance {
+    const result_flags: Ability_Targeting_Flag_Field = {
+        [Ability_Targeting_Flag.include_caster]: false,
+        [Ability_Targeting_Flag.only_free_cells]: false
+    };
+
+    for (const flag of flags) {
+        result_flags[flag] = true;
+    }
+
     return {
         type: Ability_Targeting_Type.unit_in_manhattan_distance,
         distance: distance,
         selector: selector,
-        include_caster: include_yourself
+        flags: result_flags
     }
 }
 
@@ -62,7 +75,11 @@ function target_rect_area_around_caster(area_radius: number, selector: Ability_T
     return {
         type: Ability_Targeting_Type.rectangular_area_around_caster,
         area_radius: area_radius,
-        selector: selector
+        selector: selector,
+        flags: {
+            [Ability_Targeting_Flag.include_caster]: false,
+            [Ability_Targeting_Flag.only_free_cells]: false
+        }
     }
 }
 
@@ -219,7 +236,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     }),
                     active_ability<Ability_Skywrath_Mystic_Flare>({
                         available_since_level: 3,
-                        targeting: target_in_manhattan_distance(5, targets_in_rectangle(1), true),
+                        targeting: target_in_manhattan_distance(5, targets_in_rectangle(1), Ability_Targeting_Flag.include_caster),
                         flags: [],
                         charges: 1,
                         damage: 10
@@ -327,8 +344,12 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     active_ability<Ability_Mirana_Leap>({
                         available_since_level: 3,
                         targeting: {
-                            type: Ability_Targeting_Type.any_free_cell,
-                            selector: single_target()
+                            type: Ability_Targeting_Type.any_cell,
+                            selector: single_target(),
+                            flags: {
+                                [Ability_Targeting_Flag.include_caster]: false,
+                                [Ability_Targeting_Flag.only_free_cells]: true
+                            }
                         },
                         flags: [ Ability_Flag.does_not_consume_action ],
                         charges: 1
@@ -379,7 +400,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 abilities: [
                     active_ability<Ability_Dark_Seer_Ion_Shell>({
                         available_since_level: 1,
-                        targeting: target_in_manhattan_distance(5, single_target(), true),
+                        targeting: target_in_manhattan_distance(5, single_target(), Ability_Targeting_Flag.include_caster),
                         flags: [ Ability_Flag.does_not_consume_action ],
                         charges: 1,
                         damage_per_turn: 1,
@@ -388,7 +409,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     }),
                     active_ability<Ability_Dark_Seer_Surge>({
                         available_since_level: 2,
-                        targeting: target_in_manhattan_distance(5, single_target(), true),
+                        targeting: target_in_manhattan_distance(5, single_target(), Ability_Targeting_Flag.include_caster),
                         flags: [ Ability_Flag.does_not_consume_action ],
                         charges: 2,
                         move_points_bonus: 3
@@ -425,7 +446,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     }),
                     active_ability<Ability_Ember_Fire_Remnant>({
                         available_since_level: 3,
-                        targeting: target_in_manhattan_distance(7),
+                        targeting: target_in_manhattan_distance(7, single_target(), Ability_Targeting_Flag.only_free_cells),
                         flags: [],
                         charges: 1
                     })
@@ -434,10 +455,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     active_ability<Ability_Ember_Activate_Fire_Remnant>({
                         available_since_level: 3,
                         charges: 1,
-                        targeting: {
-                            type: Ability_Targeting_Type.any_free_cell,
-                            selector: single_target()
-                        },
+                        targeting: target_in_manhattan_distance(0),
                         flags: [ Ability_Flag.does_not_consume_action ]
                     })
                 ]

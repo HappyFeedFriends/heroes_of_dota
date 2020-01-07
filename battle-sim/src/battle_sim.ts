@@ -567,6 +567,15 @@ function populate_path_costs(battle: Battle, from: XY, ignore_runes = false): Co
 }
 
 function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, from: XY, check_at: XY): boolean {
+    if (!targeting.flags[Ability_Targeting_Flag.include_caster] && xy_equal(from, check_at)) {
+        return false;
+    }
+
+    if (targeting.flags[Ability_Targeting_Flag.only_free_cells]) {
+        const cell = grid_cell_at(battle.grid, check_at);
+        if (!cell || cell.occupied) return false;
+    }
+
     switch (targeting.type) {
         case Ability_Targeting_Type.line: {
             if (!are_points_on_the_same_line(from, check_at)) {
@@ -579,27 +588,16 @@ function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, fr
 
         case Ability_Targeting_Type.rectangular_area_around_caster: {
             const distance = rectangular(from, check_at);
-            return distance > 0 && distance <= targeting.area_radius;
+            return distance <= targeting.area_radius;
         }
 
         case Ability_Targeting_Type.unit_in_manhattan_distance: {
             const distance = manhattan(from, check_at);
-
-            if (targeting.include_caster) {
-                return distance <= targeting.distance;
-            } else {
-                return distance > 0 && distance <= targeting.distance;
-            }
+            return distance <= targeting.distance;
         }
 
-        case Ability_Targeting_Type.any_free_cell: {
-            const cell = grid_cell_at(battle.grid, check_at);
-
-            if (cell) {
-                return !cell.occupied;
-            }
-
-            return false;
+        case Ability_Targeting_Type.any_cell: {
+            return true;
         }
     }
 }
