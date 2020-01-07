@@ -462,6 +462,16 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             }
         }
 
+        case Hero_Type.earthshaker: {
+            return {
+                health: 10,
+                attack_damage: 3,
+                move_points: 2,
+                attack: basic_attack(1),
+                abilities: []
+            }
+        }
+
         default: return unreachable(type);
     }
 }

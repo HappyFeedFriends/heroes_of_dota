@@ -951,6 +951,7 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
             case Hero_Type.dragon_knight: return "Hero_DragonKnight.PreAttack";
             case Hero_Type.dark_seer: return "Hero_DarkSeer.PreAttack";
             case Hero_Type.ember_spirit: return "Hero_EmberSpirit.PreAttack";
+            case Hero_Type.earthshaker: return "Hero_EarthShaker.PreAttack";
         }
     }
 
@@ -968,6 +969,7 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
             case Hero_Type.vengeful_spirit: return "Hero_VengefulSpirit.Attack";
             case Hero_Type.dark_seer: return "Hero_DarkSeer.Attack";
             case Hero_Type.ember_spirit: return "Hero_EmberSpirit.Attack";
+            case Hero_Type.earthshaker: return "Hero_EarthShaker.Attack";
         }
     }
 

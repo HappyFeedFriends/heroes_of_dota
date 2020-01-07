@@ -148,7 +148,7 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             deny: range("dark_seer_dkseer_deny", 8),
             not_yet: range("dark_seer_dkseer_notyet", 9),
             pain: range("dark_seer_dkseer_pain", 11),
-            purchase: range("_purch", 2)
+            purchase: range("dark_seer_dkseer_purch", 3)
         };
 
         case Hero_Type.ember_spirit: return {
@@ -166,7 +166,20 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
                 "ember_spirit_embr_purch_02",
                 "ember_spirit_embr_purch_04"
             ]
-        }
+        };
+
+        case Hero_Type.earthshaker: return {
+            file: "soundevents/voscripts/game_sounds_vo_earthshaker.vsndevts",
+            spawn: range("earthshaker_erth_spawn", 6),
+            move: range("earthshaker_erth_move", 17),
+            attack: range("earthshaker_erth_attack", 8),
+            level_up: range("earthshaker_erth_level_01", 9),
+            kill: range("earthshaker_erth_kill", 11),
+            deny: range("earthshaker_erth_deny", 5),
+            not_yet: range("earthshaker_erth_notyet", 6),
+            pain: range("earthshaker_erth_pain", 10),
+            purchase: range("earthshaker_erth_purch_01", 3)
+        };
 
         // ^".*
     }
@@ -186,5 +199,6 @@ function get_hero_dota_name(type: Hero_Type): string {
         case Hero_Type.vengeful_spirit: return "vengefulspirit";
         case Hero_Type.dark_seer: return "dark_seer";
         case Hero_Type.ember_spirit: return "ember_spirit";
+        case Hero_Type.earthshaker: return "earthshaker";
     }
 }

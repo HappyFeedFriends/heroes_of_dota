@@ -65,7 +65,8 @@ declare const enum Hero_Type {
     mirana = 8,
     vengeful_spirit = 9,
     dark_seer = 10,
-    ember_spirit = 11
+    ember_spirit = 11,
+    earthshaker = 12
 }
 
 declare const enum Creep_Type {
