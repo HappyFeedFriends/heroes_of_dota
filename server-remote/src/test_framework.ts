@@ -26,7 +26,7 @@ export function test_battle() {
     return new Test_Battle();
 }
 
-function do_assert(index: number, condition: boolean, message: string) {
+function do_assert(index: number, condition: boolean, message: string): asserts condition {
     if (!condition) {
         throw `Assert chain #${index} failed. ${message}`;
     }
@@ -55,6 +55,10 @@ class Test_Battle {
         });
 
         return this;
+    }
+
+    assert() {
+        return new Assert_For_Battle(this);
     }
 }
 
@@ -135,6 +139,70 @@ class For_Player {
         if (!unit) throw "Creep spawn failed";
 
         return new For_Player_Unit(this.test, this.player, unit);
+    }
+
+    creep_by_type(creep: Creep_Type) {
+        for (const unit of this.test.battle.units) {
+            if (unit.supertype == Unit_Supertype.creep && unit.type == creep && unit.owner == this.player) {
+                return new Creep_Search_Result(this.test, creep, new For_Player_Unit(this.test, this.player, unit));
+            }
+        }
+
+        return new Creep_Search_Result(this.test, creep);
+    }
+
+    hero_by_type(hero: Hero_Type) {
+        for (const unit of this.test.battle.units) {
+            if (unit.supertype == Unit_Supertype.hero && unit.type == hero && unit.owner == this.player) {
+                return new Hero_Search_Result(this.test, hero, new For_Player_Hero(this.test, this.player, unit));
+            }
+        }
+
+        return new Hero_Search_Result(this.test, hero);
+    }
+}
+
+class Creep_Search_Result {
+    index: number;
+    type: Creep_Type;
+    creep?: For_Player_Unit;
+
+    constructor(test: Test_Battle, type: Creep_Type, creep?: For_Player_Unit) {
+        this.index = test.assert_index++;
+        this.type = type;
+        this.creep = creep;
+    }
+
+    assert_found(): For_Player_Unit {
+        do_assert(this.index, !!this.creep, `Creep ${enum_to_string(this.type)} not found`);
+
+        return this.creep;
+    }
+
+    assert_not_found() {
+        do_assert(this.index, !this.creep, `Expected to not find creep ${enum_to_string(this.type)}`);
+    }
+}
+
+class Hero_Search_Result {
+    index: number;
+    type: Hero_Type;
+    hero?: For_Player_Hero;
+
+    constructor(test: Test_Battle, type: Hero_Type, hero?: For_Player_Hero) {
+        this.index = test.assert_index++;
+        this.type = type;
+        this.hero = hero;
+    }
+
+    assert_found(): For_Player_Unit {
+        do_assert(this.index, !!this.hero, `Hero ${enum_to_string(this.type)} not found`);
+
+        return this.hero;
+    }
+
+    assert_not_found() {
+        do_assert(this.index, !this.hero, `Expected to not find hero ${enum_to_string(this.type)}`);
     }
 }
 
@@ -305,6 +373,26 @@ class For_Player_Hero extends For_Player_Unit {
     }
 }
 
+class Assert_For_Battle {
+    test: Test_Battle;
+    index: number;
+
+    constructor(test: Test_Battle) {
+        this.test = test;
+        this.index = test.assert_index++;
+    }
+
+    is_over() {
+        do_assert(this.index, this.test.battle.has_finished, `Expected battle to be over`);
+        return this;
+    }
+
+    is_not_over() {
+        do_assert(this.index, !this.test.battle.has_finished, `Expected battle not to be over`);
+        return this;
+    }
+}
+
 class Assert_For_Player_Unit {
     player: Battle_Player;
     unit: Unit;
@@ -350,6 +438,14 @@ class Assert_For_Player_Unit {
 
     has_max_health(expected: number) {
         do_assert(this.index, get_max_health(this.unit) == expected, `Expected ${expected} max health, actual ${get_max_health(this.unit)}`);
+
+        return this;
+    }
+
+    is_at(xy: XY) {
+        const actual = this.unit.position;
+
+        do_assert(this.index, xy_equal(xy, actual), `Expected unit to be at [${xy.x}, ${xy.y}], actual [${actual.x}, ${actual.y}]`);
 
         return this;
     }

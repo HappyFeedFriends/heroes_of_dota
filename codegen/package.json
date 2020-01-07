@@ -6,9 +6,10 @@
     "ts-simple-type": "^0.3.5"
   },
   "devDependencies": {
-    "@types/node": "^12.6.9",
-    "ttypescript": "^1.5.5",
-    "typescript": "3.6.3",
+    "@types/node": "12.6.9",
+    "ttypescript": "1.5.9",
+    "typescript": "3.7.4",
+    "ts-node": "8.5.4",
     "typescript-to-lua": "0.28.0"
   },
   "author": "",

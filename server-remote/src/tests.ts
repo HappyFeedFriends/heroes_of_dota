@@ -13,11 +13,9 @@ function test_player_can_spawn_hero_from_hand() {
         .draw_hero_card(hero)
         .use(spawn_at);
 
-    const spawned = battle.battle.units.find(unit => xy_equal(unit.position, spawn_at) && unit.supertype == Unit_Supertype.hero && unit.type == hero);
-
-    if (!spawned) {
-        throw "Not found";
-    }
+    battle.for_test_player()
+        .hero_by_type(hero)
+        .assert_found();
 }
 
 function test_player_cant_spawn_hero_outside_deployment_zone() {
@@ -30,23 +28,21 @@ function test_player_cant_spawn_hero_outside_deployment_zone() {
         .draw_hero_card(hero)
         .use(spawn_at);
 
-    const spawned = battle.battle.units.find(unit => xy_equal(unit.position, spawn_at) && unit.supertype == Unit_Supertype.hero && unit.type == hero);
-
-    if (spawned) {
-        throw "Shouldn't be able to take this action";
-    }
+    battle
+        .for_test_player()
+        .hero_by_type(hero)
+        .assert_not_found();
 }
 
 function test_player_can_perform_a_simple_move_command() {
     const battle = test_battle();
     const move_target = xy(3, 1);
-    const hero = battle.for_test_player()
-        .spawn_hero(Hero_Type.dark_seer, xy(1, 1))
-        .order_move(xy(3, 1));
 
-    if (!xy_equal(hero.unit.position, move_target)) {
-        throw "Unit hasn't moved";
-    }
+    battle.for_test_player()
+        .spawn_hero(Hero_Type.dark_seer, xy(1, 1))
+        .order_move(xy(3, 1))
+        .assert()
+        .is_at(move_target);
 }
 
 function test_game_doesnt_end_on_matriarch_ability() {
@@ -61,13 +57,8 @@ function test_game_doesnt_end_on_matriarch_ability() {
     battle.start();
     creep.kill();
 
-    if (!battle.battle.units.some(unit => unit.supertype == Unit_Supertype.creep && unit.type == Creep_Type.spiderling)) {
-        throw "Spiderlings not spawned";
-    }
-
-    if (battle.battle.has_finished) {
-        throw "Battle shouldn't be over";
-    }
+    battle.for_enemy_player().creep_by_type(Creep_Type.spiderling).assert_found();
+    battle.assert().is_not_over();
 }
 
 function test_game_over_when_all_enemies_die() {
@@ -85,9 +76,7 @@ function test_game_over_when_all_enemies_die() {
 
     enemies.forEach(enemy => enemy.kill());
 
-    if (!battle.battle.has_finished) {
-        throw "Battle should be over";
-    }
+    battle.assert().is_over();
 }
 
 function test_ember_spirit_fire_remnant_ability_swap_working_correctly() {
@@ -172,20 +161,16 @@ function test_pocket_tower_attacks_at_the_end_of_the_turn() {
 
     enemy.assert().has_health(expected_health);
 
-    const tower = battle.battle.units.find(unit => unit.supertype == Unit_Supertype.creep && unit.type == Creep_Type.pocket_tower);
-
-    if (!tower) {
-        throw "Pocket tower not spawned";
-    }
+    const tower = battle.for_test_player().creep_by_type(Creep_Type.pocket_tower).assert_found();
 
     battle.for_test_player().end_turn();
 
-    expected_health -= get_attack_damage(tower);
+    expected_health -= get_attack_damage(tower.unit);
     enemy.assert().has_health(expected_health);
 
     battle.for_enemy_player().end_turn();
 
-    expected_health -= get_attack_damage(tower);
+    expected_health -= get_attack_damage(tower.unit);
     enemy.assert().has_health(expected_health);
 }
 
