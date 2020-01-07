@@ -756,12 +756,10 @@ function replace_ability(unit: Unit, ability_id_to_bench: Ability_Id, currently_
 
 function end_turn(battle: Battle, next_turning_player: Battle_Player) {
     for (const unit of battle.units) {
-        if (unit.supertype == Unit_Supertype.monster || unit.owner == battle.turning_player) {
-            for (const modifier of unit.modifiers) {
-                if (modifier.duration_remaining != undefined) {
-                    if (modifier.duration_remaining > 0) {
-                        modifier.duration_remaining--;
-                    }
+        for (const modifier of unit.modifiers) {
+            if (modifier.duration_remaining != undefined) {
+                if (modifier.duration_remaining > 0) {
+                    modifier.duration_remaining--;
                 }
             }
         }

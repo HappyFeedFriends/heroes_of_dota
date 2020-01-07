@@ -189,6 +189,45 @@ function test_pocket_tower_attacks_at_the_end_of_the_turn() {
     enemy.assert().has_health(expected_health);
 }
 
+function test_eul_scepter_modifier_on_enemy() {
+    const battle = test_battle();
+
+    battle.for_test_player().spawn_hero(Hero_Type.dark_seer, xy(0, 0));
+
+    const enemy = battle.for_enemy_player().spawn_hero(Hero_Type.pudge, xy(5, 5));
+
+    battle.start();
+
+    enemy.assert().doesnt_have_modifier(Modifier_Id.spell_euls_scepter);
+    battle.for_test_player().draw_spell_card(Spell_Id.euls_scepter).use_on(enemy);
+    enemy.assert().has_modifier(Modifier_Id.spell_euls_scepter);
+    battle.for_test_player().end_turn();
+
+    enemy.assert().has_modifier(Modifier_Id.spell_euls_scepter);
+    battle.for_enemy_player().end_turn();
+
+    enemy.assert().doesnt_have_modifier(Modifier_Id.spell_euls_scepter);
+}
+
+function test_eul_scepter_modifier_on_ally() {
+    const battle = test_battle();
+    const ally = battle.for_test_player().spawn_hero(Hero_Type.dark_seer, xy(0, 0));
+
+    battle.for_enemy_player().spawn_hero(Hero_Type.pudge, xy(5, 5));
+
+    battle.start();
+
+    ally.assert().doesnt_have_modifier(Modifier_Id.spell_euls_scepter);
+    battle.for_test_player().draw_spell_card(Spell_Id.euls_scepter).use_on(ally);
+    ally.assert().has_modifier(Modifier_Id.spell_euls_scepter);
+    battle.for_test_player().end_turn();
+
+    ally.assert().has_modifier(Modifier_Id.spell_euls_scepter);
+    battle.for_enemy_player().end_turn();
+
+    ally.assert().doesnt_have_modifier(Modifier_Id.spell_euls_scepter);
+}
+
 run_tests([
     test_player_can_spawn_hero_from_hand,
     test_player_cant_spawn_hero_outside_deployment_zone,
@@ -198,5 +237,7 @@ run_tests([
     test_ember_spirit_fire_remnant_ability_swap_working_correctly,
     test_health_modifiers_increase_current_health_along_with_maximum,
     test_health_modifiers_decrease_health_properly,
-    test_pocket_tower_attacks_at_the_end_of_the_turn
+    test_pocket_tower_attacks_at_the_end_of_the_turn,
+    test_eul_scepter_modifier_on_enemy,
+    test_eul_scepter_modifier_on_ally
 ]);

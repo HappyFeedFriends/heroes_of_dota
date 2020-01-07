@@ -188,6 +188,16 @@ class For_Player_Spell_Card {
 
         return this;
     }
+
+    use_on(unit: For_Player_Unit) {
+        try_take_turn_action(this.test.battle, this.player, {
+            type: Action_Type.use_unit_target_spell_card,
+            card_id: this.card_id,
+            unit_id: unit.unit.id
+        });
+
+        return this;
+    }
 }
 
 class For_Player_Unit {
@@ -306,6 +316,18 @@ class Assert_For_Player_Unit {
         this.index = test.assert_index++;
     }
 
+    has_modifier(id: Modifier_Id) {
+        if (!this.unit.modifiers.some(applied => applied.modifier.id == id)) {
+            do_assert(this.index, false, `Failed to find modfier '${enum_to_string(id)}' on unit`);
+        }
+    }
+
+    doesnt_have_modifier(id: Modifier_Id) {
+        if (this.unit.modifiers.some(applied => applied.modifier.id == id)) {
+            do_assert(this.index, false, `Supposed not to find modfier '${enum_to_string(id)}' on unit`);
+        }
+    }
+
     has_ability(id: Ability_Id) {
         do_assert(this.index, !!find_unit_ability(this.unit, id), `Failed to find ability '${enum_to_string(id)}' on unit`);
 
@@ -313,7 +335,7 @@ class Assert_For_Player_Unit {
     }
 
     has_benched_ability_bench(id: Ability_Id) {
-        if (!this.unit.ability_bench.find(ability => ability.id == id)) {
+        if (!this.unit.ability_bench.some(ability => ability.id == id)) {
             do_assert(this.index, false, `Failed to find benched ability '${enum_to_string(id)}' on unit`);
         }
 

@@ -1674,7 +1674,7 @@ function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: 
         // TODO Use authorize_move_order (but we need to keep @Performance in check)
         const index = grid_cell_index(battle.grid, cell.position);
         const move_cost = costs.cell_index_to_cost[index];
-        if (move_cost > monster.move_points) continue;
+        if (move_cost == undefined || move_cost > monster.move_points) continue;
 
         if (ability_targeting_fits(battle, initial_intent.ability.targeting, cell.position, target.position)) {
             submit_battle_delta(battle, {
@@ -1693,6 +1693,7 @@ function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: 
             battle.monster_targets.set(monster, target);
 
             submit_battle_delta(battle, perform_ability_cast_ground(battle, monster, use.ability, target.position));
+            break;
         }
     }
 }
@@ -1810,8 +1811,6 @@ function resolve_end_turn_effects(battle: Battle_Record) {
 
     for (const unit of battle.units) {
         for (const modifier of unit.modifiers) {
-            if (!authorize_act_on_known_unit(battle, unit).ok) continue;
-
             if (modifier.duration_remaining != undefined && modifier.duration_remaining == 0) {
                 submit_battle_delta(battle, {
                     type: Delta_Type.modifier_removed,
