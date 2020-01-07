@@ -1501,10 +1501,10 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
         case Action_Type.end_turn: {
             resolve_end_turn_effects(battle);
 
-            submit_battle_deltas(battle, [{
+            submit_battle_delta(battle, {
                 type: Delta_Type.end_turn,
                 start_turn_of_player_id: get_next_turning_player_id(battle)
-            }]);
+            });
 
             break;
         }
@@ -1889,10 +1889,10 @@ function resolve_end_turn_effects(battle: Battle_Record) {
 }
 
 function finish_battle(battle: Battle_Record, winner: Battle_Player) {
-    submit_battle_deltas(battle, [{
+    submit_battle_delta(battle, {
         type: Delta_Type.game_over,
         winner_player_id: winner.id
-    }]);
+    });
 
     report_battle_over(battle, winner.map_entity);
 }
@@ -1934,15 +1934,17 @@ function get_next_turning_player_id(battle: Battle_Record): Battle_Player_Id {
     return battle.players[next_index].id;
 }
 
-function submit_battle_delta(battle: Battle_Record, delta: Delta) {
-    submit_battle_deltas(battle, [ delta ]);
-}
-
-export function submit_battle_deltas(battle: Battle_Record, battle_deltas: Delta[]) {
-    battle.deltas.push(...battle_deltas);
+export function submit_battle_delta(battle: Battle_Record, delta: Delta) {
+    battle.deltas.push(delta);
 
     while (battle.deltas.length != battle.delta_head) {
-        catch_up_to_head(battle);
+        const target_head = battle.deltas.length;
+
+        for (; battle.delta_head < target_head; battle.delta_head++) {
+            collapse_delta(battle, battle.deltas[battle.delta_head]);
+        }
+
+        drain_battle_event_queue(battle);
     }
 
     if (!battle.has_finished) {
@@ -1961,17 +1963,16 @@ export function get_battle_deltas_after(battle: Battle, head: number): Delta[] {
 export function surrender_player_forces(battle: Battle_Record, battle_player: Battle_Player) {
     const player_units = battle.units.filter(unit => unit.supertype != Unit_Supertype.monster && unit.owner == battle_player);
 
-    submit_battle_deltas(battle, player_units.map(unit => {
-        const delta: Delta = {
+    // TODO @Temporary Unreliable, needs a separate delta anyway
+    for (const unit of player_units) {
+        submit_battle_delta(battle, {
             type: Delta_Type.health_change,
             source_unit_id: unit.id,
             target_unit_id: unit.id,
             new_value: 0,
             value_delta: 0
-        };
-
-        return delta;
-    }));
+        });
+    }
 }
 
 function battleground_spawns_to_spawn_deltas(next_id: Id_Generator, random: Random, spawns: Battleground_Spawn[]): Delta[] {
@@ -2073,7 +2074,9 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
         }
     }
 
-    submit_battle_deltas(battle, battleground_spawns_to_spawn_deltas(id_generator, random, battleground.spawns));
+    for (const delta of battleground_spawns_to_spawn_deltas(id_generator, random, battleground.spawns)) {
+        submit_battle_delta(battle, delta);
+    }
 
     for (const [player, participant] of battle_player_and_participant_pairs) {
         const heroes = participant.heroes;
@@ -2099,7 +2102,10 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
         }
 
         submit_battle_delta(battle, get_starting_gold(player));
-        submit_battle_deltas(battle, participant.spells.map(spell => draw_spell_card(spell.id, player, spell.spell)));
+
+        for (const spell of participant.spells) {
+            submit_battle_delta(battle, draw_spell_card(spell.id, player, spell.spell));
+        }
     }
 
     submit_battle_delta(battle, { type: Delta_Type.game_start });
@@ -2111,19 +2117,17 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
     const parts = cheat.split(" ");
 
     function refresh_unit(battle: Battle_Record, unit: Unit) {
-        const deltas: Delta[] = [
-            {
-                type: Delta_Type.health_change,
-                source_unit_id: unit.id,
-                target_unit_id: unit.id,
-                new_value: get_max_health(unit),
-                value_delta: get_max_health(unit) - unit.health
-            }
-        ];
+        submit_battle_delta(battle, {
+            type: Delta_Type.health_change,
+            source_unit_id: unit.id,
+            target_unit_id: unit.id,
+            new_value: get_max_health(unit),
+            value_delta: get_max_health(unit) - unit.health
+        });
 
         for (const ability of unit.abilities) {
             if (ability.type != Ability_Type.passive && ability.charges_remaining != ability.charges) {
-                deltas.push({
+                submit_battle_delta(battle, {
                     type: Delta_Type.set_ability_charges_remaining,
                     unit_id: unit.id,
                     ability_id: ability.id,
@@ -2131,8 +2135,6 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
                 });
             }
         }
-
-        submit_battle_deltas(battle, deltas);
     }
 
     function parse_enum_query<T extends number>(query: string | undefined, enum_data: [string, T][]): T[] {
@@ -2158,18 +2160,18 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
             const ability_index = parseInt(parts[1]);
             const charges = parseInt(parts[2] || "20");
 
-            submit_battle_deltas(battle, [{
+            submit_battle_delta(battle, {
                 type: Delta_Type.set_ability_charges_remaining,
                 unit_id: unit.id,
                 ability_id: unit.abilities[ability_index].id,
                 charges_remaining: charges
-            }]);
+            });
 
             break;
         }
 
         case "gold": {
-            submit_battle_deltas(battle, [ { type: Delta_Type.gold_change, player_id: battle_player.id, change: 15 }]);
+            submit_battle_delta(battle, { type: Delta_Type.gold_change, player_id: battle_player.id, change: 15 });
 
             break;
         }
@@ -2190,11 +2192,11 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
 
             const new_lvl = parseInt(parts[1]);
 
-            submit_battle_deltas(battle, [{
+            submit_battle_delta(battle, {
                 type: Delta_Type.level_change,
                 unit_id: selected_unit_id,
                 new_level: new_lvl,
-            }]);
+            });
 
             break;
         }
@@ -2224,13 +2226,13 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
 
             if (!unit) break;
 
-            submit_battle_deltas(battle, [{
+            submit_battle_delta(battle, {
                 type: Delta_Type.health_change,
                 source_unit_id: unit.id,
                 target_unit_id: unit.id,
                 new_value: 0,
                 value_delta: -unit.health
-            }]);
+            });
 
             break;
         }
@@ -2238,15 +2240,13 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
         case "killall": {
             for (const unit of battle.units) {
                 if (!unit.dead) {
-                    const delta: Delta_Health_Change = {
+                    submit_battle_delta(battle, {
                         type: Delta_Type.health_change,
                         source_unit_id: unit.id,
                         target_unit_id: unit.id,
                         new_value: 0,
                         value_delta: -unit.health
-                    };
-
-                    submit_battle_deltas(battle, [ delta ]);
+                    });
                 }
             }
 
@@ -2270,14 +2270,12 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
                 break;
             }
 
-            const delta: Delta_Rune_Spawn = {
+            submit_battle_delta(battle, {
                 type: Delta_Type.rune_spawn,
                 rune_id: get_next_entity_id(battle) as Rune_Id,
                 rune_type: rune_type(),
                 at: at
-            };
-
-            submit_battle_deltas(battle, [ delta ]);
+            });
 
             break;
         }
@@ -2285,7 +2283,9 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
         case "spl": {
             const spells = parse_enum_query(parts[1], enum_names_to_values<Spell_Id>());
 
-            submit_battle_deltas(battle, spells.map(spell => draw_spell_card(get_next_entity_id(battle) as Card_Id, battle_player, spell)));
+            for (const spell of spells) {
+                submit_battle_delta(battle, draw_spell_card(get_next_entity_id(battle) as Card_Id, battle_player, spell));
+            }
 
             break;
         }
@@ -2293,7 +2293,9 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
         case "hero": {
             const heroes = parse_enum_query(parts[1], enum_names_to_values<Hero_Type>());
 
-            submit_battle_deltas(battle, heroes.map(type => draw_hero_card(battle, battle_player, type)));
+            for (const hero of heroes) {
+                submit_battle_delta(battle, draw_hero_card(battle, battle_player, hero));
+            }
 
             break;
         }
@@ -2301,17 +2303,15 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
         case "creep": {
             const creeps = parse_enum_query(parts[1], enum_names_to_values<Creep_Type>());
             const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, battle_player);
-            const deltas: Delta[] = [];
 
             for (const creep of creeps) {
                 const random_cell = battle.random.pick_n_mutable(free_cells, 1);
 
                 if (random_cell) {
-                    deltas.push(spawn_creep(get_next_entity_id(battle) as Unit_Id, battle_player, random_cell[0].position, creep, creep_definition_by_type(creep).health));
+                    const delta = spawn_creep(get_next_entity_id(battle) as Unit_Id, battle_player, random_cell[0].position, creep, creep_definition_by_type(creep).health);
+                    submit_battle_delta(battle, delta);
                 }
             }
-
-            submit_battle_deltas(battle, deltas);
 
             break;
         }
@@ -2324,7 +2324,9 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
 
             const items = parse_enum_query(parts[1], enum_names_to_values<Item_Id>());
 
-            submit_battle_deltas(battle, items.map(item_id_to_item).map(item => equip_item(battle, unit, item)));
+            for (const item of items) {
+                submit_battle_delta(battle, equip_item(battle, unit, item_id_to_item(item)));
+            }
 
             break;
         }

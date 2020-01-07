@@ -1,4 +1,4 @@
-import {Battle_Record, make_battle_record, submit_battle_deltas, try_take_turn_action} from "./battle";
+import {Battle_Record, make_battle_record, submit_battle_delta, try_take_turn_action} from "./battle";
 import {performance} from "perf_hooks";
 import {Random} from "./random";
 import {import_battle_sim} from "./server";
@@ -50,9 +50,9 @@ class Test_Battle {
     }
 
     start() {
-        submit_battle_deltas(this.battle, [{
+        submit_battle_delta(this.battle, {
             type: Delta_Type.game_start,
-        }]);
+        });
 
         return this;
     }
@@ -78,12 +78,12 @@ class For_Player {
     draw_hero_card(hero: Hero_Type) {
         const id = this.test.battle.id_generator() as Card_Id;
 
-        submit_battle_deltas(this.test.battle, [{
+        submit_battle_delta(this.test.battle, {
             type: Delta_Type.draw_hero_card,
             card_id: id,
             player_id: this.player.id,
             hero_type: hero
-        }]);
+        });
 
         return new For_Player_Hero_Card(this.test, this.player, id);
     }
@@ -91,12 +91,12 @@ class For_Player {
     draw_spell_card(spell: Spell_Id) {
         const id = this.test.battle.id_generator() as Card_Id;
 
-        submit_battle_deltas(this.test.battle, [{
+        submit_battle_delta(this.test.battle, {
             type: Delta_Type.draw_spell_card,
             card_id: id,
             player_id: this.player.id,
             spell_id: spell
-        }]);
+        });
 
         return new For_Player_Spell_Card(this.test, this.player, id);
     }
@@ -104,14 +104,14 @@ class For_Player {
     spawn_hero(hero: Hero_Type, at: XY) {
         const id = this.test.battle.id_generator() as Unit_Id;
 
-        submit_battle_deltas(this.test.battle, [{
+        submit_battle_delta(this.test.battle, {
             type: Delta_Type.hero_spawn,
             hero_type: hero,
             at_position: at,
             health: hero_definition_by_type(hero).health,
             owner_id: this.player.id,
             unit_id: id
-        }]);
+        });
 
         const unit = find_unit_by_id(this.test.battle, id);
         if (!unit) throw "Hero spawn failed";
@@ -122,14 +122,14 @@ class For_Player {
     spawn_creep(creep: Creep_Type, at: XY) {
         const id = this.test.battle.id_generator() as Unit_Id;
 
-        submit_battle_deltas(this.test.battle, [{
+        submit_battle_delta(this.test.battle, {
             type: Delta_Type.creep_spawn,
             creep_type: creep,
             at_position: at,
             health: creep_definition_by_type(creep).health,
             owner_id: this.player.id,
             unit_id: id
-        }]);
+        });
 
         const unit = find_unit_by_id(this.test.battle, id);
         if (!unit) throw "Creep spawn failed";
@@ -202,13 +202,13 @@ class For_Player_Unit {
     }
 
     set_health(value: number) {
-        submit_battle_deltas(this.test.battle, [{
+        submit_battle_delta(this.test.battle, {
             type: Delta_Type.health_change,
             source_unit_id: this.unit.id,
             target_unit_id: this.unit.id,
             new_value: value,
             value_delta: 0
-        }]);
+        });
 
         return this;
     }
@@ -216,7 +216,7 @@ class For_Player_Unit {
     apply_modifier(modifier: Modifier, duration?: number) {
         const id = this.test.battle.id_generator() as Modifier_Handle_Id;
 
-        submit_battle_deltas(this.test.battle, [{
+        submit_battle_delta(this.test.battle, {
             type: Delta_Type.modifier_applied,
             unit_id: this.unit.id,
             application: {
@@ -224,16 +224,16 @@ class For_Player_Unit {
                 modifier: modifier,
                 duration: duration
             }
-        }]);
+        });
 
         return id;
     }
 
     remove_modifier(handle_id: Modifier_Handle_Id) {
-        submit_battle_deltas(this.test.battle, [{
+        submit_battle_delta(this.test.battle, {
             type: Delta_Type.modifier_removed,
             modifier_handle_id: handle_id
-        }]);
+        });
 
         return this;
     }
@@ -285,11 +285,11 @@ class For_Player_Hero extends For_Player_Unit {
     }
 
     set_level(level: number) {
-        submit_battle_deltas(this.test.battle, [{
+        submit_battle_delta(this.test.battle, {
             type: Delta_Type.level_change,
             unit_id: this.unit.id,
             new_level: level
-        }]);
+        });
 
         return this;
     }

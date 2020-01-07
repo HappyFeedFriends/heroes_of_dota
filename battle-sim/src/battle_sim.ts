@@ -715,22 +715,13 @@ function distance_between_points_on_the_same_line(a: XY, b: XY): number {
     return Math.abs(a.y - b.y) + Math.abs(a.x - b.x);
 }
 
-function catch_up_to_head(battle: Battle) {
-    while (battle.deltas.length != battle.delta_head) {
-        const target_head = battle.deltas.length;
+function drain_battle_event_queue(battle: Battle) {
+    while (battle.event_queue.length != 0) {
+        const processing_events = battle.event_queue.slice();
+        battle.event_queue.length = 0;
 
-        for (; battle.delta_head < target_head; battle.delta_head++) {
-            collapse_delta(battle, battle.deltas[battle.delta_head]);
-        }
-
-        // Drain the event queue
-        while (battle.event_queue.length != 0) {
-            const processing_events = battle.event_queue.slice();
-            battle.event_queue.length = 0;
-
-            for (const event of processing_events) {
-                battle.receive_event(battle, event);
-            }
+        for (const event of processing_events) {
+            battle.receive_event(battle, event);
         }
     }
 }

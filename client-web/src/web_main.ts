@@ -466,6 +466,7 @@ function receive_battle_deltas(game: Game_In_Battle, head_before_merge: number, 
         }
 
         collapse_delta(battle, delta);
+        drain_battle_event_queue(battle);
     }
 }
 

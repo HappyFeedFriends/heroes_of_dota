@@ -438,6 +438,7 @@ function receive_battle_deltas(head_before_merge: number, deltas: Delta[]) {
 
         update_related_visual_data_from_delta(delta, delta_paths);
         collapse_delta(battle, delta);
+        drain_battle_event_queue(battle);
 
         if (delta.type == Delta_Type.hero_spawn) {
             const spawned_hero = find_hero_by_id(battle, delta.unit_id);
@@ -518,6 +519,8 @@ function create_cell_particle_at(position: XYZ) {
 }
 
 function on_battle_event(battle: UI_Battle, event: Battle_Event) {
+    $.Msg(`Received event ${enum_to_string(event.type)}`);
+
     if (event.type == Battle_Event_Type.card_added_to_hand) {
         if (event.player == battle.this_player) {
             add_card_panel(event.card);
