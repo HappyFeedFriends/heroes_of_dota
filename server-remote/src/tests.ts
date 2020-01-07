@@ -47,6 +47,21 @@ function test_player_can_perform_a_simple_move_command() {
 
 function test_game_doesnt_end_on_matriarch_ability() {
     const battle = test_battle();
+    const hero = battle.for_test_player().spawn_hero(Hero_Type.mirana, xy(1, 1));
+
+    battle.for_enemy_player().spawn_creep(Creep_Type.spider_matriarch, xy(3, 1));
+
+    battle.start();
+
+    hero.apply_modifier({ id: Modifier_Id.item_divine_rapier, attack: 100 });
+    hero.order_cast_on_ground(Ability_Id.basic_attack, xy(3, 1));
+
+    battle.for_enemy_player().creep_by_type(Creep_Type.spiderling).assert_found();
+    battle.assert().is_not_over();
+}
+
+function test_game_doesnt_end_on_matriarch_ability_simple() {
+    const battle = test_battle();
 
     battle.for_test_player()
         .spawn_hero(Hero_Type.dark_seer, xy(1, 1));
@@ -62,6 +77,28 @@ function test_game_doesnt_end_on_matriarch_ability() {
 }
 
 function test_game_over_when_all_enemies_die() {
+    const battle = test_battle();
+
+    const first_hero = battle.for_test_player().spawn_hero(Hero_Type.luna, xy(1, 1));
+    const second_hero = battle.for_test_player().spawn_hero(Hero_Type.mirana, xy(1, 2));
+
+    const first_enemy = battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(2, 1));
+    const second_enemy = battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(2, 2));
+
+    battle.start();
+
+    first_hero.apply_modifier({ id: Modifier_Id.item_divine_rapier, attack: 100 });
+    second_hero.apply_modifier({ id: Modifier_Id.item_divine_rapier, attack: 100 });
+
+    first_hero.order_cast_on_ground(Ability_Id.basic_attack, xy(2, 1));
+    second_hero.order_cast_on_ground(Ability_Id.basic_attack, xy(2, 2));
+
+    first_enemy.assert().is_dead();
+    second_enemy.assert().is_dead();
+    battle.assert().is_over();
+}
+
+function test_game_over_when_all_enemies_die_simple() {
     const battle = test_battle();
 
     battle.for_test_player()
@@ -218,7 +255,9 @@ run_tests([
     test_player_cant_spawn_hero_outside_deployment_zone,
     test_player_can_perform_a_simple_move_command,
     test_game_doesnt_end_on_matriarch_ability,
+    test_game_doesnt_end_on_matriarch_ability_simple,
     test_game_over_when_all_enemies_die,
+    test_game_over_when_all_enemies_die_simple,
     test_ember_spirit_fire_remnant_ability_swap_working_correctly,
     test_health_modifiers_increase_current_health_along_with_maximum,
     test_health_modifiers_decrease_health_properly,

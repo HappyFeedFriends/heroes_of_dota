@@ -1,4 +1,4 @@
-import {Battle_Record, make_battle_record, submit_battle_delta, try_take_turn_action} from "./battle";
+import {Battle_Record, make_battle_record, submit_external_battle_delta, try_take_turn_action} from "./battle";
 import {performance} from "perf_hooks";
 import {Random} from "./random";
 import {import_battle_sim} from "./server";
@@ -50,7 +50,7 @@ class Test_Battle {
     }
 
     start() {
-        submit_battle_delta(this.battle, {
+        submit_external_battle_delta(this.battle, {
             type: Delta_Type.game_start,
         });
 
@@ -82,7 +82,7 @@ class For_Player {
     draw_hero_card(hero: Hero_Type) {
         const id = this.test.battle.id_generator() as Card_Id;
 
-        submit_battle_delta(this.test.battle, {
+        submit_external_battle_delta(this.test.battle, {
             type: Delta_Type.draw_hero_card,
             card_id: id,
             player_id: this.player.id,
@@ -95,7 +95,7 @@ class For_Player {
     draw_spell_card(spell: Spell_Id) {
         const id = this.test.battle.id_generator() as Card_Id;
 
-        submit_battle_delta(this.test.battle, {
+        submit_external_battle_delta(this.test.battle, {
             type: Delta_Type.draw_spell_card,
             card_id: id,
             player_id: this.player.id,
@@ -108,7 +108,7 @@ class For_Player {
     spawn_hero(hero: Hero_Type, at: XY) {
         const id = this.test.battle.id_generator() as Unit_Id;
 
-        submit_battle_delta(this.test.battle, {
+        submit_external_battle_delta(this.test.battle, {
             type: Delta_Type.hero_spawn,
             hero_type: hero,
             at_position: at,
@@ -126,7 +126,7 @@ class For_Player {
     spawn_creep(creep: Creep_Type, at: XY) {
         const id = this.test.battle.id_generator() as Unit_Id;
 
-        submit_battle_delta(this.test.battle, {
+        submit_external_battle_delta(this.test.battle, {
             type: Delta_Type.creep_spawn,
             creep_type: creep,
             at_position: at,
@@ -280,7 +280,7 @@ class For_Player_Unit {
     }
 
     set_health(value: number) {
-        submit_battle_delta(this.test.battle, {
+        submit_external_battle_delta(this.test.battle, {
             type: Delta_Type.health_change,
             source_unit_id: this.unit.id,
             target_unit_id: this.unit.id,
@@ -294,7 +294,7 @@ class For_Player_Unit {
     apply_modifier(modifier: Modifier, duration?: number) {
         const id = this.test.battle.id_generator() as Modifier_Handle_Id;
 
-        submit_battle_delta(this.test.battle, {
+        submit_external_battle_delta(this.test.battle, {
             type: Delta_Type.modifier_applied,
             unit_id: this.unit.id,
             application: {
@@ -308,7 +308,7 @@ class For_Player_Unit {
     }
 
     remove_modifier(handle_id: Modifier_Handle_Id) {
-        submit_battle_delta(this.test.battle, {
+        submit_external_battle_delta(this.test.battle, {
             type: Delta_Type.modifier_removed,
             modifier_handle_id: handle_id
         });
@@ -363,7 +363,7 @@ class For_Player_Hero extends For_Player_Unit {
     }
 
     set_level(level: number) {
-        submit_battle_delta(this.test.battle, {
+        submit_external_battle_delta(this.test.battle, {
             type: Delta_Type.level_change,
             unit_id: this.unit.id,
             new_level: level
@@ -446,6 +446,12 @@ class Assert_For_Player_Unit {
         const actual = this.unit.position;
 
         do_assert(this.index, xy_equal(xy, actual), `Expected unit to be at [${xy.x}, ${xy.y}], actual [${actual.x}, ${actual.y}]`);
+
+        return this;
+    }
+
+    is_dead() {
+        do_assert(this.index, this.unit.dead, `Expected unit to be dead`);
 
         return this;
     }

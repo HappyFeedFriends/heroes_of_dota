@@ -1917,6 +1917,10 @@ export function try_take_turn_action(battle: Battle_Record, player: Battle_Playe
 
     submit_turn_action(battle, action_ok, action);
 
+    if (!battle.has_finished) {
+        check_battle_over(battle);
+    }
+
     if (initial_head != battle.delta_head) {
         return get_battle_deltas_after(battle, initial_head);
     }
@@ -1933,7 +1937,15 @@ function get_next_turning_player_id(battle: Battle_Record): Battle_Player_Id {
     return battle.players[next_index].id;
 }
 
-export function submit_battle_delta(battle: Battle_Record, delta: Delta) {
+export function submit_external_battle_delta(battle: Battle_Record, delta: Delta) {
+    submit_battle_delta(battle, delta);
+
+    if (!battle.has_finished) {
+        check_battle_over(battle);
+    }
+}
+
+function submit_battle_delta(battle: Battle_Record, delta: Delta) {
     battle.deltas.push(delta);
 
     while (battle.deltas.length != battle.delta_head) {
@@ -1944,10 +1956,6 @@ export function submit_battle_delta(battle: Battle_Record, delta: Delta) {
         }
 
         drain_battle_event_queue(battle);
-    }
-
-    if (!battle.has_finished) {
-        check_battle_over(battle);
     }
 }
 
@@ -2107,7 +2115,7 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
         }
     }
 
-    submit_battle_delta(battle, { type: Delta_Type.game_start });
+    submit_external_battle_delta(battle, { type: Delta_Type.game_start });
 
     return battle;
 }
@@ -2159,7 +2167,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
             const ability_index = parseInt(parts[1]);
             const charges = parseInt(parts[2] || "20");
 
-            submit_battle_delta(battle, {
+            submit_external_battle_delta(battle, {
                 type: Delta_Type.set_ability_charges_remaining,
                 unit_id: unit.id,
                 ability_id: unit.abilities[ability_index].id,
@@ -2170,13 +2178,13 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
         }
 
         case "gold": {
-            submit_battle_delta(battle, { type: Delta_Type.gold_change, player_id: battle_player.id, change: 15 });
+            submit_external_battle_delta(battle, { type: Delta_Type.gold_change, player_id: battle_player.id, change: 15 });
 
             break;
         }
 
         case "skipturn": {
-            submit_battle_delta(battle, {
+            submit_external_battle_delta(battle, {
                 type: Delta_Type.end_turn,
                 start_turn_of_player_id: get_next_turning_player_id(battle)
             });
@@ -2191,7 +2199,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
 
             const new_lvl = parseInt(parts[1]);
 
-            submit_battle_delta(battle, {
+            submit_external_battle_delta(battle, {
                 type: Delta_Type.level_change,
                 unit_id: selected_unit_id,
                 new_level: new_lvl,
@@ -2225,7 +2233,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
 
             if (!unit) break;
 
-            submit_battle_delta(battle, {
+            submit_external_battle_delta(battle, {
                 type: Delta_Type.health_change,
                 source_unit_id: unit.id,
                 target_unit_id: unit.id,
@@ -2239,7 +2247,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
         case "killall": {
             for (const unit of battle.units) {
                 if (!unit.dead) {
-                    submit_battle_delta(battle, {
+                    submit_external_battle_delta(battle, {
                         type: Delta_Type.health_change,
                         source_unit_id: unit.id,
                         target_unit_id: unit.id,
@@ -2269,7 +2277,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
                 break;
             }
 
-            submit_battle_delta(battle, {
+            submit_external_battle_delta(battle, {
                 type: Delta_Type.rune_spawn,
                 rune_id: get_next_entity_id(battle) as Rune_Id,
                 rune_type: rune_type(),
@@ -2283,7 +2291,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
             const spells = parse_enum_query(parts[1], enum_names_to_values<Spell_Id>());
 
             for (const spell of spells) {
-                submit_battle_delta(battle, draw_spell_card(get_next_entity_id(battle) as Card_Id, battle_player, spell));
+                submit_external_battle_delta(battle, draw_spell_card(get_next_entity_id(battle) as Card_Id, battle_player, spell));
             }
 
             break;
@@ -2293,7 +2301,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
             const heroes = parse_enum_query(parts[1], enum_names_to_values<Hero_Type>());
 
             for (const hero of heroes) {
-                submit_battle_delta(battle, draw_hero_card(battle, battle_player, hero));
+                submit_external_battle_delta(battle, draw_hero_card(battle, battle_player, hero));
             }
 
             break;
@@ -2308,7 +2316,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
 
                 if (random_cell) {
                     const delta = spawn_creep(get_next_entity_id(battle) as Unit_Id, battle_player, random_cell[0].position, creep, creep_definition_by_type(creep).health);
-                    submit_battle_delta(battle, delta);
+                    submit_external_battle_delta(battle, delta);
                 }
             }
 
@@ -2324,7 +2332,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
             const items = parse_enum_query(parts[1], enum_names_to_values<Item_Id>());
 
             for (const item of items) {
-                submit_battle_delta(battle, equip_item(battle, unit, item_id_to_item(item)));
+                submit_external_battle_delta(battle, equip_item(battle, unit, item_id_to_item(item)));
             }
 
             break;
