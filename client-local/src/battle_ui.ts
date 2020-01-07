@@ -1692,7 +1692,7 @@ function get_ability_tooltip(a: Ability): string {
         case Ability_Id.skywrath_mystic_flare: return `Deal ${a.damage} split between targets in an area`;
         case Ability_Id.dragon_knight_breathe_fire: return `Deal ${a.damage} damage to all targets`;
         case Ability_Id.dragon_knight_dragon_tail: return `Deal ${a.damage} and stun chosen target`;
-        case Ability_Id.dragon_knight_elder_dragon_form: return `Transform, gain additional attack range and splash attack for ${a.duration} turns`;
+        case Ability_Id.dragon_knight_elder_dragon_form: return `Transform, gain additional attack range and splash attack`;
         case Ability_Id.dragon_knight_elder_dragon_form_attack: return `Elder dragon form attack`;
         case Ability_Id.lion_hex: return `Hex target enemy, silencing, disarming and slowing them by ${a.move_points_reduction} for ${a.duration} turns`;
         case Ability_Id.lion_impale: return `Deal ${a.damage} and stun targets in a line`;

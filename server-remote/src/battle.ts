@@ -692,7 +692,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
             submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
-                modifier: modifier(battle, { id: Modifier_Id.dragon_knight_elder_dragon_form }, ability.duration),
+                modifier: modifier(battle, { id: Modifier_Id.dragon_knight_elder_dragon_form }),
             });
 
             break;

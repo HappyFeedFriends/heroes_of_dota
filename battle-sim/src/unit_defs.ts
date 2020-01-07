@@ -257,8 +257,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         available_since_level: 3,
                         targeting: target_in_manhattan_distance(0),
                         flags: [],
-                        charges: 1,
-                        duration: 3
+                        charges: 1
                     })
                 ],
                 ability_bench: [

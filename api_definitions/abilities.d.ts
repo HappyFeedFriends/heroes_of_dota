@@ -155,7 +155,6 @@ type Ability_Dragon_Knight_Dragon_Tail = Ability_Definition_Active_Base & {
 type Ability_Dragon_Knight_Elder_Dragon_Form = Ability_Definition_Active_Base & {
     id: Ability_Id.dragon_knight_elder_dragon_form
     type: Ability_Type.no_target
-    duration: number
 }
 
 type Ability_Dragon_Knight_Elder_Dragon_Form_Attack = Ability_Definition_Active_Base & {
