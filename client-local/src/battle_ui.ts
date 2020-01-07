@@ -2544,6 +2544,10 @@ function get_hovered_battle_position(): XY | undefined {
         }
     }
 
+    if (control_panel.panel.BHasHoverStyle()) {
+        return;
+    }
+
     const cursor = GameUI.GetCursorPosition();
 
     if (!is_unit_selection(selection)) {
