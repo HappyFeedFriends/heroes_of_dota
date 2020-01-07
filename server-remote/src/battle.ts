@@ -9,9 +9,7 @@ export type Battle_Record = Battle & {
     id_generator: Id_Generator
     random: Random
     random_seed: number
-    deferred_actions: Deferred_Action[]
     monster_targets: Map<Monster, Unit>
-    end_turn_queued: boolean
     world_origin: World_Origin
 }
 
@@ -37,31 +35,6 @@ export type Creep_Spawn = {
 export type Spell_Spawn = {
     id: Card_Id
     spell: Spell_Id
-}
-
-type Deferred_Action = () => void
-
-function defer(battle: Battle_Record, action: () => void) {
-    battle.deferred_actions.push(action);
-}
-
-function defer_delta(battle: Battle_Record, supplier: () => Delta | undefined) {
-    battle.deferred_actions.push(() => {
-        const delta = supplier();
-
-        if (delta) {
-            battle.deltas.push(delta);
-        }
-    });
-}
-
-function defer_delta_by_unit(battle: Battle_Record, unit: Unit, supplier: () => Delta | undefined) {
-    defer_delta(battle, () => {
-        const act_on_unit_permission = authorize_act_on_known_unit(battle, unit);
-        if (!act_on_unit_permission.ok) return;
-
-        return supplier();
-    })
 }
 
 type Scan_Result_Hit = {
@@ -588,7 +561,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
     }
 }
 
-function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, ability: Ability_No_Target): Delta_Use_No_Target_Ability {
+function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, ability: Ability_No_Target): void {
     const base: Delta_Use_No_Target_Ability_Base = {
         type: Delta_Type.use_no_target_ability,
         unit_id: unit.id,
@@ -599,11 +572,13 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
             const targets = query_units_for_no_target_ability(battle, unit, ability.targeting)
                 .map(target => unit_health_change(target, -ability.damage));
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 targets: targets
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.tide_anchor_smash: {
@@ -616,11 +591,13 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
                 }, 1)
             }));
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 targets: targets
-            };
+            });
+
+            break;
         }
 
         case Ability_Id.tide_ravage: {
@@ -630,11 +607,13 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
                 modifier: modifier(battle, { id: Modifier_Id.tide_ravage }, 1)
             }));
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 targets: targets
-            };
+            });
+
+            break;
         }
 
         case Ability_Id.luna_eclipse: {
@@ -666,12 +645,14 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
                 .filter(target => target.beams_applied > 0)
                 .map(target => unit_health_change(target.unit, -target.beams_applied));
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 missed_beams: remaining_beams,
                 targets: effects
-            };
+            });
+
+            break;
         }
 
         case Ability_Id.skywrath_concussive_shot: {
@@ -681,7 +662,7 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
             const target = enemies.length > 0 ? battle.random.in_array(enemies) : battle.random.in_array(allies);
 
             if (target) {
-                return {
+                submit_battle_delta(battle, {
                     ...base,
                     ability_id: ability.id,
                     result: {
@@ -693,53 +674,61 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
                                 move_reduction: ability.move_points_reduction
                         }, ability.duration)
                     }
-                }
+                });
             } else {
-                return {
+                submit_battle_delta(battle, {
                     ...base,
                     ability_id: ability.id,
                     result: {
                         hit: false
                     }
-                }
+                });
             }
+
+            break;
         }
 
         case Ability_Id.dragon_knight_elder_dragon_form: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 modifier: modifier(battle, { id: Modifier_Id.dragon_knight_elder_dragon_form }, ability.duration),
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.mirana_starfall: {
-            defer_delta(battle, () => {
+            {
+                const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+
+                submit_battle_delta(battle, {
+                    ...base,
+                    ability_id: ability.id,
+                    targets: targets.map(target => ({
+                        target_unit_id: target.id,
+                        change: health_change(target, -ability.damage)
+                    }))
+                });
+            }
+
+            {
                 const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
                 const enemies = targets.filter(target => !are_units_allies(unit, target));
                 const allies = targets.filter(target => are_units_allies(unit, target));
                 const extra_target = enemies.length > 0 ? battle.random.in_array(enemies) : battle.random.in_array(allies);
 
                 if (extra_target) {
-                    return apply_ability_effect_delta({
+                    submit_battle_delta(battle, apply_ability_effect_delta({
                         ability_id: ability.id,
                         source_unit_id: unit.id,
                         target_unit_id: extra_target.id,
                         damage_dealt: health_change(extra_target, -ability.damage)
-                    });
+                    }));
                 }
-            });
-
-            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
-
-            return {
-                ...base,
-                ability_id: ability.id,
-                targets: targets.map(target => ({
-                    target_unit_id: target.id,
-                    change: health_change(target, -ability.damage)
-                }))
             }
+
+            break;
         }
 
         case Ability_Id.ember_searing_chains: {
@@ -748,24 +737,28 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
             const allies = battle.random.pick_n_mutable(all_targets.filter(target => are_units_allies(unit, target)), ability.targets);
             const targets = [...enemies, ...allies].slice(0, ability.targets);
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 targets: targets.map(target => ({
                     target_unit_id: target.id,
                     modifier: modifier(battle, { id: Modifier_Id.ember_searing_chains }, 1)
                 }))
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.ember_sleight_of_fist: {
             const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 targets: targets.map(target => unit_health_change(target, -calculate_basic_attack_damage_to_target(unit, target)))
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.ember_activate_fire_remnant: {
@@ -774,34 +767,40 @@ function perform_ability_cast_no_target(battle: Battle_Record, unit: Unit, abili
                     const remnant = find_unit_by_id(battle, applied.modifier.remnant_unit_id);
                     if (!remnant) break;
 
-                    defer_delta(battle, () => ({
+                    submit_battle_delta(battle, {
                         type: Delta_Type.set_ability_charges_remaining,
                         unit_id: unit.id,
                         ability_id: Ability_Id.ember_activate_fire_remnant,
                         charges_remaining: 1
-                    }));
+                    });
 
-                    defer_delta(battle, () => ({
+                    submit_battle_delta(battle, {
                         type: Delta_Type.modifier_removed,
                         modifier_handle_id: applied.handle_id
-                    }));
+                    });
 
-                    return {
+                    submit_battle_delta(battle, {
                         ...base,
                         ability_id: ability.id,
                         action: {
                             remnant_id: remnant.id,
                             move_to: remnant.position
                         }
-                    }
+                    });
+
+                    return;
                 }
             }
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id
-            } ;
+            });
+
+            break;
         }
+
+        default: unreachable(ability);
     }
 }
 
@@ -1188,18 +1187,16 @@ function pick_up_rune(battle: Battle_Record, hero: Hero, rune: Rune, move_cost: 
 
 function on_target_dealt_damage_by_ability(battle: Battle_Record, source: Unit, target: Unit, damage: number): void {
     if (source.supertype == Unit_Supertype.hero) {
-        defer_delta(battle, () => {
-            for (const applied of source.modifiers) {
-                if (applied.modifier.id == Modifier_Id.item_octarine_core) {
-                    return {
-                        type: Delta_Type.modifier_effect_applied,
-                        modifier_id: applied.modifier.id,
-                        handle_id: applied.handle_id,
-                        heal: unit_health_change(source, damage)
-                    };
-                }
+        for (const applied of source.modifiers) {
+            if (applied.modifier.id == Modifier_Id.item_octarine_core) {
+                submit_battle_delta(battle, {
+                    type: Delta_Type.modifier_effect_applied,
+                    modifier_id: applied.modifier.id,
+                    handle_id: applied.handle_id,
+                    heal: unit_health_change(source, damage)
+                });
             }
-        });
+        }
     }
 }
 
@@ -1207,45 +1204,39 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
     const damage_only = Math.max(0, damage); // In case we have a healing attack, I guess;
 
     if (source.supertype == Unit_Supertype.hero) {
-        defer_delta(battle, () => {
-            for (const applied of source.modifiers) {
-                if (applied.modifier.id == Modifier_Id.item_satanic) {
-                    return {
-                        type: Delta_Type.modifier_effect_applied,
-                        modifier_id: applied.modifier.id,
-                        handle_id: applied.handle_id,
-                        heal: unit_health_change(source, damage_only)
-                    };
-                }
+        for (const applied of source.modifiers) {
+            if (applied.modifier.id == Modifier_Id.item_satanic) {
+                submit_battle_delta(battle, {
+                    type: Delta_Type.modifier_effect_applied,
+                    modifier_id: applied.modifier.id,
+                    handle_id: applied.handle_id,
+                    heal: unit_health_change(source, damage_only)
+                });
             }
-        });
+        }
 
-        defer_delta(battle, () => {
-            for (const applied of source.modifiers) {
-                if (applied.modifier.id == Modifier_Id.item_morbid_mask) {
-                    return {
-                        type: Delta_Type.modifier_effect_applied,
-                        modifier_id: applied.modifier.id,
-                        handle_id: applied.handle_id,
-                        heal: unit_health_change(source, applied.modifier.health_restored_per_attack)
-                    };
-                }
+        for (const applied of source.modifiers) {
+            if (applied.modifier.id == Modifier_Id.item_morbid_mask) {
+                submit_battle_delta(battle, {
+                    type: Delta_Type.modifier_effect_applied,
+                    modifier_id: applied.modifier.id,
+                    handle_id: applied.handle_id,
+                    heal: unit_health_change(source, applied.modifier.health_restored_per_attack)
+                });
             }
-        });
+        }
 
-        defer_delta(battle, () => {
-            for (const applied of source.modifiers) {
-                if (applied.modifier.id == Modifier_Id.item_basher_bearer) {
-                    return {
-                        type: Delta_Type.modifier_effect_applied,
-                        modifier_id: applied.modifier.id,
-                        handle_id: applied.handle_id,
-                        target_unit_id: target.id,
-                        modifier: modifier(battle, { id: Modifier_Id.item_basher_target }, 1)
-                    };
-                }
+        for (const applied of source.modifiers) {
+            if (applied.modifier.id == Modifier_Id.item_basher_bearer) {
+                submit_battle_delta(battle, {
+                    type: Delta_Type.modifier_effect_applied,
+                    modifier_id: applied.modifier.id,
+                    handle_id: applied.handle_id,
+                    target_unit_id: target.id,
+                    modifier: modifier(battle, { id: Modifier_Id.item_basher_target }, 1)
+                });
             }
-        });
+        }
     }
 
     for (const ability of source.abilities) {
@@ -1255,28 +1246,26 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
 
         switch (ability.id) {
             case Ability_Id.luna_moon_glaive: {
-                defer_delta(battle, () => {
-                    const targets = query_units_for_no_target_ability(battle, target, ability.secondary_targeting);
-                    const allies = targets.filter(target => are_units_allies(source, target) && target != source);
-                    const enemies = targets.filter(target => !are_units_allies(source, target));
-                    const glaive_target = enemies.length > 0 ? battle.random.in_array(enemies) : battle.random.in_array(allies);
+                const targets = query_units_for_no_target_ability(battle, target, ability.secondary_targeting);
+                const allies = targets.filter(target => are_units_allies(source, target) && target != source);
+                const enemies = targets.filter(target => !are_units_allies(source, target));
+                const glaive_target = enemies.length > 0 ? battle.random.in_array(enemies) : battle.random.in_array(allies);
 
-                    if (glaive_target) {
-                        return apply_ability_effect_delta({
-                            ability_id: ability.id,
-                            source_unit_id: source.id,
-                            target_unit_id: glaive_target.id,
-                            original_target_id: target.id,
-                            damage_dealt: health_change(glaive_target, -damage)
-                        });
-                    }
-                });
+                if (glaive_target) {
+                    submit_battle_delta(battle, apply_ability_effect_delta({
+                        ability_id: ability.id,
+                        source_unit_id: source.id,
+                        target_unit_id: glaive_target.id,
+                        original_target_id: target.id,
+                        damage_dealt: health_change(glaive_target, -damage)
+                    }));
+                }
 
                 break;
             }
 
             case Ability_Id.monster_lifesteal: {
-                defer_delta(battle, () => apply_ability_effect_delta({
+                submit_battle_delta(battle, apply_ability_effect_delta({
                     ability_id: Ability_Id.monster_lifesteal,
                     source_unit_id: source.id,
                     target_unit_id: source.id,
@@ -1287,7 +1276,7 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
     }
 }
 
-function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Player_Action_Permission, action: Turn_Action): Delta[] | undefined {
+function submit_turn_action(battle: Battle_Record, action_permission: Player_Action_Permission, action: Turn_Action): void {
     function authorize_unit_for_order(unit_id: Unit_Id): Order_Unit_Auth {
         const act_on_unit_permission = authorize_act_on_unit(battle, unit_id);
         if (!act_on_unit_permission.ok) return { ok: false, kind: Order_Unit_Error.other };
@@ -1325,12 +1314,14 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
             const move_order_permission = authorize_move_order(order_unit_permission, action.to, false);
             if (!move_order_permission.ok) return;
 
-            return [{
+            submit_battle_delta(battle, {
                 type: Delta_Type.unit_move,
                 move_cost: move_order_permission.cost,
                 unit_id: move_order_permission.unit.id,
                 to_position: action.to
-            }];
+            });
+
+            break;
         }
 
         case Action_Type.use_no_target_ability: {
@@ -1341,10 +1332,10 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
 
             if (ability.type != Ability_Type.no_target) return;
 
-            return [
-                decrement_charges(unit, ability),
-                perform_ability_cast_no_target(battle, unit, ability)
-            ]
+            submit_battle_delta(battle, decrement_charges(unit, ability));
+            submit_ability_cast_no_target(battle, unit, ability);
+
+            break;
         }
 
         case Action_Type.unit_target_ability: {
@@ -1359,10 +1350,10 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
 
             const { unit, ability, target } = use_ability_on_target_permission;
 
-            return [
-                decrement_charges(unit, ability),
-                perform_ability_cast_unit_target(battle, unit, ability, target)
-            ]
+            submit_battle_delta(battle, decrement_charges(unit, ability));
+            submit_battle_delta(battle, perform_ability_cast_unit_target(battle, unit, ability, target));
+
+            break;
         }
 
         case Action_Type.ground_target_ability: {
@@ -1374,10 +1365,10 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
 
             const { unit, ability, target } = ground_ability_use_permission;
 
-            return [
-                decrement_charges(unit, ability),
-                perform_ability_cast_ground(battle, unit, ability, target.position)
-            ];
+            submit_battle_delta(battle, decrement_charges(unit, ability));
+            submit_battle_delta(battle, perform_ability_cast_ground(battle, unit, ability, target.position));
+
+            break;
         }
 
         case Action_Type.use_hero_card: {
@@ -1389,10 +1380,10 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
 
             const { player, card } = hero_card_use_permission;
 
-            return [
-                use_card(player, card),
-                spawn_hero(get_next_entity_id(battle) as Unit_Id, player, action.at, card.hero_type, hero_definition_by_type(card.hero_type).health)
-            ]
+            submit_battle_delta(battle, use_card(player, card));
+            submit_battle_delta(battle, spawn_hero(get_next_entity_id(battle) as Unit_Id, player, action.at, card.hero_type, hero_definition_by_type(card.hero_type).health));
+
+            break;
         }
 
         case Action_Type.use_existing_hero_card: {
@@ -1404,15 +1395,15 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
 
             const { player, card } = hero_card_use_permission;
 
-            return [
-                use_card(player, card),
-                {
-                    type: Delta_Type.hero_spawn_from_hand,
-                    source_spell_id: card.generated_by,
-                    hero_id: card.hero_id,
-                    at_position: action.at
-                }
-            ]
+            submit_battle_delta(battle, use_card(player, card));
+            submit_battle_delta(battle, {
+                type: Delta_Type.hero_spawn_from_hand,
+                source_spell_id: card.generated_by,
+                hero_id: card.hero_id,
+                at_position: action.at
+            });
+
+            break;
         }
 
         case Action_Type.use_unit_target_spell_card: {
@@ -1429,10 +1420,10 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
 
             const { player, card, spell, unit } = spell_use_on_unit_permission;
 
-            return [
-                use_card(player, card),
-                perform_spell_cast_unit_target(battle, player, unit, spell)
-            ]
+            submit_battle_delta(battle, use_card(player, card));
+            submit_battle_delta(battle, perform_spell_cast_unit_target(battle, player, unit, spell));
+
+            break;
         }
 
         case Action_Type.use_ground_target_spell_card: {
@@ -1446,10 +1437,10 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
 
             const { player, card, spell } = spell_use_permission;
 
-            return [
-                use_card(player, card),
-                perform_spell_cast_ground_target(battle, player, action.at, spell)
-            ]
+            submit_battle_delta(battle, use_card(player, card));
+            submit_battle_delta(battle, perform_spell_cast_ground_target(battle, player, action.at, spell));
+
+            break;
         }
 
         case Action_Type.use_no_target_spell_card: {
@@ -1461,10 +1452,10 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
 
             const { player, card, spell } = spell_use_auth;
 
-            return [
-                use_card(player, card),
-                perform_spell_cast_no_target(battle, player, spell)
-            ]
+            submit_battle_delta(battle, use_card(player, card));
+            submit_battle_delta(battle, perform_spell_cast_no_target(battle, player, spell));
+
+            break;
         }
 
         case Action_Type.purchase_item: {
@@ -1482,17 +1473,17 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
 
             const { hero, shop, item } = purchase_permission;
 
-            const purchase: Delta = {
+            submit_battle_delta(battle, {
                 type: Delta_Type.purchase_item,
                 unit_id: hero.id,
                 shop_id: shop.id,
                 item_id: item.id,
                 gold_cost: item.gold_cost
-            };
+            });
 
-            const equip = equip_item(battle, hero, item);
+            submit_battle_delta(battle, equip_item(battle, hero, item));
 
-            return [purchase, equip];
+            break;
         }
 
         case Action_Type.pick_up_rune: {
@@ -1507,17 +1498,20 @@ function turn_action_to_new_deltas(battle: Battle_Record, action_permission: Pla
             const move_order_permission = authorize_move_order(order_unit_permission, rune.position, true);
             if (!move_order_permission.ok) return;
 
-            return [
-                pick_up_rune(battle, hero, rune, move_order_permission.cost)
-            ];
+            submit_battle_delta(battle, pick_up_rune(battle, hero, rune, move_order_permission.cost));
+
+            break;
         }
 
         case Action_Type.end_turn: {
             resolve_end_turn_effects(battle);
 
-            battle.end_turn_queued = true;
+            submit_battle_deltas(battle, [{
+                type: Delta_Type.end_turn,
+                start_turn_of_player_id: get_next_turning_player_id(battle)
+            }]);
 
-            return [];
+            break;
         }
 
         default: unreachable(action);
@@ -1629,8 +1623,8 @@ function get_gold_for_killing(battle: Battle_Record, target: Unit): number {
     }
 }
 
-function defer_monster_try_retaliate(battle: Battle_Record, monster: Monster, target: Unit) {
-    type Attack_Intent_Result = { ok: true, ability: Ability_Active } | { ok: false, error: Attack_Intent_Error };
+function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: Unit) {
+    type Attack_Intent_Result = Ability_Use_Permission | { ok: false, error: Attack_Intent_Error };
 
     const enum Attack_Intent_Error {
         ok,
@@ -1666,61 +1660,46 @@ function defer_monster_try_retaliate(battle: Battle_Record, monster: Monster, ta
         return ability_use_permission;
     };
 
-    const defer_attack = () => defer_delta(battle, () => {
+    function check_and_update_attack_intent() {
         const attack_intent = authorize_attack_intent();
 
-        if (!attack_intent.ok) {
-            if (attack_intent.error == Attack_Intent_Error.fail_and_cancel) {
-                battle.monster_targets.delete(monster);
-            }
-
-            return;
+        if (!attack_intent.ok && attack_intent.error == Attack_Intent_Error.fail_and_cancel) {
+            battle.monster_targets.delete(monster);
         }
 
-        const attack = attack_intent.ability;
+        return attack_intent;
+    }
 
-        if (attack.type == Ability_Type.target_ground) {
+    const initial_intent = authorize_attack_intent();
+    if (!initial_intent.ok) return;
+
+    const costs = populate_path_costs(battle, monster.position);
+
+    for (const cell of battle.grid.cells) {
+        // TODO Use authorize_move_order (but we need to keep @Performance in check)
+        const index = grid_cell_index(battle.grid, cell.position);
+        const move_cost = costs.cell_index_to_cost[index];
+        if (move_cost > monster.move_points) continue;
+
+        if (ability_targeting_fits(battle, initial_intent.ability.targeting, cell.position, target.position)) {
+            submit_battle_delta(battle, {
+                type: Delta_Type.unit_move,
+                to_position: cell.position,
+                unit_id: monster.id,
+                move_cost: move_cost
+            });
+
+            const post_move_intent = check_and_update_attack_intent();
+            if (!post_move_intent.ok) break;
+
+            const use = authorize_ground_target_ability_use(post_move_intent, target.position);
+            if (!use.ok) break;
+
             battle.monster_targets.set(monster, target);
 
-            return perform_ability_cast_ground(battle, monster, attack, target.position);
+            submit_battle_delta(battle, perform_ability_cast_ground(battle, monster, use.ability, target.position));
         }
-    });
-
-    const defer_move = () => defer(battle, () => {
-        const attack_intent = authorize_attack_intent();
-
-        if (!attack_intent.ok) {
-            if (attack_intent.error == Attack_Intent_Error.fail_and_cancel) {
-                battle.monster_targets.delete(monster);
-            }
-
-            return;
-        }
-
-        const costs = populate_path_costs(battle, monster.position);
-
-        for (const cell of battle.grid.cells) {
-            const index = grid_cell_index(battle.grid, cell.position);
-            const move_cost = costs.cell_index_to_cost[index];
-
-            if (move_cost <= monster.move_points) {
-                if (ability_targeting_fits(battle, attack_intent.ability.targeting, cell.position, target.position)) {
-                    defer_delta(battle, () => ({
-                        type: Delta_Type.unit_move,
-                        to_position: cell.position,
-                        unit_id: monster.id,
-                        move_cost: move_cost
-                    }));
-
-                    defer_attack();
-
-                    break;
-                }
-            }
-        }
-    });
-
-    defer_move();
+    }
 }
 
 function on_battle_event(battle_base: Battle, event: Battle_Event) {
@@ -1743,27 +1722,23 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                 if (!are_units_allies(attacker, target) && attacker.supertype != Unit_Supertype.monster) {
                     const bounty = get_gold_for_killing(battle, target);
 
-                    defer_delta(battle, () => ({
+                    submit_battle_delta(battle, {
                         type: Delta_Type.gold_change,
                         player_id: attacker.owner.id,
                         change: bounty
-                    }));
+                    });
 
-                    if (attacker.supertype == Unit_Supertype.hero) {
-                        defer_delta(battle, () => {
-                            if (attacker.level < max_unit_level) {
-                                return {
-                                    type: Delta_Type.level_change,
-                                    unit_id: attacker.id,
-                                    new_level: attacker.level + 1
-                                };
-                            }
+                    if (attacker.supertype == Unit_Supertype.hero && attacker.level < max_unit_level) {
+                        submit_battle_delta(battle, {
+                            type: Delta_Type.level_change,
+                            unit_id: attacker.id,
+                            new_level: attacker.level + 1
                         });
                     }
                 }
             } else {
                 if (target.supertype == Unit_Supertype.monster) {
-                    defer_monster_try_retaliate(battle, target, attacker);
+                    monster_try_retaliate(battle, target, attacker);
                 }
             }
         }
@@ -1773,39 +1748,36 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                 for (const ability of target.abilities) {
                     switch (ability.id) {
                         case Ability_Id.monster_spawn_spiderlings: {
-                            defer_delta(battle, () => {
-                                const center = target.position;
-                                const from_x = Math.max(0, center.x - 2);
-                                const from_y = Math.max(0, center.y - 2);
-                                const to_x = Math.min(battle.grid.size.x, center.x + 2);
-                                const to_y = Math.min(battle.grid.size.y, center.y + 2);
-                                const free_cells: XY[] = [];
+                            const center = target.position;
+                            const from_x = Math.max(0, center.x - 2);
+                            const from_y = Math.max(0, center.y - 2);
+                            const to_x = Math.min(battle.grid.size.x, center.x + 2);
+                            const to_y = Math.min(battle.grid.size.y, center.y + 2);
+                            const free_cells: XY[] = [];
 
-                                for (let x = from_x; x < to_x; x++) {
-                                    for (let y = from_y; y < to_y; y++) {
-                                        const cell = grid_cell_at_unchecked(battle.grid, xy(x, y));
+                            for (let x = from_x; x < to_x; x++) {
+                                for (let y = from_y; y < to_y; y++) {
+                                    const cell = grid_cell_at_unchecked(battle.grid, xy(x, y));
 
-                                        if (!cell.occupied) {
-                                            free_cells.push(cell.position);
-                                        }
+                                    if (!cell.occupied) {
+                                        free_cells.push(cell.position);
                                     }
                                 }
+                            }
 
-                                const target_cell = battle.random.in_array(free_cells);
+                            const target_cell = battle.random.in_array(free_cells);
+                            if (!target_cell) break;
 
-                                if (target_cell) {
-                                    return apply_ability_effect_delta({
-                                        ability_id: Ability_Id.monster_spawn_spiderlings,
-                                        source_unit_id: target.id,
-                                        summons: battle.random.pick_n_mutable(free_cells, ability.how_many).map(cell => ({
-                                            owner_id: target.owner.id,
-                                            unit_id: get_next_entity_id(battle) as Unit_Id,
-                                            creep_type: Creep_Type.spiderling,
-                                            at: cell
-                                        }))
-                                    })
-                                }
-                            });
+                            submit_battle_delta(battle, apply_ability_effect_delta({
+                                ability_id: Ability_Id.monster_spawn_spiderlings,
+                                source_unit_id: target.id,
+                                summons: battle.random.pick_n_mutable(free_cells, ability.how_many).map(cell => ({
+                                    owner_id: target.owner.id,
+                                    unit_id: get_next_entity_id(battle) as Unit_Id,
+                                    creep_type: Creep_Type.spiderling,
+                                    at: cell
+                                }))
+                            }));
 
                             break;
                         }
@@ -1817,149 +1789,97 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
 }
 
 function resolve_end_turn_effects(battle: Battle_Record) {
-    const item_to_units = new Map<Item_Id, [Hero, Item][]>();
-    const modifiers_to_units = new Map<Modifier_Id, [Unit, Applied_Modifier, Modifier][]>();
-    const ability_to_units = new Map<Ability_Id, [Unit, Ability][]>();
+    function for_units_with_ability<T extends Ability_Id>(ability_id: T, action: (unit: Unit, ability: Find_By_Id<Ability, T>) => void) {
+        for (const unit of battle.units) {
+            if (!authorize_act_on_known_unit(battle, unit).ok) continue;
 
-    for (const unit of battle.units) {
-        if (unit.supertype == Unit_Supertype.hero) {
-            for (const item of unit.items) {
-                let item_units = item_to_units.get(item.id);
-
-                if (!item_units) {
-                    item_units = [];
-
-                    item_to_units.set(item.id, item_units);
+            for (const ability of unit.abilities) {
+                if (ability.id == ability_id) {
+                    action(unit, ability as Find_By_Id<Ability, T>);
                 }
-
-                item_units.push([unit, item]);
-            }
-        }
-
-        for (const applied of unit.modifiers) {
-            let modifier_units = modifiers_to_units.get(applied.modifier.id);
-
-            if (!modifier_units) {
-                modifier_units = [];
-
-                modifiers_to_units.set(applied.modifier.id, modifier_units);
-            }
-
-            modifier_units.push([unit, applied, applied.modifier]);
-        }
-
-        for (const ability of unit.abilities) {
-            let ability_units = ability_to_units.get(ability.id);
-
-            if (!ability_units) {
-                ability_units = [];
-
-                ability_to_units.set(ability.id, ability_units);
-            }
-
-            ability_units.push([unit, ability]);
-        }
-    }
-
-    function for_heroes_with_item<T extends Item_Id>(item_id: T, action: (hero: Hero, item: Find_By_Id<Item, T>) => void) {
-        const item_units = item_to_units.get(item_id);
-
-        if (item_units) {
-            for (const [hero, item] of item_units) {
-                action(hero, item as Find_By_Id<Item, T>);
-            }
-        }
-    }
-
-    function for_heroes_with_ability<T extends Ability_Id>(ability_id: T, action: (unit: Unit, ability: Find_By_Id<Ability, T>) => void) {
-        const ability_units = ability_to_units.get(ability_id);
-
-        if (ability_units) {
-            for (const [unit, ability] of ability_units) {
-                action(unit, ability as Find_By_Id<Ability, T>);
             }
         }
     }
 
     function for_units_with_modifier<T extends Modifier_Id>(modifier_id: T, action: (unit: Unit, applied: Applied_Modifier, modifier: Find_By_Id<Modifier, T>) => void) {
-        const modifier_units = modifiers_to_units.get(modifier_id);
+        for (const unit of battle.units) {
+            if (!authorize_act_on_known_unit(battle, unit).ok) continue;
 
-        if (modifier_units) {
-            for (const [unit, applied, modifier] of modifier_units) {
-                action(unit, applied, modifier as Find_By_Id<Modifier, T>);
+            for (const applied of unit.modifiers) {
+                if (applied.modifier.id == modifier_id) {
+                    action(unit, applied, applied.modifier as Find_By_Id<Modifier, T>);
+                }
             }
         }
     }
 
     for (const unit of battle.units) {
         for (const modifier of unit.modifiers) {
+            if (!authorize_act_on_known_unit(battle, unit).ok) continue;
+
             if (modifier.duration_remaining != undefined && modifier.duration_remaining == 0) {
-                defer_delta(battle, () => ({
+                submit_battle_delta(battle, {
                     type: Delta_Type.modifier_removed,
                     modifier_handle_id: modifier.handle_id
-                }));
+                });
             }
         }
     }
 
     for_units_with_modifier(Modifier_Id.item_heart_of_tarrasque, (unit, applied, modifier) => {
-        defer_delta_by_unit(battle, unit, () => ({
+        submit_battle_delta(battle, {
             type: Delta_Type.modifier_effect_applied,
             handle_id: applied.handle_id,
             modifier_id: modifier.id,
             change: unit_health_change(unit, modifier.regeneration_per_turn)
-        }));
+        });
     });
 
     for_units_with_modifier(Modifier_Id.item_armlet, (unit, applied, modifier) => {
-        defer_delta_by_unit(battle, unit, () => ({
+        submit_battle_delta(battle, {
             type: Delta_Type.modifier_effect_applied,
             handle_id: applied.handle_id,
             modifier_id: modifier.id,
             change: unit_health_change(unit, -Math.min(modifier.health_loss_per_turn, unit.health - 1))
-        }));
+        });
     });
 
     for_units_with_modifier(Modifier_Id.dark_seer_ion_shell, (unit, applied) => {
-        defer_delta_by_unit(battle, unit, () => {
-            if (applied.source.type != Source_Type.unit) return;
+        if (applied.source.type != Source_Type.unit) return;
 
-            for (const ability of applied.source.unit.abilities) {
-                if (ability.id != Ability_Id.dark_seer_ion_shell) continue;
+        for (const ability of applied.source.unit.abilities) {
+            if (ability.id != Ability_Id.dark_seer_ion_shell) continue;
 
-                const targets = query_units_for_no_target_ability(battle, unit, ability.shield_targeting);
+            const targets = query_units_for_no_target_ability(battle, unit, ability.shield_targeting);
 
-                return apply_ability_effect_delta({
-                    ability_id: Ability_Id.dark_seer_ion_shell,
-                    source_unit_id: unit.id,
-                    targets: targets.map(target => ({
-                        target_unit_id: target.id,
-                        change: health_change(target, -ability.damage_per_turn)
-                    }))
-                });
-            }
-        });
+            submit_battle_delta(battle, apply_ability_effect_delta({
+                ability_id: Ability_Id.dark_seer_ion_shell,
+                source_unit_id: unit.id,
+                targets: targets.map(target => ({
+                    target_unit_id: target.id,
+                    change: health_change(target, -ability.damage_per_turn)
+                }))
+            }));
+        }
     });
 
-    for_heroes_with_ability(Ability_Id.pocket_tower_attack, (unit, ability) => {
-        defer_delta_by_unit(battle, unit, () => {
-            if (is_unit_disarmed(unit)) return;
+    for_units_with_ability(Ability_Id.pocket_tower_attack, (unit, ability) => {
+        if (is_unit_disarmed(unit)) return;
 
-            const target = battle.random.in_array(
-                query_units_for_no_target_ability(battle, unit, ability.targeting).filter(target => !are_units_allies(unit, target))
-            );
+        const target = battle.random.in_array(
+            query_units_for_no_target_ability(battle, unit, ability.targeting).filter(target => !are_units_allies(unit, target))
+        );
 
-            if (!target) return;
+        if (!target) return;
 
-            const damage = calculate_basic_attack_damage_to_target(unit, target);
+        const damage = calculate_basic_attack_damage_to_target(unit, target);
 
-            return apply_ability_effect_delta({
-                ability_id: Ability_Id.pocket_tower_attack,
-                source_unit_id: unit.id,
-                target_unit_id: target.id,
-                damage_dealt: health_change(target, -damage)
-            });
-        });
+        submit_battle_delta(battle, apply_ability_effect_delta({
+            ability_id: Ability_Id.pocket_tower_attack,
+            source_unit_id: unit.id,
+            target_unit_id: target.id,
+            damage_dealt: health_change(target, -damage)
+        }));
     });
 
     for (const monster of battle.units) {
@@ -1967,7 +1887,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
             const target = battle.monster_targets.get(monster);
 
             if (target) {
-                defer_monster_try_retaliate(battle, monster, target);
+                monster_try_retaliate(battle, monster, target);
             }
         }
     }
@@ -2000,14 +1920,11 @@ export function try_take_turn_action(battle: Battle_Record, player: Battle_Playe
     if (!action_ok.ok) return;
 
     const initial_head = battle.delta_head;
-    const new_deltas = turn_action_to_new_deltas(battle, action_ok, action);
 
-    if (new_deltas) {
-        submit_battle_deltas(battle, new_deltas);
+    submit_turn_action(battle, action_ok, action);
 
+    if (initial_head != battle.delta_head) {
         return get_battle_deltas_after(battle, initial_head);
-    } else {
-        return;
     }
 }
 
@@ -2022,26 +1939,15 @@ function get_next_turning_player_id(battle: Battle_Record): Battle_Player_Id {
     return battle.players[next_index].id;
 }
 
+function submit_battle_delta(battle: Battle_Record, delta: Delta) {
+    submit_battle_deltas(battle, [ delta ]);
+}
+
 export function submit_battle_deltas(battle: Battle_Record, battle_deltas: Delta[]) {
     battle.deltas.push(...battle_deltas);
 
-    while (battle.deltas.length != battle.delta_head || battle.deferred_actions.length > 0) {
+    while (battle.deltas.length != battle.delta_head) {
         catch_up_to_head(battle);
-
-        const action = battle.deferred_actions.shift();
-
-        if (action) {
-            action();
-        }
-    }
-
-    if (battle.end_turn_queued) {
-        battle.end_turn_queued = false;
-
-        submit_battle_deltas(battle, [{
-            type: Delta_Type.end_turn,
-            start_turn_of_player_id: get_next_turning_player_id(battle)
-        }]);
     }
 
     if (!battle.has_finished) {
@@ -2135,11 +2041,9 @@ export function make_battle_record(battle_id: Battle_Id,
         ...make_battle(players, grid_size.x, grid_size.y),
         id: battle_id,
         id_generator: id_generator,
-        deferred_actions: [],
         random: random,
         random_seed: random.int_range(0, 65536),
         monster_targets: new Map(),
-        end_turn_queued: false,
         world_origin: world_origin,
         receive_event: on_battle_event
     };
@@ -2174,40 +2078,36 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
         }
     }
 
-    const spawn_deltas: Delta[] = [];
-
-    spawn_deltas.push(...battleground_spawns_to_spawn_deltas(id_generator, random, battleground.spawns));
+    submit_battle_deltas(battle, battleground_spawns_to_spawn_deltas(id_generator, random, battleground.spawns));
 
     for (const [player, participant] of battle_player_and_participant_pairs) {
         const heroes = participant.heroes;
         const creeps = participant.creeps;
 
-        // TODO this code is unsound
-        //      1. Doesn't account for trees or any obstacles (at this point trees haven't spawned yet)
-        //      2. Doesn't account for intersection deployment zones or players sharing the same zone
-        //      The solution here is deferring each spawn or making separate deltas which figure out
-        //      where to spawn by themselves
-        const free_cells = find_unoccupied_cells_in_deployment_zone_for_player(battle, player);
-        const hero_spawn_points = battle.random.pick_n_mutable(free_cells, heroes.length);
-        const creep_spawn_points = battle.random.pick_n_mutable(free_cells, creeps.length);
-
-        for (let index = 0; index < hero_spawn_points.length; index++) {
-            const hero = heroes[index];
-            spawn_deltas.push(spawn_hero(hero.id, player, hero_spawn_points[index].position, hero.type, hero.health));
+        // @Performance
+        function random_spawn_cell() {
+            return random.in_array(find_unoccupied_cells_in_deployment_zone_for_player(battle, player));
         }
 
-        for (let index = 0; index < creep_spawn_points.length; index++) {
-            const creep = creeps[index];
-            spawn_deltas.push(spawn_creep(creep.id, player, creep_spawn_points[index].position, creep.type, creep.health));
+        for (const hero of heroes) {
+            const spawn_at = random_spawn_cell();
+            if (!spawn_at) break;
+
+            submit_battle_delta(battle, spawn_hero(hero.id, player, spawn_at.position, hero.type, hero.health));
         }
 
-        spawn_deltas.push(get_starting_gold(player));
-        spawn_deltas.push(...participant.spells.map(spell => draw_spell_card(spell.id, player, spell.spell)));
+        for (const creep of creeps) {
+            const spawn_at = random_spawn_cell();
+            if (!spawn_at) break;
+
+            submit_battle_delta(battle, spawn_creep(creep.id, player, spawn_at.position, creep.type, creep.health));
+        }
+
+        submit_battle_delta(battle, get_starting_gold(player));
+        submit_battle_deltas(battle, participant.spells.map(spell => draw_spell_card(spell.id, player, spell.spell)));
     }
 
-    spawn_deltas.push({ type: Delta_Type.game_start });
-
-    submit_battle_deltas(battle, spawn_deltas);
+    submit_battle_delta(battle, { type: Delta_Type.game_start });
 
     return battle;
 }
@@ -2280,8 +2180,10 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
         }
 
         case "skipturn": {
-            battle.end_turn_queued = true;
-            submit_battle_deltas(battle, []);
+            submit_battle_delta(battle, {
+                type: Delta_Type.end_turn,
+                start_turn_of_player_id: get_next_turning_player_id(battle)
+            });
 
             break;
         }

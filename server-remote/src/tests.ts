@@ -158,6 +158,37 @@ function test_health_modifiers_decrease_health_properly() {
     hero.assert().has_health(starting_health + bonus);
 }
 
+function test_pocket_tower_attacks_at_the_end_of_the_turn() {
+    const battle = test_battle();
+
+    battle.for_test_player().spawn_hero(Hero_Type.dark_seer, xy(0, 0));
+
+    const enemy = battle.for_enemy_player().spawn_hero(Hero_Type.pudge, xy(5, 5));
+
+    let expected_health = enemy.unit.health;
+
+    battle.start();
+    battle.for_test_player().draw_spell_card(Spell_Id.pocket_tower).use_at(xy(6, 6));
+
+    enemy.assert().has_health(expected_health);
+
+    const tower = battle.battle.units.find(unit => unit.supertype == Unit_Supertype.creep && unit.type == Creep_Type.pocket_tower);
+
+    if (!tower) {
+        throw "Pocket tower not spawned";
+    }
+
+    battle.for_test_player().end_turn();
+
+    expected_health -= get_attack_damage(tower);
+    enemy.assert().has_health(expected_health);
+
+    battle.for_enemy_player().end_turn();
+
+    expected_health -= get_attack_damage(tower);
+    enemy.assert().has_health(expected_health);
+}
+
 run_tests([
     test_player_can_spawn_hero_from_hand,
     test_player_cant_spawn_hero_outside_deployment_zone,
@@ -166,5 +197,6 @@ run_tests([
     test_game_over_when_all_enemies_die,
     test_ember_spirit_fire_remnant_ability_swap_working_correctly,
     test_health_modifiers_increase_current_health_along_with_maximum,
-    test_health_modifiers_decrease_health_properly
+    test_health_modifiers_decrease_health_properly,
+    test_pocket_tower_attacks_at_the_end_of_the_turn
 ]);

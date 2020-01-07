@@ -88,6 +88,19 @@ class For_Player {
         return new For_Player_Hero_Card(this.test, this.player, id);
     }
 
+    draw_spell_card(spell: Spell_Id) {
+        const id = this.test.battle.id_generator() as Card_Id;
+
+        submit_battle_deltas(this.test.battle, [{
+            type: Delta_Type.draw_spell_card,
+            card_id: id,
+            player_id: this.player.id,
+            spell_id: spell
+        }]);
+
+        return new For_Player_Spell_Card(this.test, this.player, id);
+    }
+
     spawn_hero(hero: Hero_Type, at: XY) {
         const id = this.test.battle.id_generator() as Unit_Id;
 
@@ -143,6 +156,32 @@ class For_Player_Hero_Card {
     use(at: XY) {
         try_take_turn_action(this.test.battle, this.player, {
             type: Action_Type.use_hero_card,
+            card_id: this.card_id,
+            at: at
+        });
+
+        return this;
+    }
+}
+
+class For_Player_Spell_Card {
+    test: Test_Battle;
+    player: Battle_Player;
+    card_id: Card_Id;
+
+    constructor(test: Test_Battle, player: Battle_Player, card_id: Card_Id) {
+        this.test = test;
+        this.player = player;
+        this.card_id = card_id;
+    }
+
+    id() {
+        return this.card_id;
+    }
+
+    use_at(at: XY) {
+        try_take_turn_action(this.test.battle, this.player, {
+            type: Action_Type.use_ground_target_spell_card,
             card_id: this.card_id,
             at: at
         });

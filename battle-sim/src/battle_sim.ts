@@ -46,6 +46,7 @@ type Battle = {
     turning_player: Battle_Player
     grid: Grid<Cell>
     receive_event: (battle: Battle, event: Battle_Event) => void
+    event_queue: Battle_Event[]
 }
 
 type Battle_Player = {
@@ -442,6 +443,7 @@ function make_battle(players: Battle_Player[], grid_width: number, grid_height: 
             size: xy(grid_width, grid_height),
             cells: []
         },
+        event_queue: [],
         receive_event: () => {}
     }
 }
@@ -720,6 +722,16 @@ function catch_up_to_head(battle: Battle) {
         for (; battle.delta_head < target_head; battle.delta_head++) {
             collapse_delta(battle, battle.deltas[battle.delta_head]);
         }
+
+        // Drain the event queue
+        while (battle.event_queue.length != 0) {
+            const processing_events = battle.event_queue.slice();
+            battle.event_queue.length = 0;
+
+            for (const event of processing_events) {
+                battle.receive_event(battle, event);
+            }
+        }
     }
 }
 
@@ -785,7 +797,7 @@ function change_health(battle: Battle, source: Source, target: Unit, change: Hea
 
         target.dead = true;
 
-        battle.receive_event(battle, {
+        push_event(battle, {
             type: Battle_Event_Type.health_changed,
             ...event_base,
             dead: true
@@ -794,7 +806,7 @@ function change_health(battle: Battle, source: Source, target: Unit, change: Hea
         return true;
     }
 
-    battle.receive_event(battle, {
+    push_event(battle, {
         type: Battle_Event_Type.health_changed,
         ...event_base,
         dead: false
@@ -810,7 +822,7 @@ function change_gold(player: Battle_Player, gold_change: number) {
 function add_card_to_hand(battle: Battle, player: Battle_Player, card: Card) {
     player.hand.push(card);
 
-    battle.receive_event(battle, {
+    push_event(battle, {
         type: Battle_Event_Type.card_added_to_hand,
         player: player,
         card: card
@@ -873,6 +885,10 @@ function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base 
     }
 }
 
+function push_event(battle: Battle, event: Battle_Event) {
+    battle.event_queue.push(event);
+}
+
 function unit_spawn_event(source: Source, unit: Unit, at: XY): Battle_Event {
     return {
         type: Battle_Event_Type.unit_spawned,
@@ -894,7 +910,7 @@ function create_creep(battle: Battle, source: Source, owner: Battle_Player, unit
 
     occupy_cell(battle, at);
 
-    battle.receive_event(battle, unit_spawn_event(source, creep, at));
+    push_event(battle, unit_spawn_event(source, creep, at));
 
     return creep;
 }
@@ -931,7 +947,7 @@ function apply_modifier(battle: Battle, source: Source, target: Unit, applicatio
 
     update_unit_state_from_modifiers(target);
 
-    battle.receive_event(battle, {
+    push_event(battle, {
         type: Battle_Event_Type.modifier_applied,
         source: source,
         target: target,
@@ -1647,7 +1663,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
             occupy_cell(battle, delta.at_position);
 
-            battle.receive_event(battle, unit_spawn_event(no_source(), hero, delta.at_position));
+            push_event(battle, unit_spawn_event(no_source(), hero, delta.at_position));
 
             break;
         }
@@ -1662,7 +1678,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
             occupy_cell(battle, delta.at_position);
 
-            battle.receive_event(battle, unit_spawn_event(no_source(), monster, delta.at_position));
+            push_event(battle, unit_spawn_event(no_source(), monster, delta.at_position));
 
             break;
         }
