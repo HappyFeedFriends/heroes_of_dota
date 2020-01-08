@@ -134,7 +134,7 @@ type Move_Delta_Paths = Record<number, XY[]>
 
 type Visualizer_Unit_Data_Base = Unit_Stats & {
     id: Unit_Id
-    modifiers: Modifier_Id[]
+    modifiers: Modifier_Data[]
     hidden: boolean
 }
 
@@ -158,9 +158,27 @@ type Visualizer_Player_Data = {
     gold: number
 }
 
+type Modifier_Data_Source = {
+    type: Source_Type.none
+} | {
+    type: Source_Type.item
+    item_id: Item_Id
+} | {
+    type: Source_Type.modifier
+    modifier_id: Modifier_Id
+} | {
+    type: Source_Type.player
+    player_id: Battle_Player_Id
+} | {
+    type: Source_Type.unit
+    unit_id: Unit_Id
+    ability_id: Ability_Id
+}
+
 type Modifier_Data = {
     modifier_handle_id: Modifier_Handle_Id
     modifier: Modifier
+    source: Modifier_Data_Source
 }
 
 type Player_Net_Table_Base = {

@@ -80,7 +80,7 @@ type UI_Unit_Data_Base = {
     stat_max_move_points: Stat_Indicator
     stat_max_health: Stat_Indicator
 
-    modifiers: Modifier_Id[]
+    modifiers: Modifier_Data[]
     modifier_bar: Panel
 
     stats: Unit_Stats
@@ -1563,6 +1563,34 @@ function move_order_particle(world_position: XYZ) {
 }
 
 function make_battle_snapshot(): Battle_Snapshot {
+    function modifier_source_to_network_model(source: Source): Modifier_Data_Source {
+        switch (source.type) {
+            case Source_Type.none: return { type: source.type };
+
+            case Source_Type.item: return {
+                type: source.type,
+                item_id: source.item_id
+            };
+
+            case Source_Type.modifier: return {
+                type: source.type,
+                modifier_id: source.applied.modifier.id
+            };
+
+            case Source_Type.player: return {
+                type: source.type,
+                player_id: source.player.id
+            };
+
+            case Source_Type.unit: return {
+                type: source.type,
+                unit_id: source.unit.id,
+                ability_id: source.ability_id
+            };
+        }
+    }
+
+
     return {
         has_started: battle.has_started,
         players: battle.players.map(player => ({
@@ -1581,7 +1609,8 @@ function make_battle_snapshot(): Battle_Snapshot {
                     bonus: unit.bonus,
                     modifiers: unit.modifiers.map(modifier => ({
                         modifier_handle_id: modifier.handle_id,
-                        modifier: modifier.modifier
+                        modifier: modifier.modifier,
+                        source: modifier_source_to_network_model(modifier.source)
                     }))
                 };
 
@@ -1764,7 +1793,7 @@ function get_ability_icon(ability_id: Ability_Id): string {
     }
 }
 
-function get_modifier_icon(modifier_id: Modifier_Id): string {
+function get_modifier_icon(applied: Modifier_Data): string {
     function from_ability(ability_id: Ability_Id): string {
         return `spellicons/${get_ability_icon(ability_id)}`
     }
@@ -1773,41 +1802,7 @@ function get_modifier_icon(modifier_id: Modifier_Id): string {
         return `items/${get_item_icon_name(item_id)}`;
     }
 
-    switch (modifier_id) {
-        case Modifier_Id.item_assault_cuirass: return from_item(Item_Id.assault_cuirass);
-        case Modifier_Id.item_boots_of_travel: return from_item(Item_Id.boots_of_travel);
-        case Modifier_Id.item_divine_rapier: return from_item(Item_Id.divine_rapier);
-        case Modifier_Id.item_heart_of_tarrasque: return from_item(Item_Id.heart_of_tarrasque);
-        case Modifier_Id.item_mask_of_madness: return from_item(Item_Id.mask_of_madness);
-        case Modifier_Id.item_satanic: return from_item(Item_Id.satanic);
-        case Modifier_Id.item_armlet: return from_item(Item_Id.armlet);
-        case Modifier_Id.item_boots_of_speed: return from_item(Item_Id.boots_of_speed);
-        case Modifier_Id.item_blades_of_attack: return from_item(Item_Id.blades_of_attack);
-        case Modifier_Id.item_belt_of_strength: return from_item(Item_Id.belt_of_strength);
-        case Modifier_Id.item_morbid_mask: return from_item(Item_Id.morbid_mask);
-        case Modifier_Id.item_chainmail: return from_item(Item_Id.chainmail);
-        case Modifier_Id.item_octarine_core: return from_item(Item_Id.octarine_core);
-        case Modifier_Id.item_basher_bearer: return from_item(Item_Id.basher);
-        case Modifier_Id.item_basher_target: return from_item(Item_Id.basher);
-
-        case Modifier_Id.dragon_knight_dragon_tail: return from_ability(Ability_Id.dragon_knight_dragon_tail);
-        case Modifier_Id.dragon_knight_elder_dragon_form: return from_ability(Ability_Id.dragon_knight_elder_dragon_form);
-        case Modifier_Id.lion_hex: return from_ability(Ability_Id.lion_hex);
-        case Modifier_Id.lion_impale: return from_ability(Ability_Id.lion_impale);
-        case Modifier_Id.skywrath_ancient_seal: return from_ability(Ability_Id.skywrath_ancient_seal);
-        case Modifier_Id.skywrath_concussive_shot: return from_ability(Ability_Id.skywrath_concussive_shot);
-        case Modifier_Id.tide_anchor_smash: return from_ability(Ability_Id.tide_anchor_smash);
-        case Modifier_Id.tide_gush: return from_ability(Ability_Id.tide_gush);
-        case Modifier_Id.tide_ravage: return from_ability(Ability_Id.tide_ravage);
-        case Modifier_Id.mirana_arrow: return from_ability(Ability_Id.mirana_arrow);
-        case Modifier_Id.venge_magic_missile: return from_ability(Ability_Id.venge_magic_missile);
-        case Modifier_Id.venge_wave_of_terror: return from_ability(Ability_Id.venge_wave_of_terror);
-        case Modifier_Id.dark_seer_ion_shell: return from_ability(Ability_Id.dark_seer_ion_shell);
-        case Modifier_Id.dark_seer_surge: return from_ability(Ability_Id.dark_seer_surge);
-        case Modifier_Id.ember_searing_chains: return from_ability(Ability_Id.ember_searing_chains);
-        case Modifier_Id.ember_fire_remnant: return from_ability(Ability_Id.ember_fire_remnant);
-        case Modifier_Id.ember_fire_remnant_caster: return from_ability(Ability_Id.ember_activate_fire_remnant);
-
+    switch (applied.modifier.id) {
         case Modifier_Id.spell_euls_scepter: return "items/cyclone";
         case Modifier_Id.spell_buckler: return "items/buckler";
         case Modifier_Id.spell_drums_of_endurance: return "items/ancient_janggo";
@@ -1817,6 +1812,16 @@ function get_modifier_icon(modifier_id: Modifier_Id): string {
 
         case Modifier_Id.returned_to_hand: return "items/tpscroll";
     }
+
+    if (applied.source.type == Source_Type.item) {
+        return from_item(applied.source.item_id);
+    }
+
+    if (applied.source.type == Source_Type.unit) {
+        return from_ability(applied.source.ability_id);
+    }
+
+    return "";
 }
 
 function get_full_ability_icon_path(id: Ability_Id): string {

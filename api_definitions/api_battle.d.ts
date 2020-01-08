@@ -626,6 +626,14 @@ type Delta =
     Delta_Game_Start |
     Delta_Game_Over
 
+declare const enum Source_Type {
+    none = 0,
+    unit = 1,
+    player = 2,
+    item = 3,
+    modifier = 4
+}
+
 type Modifier_Application = {
     modifier_handle_id: Modifier_Handle_Id
     modifier: Modifier

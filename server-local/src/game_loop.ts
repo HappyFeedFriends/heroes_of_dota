@@ -154,7 +154,7 @@ function unit_to_visualizer_unit_data(unit: Unit): Visualizer_Unit_Data {
     const base: Visualizer_Unit_Data_Base = {
         ...copy(unit as Unit_Stats),
         id: unit.id,
-        modifiers: unit.modifiers.map(data => data.modifier.id),
+        modifiers: unit.modifiers,
         hidden: unit.hidden
     };
 
@@ -510,6 +510,7 @@ function main() {
     link_modifier("Modifier_Activity_Override", "modifiers/modifier_activity_override");
     link_modifier("Modifier_Dummy", "modifiers/modifier_dummy");
     link_modifier("Modifier_Stunned", "modifiers/modifier_stunned");
+    link_modifier("Modifier_Battle_Stunned", "modifiers/modifier_battle_stunned");
 
     if (IsInToolsMode()) {
         link_modifier("Modifier_Editor_Npc_Type", "modifiers/modifier_editor");

@@ -1,11 +1,3 @@
-declare const enum Source_Type {
-    none = 0,
-    unit = 1,
-    player = 2,
-    item = 3,
-    modifier = 4
-}
-
 type Source_None = {
     type: Source_Type.none
 }
