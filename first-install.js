@@ -6,11 +6,10 @@ const readline = require("readline").createInterface({
 
 const base = { stdio: "inherit" };
 
-exec("npm install -g typescript", base);
 exec("npm install -g less", base);
 
-exec("npm install", { cwd: "server-remote", ...base });
-exec("npm install", { cwd: "codegen", ...base });
+exec("npm ci", { cwd: "server-remote", ...base });
+exec("npm ci", { cwd: "codegen", ...base });
 
 // TODO don't do this if -nodota is specified
 readline.question(`Input steam folder`, steam => {

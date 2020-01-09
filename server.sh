@@ -5,11 +5,11 @@ git submodule foreach git checkout master
 git submodule foreach git pull origin master
 
 pushd server-remote
-npm install
+npm ci
 popd
 
 pushd codegen
-npm install
+npm ci
 npx ttsc -p ../battle-sim/tsconfig.json
 npx ttsc -p ../client-web/tsconfig.json
 npx ttsc -p ../server-remote/tsconfig.json
