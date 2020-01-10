@@ -209,10 +209,13 @@ const control_panel: Control_Panel = {
     hero_rows: []
 };
 
-const hand_base_x = 400;
-const hand_base_y = 957;
+declare const enum Const {
+    hand_base_x = 400,
+    hand_base_y = 957,
 
-const battle_cell_size = 144;
+    battle_cell_size = 144
+}
+
 const hand: Card_Panel[] = [];
 
 let card_error_shown_at = 0;
@@ -511,7 +514,7 @@ function create_cell_particle_at(position: XYZ) {
     const particle = Particles.CreateParticle("particles/ui/square_overlay.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
 
     Particles.SetParticleControl(particle, 0, xyz_to_array(position));
-    Particles.SetParticleControl(particle, 1, [battle_cell_size / 2, 0, 0]);
+    Particles.SetParticleControl(particle, 1, [Const.battle_cell_size / 2, 0, 0]);
     Particles.SetParticleControl(particle, 2, [255, 255, 255]);
     Particles.SetParticleControl(particle, 3, [50, 0, 0]);
 
@@ -654,7 +657,7 @@ const color_yellow = rgb(255, 255, 0);
 
 function create_particle_for_outline_edge(edge: Edge, world_origin: XYZ, start: XY, finish: XY, color: RGB) {
     const fx = Particles.CreateParticle("particles/ui/highlight_rope.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
-    const half = battle_cell_size / 2;
+    const half = Const.battle_cell_size / 2;
     const height = 32;
 
     register_particle_for_reload(fx);
@@ -1540,15 +1543,15 @@ function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In
 
 function world_position_to_battle_position(world_origin: XY, position: XYZ): XY {
     return {
-        x: Math.floor((position.x - world_origin.x) / battle_cell_size),
-        y: Math.floor((position.y - world_origin.y) / battle_cell_size)
+        x: Math.floor((position.x - world_origin.x) / Const.battle_cell_size),
+        y: Math.floor((position.y - world_origin.y) / Const.battle_cell_size)
     }
 }
 
 function battle_position_to_world_position_center(world_origin: XYZ, position: XY): XYZ {
     return {
-        x: world_origin.x + position.x * battle_cell_size + battle_cell_size / 2,
-        y: world_origin.y + position.y * battle_cell_size + battle_cell_size / 2,
+        x: world_origin.x + position.x * Const.battle_cell_size + Const.battle_cell_size / 2,
+        y: world_origin.y + position.y * Const.battle_cell_size + Const.battle_cell_size / 2,
         z: world_origin.z
     }
 }
@@ -1840,7 +1843,7 @@ function create_level_bar(parent: Panel, id: string): Level_Bar {
         pips: []
     };
 
-    for (let index = 0; index < max_unit_level; index++) {
+    for (let index = 0; index < Const.max_unit_level; index++) {
         const pip = $.CreatePanel("Panel", panel, "");
         pip.AddClass("level_pip");
         level_bar.pips.push(pip);
@@ -2482,7 +2485,7 @@ function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | Whee
 
 function create_card_ui(root: Panel, card: Card) {
     const container = create_card_container_ui(root, false, card.type);
-    container.style.position = `${hand_base_x - 400}px ${hand_base_y}px 0`;
+    container.style.position = `${Const.hand_base_x - 400}px ${Const.hand_base_y}px 0`;
 
     switch (card.type) {
         case Card_Type.hero: {
@@ -2711,8 +2714,8 @@ function update_hand() {
         }
 
         const this_card_hovered = (selection.type != Selection_Type.card && card.hovered);
-        const y = this_card_hovered ? hand_base_y - 150 : hand_base_y ;
-        card.panel.style.position = `${hand_base_x + index * 100 - (this_card_hovered ? 50 : 0)}px ${y}px 0`;
+        const y = this_card_hovered ? Const.hand_base_y - 150 : Const.hand_base_y ;
+        card.panel.style.position = `${Const.hand_base_x + index * 100 - (this_card_hovered ? 50 : 0)}px ${y}px 0`;
 
         if (selection.type != Selection_Type.card && GameUI.IsMouseDown(0) && card.panel.BHasHoverStyle()) {
             (() => {

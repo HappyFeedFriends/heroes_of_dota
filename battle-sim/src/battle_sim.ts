@@ -173,8 +173,10 @@ type Grid<T extends Cell_Like> = {
 
 type Cell_Like = { position: XY };
 
-const max_unit_level = 3;
-const shop_range = 1;
+declare const enum Const {
+    max_unit_level = 3,
+    shop_range = 1
+}
 
 function xy(x: number, y: number): XY {
     return { x: x, y: y };
@@ -290,7 +292,7 @@ function shop_at(battle: Battle, at: XY) : Shop | undefined {
 }
 
 function is_point_in_shop_range(xy: XY, shop: Shop) {
-    return rectangular(xy, shop.position) <= shop_range;
+    return rectangular(xy, shop.position) <= Const.shop_range;
 }
 
 function is_point_in_deployment_zone(battle: Battle, xy: XY, player: Battle_Player) {

@@ -119,11 +119,9 @@ type Unit_Creation_Info = {
 
 declare let battle: Battle;
 
-const battle_cell_size = 144;
-const rune_highlight = "particles/world_environmental_fx/rune_ambient_01.vpcf";
-
-function get_battle_cell_size(): number {
-    return battle_cell_size;
+declare const enum Const {
+    battle_cell_size = 144,
+    rune_highlight = "particles/world_environmental_fx/rune_ambient_01.vpcf"
 }
 
 function get_battle_remote_head(): number {
@@ -210,8 +208,8 @@ function player_source(player: Battle_Player): Modifier_Data_Source {
 }
 
 function battle_position_to_world_position_center(world_origin: Vector, position: XY): Vector {
-    const x = world_origin.x + position.x * battle_cell_size + battle_cell_size / 2;
-    const y = world_origin.y + position.y * battle_cell_size + battle_cell_size / 2;
+    const x = world_origin.x + position.x * Const.battle_cell_size + Const.battle_cell_size / 2;
+    const y = world_origin.y + position.y * Const.battle_cell_size + Const.battle_cell_size / 2;
 
     return Vector(x, y, GetGroundHeight(Vector(x, y), undefined));
 }
@@ -609,7 +607,7 @@ function linear_projectile_with_targets<T>(
     action: (target: T) => void
 ) {
     const start_time = GameRules.GetGameTime();
-    const time_to_travel = distance_in_cells * battle_cell_size / travel_speed;
+    const time_to_travel = distance_in_cells * Const.battle_cell_size / travel_speed;
     const world_from = battle_position_to_world_position_center(battle.world_origin, from);
     const direction = Vector(towards.x - from.x, towards.y - from.y).Normalized();
 
@@ -711,7 +709,7 @@ function pudge_hook(game: Game, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
 
     wait(0.15);
 
-    const distance_to_travel = battle_cell_size * Math.max(Math.abs(travel_target.x - pudge.position.x), Math.abs(travel_target.y - pudge.position.y));
+    const distance_to_travel = Const.battle_cell_size * Math.max(Math.abs(travel_target.x - pudge.position.x), Math.abs(travel_target.y - pudge.position.y));
     const time_to_travel = distance_to_travel / travel_speed;
 
     const chain = fx("particles/units/heroes/hero_pudge/pudge_meathook.vpcf")
@@ -806,7 +804,7 @@ function tide_ravage(game: Game, caster: Unit, cast: Delta_Ability_Tide_Ravage) 
 
     // @HardcodedConstant
     for (let distance = 1; distance <= 5; distance++) {
-        fx.with_point_value(distance, distance * battle_cell_size * 0.85);
+        fx.with_point_value(distance, distance * Const.battle_cell_size * 0.85);
     }
 
     fx.release();
@@ -1112,7 +1110,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
 
             // @HardcodedConstant
             const square_side = 3;
-            const circle_radius = square_side * battle_cell_size / 2;
+            const circle_radius = square_side * Const.battle_cell_size / 2;
             const arbitrary_long_duration = 100;
             const spell_fx = fx("particles/units/heroes/hero_skywrath_mage/skywrath_mage_mystic_flare_ambient.vpcf")
                 .with_point_value(0, world_target.x, world_target.y, world_target.z)
@@ -1161,7 +1159,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
 
             function fire_breath_projectile(distance_in_cells: number, from: Vector, direction: Vector) {
                 const speed = 1500;
-                const travel_time = battle_cell_size * distance_in_cells  / speed;
+                const travel_time = Const.battle_cell_size * distance_in_cells  / speed;
                 const particle_velocity = direction * speed as Vector;
 
                 const particle = fx("particles/units/heroes/hero_dragon_knight/dragon_knight_breathe_fire.vpcf")
@@ -1175,7 +1173,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             }
 
             const stem_length = 3; // @HardcodedConstant
-            const final_position = world_from + direction * (stem_length * battle_cell_size) as Vector;
+            const final_position = world_from + direction * (stem_length * Const.battle_cell_size) as Vector;
 
             fire_breath_projectile(stem_length, world_from, direction);
 
@@ -1380,7 +1378,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
 
             fx("particles/units/heroes/hero_dark_seer/dark_seer_vacuum.vpcf")
                 .with_vector_value(0, world_to)
-                .with_point_value(1, (radius + 0.5) * battle_cell_size)
+                .with_point_value(1, (radius + 0.5) * Const.battle_cell_size)
                 .release();
 
             const targets = filter_and_map_existing_units(cast.targets);
@@ -2972,7 +2970,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
                 type: delta.rune_type,
                 position: delta.at,
                 handle: handle,
-                highlight_fx: fx_follow_unit(rune_highlight, { handle: handle }),
+                highlight_fx: fx_follow_unit(Const.rune_highlight, { handle: handle }),
                 rune_fx: create_fx_for_rune_handle(delta.rune_type, { handle: handle })
             });
 
@@ -3451,7 +3449,7 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
             type: rune.type,
             handle: handle,
             position: rune.position,
-            highlight_fx: fx_follow_unit(rune_highlight, { handle: handle }),
+            highlight_fx: fx_follow_unit(Const.rune_highlight, { handle: handle }),
             rune_fx: create_fx_for_rune_handle(rune.type, { handle: handle })
         };
     });

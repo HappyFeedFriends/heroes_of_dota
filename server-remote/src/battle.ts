@@ -1022,7 +1022,7 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
                 item_id: item.id,
-                new_level: Math.min(hero.level + 1, max_unit_level)
+                new_level: Math.min(hero.level + 1, Const.max_unit_level)
             }
         }
 
@@ -1704,7 +1704,7 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                         change: bounty
                     });
 
-                    if (attacker.supertype == Unit_Supertype.hero && attacker.level < max_unit_level) {
+                    if (attacker.supertype == Unit_Supertype.hero && attacker.level < Const.max_unit_level) {
                         submit_battle_delta(battle, {
                             type: Delta_Type.level_change,
                             unit_id: attacker.id,

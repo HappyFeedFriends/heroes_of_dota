@@ -298,7 +298,7 @@ function fire_event<T extends To_Client_Event_Type>(type: T, payload: Find_To_Cl
 }
 
 function get_camera_look_at_for_battle(origin: Vector, grid_w: number, grid_h: number) {
-    return origin + Vector(grid_w, grid_h - 2) * get_battle_cell_size() / 2 as Vector;
+    return origin + Vector(grid_w, grid_h - 2) * Const.battle_cell_size / 2 as Vector;
 }
 
 function process_state_transition(game: Game, current_state: Player_State, next_state: Player_State_Data) {
@@ -355,7 +355,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         const vision_h = grid_h + 3;
 
         const camera_look_at = get_camera_look_at_for_battle(battle.world_origin, grid_w, grid_h);
-        const radius = Math.sqrt(vision_w * vision_w + vision_h * vision_h) / 2 * get_battle_cell_size();
+        const radius = Math.sqrt(vision_w * vision_w + vision_h * vision_h) / 2 * Const.battle_cell_size;
 
         battle.camera_dummy.SetAbsOrigin(camera_look_at);
         battle.camera_dummy.SetDayTimeVisionRange(radius);

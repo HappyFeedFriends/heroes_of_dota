@@ -43,8 +43,10 @@ const deck_counter_spells = make_deck_counter(deck_footer, "spells", `A deck req
 const collection_left_page_switch = collection_ui.FindChildTraverse("page_switch_left");
 const collection_right_page_switch = collection_ui.FindChildTraverse("page_switch_right");
 
-const cards_in_row = 4;
-const card_rows = 2;
+declare const enum Const {
+    cards_in_row = 4,
+    card_rows = 2
+}
 
 collection_left_page_switch.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
     if (current_page > 0) {
@@ -160,8 +162,8 @@ function refresh_collection_hero_page(page: Collection_Page) {
         });
     }
 
-    for (let index = 0; index < card_rows * cards_in_row; index++) {
-        if (index % cards_in_row == 0) {
+    for (let index = 0; index < Const.card_rows * Const.cards_in_row; index++) {
+        if (index % Const.cards_in_row == 0) {
             current_row = $.CreatePanel("Panel", page_root, "");
             current_row.AddClass("page_row");
         }

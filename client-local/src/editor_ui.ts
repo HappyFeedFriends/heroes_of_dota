@@ -733,8 +733,8 @@ function battleground_editor_set_grid_brush_selection_state(editor: Battleground
                 }
             });
 
-            const new_world_x = editor.grid_world_origin.x + battle_cell_size * selection.min.x;
-            const new_world_y = editor.grid_world_origin.y + battle_cell_size * selection.min.y;
+            const new_world_x = editor.grid_world_origin.x + Const.battle_cell_size * selection.min.x;
+            const new_world_y = editor.grid_world_origin.y + Const.battle_cell_size * selection.min.y;
             const new_world_z = await async_local_api_request(Local_Api_Request_Type.get_ground_z, { x: new_world_x, y: new_world_y });
 
             editor.grid_world_origin = { x: new_world_x, y: new_world_y, z: new_world_z.z };

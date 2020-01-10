@@ -28,8 +28,10 @@ type Npc_Definition = {
     hit_sound: string
 }
 
-const movement_history_submit_rate = 0.7;
-const movement_history_length = 30;
+declare const enum Const {
+    movement_history_submit_rate = 0.7,
+    movement_history_length = 30
+}
 
 function submit_player_global_map_movement(game: Game) {
     const request = {
@@ -226,7 +228,7 @@ function update_main_player_movement_history(main_player: Main_Player) {
         location_y: location.y
     });
 
-    if (main_player.movement_history.length > movement_history_length) {
+    if (main_player.movement_history.length > Const.movement_history_length) {
         main_player.movement_history.shift();
     }
 }
@@ -234,7 +236,7 @@ function update_main_player_movement_history(main_player: Main_Player) {
 function submit_and_query_movement_loop(game: Game, map: Map_State) {
     while (true) {
         wait_until(() => game.state == Player_State.on_global_map);
-        wait(movement_history_submit_rate);
+        wait(Const.movement_history_submit_rate);
 
         fork(() => submit_player_global_map_movement(game));
         fork(() => query_other_entities_movement(game, map));
