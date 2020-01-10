@@ -3307,8 +3307,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
 
         case Delta_Type.game_over: {
             fire_event(To_Client_Event_Type.show_game_over_ui, {
-                winner_player_id: delta.winner_player_id
-
+                winner_player_id: delta.result.draw ? undefined : delta.result.winner_player_id
             });
 
             wait(5);

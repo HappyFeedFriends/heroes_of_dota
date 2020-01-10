@@ -1,3 +1,9 @@
+declare const enum Battle_Status {
+    not_started = 0,
+    in_progress = 1,
+    finished = 2
+}
+
 type Source_None = {
     type: Source_Type.none
 }
@@ -26,8 +32,14 @@ type Source_Modifier = {
 type Source = Source_None | Source_Unit | Source_Item | Source_Player | Source_Modifier
 
 type Battle = {
-    has_started: boolean
-    has_finished: boolean
+    state: {
+        status: Battle_Status.not_started
+    } | {
+        status: Battle_Status.in_progress
+    } | {
+        status: Battle_Status.finished
+        winner?: Battle_Player
+    }
     delta_head: number
     units: Unit[]
     runes: Rune[]
@@ -421,8 +433,7 @@ function make_battle_player(participant: Battle_Participant_Info) {
 
 function make_battle(players: Battle_Player[], grid_width: number, grid_height: number): Battle {
     return {
-        has_started: false,
-        has_finished: false,
+        state: { status: Battle_Status.not_started },
         delta_head: 0,
         units: [],
         runes: [],
@@ -1561,7 +1572,7 @@ function collapse_item_equip(battle: Battle, hero: Hero, delta: Delta_Equip_Item
 function collapse_delta(battle: Battle, delta: Delta): void {
     switch (delta.type) {
         case Delta_Type.game_start: {
-            battle.has_started = true;
+            battle.state = { status: Battle_Status.in_progress };
             break;
         }
 
@@ -1968,7 +1979,20 @@ function collapse_delta(battle: Battle, delta: Delta): void {
         }
 
         case Delta_Type.game_over: {
-            battle.has_finished = true;
+            if (delta.result.draw) {
+                battle.state = {
+                    status: Battle_Status.finished,
+                };
+            } else {
+                const player = find_player_by_id(battle, delta.result.winner_player_id);
+                if (!player) break;
+
+                battle.state = {
+                    status: Battle_Status.finished,
+                    winner: player
+                }
+            }
+
             break;
         }
 

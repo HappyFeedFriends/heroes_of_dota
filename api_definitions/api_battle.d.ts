@@ -590,7 +590,12 @@ type Delta_Game_Start = {
 
 type Delta_Game_Over = {
     type: Delta_Type.game_over
-    winner_player_id: Battle_Player_Id
+    result: {
+        draw: false
+        winner_player_id: Battle_Player_Id
+    } | {
+        draw: true
+    }
 }
 
 type Delta =

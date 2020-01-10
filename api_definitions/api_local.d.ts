@@ -81,7 +81,7 @@ type To_Client_Event = {
 } | {
     type: To_Client_Event_Type.show_game_over_ui
     payload: {
-        winner_player_id: Battle_Player_Id
+        winner_player_id?: Battle_Player_Id
     }
 } | {
     type: To_Client_Event_Type.log_chat_debug_message

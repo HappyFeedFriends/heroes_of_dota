@@ -950,15 +950,23 @@ function delta_to_colored_line(game: Game_In_Battle, delta: Delta): Colored_Line
         }
 
         case Delta_Type.game_over: {
-            const player = find_player_by_id(game.battle, delta.winner_player_id);
+            const lines = [clr.plain("Game over!")];
 
-            if (!player) break;
+            if (delta.result.draw) {
+                lines.push(clr.plain(" Draw!"));
+            } else {
+                const player = find_player_by_id(game.battle, delta.result.winner_player_id);
 
-            return [
-                clr.plain("Game over! "),
-                clr.player_name(player),
-                clr.plain(" won")
-            ];
+                if (player) {
+                    lines.push(
+                        clr.plain(" "),
+                        clr.player_name(player),
+                        clr.plain(" won")
+                    );
+                }
+            }
+
+            return lines;
         }
 
         /* TODO repurpose this for modifiers

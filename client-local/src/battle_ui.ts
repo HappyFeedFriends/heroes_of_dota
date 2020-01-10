@@ -1592,7 +1592,7 @@ function make_battle_snapshot(): Battle_Snapshot {
 
 
     return {
-        has_started: battle.has_started,
+        has_started: battle.state.status == Battle_Status.in_progress,
         players: battle.players.map(player => ({
             id: player.id,
             gold: player.gold

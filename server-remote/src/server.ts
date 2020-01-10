@@ -599,7 +599,13 @@ register_api_handler(Api_Request_Type.authorize_steam_user, req => {
     });
 });
 
-export function report_battle_over(battle: Battle_Record, winner_entity: Battle_Participant_Map_Entity) {
+export function check_if_battle_is_over(battle: Battle_Record) {
+    if (battle.state.status == Battle_Status.finished) {
+        report_battle_over(battle, battle.state.winner?.map_entity);
+    }
+}
+
+function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Participant_Map_Entity) {
     function defeat_adventure_enemies(adventure: Ongoing_Adventure) {
         for (const defeated_player of battle.players) {
             const defeated_entity = defeated_player.map_entity;
@@ -904,6 +910,7 @@ register_api_handler(Api_Request_Type.take_battle_action, req => {
         const previous_head = battle.deltas.length;
         const deltas = try_take_turn_action(battle, player.online.battle_player, req.action);
 
+        check_if_battle_is_over(battle);
         check_and_try_perform_ai_actions(battle);
 
         if (deltas) {

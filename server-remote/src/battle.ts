@@ -1,4 +1,4 @@
-import {Id_Generator, import_battle_sim, report_battle_over} from "./server";
+import {Id_Generator, import_battle_sim} from "./server";
 import {XY} from "./common";
 import {Random} from "./random";
 
@@ -1582,26 +1582,6 @@ function get_next_entity_id(battle: Battle_Record) {
     return battle.id_generator();
 }
 
-function try_compute_battle_winner(battle: Battle_Record): Battle_Player | undefined {
-    if (!battle.has_started) {
-        return undefined;
-    }
-
-    let last_alive_unit_owner: Battle_Player | undefined = undefined;
-
-    for (const unit of battle.units) {
-        if (!unit.dead && unit.supertype != Unit_Supertype.monster) {
-            if (last_alive_unit_owner == undefined) {
-                last_alive_unit_owner = unit.owner;
-            } else if (last_alive_unit_owner != unit.owner) {
-                return undefined;
-            }
-        }
-    }
-
-    return last_alive_unit_owner;
-}
-
 function get_gold_for_killing(battle: Battle_Record, target: Unit): number {
     switch (target.supertype) {
         case Unit_Supertype.hero: {
@@ -1887,25 +1867,60 @@ function resolve_end_turn_effects(battle: Battle_Record) {
     }
 }
 
-function finish_battle(battle: Battle_Record, winner: Battle_Player) {
-    submit_battle_delta(battle, {
-        type: Delta_Type.game_over,
-        winner_player_id: winner.id
-    });
+function try_check_battle_over(battle: Battle_Record) {
+    if (battle.state.status != Battle_Status.in_progress) {
+        return;
+    }
 
-    report_battle_over(battle, winner.map_entity);
-}
+    type Check_Result = {
+        multiple_players_alive: true
+    } | {
+        multiple_players_alive: false
+        remaining_player?: Battle_Player
+    }
 
-function check_battle_over(battle: Battle_Record) {
-    const possible_winner = try_compute_battle_winner(battle);
+    function try_compute_battle_winner(): Check_Result {
+        let last_alive_unit_owner: Battle_Player | undefined = undefined;
 
-    if (possible_winner != undefined) {
-        finish_battle(battle, possible_winner);
+        for (const unit of battle.units) {
+            if (!unit.dead && unit.supertype != Unit_Supertype.monster) {
+                if (last_alive_unit_owner == undefined) {
+                    last_alive_unit_owner = unit.owner;
+                } else if (last_alive_unit_owner != unit.owner) {
+                    return {
+                        multiple_players_alive: true
+                    };
+                }
+            }
+        }
+
+        return {
+            multiple_players_alive: false,
+            remaining_player: last_alive_unit_owner
+        };
+    }
+
+    const result = try_compute_battle_winner();
+    if (result.multiple_players_alive) return;
+
+    if (result.remaining_player) {
+        submit_battle_delta(battle, {
+            type: Delta_Type.game_over,
+            result: {
+                draw: false,
+                winner_player_id: result.remaining_player.id
+            }
+        });
+    } else {
+        submit_battle_delta(battle, {
+            type: Delta_Type.game_over,
+            result: { draw: true }
+        });
     }
 }
 
 export function try_take_turn_action(battle: Battle_Record, player: Battle_Player, action: Turn_Action): Delta[] | undefined {
-    if (battle.has_finished) {
+    if (battle.state.status != Battle_Status.in_progress) {
         return;
     }
 
@@ -1917,9 +1932,7 @@ export function try_take_turn_action(battle: Battle_Record, player: Battle_Playe
 
     submit_turn_action(battle, action_ok, action);
 
-    if (!battle.has_finished) {
-        check_battle_over(battle);
-    }
+    try_check_battle_over(battle);
 
     if (initial_head != battle.delta_head) {
         return get_battle_deltas_after(battle, initial_head);
@@ -1940,9 +1953,7 @@ function get_next_turning_player_id(battle: Battle_Record): Battle_Player_Id {
 export function submit_external_battle_delta(battle: Battle_Record, delta: Delta) {
     submit_battle_delta(battle, delta);
 
-    if (!battle.has_finished) {
-        check_battle_over(battle);
-    }
+    try_check_battle_over(battle);
 }
 
 function submit_battle_delta(battle: Battle_Record, delta: Delta) {

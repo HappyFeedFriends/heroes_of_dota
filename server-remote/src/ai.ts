@@ -4,7 +4,7 @@ import {
     try_take_turn_action
 } from "./battle";
 import {performance} from "perf_hooks";
-import {import_battle_sim, random_seed} from "./server";
+import {check_if_battle_is_over, import_battle_sim, random_seed} from "./server";
 import {
     cell_size,
     debug,
@@ -26,6 +26,11 @@ type AI = {
 const black = 0x000000;
 const red = 0xff0000;
 const green = 0x00ff00;
+
+function take_ai_battle_action(ai: AI, action: Turn_Action) {
+    try_take_turn_action(ai.battle, ai.player, action);
+    check_if_battle_is_over(ai.battle);
+}
 
 function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
     const act_on_unit_permission = authorize_act_on_known_unit(ai.battle, actor);
@@ -191,14 +196,15 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
     return actions;
 }
 
-function try_use_any_card(battle: Battle_Record, ai: Battle_Player) {
-    const random_hero_card = battle.random.in_array(ai.hand.filter(card => card.type == Card_Type.hero));
+function try_use_any_card(ai: AI) {
+    const battle = ai.battle;
+    const random_hero_card = battle.random.in_array(ai.player.hand.filter(card => card.type == Card_Type.hero));
 
     if (random_hero_card) {
-        const random_unoccupied_position = battle.random.in_array(find_unoccupied_cells_in_deployment_zone_for_player(battle, ai));
+        const random_unoccupied_position = battle.random.in_array(find_unoccupied_cells_in_deployment_zone_for_player(battle, ai.player));
 
         if (random_unoccupied_position) {
-            try_take_turn_action(battle, ai, {
+            take_ai_battle_action(ai, {
                 type: Action_Type.use_hero_card,
                 card_id: random_hero_card.id,
                 at: random_unoccupied_position.position
@@ -207,25 +213,27 @@ function try_use_any_card(battle: Battle_Record, ai: Battle_Player) {
     }
 }
 
-function take_ai_action(battle: Battle_Record, player: Battle_Player) {
+function try_perform_ai_action(battle: Battle_Record, player: Battle_Player) {
     const act_permission = authorize_action_by_player(battle, player);
     if (!act_permission.ok) return;
 
     const start_time = performance.now();
 
+    const ai: AI = {
+        battle: battle,
+        player: player,
+        pathing_costs_by_unit: new Map<Unit, Cost_Population_Result>(),
+        act_permission: act_permission
+    };
+
     if (player.hand.length > 0) {
-        try_use_any_card(battle, player);
+        try_use_any_card(ai);
     }
 
     clear_debug_ai_data();
 
     for (const unit of battle.units) {
-        const ai: AI = {
-            battle: battle,
-            player: player,
-            pathing_costs_by_unit: new Map<Unit, Cost_Population_Result>(),
-            act_permission: act_permission
-        };
+        ai.pathing_costs_by_unit.clear();
 
         for (const unit of battle.units) {
             const costs = populate_path_costs(battle, unit.position);
@@ -236,19 +244,19 @@ function take_ai_action(battle: Battle_Record, player: Battle_Player) {
         const actions = ai_compute_actions_for_unit(ai, unit);
 
         for (const action of actions) {
-            try_take_turn_action(battle, ai.player, action);
+            take_ai_battle_action(ai, action);
         }
     }
 
-    try_take_turn_action(battle, player, {
+    take_ai_battle_action(ai, {
         type: Action_Type.end_turn
     });
 
-    console.log(`take_ai_action: ${performance.now() - start_time}ms`);
+    console.log(`try_perform_ai_action: ${performance.now() - start_time}ms`);
 }
 
 export function check_and_try_perform_ai_actions(battle: Battle_Record) {
     if (battle.turning_player.map_entity.type != Map_Entity_Type.player) {
-        take_ai_action(battle, battle.turning_player)
+        try_perform_ai_action(battle, battle.turning_player)
     }
 }

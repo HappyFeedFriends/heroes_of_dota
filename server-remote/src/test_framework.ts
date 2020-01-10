@@ -160,6 +160,10 @@ class For_Player {
 
         return new Hero_Search_Result(this.test, hero);
     }
+
+    assert(): Assert_For_Player {
+        return new Assert_For_Player(this.test, this.player);
+    }
 }
 
 class Creep_Search_Result {
@@ -383,12 +387,39 @@ class Assert_For_Battle {
     }
 
     is_over() {
-        do_assert(this.index, this.test.battle.has_finished, `Expected battle to be over`);
+        do_assert(this.index, this.test.battle.state.status == Battle_Status.finished, `Expected battle to be over`);
         return this;
     }
 
+    was_a_draw() {
+        do_assert(this.index, this.test.battle.state.status == Battle_Status.finished, `Expected battle to be over`);
+        do_assert(this.index, this.test.battle.state.winner == undefined, `Expected battle result to be a draw`);
+    }
+
     is_not_over() {
-        do_assert(this.index, !this.test.battle.has_finished, `Expected battle not to be over`);
+        do_assert(this.index, this.test.battle.state.status != Battle_Status.finished, `Expected battle not to be over`);
+        return this;
+    }
+}
+
+class Assert_For_Player {
+    test: Test_Battle;
+    player: Battle_Player;
+    index: number;
+
+    constructor(test: Test_Battle, player: Battle_Player) {
+        this.test = test;
+        this.player = player;
+        this.index = test.assert_index++;
+    }
+
+    has_won() {
+        do_assert(this.index, this.test.battle.state.status == Battle_Status.finished, `Expected battle to be over`);
+
+        const actual_winner = this.test.battle.state.winner;
+
+        do_assert(this.index, actual_winner == this.player, `Expected player ${this.player.id} to be the winner, actual: ${actual_winner ? actual_winner.id : "none"}`);
+
         return this;
     }
 }

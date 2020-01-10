@@ -4,11 +4,13 @@ const exec = require("child_process").exec;
 (async () => {
     console.time("Compile");
 
-    await compile("battle-sim", "server-remote");
+    const ok = await compile("battle-sim", "server-remote");
 
     copy_sim("server-remote/dist/battle_sim.js");
 
     console.timeEnd("Compile");
+
+    if (!ok) process.exit(1);
 
     console.time("Run tests");
 

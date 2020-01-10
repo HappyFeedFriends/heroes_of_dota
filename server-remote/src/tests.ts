@@ -5,8 +5,14 @@ import_battle_sim();
 
 function test_player_can_spawn_hero_from_hand() {
     const battle = test_battle();
+
+    battle.for_test_player().spawn_creep(Creep_Type.lane_creep, xy(5, 5));
+    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(6, 5));
+
     const spawn_at = xy(0, 0);
     const hero = Hero_Type.dark_seer;
+
+    battle.start();
 
     battle
         .for_test_player()
@@ -38,8 +44,14 @@ function test_player_can_perform_a_simple_move_command() {
     const battle = test_battle();
     const move_target = xy(3, 1);
 
-    battle.for_test_player()
-        .spawn_hero(Hero_Type.dark_seer, xy(1, 1))
+    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(5, 5));
+
+    const hero = battle.for_test_player()
+        .spawn_hero(Hero_Type.dark_seer, xy(1, 1));
+
+    battle.start();
+
+    hero
         .order_move(xy(3, 1))
         .assert()
         .is_at(move_target);
@@ -96,6 +108,7 @@ function test_game_over_when_all_enemies_die() {
     first_enemy.assert().is_dead();
     second_enemy.assert().is_dead();
     battle.assert().is_over();
+    battle.for_test_player().assert().has_won();
 }
 
 function test_game_over_when_all_enemies_die_simple() {
@@ -114,6 +127,7 @@ function test_game_over_when_all_enemies_die_simple() {
     enemies.forEach(enemy => enemy.kill());
 
     battle.assert().is_over();
+    battle.for_test_player().assert().has_won();
 }
 
 function test_ember_spirit_fire_remnant_ability_swap_working_correctly() {
@@ -121,6 +135,10 @@ function test_ember_spirit_fire_remnant_ability_swap_working_correctly() {
     const hero = battle.for_test_player()
         .spawn_hero(Hero_Type.ember_spirit, xy(1, 1))
         .set_level(3);
+
+    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(5, 5));
+
+    battle.start();
 
     hero.assert()
         .has_ability(Ability_Id.ember_fire_remnant)
@@ -250,6 +268,24 @@ function test_eul_scepter_modifier_on_ally() {
     ally.assert().doesnt_have_modifier(Modifier_Id.spell_euls_scepter);
 }
 
+function test_game_ends_in_a_draw_if_all_units_die() {
+    const battle = test_battle();
+    const ally = battle.for_test_player().spawn_hero(Hero_Type.skywrath_mage, xy(0, 0))
+        .set_health(1)
+        .set_level(3);
+
+    const enemy = battle.for_enemy_player().spawn_hero(Hero_Type.pudge, xy(1, 0))
+        .set_health(1);
+
+    battle.start();
+
+    ally.order_cast_on_ground(Ability_Id.skywrath_mystic_flare, xy(0, 0));
+
+    ally.assert().is_dead();
+    enemy.assert().is_dead();
+    battle.assert().is_over().was_a_draw();
+}
+
 run_tests([
     test_player_can_spawn_hero_from_hand,
     test_player_cant_spawn_hero_outside_deployment_zone,
@@ -258,6 +294,7 @@ run_tests([
     test_game_doesnt_end_on_matriarch_ability_simple,
     test_game_over_when_all_enemies_die,
     test_game_over_when_all_enemies_die_simple,
+    test_game_ends_in_a_draw_if_all_units_die,
     test_ember_spirit_fire_remnant_ability_swap_working_correctly,
     test_health_modifiers_increase_current_health_along_with_maximum,
     test_health_modifiers_decrease_health_properly,
