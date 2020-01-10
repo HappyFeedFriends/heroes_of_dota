@@ -7,44 +7,64 @@ export function import_battle_sim() {
 
 import {createServer} from "http";
 import {randomBytes} from "crypto"
+import {performance} from "perf_hooks"
+
+import {
+    XY,
+    xy,
+    unreachable
+} from "./common";
+
+import {Random} from "./random";
+
+import {check_and_try_perform_ai_actions} from "./ai";
+import {pull_pending_chat_messages_for_player, submit_chat_message} from "./chat";
+import {get_debug_ai_data} from "./debug_draw";
+import {get_nearby_neutrals} from "./npc_controller";
+
 import {
     Battle_Participant,
     Battle_Record,
-    cheat,
-    get_battle_deltas_after,
     start_battle,
+    try_take_turn_action,
+    get_battle_deltas_after,
     surrender_player_forces,
-    try_take_turn_action
+    cheat
 } from "./battle";
-import {unreachable, XY, xy} from "./common";
-import {pull_pending_chat_messages_for_player, submit_chat_message} from "./chat";
-import {performance} from "perf_hooks"
-import {get_debug_ai_data} from "./debug_draw";
-import {get_nearby_neutrals} from "./npc_controller";
+
 import {
     Adventure_Room_Type,
+    Party_Event_Type,
     Ongoing_Adventure,
-    adventure_by_id,
-    apply_editor_action,
-    create_room_entities,
     load_all_adventures,
-    room_by_id, editor_create_entity, interact_with_entity, Party_Event_Type
+    adventure_by_id,
+    room_by_id,
+    create_room_entities,
+    interact_with_entity,
+    apply_editor_action,
+    editor_create_entity
 } from "./adventures";
-import {check_and_try_perform_ai_actions} from "./ai";
+
 import {
-    change_party_add_creep, change_party_add_hero,
+    Map_Player_Party,
+    push_party_change,
+    change_party_add_creep,
+    change_party_add_hero,
     change_party_add_spell,
-    find_empty_party_slot_index, push_party_change,
-    Map_Player_Party, change_party_change_health, change_party_empty_slot
+    change_party_change_health,
+    change_party_empty_slot,
+    find_empty_party_slot_index
 } from "./adventure_party";
+
 import {
-    delete_battleground_by_id, duplicate_battleground,
-    find_battleground_by_id, get_all_battlegrounds,
+    get_all_battlegrounds,
     load_all_battlegrounds,
     make_new_battleground,
-    save_battleground
+    save_battleground,
+    find_battleground_by_id,
+    delete_battleground_by_id,
+    duplicate_battleground
 } from "./battleground";
-import {Random} from "./random";
 
 import_battle_sim();
 
