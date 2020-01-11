@@ -19,7 +19,7 @@ type Battle = {
     has_started: boolean
     is_over: boolean
     camera_dummy: CDOTA_BaseNPC
-    modifier_tied_fxs: Modifier_Tied_Fx[]
+    applied_modifier_visuals: Applied_Modifier_Visuals[]
 }
 
 type Battle_Player = {
@@ -92,10 +92,18 @@ type Ranged_Attack_Spec = {
     shake_on_impact?: Shake
 }
 
-type Modifier_Tied_Fx = {
-    fx: FX
+type Applied_Modifier_Visuals = {
     unit_id: Unit_Id
-    modifier_id: Modifier_Id
+    visuals: Modifier_Visuals_Container[]
+    modifier_handle_id: Modifier_Handle_Id
+}
+
+type Modifier_Visuals_Container = {
+    from_buff: true
+    buff: CDOTA_Buff
+} | {
+    from_buff: false
+    fx: FX
 }
 
 type Started_Gesture = {
@@ -927,12 +935,12 @@ function try_play_random_sound_for_hero(unit: Unit, supplier: (sounds: Hero_Soun
     unit_emit_sound(target, random_sound);
 }
 
-function try_play_sound_for_hero(unit: Unit, supplier: (type: Hero_Type) => string | undefined, target: Unit = unit) {
+function try_play_sound_for_hero(unit: Unit, supplier: (hero: Hero) => string | undefined, target: Unit = unit) {
     if (unit.supertype != Unit_Supertype.hero) {
         return;
     }
 
-    const sound = supplier(unit.type);
+    const sound = supplier(unit);
 
     if (sound) {
         unit_emit_sound(target, sound);
@@ -959,8 +967,8 @@ function highlight_grid_for_no_target_ability(unit: Unit, ability: Ability_Id) {
 function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_Attack) {
     const target = cast.target_position;
 
-    function get_unit_pre_attack_sound(type: Hero_Type): string | undefined {
-        switch (type) {
+    function get_hero_pre_attack_sound(hero: Hero): string | undefined {
+        switch (hero.type) {
             case Hero_Type.pudge: return "Hero_Pudge.PreAttack";
             case Hero_Type.ursa: return "Hero_Ursa.PreAttack";
             case Hero_Type.tidehunter: return "hero_tidehunter.PreAttack";
@@ -972,8 +980,8 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
         }
     }
 
-    function get_unit_attack_sound(type: Hero_Type): string {
-        switch (type) {
+    function get_hero_attack_sound(hero: Hero): string {
+        switch (hero.type) {
             case Hero_Type.pudge: return "Hero_Pudge.Attack";
             case Hero_Type.ursa: return "Hero_Ursa.Attack";
             case Hero_Type.sniper: return "Hero_Sniper.attack";
@@ -986,12 +994,14 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
             case Hero_Type.vengeful_spirit: return "Hero_VengefulSpirit.Attack";
             case Hero_Type.dark_seer: return "Hero_DarkSeer.Attack";
             case Hero_Type.ember_spirit: return "Hero_EmberSpirit.Attack";
-            case Hero_Type.earthshaker: return "Hero_EarthShaker.Attack";
+            case Hero_Type.earthshaker: return hero.modifiers.some(applied => applied.modifier.id == Modifier_Id.shaker_enchant_totem_caster)
+                ? "Hero_EarthShaker.Totem.Attack"
+                : "Hero_EarthShaker.Attack";
         }
     }
 
-    function get_unit_ranged_impact_sound(type: Hero_Type): string | undefined {
-        switch (type) {
+    function get_hero_ranged_impact_sound(hero: Hero): string | undefined {
+        switch (hero.type) {
             case Hero_Type.sniper: return "Hero_Sniper.ProjectileImpact";
             case Hero_Type.luna: return "Hero_Luna.ProjectileImpact";
             case Hero_Type.skywrath_mage: return "Hero_SkywrathMage.ProjectileImpact";
@@ -1008,9 +1018,9 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
     }
 
     if (ranged_attack_spec) {
-        try_play_sound_for_hero(unit, get_unit_pre_attack_sound);
+        try_play_sound_for_hero(unit, get_hero_pre_attack_sound);
         unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK, ranged_attack_spec.attack_point);
-        try_play_sound_for_hero(unit, get_unit_attack_sound);
+        try_play_sound_for_hero(unit, get_hero_attack_sound);
 
         if (ranged_attack_spec.shake_on_attack) {
             shake_screen(unit.position, ranged_attack_spec.shake_on_attack);
@@ -1026,7 +1036,7 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
 
             tracking_projectile_to_unit(unit, target_unit, ranged_attack_spec.particle_path, ranged_attack_spec.projectile_speed);
             change_health(game, unit, target_unit, cast.result.damage_dealt);
-            try_play_sound_for_hero(unit, get_unit_ranged_impact_sound, target_unit);
+            try_play_sound_for_hero(unit, get_hero_ranged_impact_sound, target_unit);
 
             if (ranged_attack_spec.shake_on_impact) {
                 shake_screen(target_unit.position, ranged_attack_spec.shake_on_impact);
@@ -1040,7 +1050,7 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
             unit_emit_sound(unit, "Creep_Good_Melee.PreAttack");
         }
 
-        try_play_sound_for_hero(unit, get_unit_pre_attack_sound);
+        try_play_sound_for_hero(unit, get_hero_pre_attack_sound);
         unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK);
 
         if (is_attack_hit(cast.result)) {
@@ -1051,7 +1061,7 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
             }
 
             shake_screen(target, Shake.weak);
-            try_play_sound_for_hero(unit, get_unit_attack_sound);
+            try_play_sound_for_hero(unit, get_hero_attack_sound);
 
             // TODO @SoundSystem
             if (unit.supertype == Unit_Supertype.creep && unit.type == Creep_Type.lane_creep) {
@@ -1441,48 +1451,57 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
     }
 }
 
-type Modifier_Visuals_Complex = {
-    complex: true
-    native_modifier_name: string
-}
+function modifier_to_visuals(target: Unit, modifier: Modifier): Modifier_Visuals_Container[] | undefined {
+    function one_from_buff(name: string): Modifier_Visuals_Container {
+        const buff = target.handle.AddNewModifier(target.handle, undefined, name, {});
 
-type Modifier_Visuals_Simple = {
-    complex: false
-    fx_applier: (this: void, unit: Unit) => FX
-}
-
-function modifier_to_visuals(modifier: Modifier): Modifier_Visuals_Complex | Modifier_Visuals_Simple | undefined {
-    function complex(name: string): Modifier_Visuals_Complex {
         return {
-            complex: true,
-            native_modifier_name: name
+            from_buff: true,
+            buff: buff
         }
     }
 
-    function simple(fx_applier: (this: void, unit: Unit) => FX): Modifier_Visuals_Simple {
+    function one_from_fx(fx: FX): Modifier_Visuals_Container {
         return {
-            complex: false,
-            fx_applier: fx_applier
+            from_buff: false,
+            fx: fx
         }
+    }
+
+    function one_from_activity_translation(translation: Activity_Translation): Modifier_Visuals_Container {
+        const buff = add_activity_translation(target, translation);
+
+        return {
+            from_buff: true,
+            buff: buff
+        }
+    }
+
+    function from_buff(name: string): Modifier_Visuals_Container[] {
+        return [one_from_buff(name)];
+    }
+
+    function from_fx(fx: FX): Modifier_Visuals_Container[] {
+        return [one_from_fx(fx)];
     }
 
     function follow(path: string) {
-        return simple(target => fx_follow_unit(path, target));
+        return from_fx(fx_follow_unit(path, target));
     }
 
     switch (modifier.id) {
-        case Modifier_Id.tide_gush: return complex("Modifier_Tide_Gush");
-        case Modifier_Id.skywrath_ancient_seal: return simple(target =>
+        case Modifier_Id.tide_gush: return from_buff("Modifier_Tide_Gush");
+        case Modifier_Id.skywrath_ancient_seal: return from_fx(
             fx("particles/units/heroes/hero_skywrath_mage/skywrath_mage_ancient_seal_debuff.vpcf")
                 .follow_unit_overhead(0, target)
                 .follow_unit_origin(1, target)
         );
         case Modifier_Id.skywrath_concussive_shot: return follow("particles/units/heroes/hero_skywrath_mage/skywrath_mage_concussive_shot_slow_debuff.vpcf");
-        case Modifier_Id.dragon_knight_elder_dragon_form: return complex("Modifier_Dragon_Knight_Elder_Dragon");
-        case Modifier_Id.lion_hex: return complex("Modifier_Lion_Hex");
+        case Modifier_Id.dragon_knight_elder_dragon_form: return from_buff("Modifier_Dragon_Knight_Elder_Dragon");
+        case Modifier_Id.lion_hex: return from_buff("Modifier_Lion_Hex");
         case Modifier_Id.venge_wave_of_terror: return follow("particles/units/heroes/hero_vengeful/vengeful_wave_of_terror_recipient.vpcf");
-        case Modifier_Id.dark_seer_ion_shell: return simple(
-            target => fx("particles/units/heroes/hero_dark_seer/dark_seer_ion_shell.vpcf")
+        case Modifier_Id.dark_seer_ion_shell: return from_fx(
+             fx("particles/units/heroes/hero_dark_seer/dark_seer_ion_shell.vpcf")
                 .to_unit_attach_point(0, target, "attach_hitloc")
                 .with_point_value(1, 50, 50, 50)
         );
@@ -1493,63 +1512,59 @@ function modifier_to_visuals(modifier: Modifier): Modifier_Visuals_Complex | Mod
         case Modifier_Id.item_satanic: return follow("particles/items2_fx/satanic_buff.vpcf");
         case Modifier_Id.item_mask_of_madness: return follow("particles/items2_fx/mask_of_madness.vpcf");
         case Modifier_Id.item_armlet: return follow("particles/items_fx/armlet.vpcf");
-        case Modifier_Id.spell_euls_scepter: return complex("Modifier_Euls_Scepter");
+        case Modifier_Id.spell_euls_scepter: return from_buff("Modifier_Euls_Scepter");
         case Modifier_Id.spell_buckler: return follow("particles/items_fx/buckler.vpcf");
         case Modifier_Id.spell_drums_of_endurance: return follow("particles/items_fx/drum_of_endurance_buff.vpcf");
-        case Modifier_Id.ember_fire_remnant: return simple(
-            target => {
-                // TODO proper predictable @Random
-                const animations = [ 39, 40, 41 ]; // Sequence numbers of GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_4 for ember
-                const fx = fx_follow_unit("particles/units/heroes/hero_ember_spirit/ember_spirit_fire_remnant.vpcf", target)
-                    .with_point_value(2, animations[RandomInt(0, animations.length)]);
+        case Modifier_Id.ember_fire_remnant: {
+            // TODO proper predictable @Random
+            const animations = [39, 40, 41]; // Sequence numbers of GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_4 for ember
+            const fx = fx_follow_unit("particles/units/heroes/hero_ember_spirit/ember_spirit_fire_remnant.vpcf", target)
+                .with_point_value(2, animations[RandomInt(0, animations.length)]);
 
-                const owner = find_unit_by_id(modifier.remnant_owner_unit_id);
+            const owner = find_unit_by_id(modifier.remnant_owner_unit_id);
 
-                if (owner) {
-                    fx.follow_unit_origin(1, owner);
+            if (owner) {
+                fx.follow_unit_origin(1, owner);
+            }
+
+            return from_fx(fx);
+        }
+
+        case Modifier_Id.shaker_enchant_totem_caster: return [
+            one_from_activity_translation(Activity_Translation.enchant_totem),
+            one_from_fx(fx_by_unit("particles/units/heroes/hero_earthshaker/earthshaker_totem_buff.vpcf", target)
+                    .to_unit_attach_point(0, target, "attach_totem"))
+        ]
+    }
+}
+
+function try_apply_modifier_visuals(target: Unit, handle_id: Modifier_Handle_Id, modifier: Modifier) {
+    const visuals = modifier_to_visuals(target, modifier);
+    if (!visuals) return;
+
+    battle.applied_modifier_visuals.push({
+        unit_id: target.id,
+        modifier_handle_id: handle_id,
+        visuals: visuals
+    });
+}
+
+function try_remove_modifier_visuals(target: Unit, handle_id: Modifier_Handle_Id) {
+    for (let index = 0; index < battle.applied_modifier_visuals.length; index++) {
+        const container = battle.applied_modifier_visuals[index];
+
+        if (container.modifier_handle_id == handle_id && container.unit_id == target.id) {
+            for (const visual of container.visuals) {
+                if (visual.from_buff) {
+                    visual.buff.Destroy();
+                } else {
+                    visual.fx.destroy_and_release(false);
                 }
-
-                return fx;
             }
-        );
-    }
-}
 
-function try_apply_modifier_visuals(target: Unit, modifier: Modifier) {
-    const visuals = modifier_to_visuals(modifier);
+            battle.applied_modifier_visuals.splice(index, 1);
 
-    if (!visuals) {
-        return;
-    }
-
-    if (visuals.complex) {
-        target.handle.AddNewModifier(target.handle, undefined, visuals.native_modifier_name, {});
-    } else {
-        battle.modifier_tied_fxs.push({
-            unit_id: target.id,
-            modifier_id: modifier.id,
-            fx: visuals.fx_applier(target)
-        })
-    }
-}
-
-function try_remove_modifier_visuals(target: Unit, modifier: Modifier) {
-    const modifier_visuals = modifier_to_visuals(modifier);
-    if (!modifier_visuals) return;
-
-    if (modifier_visuals.complex) {
-        target.handle.RemoveModifierByName(modifier_visuals.native_modifier_name);
-    } else {
-        for (let fx_index = 0; fx_index < battle.modifier_tied_fxs.length; fx_index++) {
-            const fx = battle.modifier_tied_fxs[fx_index];
-
-            if (fx.modifier_id == modifier.id && fx.unit_id == target.id) {
-                fx.fx.destroy_and_release(false);
-
-                battle.modifier_tied_fxs.splice(fx_index, 1);
-
-                break;
-            }
+            break;
         }
     }
 }
@@ -1568,7 +1583,7 @@ function update_unit_state_from_modifiers(unit: Unit) {
 function apply_modifier(game: Game, target: Unit, application: Modifier_Application, source: Modifier_Data_Source) {
     print(`Apply and record ${application.modifier_handle_id} to ${target.handle.GetName()}`);
 
-    try_apply_modifier_visuals(target, application.modifier);
+    try_apply_modifier_visuals(target, application.modifier_handle_id, application.modifier);
 
     target.modifiers.push({
         modifier: application.modifier,
@@ -2090,9 +2105,6 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
         }
 
         case Ability_Id.ember_activate_fire_remnant: {
-            const remnant = find_unit_by_id(cast.action.remnant_id);
-            if (!remnant) break;
-
             const world_from = battle_position_to_world_position_center(battle.world_origin, unit.position);
             const world_to = battle_position_to_world_position_center(battle.world_origin, cast.action.move_to);
             const world_delta = world_to - world_from as Vector;
@@ -2121,7 +2133,11 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
             unit_emit_sound(unit, "Hero_EmberSpirit.FireRemnant.Explode");
             unit_emit_sound(unit, "Hero_EmberSpirit.FireRemnant.Stop");
 
-            kill_unit(remnant, remnant);
+            const remnant = find_unit_by_id(cast.action.remnant_id);
+
+            if (remnant) {
+                kill_unit(remnant, remnant);
+            }
 
             unit.handle.RemoveNoDraw();
 
@@ -2129,6 +2145,23 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
 
             unit.position = cast.action.move_to;
             unit.handle.SetAbsOrigin(world_to);
+
+            break;
+        }
+
+        case Ability_Id.shaker_enchant_totem: {
+            unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_2);
+            unit_emit_sound(unit, "Hero_EarthShaker.Totem");
+
+            const targets = filter_and_map_existing_units(cast.targets);
+
+            fx_by_unit("particles/units/heroes/hero_earthshaker/earthshaker_totem_leap_impact.vpcf", unit).release();
+
+            apply_modifier(game, unit, cast.modifier, source);
+
+            for (const target of targets) {
+                apply_modifier(game, target.unit, target.modifier, source);
+            }
 
             break;
         }
@@ -2649,17 +2682,14 @@ function turn_unit_towards_target(unit: Unit, towards: XY) {
 function update_specific_state_visuals(unit: Unit, flag: boolean, associated_modifier: string) {
     if (flag) {
         if (!unit.handle.HasModifier(associated_modifier)) {
-            print(`AddNewModifier ${associated_modifier} to ${unit.handle.GetUnitName()}`);
             unit.handle.AddNewModifier(unit.handle, undefined, associated_modifier, {});
         }
     } else {
-        print(`RemoveModifierByName ${associated_modifier} from ${unit.handle.GetUnitName()}`);
         unit.handle.RemoveModifierByName(associated_modifier);
     }
 }
 
 function update_state_visuals(unit: Unit) {
-    print(`${unit.handle.GetUnitName()} update_state_vis ${is_unit_stunned(unit)}`);
     update_specific_state_visuals(unit, is_unit_stunned(unit), "Modifier_Battle_Stunned");
     update_specific_state_visuals(unit, is_unit_silenced(unit), "modifier_silence");
 
@@ -2686,6 +2716,11 @@ function update_state_visuals(unit: Unit) {
 }
 
 function unit_play_activity(unit: Unit, activity: GameActivity_t, wait_up_to = 0.4): number {
+    // The combination of .Stop() and .ForcePlayActivityOnce() makes it so
+    //     the activity starts playing but is then immediately cancelled the next frame
+    //     but we can still get the sequence_duration (even though technically different
+    //      sequences in an activity can have different duration!!!)
+    //     then we use that duration to apply an actual animation override buff
     unit.handle.StopFacing();
     unit.handle.Stop();
     unit.handle.ForcePlayActivityOnce(activity);
@@ -2694,11 +2729,9 @@ function unit_play_activity(unit: Unit, activity: GameActivity_t, wait_up_to = 0
     const sequence_duration = unit.handle.SequenceDuration(sequence);
     const start_time = GameRules.GetGameTime();
 
-    while (GameRules.GetGameTime() - start_time < sequence_duration * wait_up_to) {
-        if (unit.handle.GetSequence() != sequence) {
-            unit.handle.ForcePlayActivityOnce(activity);
-        }
+    add_activity_override(unit, activity, sequence_duration);
 
+    while (GameRules.GetGameTime() - start_time < sequence_duration * wait_up_to) {
         wait_one_frame();
     }
 
@@ -2747,7 +2780,7 @@ function kill_unit(source: Unit, target: Unit) {
     }
 
     for (const applied of target.modifiers) {
-        try_remove_modifier_visuals(target, applied.modifier);
+        try_remove_modifier_visuals(target, applied.modifier_handle_id);
     }
 
     try_play_random_sound_for_hero(source, sounds => sounds.kill);
@@ -2858,7 +2891,7 @@ function on_modifier_removed(unit: Unit, modifier_id: Modifier_Id) {
 function remove_modifier(game: Game, unit: Unit, applied: Modifier_Data, array_index: number) {
     print(`Remove modifier ${enum_to_string(applied.modifier.id)} from ${unit.handle.GetName()}`);
 
-    try_remove_modifier_visuals(unit, applied.modifier);
+    try_remove_modifier_visuals(unit, applied.modifier_handle_id);
     on_modifier_removed(unit, applied.modifier.id);
 
     unit.modifiers.splice(array_index, 1);
@@ -2866,13 +2899,13 @@ function remove_modifier(game: Game, unit: Unit, applied: Modifier_Data, array_i
     update_unit_state_from_modifiers(unit);
 }
 
-function add_activity_translation(target: Unit, translation: Activity_Translation, duration: number) {
+function add_activity_translation(target: Unit, translation: Activity_Translation, duration?: number) {
     const parameters: Modifier_Activity_Translation_Params = {
         translation: translation,
         duration: duration
     };
 
-    target.handle.AddNewModifier(target.handle, undefined, "Modifier_Activity_Translation", parameters);
+    return target.handle.AddNewModifier(target.handle, undefined, "Modifier_Activity_Translation", parameters);
 }
 
 function add_activity_override(target: Handle_Provider, activity: GameActivity_t, duration?: number): CDOTA_Buff {
@@ -3028,7 +3061,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
                 unit.handle.RespawnHero(false, false);
 
                 for (const applied of unit.modifiers) {
-                    try_apply_modifier_visuals(unit, applied.modifier);
+                    try_apply_modifier_visuals(unit, applied.modifier_handle_id, applied.modifier);
                 }
             }
 
@@ -3346,15 +3379,19 @@ function clean_battle_world_handles(battle: Battle) {
         tree.handle.Kill();
     }
 
-    for (const fx of battle.modifier_tied_fxs) {
-        fx.fx.destroy_and_release(true);
+    for (const applied of battle.applied_modifier_visuals) {
+        for (const visual of applied.visuals) {
+            if (!visual.from_buff) {
+                visual.fx.destroy_and_release(true);
+            }
+        }
     }
 
     battle.units = [];
     battle.shops = [];
     battle.runes = [];
     battle.trees = [];
-    battle.modifier_tied_fxs = [];
+    battle.applied_modifier_visuals = [];
 }
 
 function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC) {
@@ -3379,7 +3416,7 @@ function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC)
         has_started: false,
         is_over: true,
         camera_dummy: camera_entity,
-        modifier_tied_fxs: []
+        applied_modifier_visuals: []
     };
 }
 
@@ -3478,7 +3515,7 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
         update_unit_state_from_modifiers(unit);
 
         for (const applied of unit.modifiers) {
-            try_apply_modifier_visuals(unit, applied.modifier);
+            try_apply_modifier_visuals(unit, applied.modifier_handle_id, applied.modifier);
         }
     }
 }

@@ -20,6 +20,8 @@ declare const enum Modifier_Id {
     ember_searing_chains = 14,
     ember_fire_remnant_caster = 15,
     ember_fire_remnant = 16,
+    shaker_enchant_totem_caster = 17,
+    shaker_enchant_totem = 18,
 
     item_boots_of_travel = 100,
     item_heart_of_tarrasque = 101,
@@ -91,6 +93,10 @@ type Modifier = {
 } | {
     id: Modifier_Id.ember_fire_remnant
     remnant_owner_unit_id: Unit_Id
+} | {
+    id: Modifier_Id.shaker_enchant_totem_caster
+} | {
+    id: Modifier_Id.shaker_enchant_totem
 } | {
     id: Modifier_Id.item_boots_of_travel
     move_bonus: number

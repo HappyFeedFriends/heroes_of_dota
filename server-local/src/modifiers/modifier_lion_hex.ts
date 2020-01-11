@@ -11,8 +11,8 @@ class Modifier_Lion_Hex extends CDOTA_Modifier_Lua {
 
     OnDestroy(): void {
         if (IsServer()) {
-            const fx = "particles/units/heroes/hero_lion/lion_spell_voodoo.vpcf";
-            ParticleManager.ReleaseParticleIndex(ParticleManager.CreateParticle(fx, ParticleAttachment_t.PATTACH_ABSORIGIN, this.GetParent()));
+            fx_by_unit("particles/units/heroes/hero_lion/lion_spell_voodoo.vpcf", { handle: this.GetParent() })
+                .release();
         }
     }
 }

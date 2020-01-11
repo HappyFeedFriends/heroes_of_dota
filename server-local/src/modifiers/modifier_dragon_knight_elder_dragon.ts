@@ -22,8 +22,9 @@ class Modifier_Dragon_Knight_Elder_Dragon extends CDOTA_Modifier_Lua {
 
     OnDestroy(): void {
         if (IsServer()) {
-            const fx = "particles/units/heroes/hero_dragon_knight/dragon_knight_transform_red.vpcf";
-            ParticleManager.ReleaseParticleIndex(ParticleManager.CreateParticle(fx, ParticleAttachment_t.PATTACH_ABSORIGIN, this.GetParent()));
+            fx_by_unit("particles/units/heroes/hero_dragon_knight/dragon_knight_transform_red.vpcf", { handle: this.GetParent() })
+                .release();
+
             this.GetParent().EmitSound("Hero_DragonKnight.ElderDragonForm.Revert");
         }
     }

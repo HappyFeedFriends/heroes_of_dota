@@ -468,7 +468,14 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 attack_damage: 3,
                 move_points: 2,
                 attack: basic_attack(1),
-                abilities: []
+                abilities: [
+                    active_ability<Ability_Shaker_Enchant_Totem>({
+                        available_since_level: 2,
+                        charges: 1,
+                        targeting: target_rect_area_around_caster(1),
+                        flags: [ Ability_Flag.does_not_consume_action ]
+                    })
+                ]
             }
         }
 

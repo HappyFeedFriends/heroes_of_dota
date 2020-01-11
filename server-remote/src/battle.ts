@@ -788,9 +788,25 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
                         }
                     });
 
-                    break;;
+                    break;
                 }
             }
+
+            break;
+        }
+
+        case Ability_Id.shaker_enchant_totem: {
+            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+
+            submit_battle_delta(battle, {
+                ...base,
+                ability_id: ability.id,
+                modifier: modifier(battle, { id: Modifier_Id.shaker_enchant_totem_caster }),
+                targets: targets.map(target => ({
+                    target_unit_id: target.id,
+                    modifier: modifier(battle, { id: Modifier_Id.shaker_enchant_totem }, 1)
+                }))
+            });
 
             break;
         }
@@ -1229,6 +1245,15 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
                     handle_id: applied.handle_id,
                     target_unit_id: target.id,
                     modifier: modifier(battle, { id: Modifier_Id.item_basher_target }, 1)
+                });
+            }
+        }
+
+        for (const applied of source.modifiers) {
+            if (applied.modifier.id == Modifier_Id.shaker_enchant_totem_caster) {
+                submit_battle_delta(battle, {
+                    type: Delta_Type.modifier_removed,
+                    modifier_handle_id: applied.handle_id
                 });
             }
         }

@@ -1259,6 +1259,13 @@ function collapse_no_target_ability_use(battle: Battle, unit: Unit, cast: Delta_
             break;
         }
 
+        case Ability_Id.shaker_enchant_totem: {
+            apply_modifier(battle, source, unit, cast.modifier);
+            apply_modifier_multiple(battle, source, cast.targets);
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }

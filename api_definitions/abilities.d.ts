@@ -32,6 +32,9 @@ declare const enum Ability_Id {
     ember_sleight_of_fist = 32,
     ember_fire_remnant = 33,
     ember_activate_fire_remnant = 34,
+    shaker_fissure = 35,
+    shaker_enchant_totem = 36,
+    shaker_echo_slam = 37,
 
     pocket_tower_attack = 1000,
     deployment_zone = 1001,
@@ -257,6 +260,11 @@ type Ability_Ember_Activate_Fire_Remnant = Ability_Definition_Active_Base & {
     type: Ability_Type.no_target
 }
 
+type Ability_Shaker_Enchant_Totem = Ability_Definition_Active_Base & {
+    id: Ability_Id.shaker_enchant_totem
+    type: Ability_Type.no_target
+}
+
 type Ability_Pocket_Tower_Attack = Ability_Definition_Passive_Base & {
     id: Ability_Id.pocket_tower_attack
     targeting: Ability_Targeting
@@ -312,7 +320,8 @@ type Ability_No_Target =
     Ability_Mirana_Starfall |
     Ability_Ember_Searing_Chains |
     Ability_Ember_Sleight_Of_Fist |
-    Ability_Ember_Activate_Fire_Remnant
+    Ability_Ember_Activate_Fire_Remnant |
+    Ability_Shaker_Enchant_Totem
 
 type Ability_Definition_Active = Ability_Ground_Target | Ability_Unit_Target | Ability_No_Target
 
@@ -369,7 +378,8 @@ type Delta_Use_No_Target_Ability =
     Delta_Ability_Mirana_Starfall |
     Delta_Ability_Ember_Searing_Chains |
     Delta_Ability_Ember_Sleight_Of_Fist |
-    Delta_Ability_Ember_Activate_Fire_Remnant
+    Delta_Ability_Ember_Activate_Fire_Remnant |
+    Delta_Ability_Shaker_Enchant_Totem
 
 
 type Basic_Attack_Hit = {
@@ -643,4 +653,10 @@ type Vacuum_Target = {
 type Delta_Ability_Dark_Seer_Vacuum = Delta_Ground_Target_Ability_Base & {
     ability_id: Ability_Id.dark_seer_vacuum
     targets: Vacuum_Target[]
+}
+
+type Delta_Ability_Shaker_Enchant_Totem = Delta_Use_No_Target_Ability_Base & {
+    ability_id: Ability_Id.shaker_enchant_totem
+    modifier: Modifier_Application
+    targets: Unit_Modifier_Application[]
 }

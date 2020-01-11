@@ -315,6 +315,14 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             status(Unit_Status.unselectable)
         ];
 
+        case Modifier_Id.shaker_enchant_totem_caster: return [
+            special_state(Special_Modifier_State.damage_doubled)
+        ];
+
+        case Modifier_Id.shaker_enchant_totem: return [
+            status(Unit_Status.stunned)
+        ];
+
         case Modifier_Id.item_boots_of_travel: return [
             field(Modifier_Field.move_points_bonus, modifier.move_bonus)
         ];

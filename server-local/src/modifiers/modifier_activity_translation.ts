@@ -1,5 +1,6 @@
 const enum Activity_Translation {
-    ti8 = "ti8"
+    ti8 = "ti8",
+    enchant_totem = "enchant_totem"
 }
 
 const translations = enum_values<Activity_Translation>();
@@ -29,6 +30,10 @@ class Modifier_Activity_Translation extends CDOTA_Modifier_Lua {
 
     GetActivityTranslationModifiers(): string {
         return translations[this.GetStackCount()];
+    }
+
+    GetAttributes(): DOTAModifierAttribute_t {
+        return DOTAModifierAttribute_t.MODIFIER_ATTRIBUTE_MULTIPLE;
     }
 }
 

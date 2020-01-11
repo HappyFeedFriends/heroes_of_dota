@@ -324,15 +324,12 @@ function update_related_visual_data_from_delta(delta: Delta, delta_paths: Move_D
 
         case Delta_Type.rune_pick_up: {
             const unit = find_unit_by_id(battle, delta.unit_id);
-
             if (!unit) break;
 
             const rune = find_rune_by_id(battle, delta.rune_id);
-
             if (!rune) break;
 
             const path = find_grid_path(unit.position, rune.position, true);
-
             if (!path) break;
 
             fill_movement_data(unit, rune.position, path);
@@ -342,11 +339,9 @@ function update_related_visual_data_from_delta(delta: Delta, delta_paths: Move_D
 
         case Delta_Type.unit_move: {
             const unit = find_unit_by_id(battle, delta.unit_id);
-
             if (!unit) break;
 
             const path = find_grid_path(unit.position, delta.to_position);
-
             if (!path) break;
 
             fill_movement_data(unit, delta.to_position, path);
@@ -1742,6 +1737,7 @@ function get_ability_tooltip(a: Ability): string {
         case Ability_Id.ember_sleight_of_fist: return `Attack all targets around`;
         case Ability_Id.ember_fire_remnant: return `Launch a fire remnant to the target location. Reactivate to move to that remnant`;
         case Ability_Id.ember_activate_fire_remnant: return `Instantly move to the fire remnant location`;
+        case Ability_Id.shaker_enchant_totem: return `Stun targets around until the end of next turn, gain double damage for the next attack`;
 
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
@@ -1787,6 +1783,9 @@ function get_ability_icon(ability_id: Ability_Id): string {
         case Ability_Id.ember_sleight_of_fist: return "ember_spirit_sleight_of_fist";
         case Ability_Id.ember_fire_remnant: return "ember_spirit_fire_remnant";
         case Ability_Id.ember_activate_fire_remnant: return "ember_spirit_activate_fire_remnant";
+        case Ability_Id.shaker_fissure: return "earthshaker_fissure";
+        case Ability_Id.shaker_enchant_totem: return "earthshaker_enchant_totem";
+        case Ability_Id.shaker_echo_slam: return "earthshaker_echo_slam";
 
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
