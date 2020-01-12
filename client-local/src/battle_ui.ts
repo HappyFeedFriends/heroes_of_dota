@@ -1702,7 +1702,7 @@ function get_item_tooltip(i: Item): string {
     }
 }
 
-function get_ability_tooltip(a: Ability): string {
+function get_ability_tooltip(caster: Unit, a: Ability): string {
     switch (a.id) {
         case Ability_Id.basic_attack: return `Basic attack`;
         case Ability_Id.pudge_hook: return `Hook, deals ${a.damage} damage`;
@@ -1738,6 +1738,10 @@ function get_ability_tooltip(a: Ability): string {
         case Ability_Id.ember_fire_remnant: return `Launch a fire remnant to the target location. Reactivate to move to that remnant`;
         case Ability_Id.ember_activate_fire_remnant: return `Instantly move to the fire remnant location`;
         case Ability_Id.shaker_enchant_totem: return `Stun targets around until the end of next turn, gain double damage for the next attack`;
+        case Ability_Id.shaker_echo_slam: {
+            const targets = query_units_for_no_target_ability(battle, caster, a.targeting).length;
+            return `Deal damage equal to number of units in the area (<font color="#ddd">${targets + 1}</font>) to targets in the area`;
+        }
 
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
@@ -1930,7 +1934,7 @@ function update_ability_button_ui(button: Hero_Ability_Button, hero: Hero, abili
             update_grid_visuals();
         }
 
-        $.DispatchEvent("DOTAShowTextTooltip", ability_panel, get_ability_tooltip(ability));
+        $.DispatchEvent("DOTAShowTextTooltip", ability_panel, get_ability_tooltip(hero, ability));
     });
 
     ability_panel.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, () => {

@@ -275,6 +275,20 @@ function are_units_allies(a: Unit, b: Unit): boolean {
     return false;
 }
 
+function query_units_for_no_target_ability(battle: Battle, caster: Unit, targeting: Ability_Targeting): Unit[] {
+    const units: Unit[] = [];
+
+    for (const unit of battle.units) {
+        if (!authorize_act_on_known_unit(battle, unit).ok) continue;
+
+        if (ability_targeting_fits(battle, targeting, caster.position, unit.position)) {
+            units.push(unit);
+        }
+    }
+
+    return units;
+}
+
 function player_owns_unit(player: Battle_Player, unit: Unit) {
     if (unit.supertype == Unit_Supertype.monster) {
         return false;
@@ -1262,6 +1276,12 @@ function collapse_no_target_ability_use(battle: Battle, unit: Unit, cast: Delta_
         case Ability_Id.shaker_enchant_totem: {
             apply_modifier(battle, source, unit, cast.modifier);
             apply_modifier_multiple(battle, source, cast.targets);
+
+            break;
+        }
+
+        case Ability_Id.shaker_echo_slam: {
+            change_health_multiple(battle, source, cast.targets);
 
             break;
         }

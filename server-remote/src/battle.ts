@@ -83,20 +83,6 @@ function query_first_unit_in_line(
     return { hit: false, final_point: current_cell };
 }
 
-function query_units_for_no_target_ability(battle: Battle, caster: Unit, targeting: Ability_Targeting): Unit[] {
-    const units: Unit[] = [];
-
-    for (const unit of battle.units) {
-        if (!authorize_act_on_known_unit(battle, unit).ok) continue;
-
-        if (ability_targeting_fits(battle, targeting, caster.position, unit.position)) {
-            units.push(unit);
-        }
-    }
-
-    return units;
-}
-
 function query_units_with_selector(battle: Battle, from: XY, target: XY, selector: Ability_Target_Selector): Unit[] {
     const units: Unit[] = [];
 
@@ -806,6 +792,19 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
                     target_unit_id: target.id,
                     modifier: modifier(battle, { id: Modifier_Id.shaker_enchant_totem }, 1)
                 }))
+            });
+
+            break;
+        }
+
+        case Ability_Id.shaker_echo_slam: {
+            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+            const damage = targets.length + 1;
+
+            submit_battle_delta(battle, {
+                ...base,
+                ability_id: ability.id,
+                targets: targets.map(target => unit_health_change(target, -damage))
             });
 
             break;

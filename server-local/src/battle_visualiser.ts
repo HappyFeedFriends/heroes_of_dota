@@ -2166,6 +2166,34 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
             break;
         }
 
+        case Ability_Id.shaker_echo_slam: {
+            unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_4, 0);
+
+            // TODO @VoiceOver
+
+            const targets = filter_and_map_existing_units(cast.targets);
+
+            if (targets.length > 1) {
+                unit_emit_sound(unit, "Hero_EarthShaker.EchoSlam");
+            } else {
+                unit_emit_sound(unit, "Hero_EarthShaker.EchoSlamSmall");
+            }
+
+            fx_by_unit("particles/units/heroes/hero_earthshaker/earthshaker_echoslam_start.vpcf", unit)
+                .with_point_value(1, 10)
+                .release();
+
+            wait_for_all_forks(targets.map(target => fork(() => {
+                const projectile = "particles/units/heroes/hero_earthshaker/earthshaker_echoslam.vpcf";
+
+                tracking_projectile_to_unit(unit, target.unit, projectile, 800, "attach_hitloc");
+                change_health(game, unit, target.unit, target.change);
+                unit_emit_sound(target.unit, "Hero_EarthShaker.EchoSlamEcho");
+            })));
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }

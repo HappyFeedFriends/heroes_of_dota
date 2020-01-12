@@ -474,6 +474,12 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         charges: 1,
                         targeting: target_rect_area_around_caster(1),
                         flags: [ Ability_Flag.does_not_consume_action ]
+                    }),
+                    active_ability<Ability_Shaker_Echo_Slam>({
+                        available_since_level: 3,
+                        charges: 1,
+                        targeting: target_rect_area_around_caster(2),
+                        flags: []
                     })
                 ]
             }

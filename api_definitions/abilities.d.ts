@@ -265,6 +265,11 @@ type Ability_Shaker_Enchant_Totem = Ability_Definition_Active_Base & {
     type: Ability_Type.no_target
 }
 
+type Ability_Shaker_Echo_Slam = Ability_Definition_Active_Base & {
+    id: Ability_Id.shaker_echo_slam
+    type: Ability_Type.no_target
+}
+
 type Ability_Pocket_Tower_Attack = Ability_Definition_Passive_Base & {
     id: Ability_Id.pocket_tower_attack
     targeting: Ability_Targeting
@@ -321,7 +326,8 @@ type Ability_No_Target =
     Ability_Ember_Searing_Chains |
     Ability_Ember_Sleight_Of_Fist |
     Ability_Ember_Activate_Fire_Remnant |
-    Ability_Shaker_Enchant_Totem
+    Ability_Shaker_Enchant_Totem |
+    Ability_Shaker_Echo_Slam
 
 type Ability_Definition_Active = Ability_Ground_Target | Ability_Unit_Target | Ability_No_Target
 
@@ -379,7 +385,8 @@ type Delta_Use_No_Target_Ability =
     Delta_Ability_Ember_Searing_Chains |
     Delta_Ability_Ember_Sleight_Of_Fist |
     Delta_Ability_Ember_Activate_Fire_Remnant |
-    Delta_Ability_Shaker_Enchant_Totem
+    Delta_Ability_Shaker_Enchant_Totem |
+    Delta_Ability_Shaker_Echo_Slam
 
 
 type Basic_Attack_Hit = {
@@ -659,4 +666,9 @@ type Delta_Ability_Shaker_Enchant_Totem = Delta_Use_No_Target_Ability_Base & {
     ability_id: Ability_Id.shaker_enchant_totem
     modifier: Modifier_Application
     targets: Unit_Modifier_Application[]
+}
+
+type Delta_Ability_Shaker_Echo_Slam = Delta_Use_No_Target_Ability_Base & {
+    ability_id: Ability_Id.shaker_echo_slam
+    targets: Unit_Health_Change[]
 }
