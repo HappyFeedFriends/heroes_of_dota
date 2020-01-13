@@ -961,6 +961,26 @@ function apply_modifier(battle: Battle, source: Source, target: Unit, applicatio
     });
 }
 
+function collapse_timed_effect(battle: Battle, delta: Delta_Timed_Effect_Triggered) {
+    const effect = delta.effect;
+
+    switch (effect.type) {
+        case Timed_Effect_Type.shaker_fissure_expiration: {
+            const block = effect.block;
+
+            for (let step = 0; step < block.steps; step++) {
+                const position = xy(block.from.x + block.normal.x * step, block.from.y + block.normal.y * step);
+
+                free_cell(battle, position);
+            }
+
+            break;
+        }
+
+        default: unreachable(effect.type);
+    }
+}
+
 function collapse_modifier_effect(battle: Battle, effect: Delta_Modifier_Effect_Applied) {
     const found = find_modifier_by_handle_id(battle, effect.handle_id);
     if (!found) return;
@@ -1381,6 +1401,28 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
             const remnant = create_creep(battle, source, caster.owner, cast.remnant.id, cast.remnant.type, cast.target_position);
             apply_modifier(battle, source, remnant, cast.remnant.modifier);
             apply_modifier(battle, source, caster, cast.modifier);
+
+            break;
+        }
+
+        case Ability_Id.shaker_fissure: {
+            apply_modifier_multiple(battle, source, cast.modifiers);
+
+            for (const move of cast.moves) {
+                const unit = find_unit_by_id(battle, move.target_unit_id);
+
+                if (unit) {
+                    move_unit(battle, unit, move.move_to);
+                }
+            }
+
+            const block = cast.block;
+
+            for (let step = 0; step < block.steps; step++) {
+                const position = xy(block.from.x + block.normal.x * step, block.from.y + block.normal.y * step);
+
+                occupy_cell(battle, position);
+            }
 
             break;
         }
@@ -1917,6 +1959,12 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
         case Delta_Type.modifier_effect_applied: {
             collapse_modifier_effect(battle, delta);
+
+            break;
+        }
+
+        case Delta_Type.timed_effect_triggered: {
+            collapse_timed_effect(battle, delta);
 
             break;
         }

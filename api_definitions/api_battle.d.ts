@@ -29,13 +29,14 @@ declare const enum Delta_Type {
     set_ability_charges_remaining = 22,
     ability_effect_applied = 23,
     modifier_effect_applied = 24,
-    rune_pick_up = 25,
-    purchase_item = 26,
-    equip_item = 27,
+    timed_effect_triggered = 25,
+    rune_pick_up = 26,
+    purchase_item = 27,
+    equip_item = 28,
 
-    end_turn = 28,
-    game_start = 29,
-    game_over = 30,
+    end_turn = 29,
+    game_start = 30,
+    game_over = 31,
 }
 
 declare const enum Action_Type {
@@ -130,6 +131,18 @@ declare const enum Card_Type {
     existing_hero = 3
 }
 
+declare const enum Source_Type {
+    none = 0,
+    unit = 1,
+    player = 2,
+    item = 3,
+    modifier = 4
+}
+
+declare const enum Timed_Effect_Type {
+    shaker_fissure_expiration = 0
+}
+
 declare const enum Unit_Id_Brand { _ = "" }
 type Unit_Id = number & Unit_Id_Brand;
 
@@ -147,6 +160,9 @@ type Tree_Id = number & Tree_Id_Brand;
 
 declare const enum Modifier_Handle_Id_Brand { _ = "" }
 type Modifier_Handle_Id = number & Modifier_Handle_Id_Brand;
+
+declare const enum Effect_Handle_Id_Brand { _ = "" }
+type Effect_Handle_Id = number & Effect_Handle_Id_Brand;
 
 declare const enum Battle_Player_Id_Brand { _ = "" }
 type Battle_Player_Id = number & Battle_Player_Id_Brand;
@@ -572,6 +588,12 @@ type Delta_Bounty_Rune_Pick_Up = Delta_Rune_Pick_Up_Base & {
     gold_gained: number
 }
 
+type Delta_Timed_Effect_Triggered = {
+    type: Delta_Type.timed_effect_triggered
+    handle_id: Effect_Handle_Id
+    effect: Timed_Effect
+}
+
 type Delta_Rune_Pick_Up =
     Delta_Regeneration_Rune_Pick_Up |
     Delta_Double_Damage_Rune_Pick_Up |
@@ -620,6 +642,7 @@ type Delta =
     Delta_Set_Ability_Charges_Remaining |
     Delta_Ability_Effect_Applied<Ability_Effect> |
     Delta_Modifier_Effect_Applied |
+    Delta_Timed_Effect_Triggered |
     Delta_Rune_Pick_Up |
     Delta_Draw_Hero_Card |
     Delta_Draw_Spell_Card |
@@ -631,16 +654,17 @@ type Delta =
     Delta_Game_Start |
     Delta_Game_Over
 
-declare const enum Source_Type {
-    none = 0,
-    unit = 1,
-    player = 2,
-    item = 3,
-    modifier = 4
-}
-
 type Modifier_Application = {
     modifier_handle_id: Modifier_Handle_Id
     modifier: Modifier
     duration?: number
+}
+
+type Timed_Effect = {
+    type: Timed_Effect_Type.shaker_fissure_expiration
+    block: {
+        from: XY
+        normal: XY
+        steps: number
+    }
 }

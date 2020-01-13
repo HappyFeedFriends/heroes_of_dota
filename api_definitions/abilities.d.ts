@@ -260,6 +260,12 @@ type Ability_Ember_Activate_Fire_Remnant = Ability_Definition_Active_Base & {
     type: Ability_Type.no_target
 }
 
+type Ability_Shaker_Fissure = Ability_Definition_Active_Base & {
+    id: Ability_Id.shaker_fissure
+    type: Ability_Type.target_ground
+    targeting: Ability_Targeting_Line
+}
+
 type Ability_Shaker_Enchant_Totem = Ability_Definition_Active_Base & {
     id: Ability_Id.shaker_enchant_totem
     type: Ability_Type.no_target
@@ -300,7 +306,8 @@ type Ability_Ground_Target =
     Ability_Mirana_Leap |
     Ability_Venge_Wave_Of_Terror |
     Ability_Dark_Seer_Vacuum |
-    Ability_Ember_Fire_Remnant
+    Ability_Ember_Fire_Remnant |
+    Ability_Shaker_Fissure
 
 type Ability_Unit_Target =
     Ability_Pudge_Dismember |
@@ -359,7 +366,8 @@ type Delta_Ground_Target_Ability =
     Delta_Ability_Mirana_Leap |
     Delta_Ability_Venge_Wave_Of_Terror |
     Delta_Ability_Dark_Seer_Vacuum |
-    Delta_Ability_Ember_Fire_Remnant
+    Delta_Ability_Ember_Fire_Remnant |
+    Delta_Ability_Shaker_Fissure
 
 type Delta_Unit_Target_Ability =
     Delta_Ability_Pudge_Dismember |
@@ -660,6 +668,23 @@ type Vacuum_Target = {
 type Delta_Ability_Dark_Seer_Vacuum = Delta_Ground_Target_Ability_Base & {
     ability_id: Ability_Id.dark_seer_vacuum
     targets: Vacuum_Target[]
+}
+
+type Delta_Ability_Shaker_Fissure = Delta_Ground_Target_Ability_Base & {
+    ability_id: Ability_Id.shaker_fissure
+    moves: {
+        target_unit_id: Unit_Id
+        move_to: XY
+    }[]
+
+    modifiers: Unit_Modifier_Application[]
+
+    block: {
+        from: XY
+        normal: XY
+        steps: number
+        handle_id: Effect_Handle_Id
+    }
 }
 
 type Delta_Ability_Shaker_Enchant_Totem = Delta_Use_No_Target_Ability_Base & {

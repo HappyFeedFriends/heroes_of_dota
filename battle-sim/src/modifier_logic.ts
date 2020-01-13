@@ -315,6 +315,10 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             status(Unit_Status.unselectable)
         ];
 
+        case Modifier_Id.shaker_fissure: return [
+            status(Unit_Status.stunned)
+        ];
+
         case Modifier_Id.shaker_enchant_totem_caster: return [
             special_state(Special_Modifier_State.damage_doubled)
         ];

@@ -14,6 +14,9 @@ type Passive_Ability_Stats<T extends Ability_Definition_Passive> = Pick<T, Exclu
 declare function active_ability<T extends Ability_Definition_Active>(stats: Active_Ability_Stats<T>): T;
 declare function passive_ability<T extends Ability_Definition_Passive>(stats: Passive_Ability_Stats<T>): T;
 
+// That works instead of active/passive ability and allows us to collapse many types
+// declare function ability<T extends Ability_Id>(id: T, stats: Omit<Find_By_Id<Ability_Definition, T>, keyof Ability_Active_Discriminator>): Find_By_Id<Ability_Definition, T>;
+
 function target_line(length: number, selector: Ability_Target_Selector = single_target()): Ability_Targeting_Line {
     return {
         type: Ability_Targeting_Type.line,
@@ -469,6 +472,12 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 move_points: 2,
                 attack: basic_attack(1),
                 abilities: [
+                    active_ability<Ability_Shaker_Fissure>({
+                        available_since_level: 1,
+                        charges: 1,
+                        targeting: target_line(5, targets_in_line(5)),
+                        flags: []
+                    }),
                     active_ability<Ability_Shaker_Enchant_Totem>({
                         available_since_level: 2,
                         charges: 1,

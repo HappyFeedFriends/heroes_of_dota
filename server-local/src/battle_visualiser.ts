@@ -20,6 +20,7 @@ type Battle = {
     is_over: boolean
     camera_dummy: CDOTA_BaseNPC
     applied_modifier_visuals: Applied_Modifier_Visuals[]
+    timed_effect_visuals: Active_Timed_Effect_Visuals[];
 }
 
 type Battle_Player = {
@@ -96,6 +97,11 @@ type Applied_Modifier_Visuals = {
     unit_id: Unit_Id
     visuals: Modifier_Visuals_Container[]
     modifier_handle_id: Modifier_Handle_Id
+}
+
+type Active_Timed_Effect_Visuals = {
+    effect_handle_id: Effect_Handle_Id
+    visuals: FX[]
 }
 
 type Modifier_Visuals_Container = {
@@ -1447,6 +1453,45 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             break;
         }
 
+        case Ability_Id.shaker_fissure: {
+            unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_1);
+            unit_emit_sound(unit, "Hero_EarthShaker.Fissure.Cast");
+
+            for (const modifier of filter_and_map_existing_units(cast.modifiers)) {
+                apply_modifier(game, modifier.unit, modifier.modifier, source);
+            }
+
+            for (const move of filter_and_map_existing_units(cast.moves)) {
+                move.unit.position = move.move_to;
+                move.unit.handle.SetAbsOrigin(battle_position_to_world_position_center(battle.world_origin, move.move_to));
+            }
+
+            const block = cast.block;
+
+            function add_normal(to: XY, scale: number) {
+                return { x: to.x + block.normal.x * scale, y: to.y + block.normal.y * scale };
+            }
+
+            const from = block.from;
+            const to = add_normal(block.from, block.steps - 1);
+
+            const particle = fx("particles/units/heroes/hero_earthshaker/earthshaker_fissure.vpcf")
+                .to_location(0, from)
+                .to_location(1, to)
+                .with_point_value(2, 60 * 60 * 5); // Lifetime. Not infinite!
+
+            if (block.steps == 0) {
+                particle.with_point_value(2, 0.5).release();
+            } else {
+                battle.timed_effect_visuals.push({
+                    effect_handle_id: block.handle_id,
+                    visuals: [ particle ]
+                });
+            }
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }
@@ -1550,23 +1595,37 @@ function try_apply_modifier_visuals(target: Unit, handle_id: Modifier_Handle_Id,
 }
 
 function try_remove_modifier_visuals(target: Unit, handle_id: Modifier_Handle_Id) {
-    for (let index = 0; index < battle.applied_modifier_visuals.length; index++) {
-        const container = battle.applied_modifier_visuals[index];
+    const index = array_find_index(battle.applied_modifier_visuals, visual =>
+        visual.modifier_handle_id == handle_id &&
+        visual.unit_id == target.id
+    );
 
-        if (container.modifier_handle_id == handle_id && container.unit_id == target.id) {
-            for (const visual of container.visuals) {
-                if (visual.from_buff) {
-                    visual.buff.Destroy();
-                } else {
-                    visual.fx.destroy_and_release(false);
-                }
-            }
+    if (index == -1) return;
 
-            battle.applied_modifier_visuals.splice(index, 1);
+    const container = battle.applied_modifier_visuals[index];
 
-            break;
+    for (const visual of container.visuals) {
+        if (visual.from_buff) {
+            visual.buff.Destroy();
+        } else {
+            visual.fx.destroy_and_release(false);
         }
     }
+
+    battle.applied_modifier_visuals.splice(index, 1);
+}
+
+function try_remove_timed_effect_visuals(id: Effect_Handle_Id) {
+    const index = array_find_index(battle.timed_effect_visuals, effect => effect.effect_handle_id == id);
+    if (index == -1) return;
+
+    const effect = battle.timed_effect_visuals[index];
+
+    for (const fx of effect.visuals) {
+        fx.destroy_and_release(false);
+    }
+
+    battle.timed_effect_visuals.splice(index, 1);
 }
 
 function update_unit_state_from_modifiers(unit: Unit) {
@@ -2321,6 +2380,20 @@ function play_unit_target_spell_delta(game: Game, caster: Battle_Player, target:
         }
 
         default: unreachable(cast);
+    }
+}
+
+function play_timed_effect_delta(game: Game, delta: Delta_Timed_Effect_Triggered) {
+    const effect = delta.effect;
+
+    switch (effect.type) {
+        case Timed_Effect_Type.shaker_fissure_expiration: {
+            try_remove_timed_effect_visuals(delta.handle_id);
+
+            break;
+        }
+
+        default: unreachable(effect.type);
     }
 }
 
@@ -3354,6 +3427,12 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             break;
         }
 
+        case Delta_Type.timed_effect_triggered: {
+            play_timed_effect_delta(game, delta);
+
+            break;
+        }
+
         case Delta_Type.draw_spell_card: break;
         case Delta_Type.draw_hero_card: break;
         case Delta_Type.use_card: break;
@@ -3415,11 +3494,18 @@ function clean_battle_world_handles(battle: Battle) {
         }
     }
 
+    for (const effect of battle.timed_effect_visuals) {
+        for (const visual of effect.visuals) {
+            visual.destroy_and_release(true);
+        }
+    }
+
     battle.units = [];
     battle.shops = [];
     battle.runes = [];
     battle.trees = [];
     battle.applied_modifier_visuals = [];
+    battle.timed_effect_visuals = [];
 }
 
 function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC) {
@@ -3444,7 +3530,8 @@ function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC)
         has_started: false,
         is_over: true,
         camera_dummy: camera_entity,
-        applied_modifier_visuals: []
+        applied_modifier_visuals: [],
+        timed_effect_visuals: []
     };
 }
 

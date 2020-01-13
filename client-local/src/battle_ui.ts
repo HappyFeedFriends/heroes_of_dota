@@ -1737,6 +1737,7 @@ function get_ability_tooltip(caster: Unit, a: Ability): string {
         case Ability_Id.ember_sleight_of_fist: return `Attack all targets around`;
         case Ability_Id.ember_fire_remnant: return `Launch a fire remnant to the target location. Reactivate to move to that remnant`;
         case Ability_Id.ember_activate_fire_remnant: return `Instantly move to the fire remnant location`;
+        case Ability_Id.shaker_fissure: return `Stun targets in the line, pushing them to the sides and blocking path until the end of next turn`;
         case Ability_Id.shaker_enchant_totem: return `Stun targets around until the end of next turn, gain double damage for the next attack`;
         case Ability_Id.shaker_echo_slam: {
             const targets = query_units_for_no_target_ability(battle, caster, a.targeting).length;

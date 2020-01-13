@@ -11,6 +11,7 @@ export type Battle_Record = Battle & {
     random_seed: number
     monster_targets: Map<Monster, Unit>
     world_origin: World_Origin
+    timed_effects: Active_Timed_Effect[]
 }
 
 export type Battle_Participant = {
@@ -20,30 +21,34 @@ export type Battle_Participant = {
     map_entity: Battle_Participant_Map_Entity
 }
 
-export type Hero_Spawn = {
+type Hero_Spawn = {
     id: Unit_Id
     type: Hero_Type
     health: number
 }
 
-export type Creep_Spawn = {
+type Creep_Spawn = {
     id: Unit_Id
     type: Creep_Type
     health: number
 }
 
-export type Spell_Spawn = {
+type Spell_Spawn = {
     id: Card_Id
     spell: Spell_Id
 }
 
-type Scan_Result_Hit = {
-    hit: true,
-    unit: Unit
+type Active_Timed_Effect = {
+    handle_id: Effect_Handle_Id
+    duration_remaining: number
+    content: Timed_Effect
 }
 
-type Scan_Result_Missed = {
-    hit: false,
+type Scan_Result = {
+    hit: true
+    unit: Unit
+} | {
+    hit: false
     final_point: XY
 }
 
@@ -53,7 +58,7 @@ function query_first_unit_in_line(
     to: XY,
     line_length: number,
     direction_normal: XY = direction_normal_between_points(from_exclusive, to)
-): Scan_Result_Hit | Scan_Result_Missed {
+): Scan_Result {
     let current_cell = xy(from_exclusive.x, from_exclusive.y);
 
     for (let scanned = 0; scanned < line_length; scanned++) {
@@ -128,6 +133,18 @@ function modifier(battle: Battle_Record, modifier: Modifier, duration?: number):
         modifier_handle_id: get_next_entity_id(battle) as Modifier_Handle_Id,
         duration: duration
     }
+}
+
+function push_new_timed_effect(battle: Battle_Record, content: Timed_Effect, duration: number): Effect_Handle_Id {
+    const handle_id = get_next_entity_id(battle) as Effect_Handle_Id;
+
+    battle.timed_effects.push({
+        duration_remaining: duration,
+        handle_id: handle_id,
+        content: content
+    });
+
+    return handle_id;
 }
 
 function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Player, spell: Card_Spell_No_Target): Delta_Use_No_Target_Spell {
@@ -282,7 +299,7 @@ function calculate_basic_attack_damage_to_target(source: Unit, target: Unit) {
     return Math.max(0, get_attack_damage(source) - get_armor(target));
 }
 
-function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: Ability_Ground_Target, target: XY): Delta_Ground_Target_Ability {
+function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: Ability_Ground_Target, target: XY): void {
     const base: Delta_Ground_Target_Ability_Base = {
         type: Delta_Type.use_ground_target_ability,
         unit_id: unit.id,
@@ -296,7 +313,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
             if (scan.hit) {
                 const damage = calculate_basic_attack_damage_to_target(unit, scan.unit);
 
-                return {
+                submit_battle_delta(battle, {
                     ...base,
                     ability_id: ability.id,
                     result: {
@@ -304,17 +321,19 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
                         target_unit_id: scan.unit.id,
                         damage_dealt: health_change(scan.unit, -damage)
                     }
-                };
+                });
             } else {
-                return {
+                submit_battle_delta(battle, {
                     ...base,
                     ability_id: ability.id,
                     result: {
                         hit: false,
                         final_point: scan.final_point
                     }
-                };
+                });
             }
+
+            break;
         }
 
         case Ability_Id.pudge_hook: {
@@ -323,7 +342,7 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
             const scan = query_first_unit_in_line(battle, unit.position, target, distance, direction);
 
             if (scan.hit) {
-                return {
+                submit_battle_delta(battle, {
                     ...base,
                     ability_id: ability.id,
                     result: {
@@ -332,14 +351,16 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
                         damage_dealt: health_change(scan.unit, -ability.damage),
                         move_target_to: xy(unit.position.x + direction.x, unit.position.y + direction.y)
                     }
-                };
+                });
             } else {
-                return {
+                submit_battle_delta(battle, {
                     ...base,
                     ability_id: ability.id,
                     result: { hit: false, final_point: scan.final_point }
-                }
+                });
             }
+
+            break;
         }
 
         case Ability_Id.skywrath_mystic_flare: {
@@ -367,34 +388,40 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
                 }
             }
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 targets: targets.map(target => unit_health_change(target.unit, -target.damage_applied)),
                 damage_remaining: remaining_damage
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.dragon_knight_breathe_fire: {
             const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting)
                 .map(target => unit_health_change(target, -ability.damage));
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 targets: targets
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.dragon_knight_elder_dragon_form_attack: {
             const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting)
                 .map(target => unit_health_change(target, -calculate_basic_attack_damage_to_target(unit, target)));
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 targets: targets
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.lion_impale: {
@@ -404,18 +431,20 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
                 modifier: modifier(battle, { id: Modifier_Id.lion_impale }, 1)
             }));
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 targets: targets
-            };
+            });
+
+            break;
         }
 
         case Ability_Id.mirana_arrow: {
             const scan = query_first_unit_in_line(battle, unit.position, target, ability.targeting.line_length);
 
             if (scan.hit) {
-                return {
+                submit_battle_delta(battle, {
                     ...base,
                     ability_id: ability.id,
                     result: {
@@ -425,24 +454,28 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
                             modifier: modifier(battle, { id: Modifier_Id.mirana_arrow }, 1)
                         }
                     }
-                };
+                });
             } else {
-                return {
+                submit_battle_delta(battle, {
                     ...base,
                     ability_id: ability.id,
                     result: {
                         hit: false,
                         final_point: scan.final_point
                     }
-                };
+                });
             }
+
+            break;
         }
 
         case Ability_Id.mirana_leap: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.venge_wave_of_terror: {
@@ -455,11 +488,13 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
                 }, ability.duration)
             }));
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 targets: targets
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.dark_seer_vacuum: {
@@ -517,17 +552,19 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
                 });
             }
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 targets: vacuum_targets
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.ember_fire_remnant: {
             const remnant_id = get_next_entity_id(battle) as Unit_Id;
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 modifier: modifier(battle, {
@@ -542,7 +579,106 @@ function perform_ability_cast_ground(battle: Battle_Record, unit: Unit, ability:
                         remnant_owner_unit_id: unit.id
                     })
                 }
+            });
+
+            break;
+        }
+
+        case Ability_Id.shaker_fissure: {
+            const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting);
+            const normal = xy(Math.sign(target.x - unit.position.x), Math.sign(target.y - unit.position.y)); // We only support line targeting
+            const left = xy(-normal.y, normal.x);
+
+            const start = xy(unit.position.x + normal.x, unit.position.y + normal.y);
+            const finish = xy(start.x, start.y);
+
+            const moves: Delta_Ability_Shaker_Fissure["moves"] = [];
+            const modifiers: Unit_Modifier_Application[] = [];
+
+            // Move forward checking units at every step
+            //  1. If path is blocked (not by unit), stop advancing
+            //  2. If a unit is on the way
+            //      a. Stun them
+            //      b. Try move unit to the left
+            //      c. If unsuccessful, try move to the right
+            //      d. If unsuccessful, stop advancing
+            //  3. Otherwise, keep advancing
+            let step = 0;
+
+            while (step < ability.targeting.line_length) {
+                const position = xy(start.x + normal.x * step, start.y + normal.y * step);
+                const target_at = targets.find(target => xy_equal(target.position, position));
+
+                if (!target_at) {
+                    const cell = grid_cell_at(battle.grid, position);
+
+                    if (!cell || cell.occupied) {
+                        break;
+                    } else {
+                        step++;
+                        continue;
+                    }
+                }
+
+                let move_to: XY | undefined = undefined;
+
+                const to_the_left = xy(position.x + left.x, position.y + left.y);
+                const cell = grid_cell_at(battle.grid, to_the_left);
+
+                if (cell && !cell.occupied) {
+                    move_to = to_the_left;
+                } else {
+                    const to_the_right = xy(position.x - left.x, position.y - left.y);
+                    const cell = grid_cell_at(battle.grid, to_the_right);
+
+                    if (cell && !cell.occupied) {
+                        move_to = to_the_right;
+                    }
+                }
+
+                modifiers.push({
+                    target_unit_id: target_at.id,
+                    modifier: modifier(battle, { id: Modifier_Id.shaker_fissure }, 1)
+                });
+
+                if (!move_to) {
+                    break;
+                }
+
+                moves.push({
+                    target_unit_id: target_at.id,
+                    move_to: move_to
+                });
+
+                finish.x = position.x;
+                finish.y = position.y;
+
+                step++;
             }
+
+            const effect_handle = push_new_timed_effect(battle, {
+                type: Timed_Effect_Type.shaker_fissure_expiration,
+                block: {
+                    from: start,
+                    normal: normal,
+                    steps: step,
+                }
+            }, 1);
+
+            submit_battle_delta(battle, {
+                ...base,
+                ability_id: ability.id,
+                modifiers: modifiers,
+                moves: moves,
+                block: {
+                    from: start,
+                    normal: normal,
+                    steps: step,
+                    handle_id: effect_handle
+                }
+            });
+
+            break;
         }
     }
 }
@@ -1385,7 +1521,7 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
             const { unit, ability, target } = ground_ability_use_permission;
 
             submit_battle_delta(battle, decrement_charges(unit, ability));
-            submit_battle_delta(battle, perform_ability_cast_ground(battle, unit, ability, target.position));
+            submit_ability_cast_ground(battle, unit, ability, target.position);
 
             break;
         }
@@ -1696,7 +1832,7 @@ function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: 
 
             battle.monster_targets.set(monster, target);
 
-            submit_battle_delta(battle, perform_ability_cast_ground(battle, monster, use.ability, target.position));
+            submit_ability_cast_ground(battle, monster, use.ability, target.position);
             break;
         }
     }
@@ -1813,6 +1949,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }
     }
 
+    // TODO Not sure how this interacts with new modifiers being added in case of a modifier removal
     for (const unit of battle.units) {
         for (const modifier of unit.modifiers) {
             if (modifier.duration_remaining != undefined && modifier.duration_remaining == 0) {
@@ -1822,6 +1959,31 @@ function resolve_end_turn_effects(battle: Battle_Record) {
                 });
             }
         }
+    }
+
+    // Not iterating backwards because presumably order actually matters here and savings would be low anyway
+    for (let index = 0; index < battle.timed_effects.length; index++) {
+        const effect = battle.timed_effects[index];
+
+        if (effect.duration_remaining == 0) {
+            // Careful, Ned...
+            // The submission can cause timed_effects to change,
+            // although I wouldn't expect elements to be removed there, so fingers crossed
+            // Maybe we should push those deltas into a separate array and submit them all later
+            submit_battle_delta(battle, {
+                type: Delta_Type.timed_effect_triggered,
+                handle_id: effect.handle_id,
+                effect: effect.content
+            });
+
+            battle.timed_effects.splice(index, 1);
+            index--;
+        }
+    }
+
+    // Same behavior as modifiers, aka duration = 0 -> at the end of this turn
+    for (const effect of battle.timed_effects) {
+        effect.duration_remaining--;
     }
 
     for_units_with_modifier(Modifier_Id.item_heart_of_tarrasque, (unit, applied, modifier) => {
@@ -2083,6 +2245,7 @@ export function make_battle_record(battle_id: Battle_Id,
         random_seed: random.int_range(0, 65536),
         monster_targets: new Map(),
         world_origin: world_origin,
+        timed_effects: [],
         receive_event: on_battle_event
     };
 
