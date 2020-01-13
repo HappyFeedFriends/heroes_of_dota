@@ -1466,28 +1466,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
                 move.unit.handle.SetAbsOrigin(battle_position_to_world_position_center(battle.world_origin, move.move_to));
             }
 
-            const block = cast.block;
-
-            function add_normal(to: XY, scale: number) {
-                return { x: to.x + block.normal.x * scale, y: to.y + block.normal.y * scale };
-            }
-
-            const from = block.from;
-            const to = add_normal(block.from, block.steps - 1);
-
-            const particle = fx("particles/units/heroes/hero_earthshaker/earthshaker_fissure.vpcf")
-                .to_location(0, from)
-                .to_location(1, to)
-                .with_point_value(2, 60 * 60 * 5); // Lifetime. Not infinite!
-
-            if (block.steps == 0) {
-                particle.with_point_value(2, 0.5).release();
-            } else {
-                battle.timed_effect_visuals.push({
-                    effect_handle_id: block.handle_id,
-                    visuals: [ particle ]
-                });
-            }
+            create_timed_effect(cast.block.effect_handle_id, cast.block.effect);
 
             break;
         }
@@ -1613,19 +1592,6 @@ function try_remove_modifier_visuals(target: Unit, handle_id: Modifier_Handle_Id
     }
 
     battle.applied_modifier_visuals.splice(index, 1);
-}
-
-function try_remove_timed_effect_visuals(id: Effect_Handle_Id) {
-    const index = array_find_index(battle.timed_effect_visuals, effect => effect.effect_handle_id == id);
-    if (index == -1) return;
-
-    const effect = battle.timed_effect_visuals[index];
-
-    for (const fx of effect.visuals) {
-        fx.destroy_and_release(false);
-    }
-
-    battle.timed_effect_visuals.splice(index, 1);
 }
 
 function update_unit_state_from_modifiers(unit: Unit) {
@@ -2383,18 +2349,48 @@ function play_unit_target_spell_delta(game: Game, caster: Battle_Player, target:
     }
 }
 
-function play_timed_effect_delta(game: Game, delta: Delta_Timed_Effect_Triggered) {
-    const effect = delta.effect;
-
+function create_timed_effect(handle_id: Effect_Handle_Id, effect: Timed_Effect) {
     switch (effect.type) {
-        case Timed_Effect_Type.shaker_fissure_expiration: {
-            try_remove_timed_effect_visuals(delta.handle_id);
+        case Timed_Effect_Type.shaker_fissure_block: {
+            function add_normal(to: XY, scale: number) {
+                return { x: to.x + effect.normal.x * scale, y: to.y + effect.normal.y * scale };
+            }
+
+            const from = effect.from;
+            const to = add_normal(effect.from, effect.steps - 1);
+
+            const particle = fx("particles/units/heroes/hero_earthshaker/earthshaker_fissure.vpcf")
+                .to_location(0, from)
+                .to_location(1, to)
+                .with_point_value(2, 60 * 60 * 5); // Lifetime. Not infinite!
+
+            if (effect.steps == 0) {
+                particle.with_point_value(2, 0.5).release();
+            } else {
+                battle.timed_effect_visuals.push({
+                    effect_handle_id: handle_id,
+                    visuals: [ particle ]
+                });
+            }
 
             break;
         }
 
         default: unreachable(effect.type);
     }
+}
+
+function expire_timed_effect(id: Effect_Handle_Id) {
+    const index = array_find_index(battle.timed_effect_visuals, effect => effect.effect_handle_id == id);
+    if (index == -1) return;
+
+    const effect = battle.timed_effect_visuals[index];
+
+    for (const fx of effect.visuals) {
+        fx.destroy_and_release(false);
+    }
+
+    battle.timed_effect_visuals.splice(index, 1);
 }
 
 function play_modifier_effect_delta(game: Game, delta: Delta_Modifier_Effect_Applied) {
@@ -3427,8 +3423,8 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             break;
         }
 
-        case Delta_Type.timed_effect_triggered: {
-            play_timed_effect_delta(game, delta);
+        case Delta_Type.timed_effect_expired: {
+            expire_timed_effect(delta.handle_id);
 
             break;
         }
@@ -3618,6 +3614,10 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
         handle: create_world_handle_for_tree(battle.world_origin, battle.random_seed, tree.id, tree.position),
         position: tree.position
     }));
+
+    for (const effect of snapshot.effects) {
+        create_timed_effect(effect.handle_id, effect.content);
+    }
 
     battle.delta_head = snapshot.delta_head;
 

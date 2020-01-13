@@ -278,8 +278,14 @@ type Tree_Snapshot = {
     position: XY
 }
 
+type Timed_Effect_Snapshot = {
+    handle_id: Effect_Handle_Id
+    content: Timed_Effect
+}
+
 type Battle_Snapshot = {
     has_started: boolean
+    effects: Timed_Effect_Snapshot[]
     players: Player_Snapshot[]
     units: Unit_Snapshot[]
     runes: Rune_Snapshot[]

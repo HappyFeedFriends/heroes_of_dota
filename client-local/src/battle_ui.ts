@@ -1595,6 +1595,10 @@ function make_battle_snapshot(): Battle_Snapshot {
             id: player.id,
             gold: player.gold
         })),
+        effects: battle.timed_effects.map(effect => ({
+            handle_id: effect.handle_id,
+            content: effect.content
+        })),
         units: battle.units
             .filter(unit => !unit.dead)
             .map(unit => {

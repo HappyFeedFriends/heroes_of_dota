@@ -602,6 +602,7 @@ function game_loop() {
         fast_forward_from_snapshot(battle, {
             has_started: from_client_bool(event.has_started),
             players: from_client_array(event.players),
+            effects: from_client_array(event.effects),
             units: from_client_array(event.units),
             runes: from_client_array(event.runes),
             shops: from_client_array(event.shops),

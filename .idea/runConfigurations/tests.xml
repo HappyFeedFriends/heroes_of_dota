@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="tests" type="NodeJSConfigurationType" path-to-js-file="dist/tests.js" working-dir="$PROJECT_DIR$/server-remote">
+  <configuration default="false" name="tests" type="NodeJSConfigurationType" path-to-js-file="tests.js" working-dir="$PROJECT_DIR$">
     <method v="2" />
   </configuration>
 </component>

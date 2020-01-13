@@ -29,14 +29,14 @@ declare const enum Delta_Type {
     set_ability_charges_remaining = 22,
     ability_effect_applied = 23,
     modifier_effect_applied = 24,
-    timed_effect_triggered = 25,
+    timed_effect_expired = 25,
     rune_pick_up = 26,
     purchase_item = 27,
     equip_item = 28,
 
-    end_turn = 29,
-    game_start = 30,
-    game_over = 31,
+    end_turn = 50,
+    game_start = 51,
+    game_over = 52,
 }
 
 declare const enum Action_Type {
@@ -140,7 +140,7 @@ declare const enum Source_Type {
 }
 
 declare const enum Timed_Effect_Type {
-    shaker_fissure_expiration = 0
+    shaker_fissure_block = 0
 }
 
 declare const enum Unit_Id_Brand { _ = "" }
@@ -588,10 +588,9 @@ type Delta_Bounty_Rune_Pick_Up = Delta_Rune_Pick_Up_Base & {
     gold_gained: number
 }
 
-type Delta_Timed_Effect_Triggered = {
-    type: Delta_Type.timed_effect_triggered
+type Delta_Timed_Effect_Expired = {
+    type: Delta_Type.timed_effect_expired
     handle_id: Effect_Handle_Id
-    effect: Timed_Effect
 }
 
 type Delta_Rune_Pick_Up =
@@ -642,7 +641,7 @@ type Delta =
     Delta_Set_Ability_Charges_Remaining |
     Delta_Ability_Effect_Applied<Ability_Effect> |
     Delta_Modifier_Effect_Applied |
-    Delta_Timed_Effect_Triggered |
+    Delta_Timed_Effect_Expired |
     Delta_Rune_Pick_Up |
     Delta_Draw_Hero_Card |
     Delta_Draw_Spell_Card |
@@ -660,11 +659,15 @@ type Modifier_Application = {
     duration?: number
 }
 
+type Timed_Effect_Application = {
+    effect_handle_id: Effect_Handle_Id
+    effect: Timed_Effect
+    duration: number
+}
+
 type Timed_Effect = {
-    type: Timed_Effect_Type.shaker_fissure_expiration
-    block: {
-        from: XY
-        normal: XY
-        steps: number
-    }
+    type: Timed_Effect_Type.shaker_fissure_block
+    from: XY
+    normal: XY
+    steps: number
 }

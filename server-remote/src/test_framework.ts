@@ -394,6 +394,17 @@ class Assert_For_Battle {
     was_a_draw() {
         do_assert(this.index, this.test.battle.state.status == Battle_Status.finished, `Expected battle to be over`);
         do_assert(this.index, this.test.battle.state.winner == undefined, `Expected battle result to be a draw`);
+        return this;
+    }
+
+    grid_blocked_at(xy: XY) {
+        do_assert(this.index, is_grid_occupied_at(this.test.battle.grid, xy), `Expected [${xy.x}, ${xy.y}] to be occupied`);
+        return this;
+    }
+
+    grid_free_at(xy: XY) {
+        do_assert(this.index, !is_grid_occupied_at(this.test.battle.grid, xy), `Expected [${xy.x}, ${xy.y}] to be free`);
+        return this;
     }
 
     is_not_over() {

@@ -313,6 +313,45 @@ function test_pathing_is_blocked_by_units() {
     ally.assert().is_at(ally_to);
 }
 
+function test_shaker_fissure_expires_correctly() {
+    const battle = test_battle();
+    const ally = battle.for_test_player().spawn_hero(Hero_Type.earthshaker, xy(1, 1));
+
+    battle.for_enemy_player().spawn_hero(Hero_Type.luna, xy(7, 7));
+
+    battle.start();
+
+    battle.assert()
+        .grid_free_at(xy(2, 1))
+        .grid_free_at(xy(3, 1))
+        .grid_free_at(xy(4, 1))
+        .grid_free_at(xy(5, 1));
+
+    ally.order_cast_on_ground(Ability_Id.shaker_fissure, xy(2, 1));
+
+    battle.assert()
+        .grid_blocked_at(xy(2, 1))
+        .grid_blocked_at(xy(3, 1))
+        .grid_blocked_at(xy(4, 1))
+        .grid_blocked_at(xy(5, 1));
+
+    battle.for_test_player().end_turn();
+
+    battle.assert()
+        .grid_blocked_at(xy(2, 1))
+        .grid_blocked_at(xy(3, 1))
+        .grid_blocked_at(xy(4, 1))
+        .grid_blocked_at(xy(5, 1));
+
+    battle.for_enemy_player().end_turn();
+
+    battle.assert()
+        .grid_free_at(xy(2, 1))
+        .grid_free_at(xy(3, 1))
+        .grid_free_at(xy(4, 1))
+        .grid_free_at(xy(5, 1));
+}
+
 run_tests([
     test_player_can_spawn_hero_from_hand,
     test_player_cant_spawn_hero_outside_deployment_zone,
@@ -328,5 +367,6 @@ run_tests([
     test_pocket_tower_attacks_at_the_end_of_the_turn,
     test_eul_scepter_modifier_on_enemy,
     test_eul_scepter_modifier_on_ally,
-    test_pathing_is_blocked_by_units
+    test_pathing_is_blocked_by_units,
+    test_shaker_fissure_expires_correctly
 ]);

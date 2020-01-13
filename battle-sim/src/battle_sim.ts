@@ -51,6 +51,7 @@ type Battle = {
     grid: Grid<Cell>
     receive_event: (battle: Battle, event: Battle_Event) => void
     event_queue: Battle_Event[]
+    timed_effects: Active_Timed_Effect[]
 }
 
 type Battle_Player = {
@@ -89,6 +90,12 @@ type Battle_Event = {
     source: Source
     unit: Unit
     at: XY
+}
+
+type Active_Timed_Effect = {
+    handle_id: Effect_Handle_Id
+    duration_remaining: number
+    content: Timed_Effect
 }
 
 type Cell = Cell_Like & {
@@ -472,6 +479,7 @@ function make_battle(players: Battle_Player[], grid_width: number, grid_height: 
             size: xy(grid_width, grid_height),
             cells: []
         },
+        timed_effects: [],
         event_queue: [],
         receive_event: () => {}
     }
@@ -784,6 +792,12 @@ function replace_ability(unit: Unit, ability_id_to_bench: Ability_Id, currently_
 }
 
 function end_turn(battle: Battle, next_turning_player: Battle_Player) {
+    for (const effect of battle.timed_effects) {
+        if (effect.duration_remaining > 0) {
+            effect.duration_remaining--;
+        }
+    }
+
     for (const unit of battle.units) {
         for (const modifier of unit.modifiers) {
             if (modifier.duration_remaining != undefined) {
@@ -981,15 +995,35 @@ function apply_modifier(battle: Battle, source: Source, target: Unit, applicatio
     });
 }
 
-function collapse_timed_effect(battle: Battle, delta: Delta_Timed_Effect_Triggered) {
-    const effect = delta.effect;
+function create_timed_effect(battle: Battle, application: Timed_Effect_Application) {
+    const effect = application.effect;
+
+    battle.timed_effects.push({
+        handle_id: application.effect_handle_id,
+        content: effect,
+        duration_remaining: application.duration
+    });
 
     switch (effect.type) {
-        case Timed_Effect_Type.shaker_fissure_expiration: {
-            const block = effect.block;
+        case Timed_Effect_Type.shaker_fissure_block: {
+            for (let step = 0; step < effect.steps; step++) {
+                const position = xy(effect.from.x + effect.normal.x * step, effect.from.y + effect.normal.y * step);
 
-            for (let step = 0; step < block.steps; step++) {
-                const position = xy(block.from.x + block.normal.x * step, block.from.y + block.normal.y * step);
+                occupy_cell_at(battle, position);
+            }
+
+            break;
+        }
+
+        default: unreachable(effect.type);
+    }
+}
+
+function expire_timed_effect(battle: Battle, effect: Timed_Effect) {
+    switch (effect.type) {
+        case Timed_Effect_Type.shaker_fissure_block: {
+            for (let step = 0; step < effect.steps; step++) {
+                const position = xy(effect.from.x + effect.normal.x * step, effect.from.y + effect.normal.y * step);
 
                 free_cell_at(battle, position);
             }
@@ -1436,13 +1470,7 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
                 }
             }
 
-            const block = cast.block;
-
-            for (let step = 0; step < block.steps; step++) {
-                const position = xy(block.from.x + block.normal.x * step, block.from.y + block.normal.y * step);
-
-                occupy_cell_at(battle, position);
-            }
+            create_timed_effect(battle, cast.block);
 
             break;
         }
@@ -1983,8 +2011,15 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             break;
         }
 
-        case Delta_Type.timed_effect_triggered: {
-            collapse_timed_effect(battle, delta);
+        case Delta_Type.timed_effect_expired: {
+            const index = battle.timed_effects.findIndex(effect => effect.handle_id == delta.handle_id);
+            if (index == -1) break;
+
+            const effect = battle.timed_effects[index];
+
+            expire_timed_effect(battle, effect.content);
+
+            battle.timed_effects.splice(index, 1);
 
             break;
         }

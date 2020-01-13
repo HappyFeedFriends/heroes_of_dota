@@ -11,7 +11,6 @@ export type Battle_Record = Battle & {
     random_seed: number
     monster_targets: Map<Monster, Unit>
     world_origin: World_Origin
-    timed_effects: Active_Timed_Effect[]
 }
 
 export type Battle_Participant = {
@@ -36,12 +35,6 @@ type Creep_Spawn = {
 type Spell_Spawn = {
     id: Card_Id
     spell: Spell_Id
-}
-
-type Active_Timed_Effect = {
-    handle_id: Effect_Handle_Id
-    duration_remaining: number
-    content: Timed_Effect
 }
 
 type Scan_Result = {
@@ -135,16 +128,14 @@ function modifier(battle: Battle_Record, modifier: Modifier, duration?: number):
     }
 }
 
-function push_new_timed_effect(battle: Battle_Record, content: Timed_Effect, duration: number): Effect_Handle_Id {
+function timed_effect(battle: Battle_Record, content: Timed_Effect, duration: number): Timed_Effect_Application {
     const handle_id = get_next_entity_id(battle) as Effect_Handle_Id;
 
-    battle.timed_effects.push({
-        duration_remaining: duration,
-        handle_id: handle_id,
-        content: content
-    });
-
-    return handle_id;
+    return {
+        effect_handle_id: handle_id,
+        duration: duration,
+        effect: content
+    };
 }
 
 function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Player, spell: Card_Spell_No_Target): Delta_Use_No_Target_Spell {
@@ -652,26 +643,17 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
                 step++;
             }
 
-            const effect_handle = push_new_timed_effect(battle, {
-                type: Timed_Effect_Type.shaker_fissure_expiration,
-                block: {
-                    from: start,
-                    normal: normal,
-                    steps: step,
-                }
-            }, 1);
-
             submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 modifiers: modifiers,
                 moves: moves,
-                block: {
+                block: timed_effect(battle, {
+                    type: Timed_Effect_Type.shaker_fissure_block,
                     from: start,
                     normal: normal,
-                    steps: step,
-                    handle_id: effect_handle
-                }
+                    steps: step
+                }, 1)
             });
 
             break;
@@ -1967,19 +1949,13 @@ function resolve_end_turn_effects(battle: Battle_Record) {
             // although I wouldn't expect elements to be removed there, so fingers crossed
             // Maybe we should push those deltas into a separate array and submit them all later
             submit_battle_delta(battle, {
-                type: Delta_Type.timed_effect_triggered,
-                handle_id: effect.handle_id,
-                effect: effect.content
+                type: Delta_Type.timed_effect_expired,
+                handle_id: effect.handle_id
             });
 
             battle.timed_effects.splice(index, 1);
             index--;
         }
-    }
-
-    // Same behavior as modifiers, aka duration = 0 -> at the end of this turn
-    for (const effect of battle.timed_effects) {
-        effect.duration_remaining--;
     }
 
     for_units_with_modifier(Modifier_Id.item_heart_of_tarrasque, (unit, applied, modifier) => {
@@ -2241,7 +2217,6 @@ export function make_battle_record(battle_id: Battle_Id,
         random_seed: random.int_range(0, 65536),
         monster_targets: new Map(),
         world_origin: world_origin,
-        timed_effects: [],
         receive_event: on_battle_event
     };
 

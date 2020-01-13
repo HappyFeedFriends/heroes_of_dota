@@ -679,12 +679,7 @@ type Delta_Ability_Shaker_Fissure = Delta_Ground_Target_Ability_Base & {
 
     modifiers: Unit_Modifier_Application[]
 
-    block: {
-        from: XY
-        normal: XY
-        steps: number
-        handle_id: Effect_Handle_Id
-    }
+    block: Timed_Effect_Application
 }
 
 type Delta_Ability_Shaker_Enchant_Totem = Delta_Use_No_Target_Ability_Base & {
