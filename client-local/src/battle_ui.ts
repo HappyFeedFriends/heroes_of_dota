@@ -592,7 +592,7 @@ function battle_process_state_transition(from: Player_State, new_state: Game_Net
 
                 battle.grid.cells.push({
                     position: xy(x, y),
-                    occupied: false,
+                    occupants: 0,
                     cost: 1,
                     associated_particle: particle
                 });

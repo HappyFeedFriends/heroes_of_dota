@@ -286,6 +286,33 @@ function test_game_ends_in_a_draw_if_all_units_die() {
     battle.assert().is_over().was_a_draw();
 }
 
+function test_pathing_is_blocked_by_units() {
+    const battle = test_battle();
+    const ally_at = xy(0, 0);
+    const enemy_at = xy(0, 1);
+    const ally = battle.for_test_player().spawn_hero(Hero_Type.skywrath_mage, ally_at);
+    const enemy = battle.for_enemy_player().spawn_hero(Hero_Type.luna, enemy_at);
+    const enemy_to = xy(1, 1);
+    const ally_to = xy(1, 0);
+
+    battle.start();
+    battle.for_test_player().end_turn();
+
+    enemy.assert().is_at(enemy_at);
+    enemy.order_move(ally_at);
+    enemy.assert().is_at(enemy_at);
+    enemy.order_move(enemy_to);
+    enemy.assert().is_at(enemy_to);
+
+    battle.for_enemy_player().end_turn();
+
+    ally.assert().is_at(ally_at);
+    ally.order_move(enemy_to);
+    ally.assert().is_at(ally_at);
+    ally.order_move(ally_to);
+    ally.assert().is_at(ally_to);
+}
+
 run_tests([
     test_player_can_spawn_hero_from_hand,
     test_player_cant_spawn_hero_outside_deployment_zone,
@@ -300,5 +327,6 @@ run_tests([
     test_health_modifiers_decrease_health_properly,
     test_pocket_tower_attacks_at_the_end_of_the_turn,
     test_eul_scepter_modifier_on_enemy,
-    test_eul_scepter_modifier_on_ally
+    test_eul_scepter_modifier_on_ally,
+    test_pathing_is_blocked_by_units
 ]);

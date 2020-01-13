@@ -61,8 +61,7 @@ type Editor_Enemy_Battleground_Data = {
     current_battleground_id: Battleground_Id
 }
 
-type Editor_Cell = {
-    position: XY
+type Editor_Cell = Cell_Like & {
     particle: ParticleId
 }
 
@@ -1250,7 +1249,8 @@ function fill_battleground_editor_cells(grid_world_origin: XYZ, w: number, h: nu
 
             by_x.push({
                 position: xy(x, y),
-                particle: particle
+                particle: particle,
+                occupants: 0
             });
 
             register_particle_for_reload(particle);

@@ -91,10 +91,8 @@ type Battle_Event = {
     at: XY
 }
 
-type Cell = {
-    occupied: boolean;
+type Cell = Cell_Like & {
     cost: number;
-    position: XY;
 }
 
 type Unit_Base = Unit_Stats & {
@@ -171,7 +169,10 @@ type Grid<T extends Cell_Like> = {
     cells: T[]
 }
 
-type Cell_Like = { position: XY };
+type Cell_Like = {
+    position: XY
+    occupants: number
+};
 
 declare const enum Const {
     max_unit_level = 3,
@@ -229,6 +230,15 @@ function grid_cell_neighbors<T extends Cell_Like>(grid: Grid<T>, at: XY): Array<
         grid_cell_at_raw(grid, at.x, at.y + 1),
         grid_cell_at_raw(grid, at.x, at.y - 1)
     ];
+}
+
+function is_grid_occupied_at<T extends Cell_Like>(grid: Grid<T>, at: XY): boolean {
+    const cell = grid_cell_at_raw(grid, at.x, at.y);
+    return !cell || cell.occupants > 0;
+}
+
+function is_grid_cell_occupied<T extends Cell_Like>(cell: T): boolean {
+    return cell.occupants > 0;
 }
 
 // This will only work correctly if cells are on the same line
@@ -497,12 +507,12 @@ function path_iterator_check_neighbor(iter: Path_Iterator, neighbor: Cell | unde
 
     if (iter.indices_already_checked[neighbor_index]) return;
 
-    let neighbor_occupied = neighbor.occupied;
+    let neighbor_occupied = is_grid_cell_occupied(neighbor);
 
     if (iter.ignore_runes) {
         const occupied_by_rune = !!rune_at(iter.battle, neighbor.position);
 
-        neighbor_occupied = neighbor.occupied && !occupied_by_rune;
+        neighbor_occupied = neighbor_occupied && !occupied_by_rune;
     }
 
     iter.indices_already_checked[neighbor_index] = true;
@@ -591,8 +601,9 @@ function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, fr
     }
 
     if (targeting.flags[Ability_Targeting_Flag.only_free_cells]) {
-        const cell = grid_cell_at(battle.grid, check_at);
-        if (!cell || cell.occupied) return false;
+        if (is_grid_occupied_at(battle.grid, check_at)) {
+            return false;
+        }
     }
 
     switch (targeting.type) {
@@ -669,9 +680,7 @@ function ability_selector_fits(battle: Battle, selector: Ability_Target_Selector
                         return true;
                     }
 
-                    const cell = grid_cell_at(battle.grid, current_cell);
-
-                    if (!cell || cell.occupied) {
+                    if (is_grid_occupied_at(battle.grid, current_cell)) {
                         return false;
                     }
                 }
@@ -706,7 +715,7 @@ function fill_grid(battle: Battle) {
         for (let y = 0; y < battle.grid.size.y; y++) {
             battle.grid.cells.push({
                 position: xy(x, y),
-                occupied: false,
+                occupants: 0,
                 cost: 1
             });
         }
@@ -716,10 +725,13 @@ function fill_grid(battle: Battle) {
 function move_unit(battle: Battle, unit: Unit, to: XY) {
     const cell_from = grid_cell_at_unchecked(battle.grid, unit.position);
     const cell_to = grid_cell_at_unchecked(battle.grid, to);
-    const from_was_occupied = cell_from.occupied;
+    const from_was_occupied = is_grid_cell_occupied(cell_from);
 
-    cell_from.occupied = false;
-    cell_to.occupied = from_was_occupied;
+    free_cell(cell_from);
+
+    if (from_was_occupied) {
+        occupy_cell(cell_to);
+    }
 
     unit.position = to;
 }
@@ -799,7 +811,7 @@ function change_health(battle: Battle, source: Source, target: Unit, change: Hea
     target.health = change.new_value;
 
     if (!target.dead && change.new_value == 0) {
-        free_cell(battle, target.position);
+        free_cell_at(battle, target.position);
 
         target.dead = true;
 
@@ -835,20 +847,28 @@ function add_card_to_hand(battle: Battle, player: Battle_Player, card: Card) {
     })
 }
 
-function occupy_cell(battle: Battle, at: XY) {
+function occupy_cell_at(battle: Battle, at: XY) {
     const cell = grid_cell_at(battle.grid, at);
 
     if (cell) {
-        cell.occupied = true;
+        occupy_cell(cell);
     }
 }
 
-function free_cell(battle: Battle, at: XY) {
+function free_cell_at(battle: Battle, at: XY) {
     const cell = grid_cell_at(battle.grid, at);
 
     if (cell) {
-        cell.occupied = false;
+        free_cell(cell);
     }
+}
+
+function occupy_cell<T extends Cell_Like>(cell: T) {
+    cell.occupants++;
+}
+
+function free_cell<T extends Cell_Like>(cell: T) {
+    cell.occupants--;
 }
 
 function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base {
@@ -914,7 +934,7 @@ function create_creep(battle: Battle, source: Source, owner: Battle_Player, unit
 
     battle.units.push(creep);
 
-    occupy_cell(battle, at);
+    occupy_cell_at(battle, at);
 
     push_event(battle, unit_spawn_event(source, creep, at));
 
@@ -971,7 +991,7 @@ function collapse_timed_effect(battle: Battle, delta: Delta_Timed_Effect_Trigger
             for (let step = 0; step < block.steps; step++) {
                 const position = xy(block.from.x + block.normal.x * step, block.from.y + block.normal.y * step);
 
-                free_cell(battle, position);
+                free_cell_at(battle, position);
             }
 
             break;
@@ -1421,7 +1441,7 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
             for (let step = 0; step < block.steps; step++) {
                 const position = xy(block.from.x + block.normal.x * step, block.from.y + block.normal.y * step);
 
-                occupy_cell(battle, position);
+                occupy_cell_at(battle, position);
             }
 
             break;
@@ -1506,7 +1526,7 @@ function collapse_unit_target_spell_use(battle: Battle, caster: Battle_Player, t
 
             change_health(battle, source, target, cast.heal);
             apply_modifier(battle, source, target, cast.modifier);
-            free_cell(battle, target.position);
+            free_cell_at(battle, target.position);
 
             break;
         }
@@ -1720,7 +1740,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
             battle.units.push(hero);
 
-            occupy_cell(battle, delta.at_position);
+            occupy_cell_at(battle, delta.at_position);
 
             push_event(battle, unit_spawn_event(no_source(), hero, delta.at_position));
 
@@ -1735,7 +1755,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
             battle.units.push(monster);
 
-            occupy_cell(battle, delta.at_position);
+            occupy_cell_at(battle, delta.at_position);
 
             push_event(battle, unit_spawn_event(no_source(), monster, delta.at_position));
 
@@ -1763,7 +1783,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
             update_unit_state_from_modifiers(hero);
             move_unit(battle, hero, delta.at_position);
-            occupy_cell(battle, delta.at_position);
+            occupy_cell_at(battle, delta.at_position);
 
             break;
         }
@@ -1786,7 +1806,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                 position: delta.at
             });
 
-            occupy_cell(battle, delta.at);
+            occupy_cell_at(battle, delta.at);
 
             break;
         }
@@ -1799,7 +1819,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                 position: delta.at
             });
 
-            occupy_cell(battle, delta.at);
+            occupy_cell_at(battle, delta.at);
 
             break;
         }
@@ -1810,7 +1830,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                 position: delta.at_position
             });
 
-            occupy_cell(battle, delta.at_position);
+            occupy_cell_at(battle, delta.at_position);
 
             break;
         }

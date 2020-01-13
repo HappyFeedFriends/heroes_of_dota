@@ -80,7 +80,7 @@ function query_first_unit_in_line(
             };
         }
 
-        if (cell.occupied) {
+        if (is_grid_cell_occupied(cell)) {
             return { hit: false, final_point: current_cell };
         }
     }
@@ -508,7 +508,7 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
 
             const selector = ability.targeting.selector;
             const free_cells = battle.grid.cells
-                .filter(cell => !cell.occupied && ability_selector_fits(battle, selector, unit.position, target, cell.position))
+                .filter(cell => !is_grid_cell_occupied(cell) && ability_selector_fits(battle, selector, unit.position, target, cell.position))
                 .map(cell => cell.position);
 
             const closest_free_cell = (for_unit_cell: XY) => {
@@ -610,9 +610,7 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
                 const target_at = targets.find(target => xy_equal(target.position, position));
 
                 if (!target_at) {
-                    const cell = grid_cell_at(battle.grid, position);
-
-                    if (!cell || cell.occupied) {
+                    if (is_grid_occupied_at(battle.grid, position)) {
                         break;
                     } else {
                         step++;
@@ -623,15 +621,13 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
                 let move_to: XY | undefined = undefined;
 
                 const to_the_left = xy(position.x + left.x, position.y + left.y);
-                const cell = grid_cell_at(battle.grid, to_the_left);
 
-                if (cell && !cell.occupied) {
+                if (!is_grid_occupied_at(battle.grid, to_the_left)) {
                     move_to = to_the_left;
                 } else {
                     const to_the_right = xy(position.x - left.x, position.y - left.y);
-                    const cell = grid_cell_at(battle.grid, to_the_right);
 
-                    if (cell && !cell.occupied) {
+                    if (!is_grid_occupied_at(battle.grid, to_the_right)) {
                         move_to = to_the_right;
                     }
                 }
@@ -1893,10 +1889,10 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
 
                             for (let x = from_x; x < to_x; x++) {
                                 for (let y = from_y; y < to_y; y++) {
-                                    const cell = grid_cell_at_unchecked(battle.grid, xy(x, y));
+                                    const at = xy(x, y);
 
-                                    if (!cell.occupied) {
-                                        free_cells.push(cell.position);
+                                    if (is_grid_occupied_at(battle.grid, at)) {
+                                        free_cells.push(at);
                                     }
                                 }
                             }
@@ -2157,7 +2153,7 @@ function submit_battle_delta(battle: Battle_Record, delta: Delta) {
 }
 
 export function find_unoccupied_cells_in_deployment_zone_for_player(battle: Battle_Record, player: Battle_Player) {
-    return battle.grid.cells.filter(cell => !cell.occupied && is_point_in_deployment_zone(battle, cell.position, player));
+    return battle.grid.cells.filter(cell => !is_grid_cell_occupied(cell) && is_point_in_deployment_zone(battle, cell.position, player));
 }
 
 export function get_battle_deltas_after(battle: Battle, head: number): Delta[] {
@@ -2471,7 +2467,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
 
             const at = xy(4, 4);
 
-            if (grid_cell_at_unchecked(battle.grid, at).occupied) {
+            if (is_grid_occupied_at(battle.grid, at)) {
                 break;
             }
 
