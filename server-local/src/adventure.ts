@@ -360,7 +360,7 @@ function submit_adventure_movement_loop(game: Game) {
     }
 }
 
-function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_Id, last_change_index: number) {
+function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_Id, current_head: number) {
     const entity_index = array_find_index(game.adventure.entities, entity => entity.id == entity_id);
     if (entity_index == -1) return;
 
@@ -371,7 +371,7 @@ function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_
         target_entity_id: entity_id,
         access_token: game.token,
         dedicated_server_key: get_dedicated_server_key(),
-        starting_change_index: last_change_index
+        current_head: current_head
     });
 
     if (state_update) {
@@ -384,7 +384,7 @@ function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_
 
         fire_event(To_Client_Event_Type.adventure_receive_party_changes, {
             changes: state_update.party_updates,
-            last_change_index: last_change_index
+            current_head: current_head
         });
     }
 }

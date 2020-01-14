@@ -65,7 +65,7 @@ type Adventure_Handlers = {
     type: Api_Request_Type.interact_with_adventure_entity
     request: {
         target_entity_id: Adventure_Entity_Id
-        starting_change_index: number
+        current_head: number
     } & With_Token & With_Private_Key
     response: {
         party_updates: Adventure_Party_Change[]
@@ -74,15 +74,20 @@ type Adventure_Handlers = {
 } | {
     type: Api_Request_Type.get_adventure_party_changes
     request: {
-        starting_change_index: number
+        current_head: number
     } & With_Token
     response: {
+        snapshot: true
+        slots: Adventure_Party_Slot[]
+        origin_head: number
+    } | {
+        snapshot: false
         changes: Adventure_Party_Change[]
     }
 } | {
     type: Api_Request_Type.adventure_party_cheat
     request: {
-        starting_change_index: number
+        current_head: number
         cheat: string
     } & With_Token
     response: {

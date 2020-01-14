@@ -629,7 +629,7 @@ function game_loop() {
 
     on_custom_event_async(To_Server_Event_Type.adventure_interact_with_entity, event => {
         if (game.state == Player_State.on_adventure) {
-            adventure_interact_with_entity(game, event.entity_id, event.last_change_index);
+            adventure_interact_with_entity(game, event.entity_id, event.current_head);
         }
     });
 

@@ -18,7 +18,9 @@ const adventure_ui = {
         changes: new Array<Adventure_Party_Change>(),
         currently_playing_change_index: 0,
         currently_playing_a_change: false,
-        next_change_promise: () => true
+        next_change_promise: () => true,
+        current_head: 0,
+        base_head: 0
     },
     ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
 };
@@ -218,46 +220,6 @@ function reinitialize_adventure_ui(slots: number) {
     }
 }
 
-function collapse_adventury_party_changes(num_slots: number, changes: Adventure_Party_Change[]): Adventure_Party_Slot[] {
-    const slots: Adventure_Party_Slot[] = [];
-
-    for (; num_slots > 0; num_slots--) {
-        slots.push({ type: Adventure_Party_Slot_Type.empty });
-    }
-
-    for (const change of changes) {
-        switch (change.type) {
-            case Adventure_Party_Change_Type.set_health: {
-                const slot = slots[change.slot_index];
-
-                switch (slot.type) {
-                    case Adventure_Party_Slot_Type.hero:
-                    case Adventure_Party_Slot_Type.creep: {
-                        slot.health = change.health;
-                        break;
-                    }
-
-                    case Adventure_Party_Slot_Type.spell:
-                    case Adventure_Party_Slot_Type.empty: {
-                        break;
-                    }
-
-                    default: unreachable(slot);
-                }
-
-                break;
-            }
-
-            case Adventure_Party_Change_Type.set_slot: {
-                slots[change.slot_index] = change.slot;
-                break;
-            }
-        }
-    }
-
-    return slots;
-}
-
 function set_adventure_party_slot(slot_index: number, slot: Adventure_Party_Slot): Adventure_Party_Slot_UI {
     function make_new_slot(slot: Adventure_Party_Slot, container: Panel): Adventure_Party_Slot_UI {
         switch (slot.type) {
@@ -277,17 +239,6 @@ function set_adventure_party_slot(slot_index: number, slot: Adventure_Party_Slot
     adventure_ui.party.slots[slot_index] = new_slot;
 
     return new_slot;
-}
-
-function fast_forward_adventure_party_changes(changes: Adventure_Party_Change[]) {
-    const slots = collapse_adventury_party_changes(adventure_ui.party.slots.length, changes);
-
-    for (let index = 0; index < slots.length; index++) {
-        set_adventure_party_slot(index, slots[index]);
-    }
-
-    adventure_ui.party.changes = changes;
-    adventure_ui.party.currently_playing_change_index = changes.length;
 }
 
 function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
@@ -330,7 +281,7 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
     popup.button_yes.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
         fire_event(To_Server_Event_Type.adventure_interact_with_entity, {
             entity_id: entity_id,
-            last_change_index: adventure_ui.party.changes.length
+            current_head: adventure_ui.party.current_head
         });
 
         hide_adventure_popup();
@@ -346,11 +297,13 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
 }
 
 function merge_adventure_party_changes(head_before_merge: number, changes: Adventure_Party_Change[]) {
-    $.Msg("Received ", changes.length, " party changes, inserting after ", head_before_merge);
+    $.Msg(`Received ${changes.length} party changes, inserting after ${head_before_merge}`);
 
     for (let index = 0; index < changes.length; index++) {
-        adventure_ui.party.changes[head_before_merge + index] = changes[index];
+        adventure_ui.party.changes[head_before_merge + index - adventure_ui.party.base_head] = changes[index];
     }
+
+    adventure_ui.party.current_head = head_before_merge + changes.length;
 }
 
 function hide_adventure_popup() {
@@ -483,12 +436,6 @@ function periodically_update_party_ui() {
             party.next_change_promise = play_adventure_party_change(current_change);
         }
 
-        if (party.currently_playing_a_change) {
-            if (current_change.type == Adventure_Party_Change_Type.set_health) {
-
-            }
-        }
-
         if (party.next_change_promise()) {
             party.currently_playing_a_change = false;
             party.currently_playing_change_index++;
@@ -498,30 +445,42 @@ function periodically_update_party_ui() {
 
 periodically_update_party_ui();
 
-subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
+subscribe_to_net_table_key<Game_Net_Table>("main", "game", async data => {
     if (data.state == Player_State.on_adventure) {
         const reinitialize_ui = adventure_ui.ongoing_adventure_id != data.ongoing_adventure_id;
+        const head_before_merge = reinitialize_ui ? 0 : adventure_ui.party.current_head;
 
         if (reinitialize_ui) {
-            adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
-            adventure_ui.party.currently_playing_change_index = 0;
-            adventure_ui.party.changes = [];
-
             reinitialize_adventure_ui(data.num_party_slots);
         }
 
-        const current_head = adventure_ui.party.changes.length;
-
-        api_request(Api_Request_Type.get_adventure_party_changes, {
+        const result = await async_api_request(Api_Request_Type.get_adventure_party_changes, {
             access_token: get_access_token(),
-            starting_change_index: current_head
-        }, data => {
-            if (reinitialize_ui) {
-                fast_forward_adventure_party_changes(data.changes);
-            } else {
-                merge_adventure_party_changes(current_head, data.changes);
-            }
+            current_head: head_before_merge
         });
+
+        if (reinitialize_ui || result.snapshot) {
+            adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
+            adventure_ui.party.currently_playing_change_index = 0;
+            adventure_ui.party.changes = [];
+            adventure_ui.party.current_head = 0;
+            adventure_ui.party.base_head = 0;
+
+            reinitialize_adventure_ui(result.snapshot ? result.slots.length : data.num_party_slots);
+        }
+
+        if (result.snapshot) {
+            $.Msg(`Restoring head ${result.origin_head} from snapshot`);
+
+            for (let index = 0; index < result.slots.length; index++) {
+                set_adventure_party_slot(index, result.slots[index]);
+            }
+
+            adventure_ui.party.base_head = result.origin_head;
+            adventure_ui.party.current_head = result.origin_head;
+        } else {
+            merge_adventure_party_changes(head_before_merge, result.changes);
+        }
     }
 });
 
@@ -532,5 +491,5 @@ subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, e
 });
 
 subscribe_to_custom_event(To_Client_Event_Type.adventure_receive_party_changes, event => {
-    merge_adventure_party_changes(event.last_change_index, from_server_array(event.changes));
+    merge_adventure_party_changes(event.current_head, from_server_array(event.changes));
 });

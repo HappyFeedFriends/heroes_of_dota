@@ -163,3 +163,43 @@ export function change_party_change_health(slot: number, health: number): Advent
         health: health
     }
 }
+
+export function collapse_adventure_party_changes(num_slots: number, changes: Adventure_Party_Change[]): Adventure_Party_Slot[] {
+    const slots: Adventure_Party_Slot[] = [];
+
+    for (; num_slots > 0; num_slots--) {
+        slots.push({ type: Adventure_Party_Slot_Type.empty });
+    }
+
+    for (const change of changes) {
+        switch (change.type) {
+            case Adventure_Party_Change_Type.set_health: {
+                const slot = slots[change.slot_index];
+
+                switch (slot.type) {
+                    case Adventure_Party_Slot_Type.hero:
+                    case Adventure_Party_Slot_Type.creep: {
+                        slot.health = change.health;
+                        break;
+                    }
+
+                    case Adventure_Party_Slot_Type.spell:
+                    case Adventure_Party_Slot_Type.empty: {
+                        break;
+                    }
+
+                    default: unreachable(slot);
+                }
+
+                break;
+            }
+
+            case Adventure_Party_Change_Type.set_slot: {
+                slots[change.slot_index] = change.slot;
+                break;
+            }
+        }
+    }
+
+    return slots;
+}

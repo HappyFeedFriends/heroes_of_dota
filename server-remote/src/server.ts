@@ -53,7 +53,8 @@ import {
     change_party_add_spell,
     change_party_change_health,
     change_party_empty_slot,
-    find_empty_party_slot_index
+    find_empty_party_slot_index,
+    collapse_adventure_party_changes
 } from "./adventure_party";
 
 import {
@@ -1148,6 +1149,7 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
     if (!validate_dedicated_server_key(req.dedicated_server_key)) {
         return make_error(403);
     }
+
     return with_player_in_request(req, player => {
         if (player.online.state != Player_State.on_adventure) return;
 
@@ -1182,12 +1184,24 @@ register_api_handler(Api_Request_Type.get_adventure_party_changes, req => {
         if (player.online.state != Player_State.on_adventure) return;
 
         const all_changes = player.online.party.changes;
-        const result = all_changes.slice(req.starting_change_index);
+        const origin_head = all_changes.length;
+        const delta = origin_head - req.current_head;
 
-        return {
-            ongoing_adventure_id: player.online.ongoing_adventure.id,
-            party_slots: player.online.party.slots.length,
-            changes: result
+        if (delta > 20) {
+            const collapsed_state = collapse_adventure_party_changes(player.online.party.slots.length, all_changes);
+
+            return {
+                snapshot: true,
+                slots: collapsed_state,
+                origin_head: origin_head
+            }
+        } else {
+            const result = all_changes.slice(req.current_head);
+
+            return {
+                snapshot: false,
+                changes: result
+            }
         }
     });
 });
@@ -1242,7 +1256,7 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
         }
 
         return {
-            party_updates: player.online.party.changes.slice(req.starting_change_index),
+            party_updates: player.online.party.changes.slice(req.current_head),
             updated_entity: result.updated_entity
         };
     });
@@ -1468,7 +1482,7 @@ function register_dev_handlers() {
             }
 
             return {
-                party_updates: player.online.party.changes.slice(req.starting_change_index)
+                party_updates: player.online.party.changes.slice(req.current_head)
             }
         });
     });

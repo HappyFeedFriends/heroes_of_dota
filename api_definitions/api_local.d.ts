@@ -31,7 +31,7 @@ type To_Server_Event = {
     type: To_Server_Event_Type.adventure_interact_with_entity
     payload: {
         entity_id: Adventure_Entity_Id
-        last_change_index: number
+        current_head: number
     }
 } | {
     type: To_Server_Event_Type.put_deltas
@@ -52,7 +52,7 @@ type To_Client_Event = {
     type: To_Client_Event_Type.adventure_receive_party_changes
     payload: {
         changes: Adventure_Party_Change[]
-        last_change_index: number
+        current_head: number
     }
 } | {
     type: To_Client_Event_Type.adventure_display_entity_popup
