@@ -1873,7 +1873,7 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                                 for (let y = from_y; y < to_y; y++) {
                                     const at = xy(x, y);
 
-                                    if (is_grid_occupied_at(battle.grid, at)) {
+                                    if (!is_grid_occupied_at(battle.grid, at)) {
                                         free_cells.push(at);
                                     }
                                 }
