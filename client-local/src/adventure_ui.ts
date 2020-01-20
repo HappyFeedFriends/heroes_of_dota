@@ -36,6 +36,7 @@ type Adventure_Party_Slot_UI = { container: Panel } & ({
     ui: {
         card_panel: Panel
         health_number: LabelPanel
+        item_panels: Panel[]
     }
 } | {
     type: Adventure_Party_Slot_Type.creep
@@ -88,7 +89,7 @@ function show_and_prepare_adventure_tooltip(parent: Panel, css_class: string) {
     const screen_ratio = Game.GetScreenHeight() / 1080;
     const window_position = parent.GetPositionWithinWindow();
 
-    // Unfortunately actuallayoutwidth/height are not update before a panel is shown so we have to hardcode the values
+    // Unfortunately actuallayoutwidth/height are not updated before a panel is shown so we have to hardcode the values
     const card_width = 150 * 1.25;
     const card_height = 225 * 1.25;
 
@@ -138,12 +139,35 @@ function fill_adventure_empty_slot(container: Panel): Adventure_Party_Slot_UI {
     }
 }
 
-function fill_adventure_hero_slot(container: Panel, hero: Hero_Type, health: number): Adventure_Party_Slot_UI {
+function update_item_panel_ui(item_panel: Panel, item_in_slot: Item_Id | undefined) {
+    item_panel.SetHasClass("empty", item_in_slot == undefined);
+
+    if (item_in_slot == undefined) {
+        item_panel.style.backgroundImage = "none";
+    } else {
+        safely_set_panel_background_image(item_panel, `file://{images}/${get_item_icon(item_in_slot)}.png`);
+    }
+}
+
+function fill_adventure_hero_slot(container: Panel, hero: Hero_Type, health: number, items: Item_Id[]): Adventure_Party_Slot_UI {
     const base = fill_adventure_base_slot_ui(container);
     base.art.AddClass("hero");
     safely_set_panel_background_image(base.art, get_hero_card_art(hero));
 
     base.card_panel.SetHasClass("dead", health == 0);
+
+    const inventory_parent = $.CreatePanel("Panel", base.card_panel, "inventory");
+    const item_panels: Panel[] = [];
+
+    for (let index = 0; index < Adventure_Constants.max_hero_items; index++) {
+        const item_in_slot = items[index];
+        const item_panel = $.CreatePanel("Panel", inventory_parent, "");
+        item_panel.AddClass("slot");
+
+        update_item_panel_ui(item_panel, item_in_slot);
+
+        item_panels.push(item_panel);
+    }
 
     $.CreatePanel("Panel", base.card_panel, "dead_overlay");
 
@@ -163,7 +187,8 @@ function fill_adventure_hero_slot(container: Panel, hero: Hero_Type, health: num
         container: base.container,
         ui: {
             card_panel: base.card_panel,
-            health_number: health_label
+            health_number: health_label,
+            item_panels: item_panels
         }
     }
 }
@@ -223,7 +248,7 @@ function reinitialize_adventure_ui(slots: number) {
 function set_adventure_party_slot(slot_index: number, slot: Adventure_Party_Slot): Adventure_Party_Slot_UI {
     function make_new_slot(slot: Adventure_Party_Slot, container: Panel): Adventure_Party_Slot_UI {
         switch (slot.type) {
-            case Adventure_Party_Slot_Type.hero: return fill_adventure_hero_slot(container, slot.hero, slot.health);
+            case Adventure_Party_Slot_Type.hero: return fill_adventure_hero_slot(container, slot.hero, slot.health, slot.items);
             case Adventure_Party_Slot_Type.creep: return fill_adventure_creep_slot(container, slot.creep, slot.health);
             case Adventure_Party_Slot_Type.spell: return fill_adventure_spell_slot(container, slot.spell);
             case Adventure_Party_Slot_Type.empty: return fill_adventure_empty_slot(container);
@@ -373,6 +398,19 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
 
             const flash = $.CreatePanel("Panel", new_slot.container, "");
             flash.AddClass("animate_add_to_deck_flash");
+
+            return fixed_duration(0.2);
+        }
+
+        case Adventure_Party_Change_Type.set_hero_item: {
+            const slot = adventure_ui.party.slots[change.slot_index];
+            if (!slot) return proceed;
+            if (slot.type != Adventure_Party_Slot_Type.hero) return proceed;
+
+            const item_panel = slot.ui.item_panels[change.item_slot_index];
+            if (!item_panel) return proceed;
+
+            update_item_panel_ui(item_panel, change.item_id);
 
             return fixed_duration(0.2);
         }

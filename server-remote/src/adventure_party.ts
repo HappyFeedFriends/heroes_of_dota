@@ -13,6 +13,7 @@ export type Map_Player_Party_Slot = {
     type: Adventure_Party_Slot_Type.hero
     hero: Hero_Type
     health: number
+    items: Item_Id[]
     battle_unit_id: Unit_Id
 } | {
     type: Adventure_Party_Slot_Type.creep
@@ -49,6 +50,7 @@ export function push_party_change(party: Map_Player_Party, change: Adventure_Par
                     type: Adventure_Party_Slot_Type.hero,
                     hero: slot.hero,
                     health: slot.health,
+                    items: [],
                     battle_unit_id: -1 as Unit_Id, // TODO ugh
                 };
 
@@ -105,6 +107,20 @@ export function push_party_change(party: Map_Player_Party, change: Adventure_Par
             break;
         }
 
+        case Adventure_Party_Change_Type.set_hero_item: {
+            const slot = party.slots[change.slot_index];
+            if (!slot) return;
+            if (slot.type != Adventure_Party_Slot_Type.hero) return;
+
+            if (change.item_id != undefined) {
+                slot.items[change.item_slot_index] = change.item_id;
+            } else {
+                delete slot.items[change.item_slot_index];
+            }
+
+            break;
+        }
+
         default: unreachable(change);
     }
 
@@ -128,7 +144,8 @@ export function change_party_add_hero(slot: number, hero: Hero_Type): Adventure_
         slot: {
             type: Adventure_Party_Slot_Type.hero,
             hero: hero,
-            health: hero_definition_by_type(hero).health
+            health: hero_definition_by_type(hero).health,
+            items: []
         }
     }
 }
@@ -161,6 +178,15 @@ export function change_party_change_health(slot: number, health: number): Advent
         type: Adventure_Party_Change_Type.set_health,
         slot_index: slot,
         health: health
+    }
+}
+
+export function change_party_add_item(slot: number, item_slot: number, item: Item_Id): Adventure_Party_Change {
+    return {
+        type: Adventure_Party_Change_Type.set_hero_item,
+        slot_index: slot,
+        item_id: item,
+        item_slot_index: item_slot
     }
 }
 

@@ -1196,26 +1196,30 @@ function ui_end_turn() {
     });
 }
 
-function get_item_icon_name(id: Item_Id): string {
-    switch (id) {
-        case Item_Id.satanic: return "satanic";
-        case Item_Id.heart_of_tarrasque: return "heart";
-        case Item_Id.tome_of_knowledge: return "tome_of_knowledge";
-        case Item_Id.assault_cuirass: return "assault";
-        case Item_Id.divine_rapier: return "rapier";
-        case Item_Id.boots_of_travel: return "travel_boots";
-        case Item_Id.refresher_shard: return "refresher_shard";
-        case Item_Id.mask_of_madness: return "mask_of_madness";
-        case Item_Id.armlet: return "armlet_active";
-        case Item_Id.boots_of_speed: return "boots";
-        case Item_Id.blades_of_attack: return "blades_of_attack";
-        case Item_Id.belt_of_strength: return "belt_of_strength";
-        case Item_Id.morbid_mask: return "lifesteal";
-        case Item_Id.chainmail: return "chainmail";
-        case Item_Id.enchanted_mango: return "enchanted_mango";
-        case Item_Id.octarine_core: return "octarine_core";
-        case Item_Id.basher: return "basher";
+function get_item_icon(id: Item_Id) {
+    function get_item_icon_name(id: Item_Id): string {
+        switch (id) {
+            case Item_Id.satanic: return "satanic";
+            case Item_Id.heart_of_tarrasque: return "heart";
+            case Item_Id.tome_of_knowledge: return "tome_of_knowledge";
+            case Item_Id.assault_cuirass: return "assault";
+            case Item_Id.divine_rapier: return "rapier";
+            case Item_Id.boots_of_travel: return "travel_boots";
+            case Item_Id.refresher_shard: return "refresher_shard";
+            case Item_Id.mask_of_madness: return "mask_of_madness";
+            case Item_Id.armlet: return "armlet_active";
+            case Item_Id.boots_of_speed: return "boots";
+            case Item_Id.blades_of_attack: return "blades_of_attack";
+            case Item_Id.belt_of_strength: return "belt_of_strength";
+            case Item_Id.morbid_mask: return "lifesteal";
+            case Item_Id.chainmail: return "chainmail";
+            case Item_Id.enchanted_mango: return "enchanted_mango";
+            case Item_Id.octarine_core: return "octarine_core";
+            case Item_Id.basher: return "basher";
+        }
     }
+
+    return `items/${get_item_icon_name(id)}`;
 }
 
 function create_ui_shop_data(shop: Shop): UI_Shop_Data {
@@ -1243,7 +1247,7 @@ function create_ui_shop_data(shop: Shop): UI_Shop_Data {
         const item_image = $.CreatePanel("Image", item_button, "image");
         const item_cost = $.CreatePanel("Label", item_button, "cost");
 
-        item_image.SetImage(`file://{images}/items/${get_item_icon_name(item.id)}.png`);
+        item_image.SetImage(`file://{images}/${get_item_icon(item.id)}.png`);
 
         item_button.AddClass("item_button");
         item_button.SetPanelEvent(PanelEvent.ON_RIGHT_CLICK, () => {
@@ -1809,10 +1813,6 @@ function get_modifier_icon(applied: Modifier_Data): string {
         return `spellicons/${get_ability_icon(ability_id)}`
     }
 
-    function from_item(item_id: Item_Id): string {
-        return `items/${get_item_icon_name(item_id)}`;
-    }
-
     switch (applied.modifier.id) {
         case Modifier_Id.spell_euls_scepter: return "items/cyclone";
         case Modifier_Id.spell_buckler: return "items/buckler";
@@ -1825,7 +1825,7 @@ function get_modifier_icon(applied: Modifier_Data): string {
     }
 
     if (applied.source.type == Source_Type.item) {
-        return from_item(applied.source.item_id);
+        return get_item_icon(applied.source.item_id);
     }
 
     if (applied.source.type == Source_Type.unit) {

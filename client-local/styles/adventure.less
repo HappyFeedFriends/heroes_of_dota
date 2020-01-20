@@ -83,8 +83,8 @@
             }
 
             #adventure_card {
-              height: 130px;
-              width: 80px;
+              height: 140px;
+              width: 88px;
 
               border-top: 1px solid #424242;
               border-right: 1px solid black;
@@ -110,8 +110,28 @@
                 }
               }
 
+              #inventory {
+                flow-children: right;
+                align: center bottom;
+                margin-bottom: 2px;
+
+                .slot {
+                  margin: 2px;
+                  width: 24px;
+                  height: 24px;
+                  border: 1px solid #111;
+                  //box-shadow: 0px 0px 8px black;
+                  background-size: auto 100%;
+
+                  &.empty {
+                    background-image: url("s2r://panorama/images/hud/reborn/inventory_item_well_psd.vtex");
+                    background-color: #54788066;
+                  }
+                }
+              }
+
               #health_number {
-                margin: 0 10px 4px 0;
+                margin: 0 10px 32px 0;
                 text-shadow: 0px 0px 2px 2.5 rgb(9, 136, 0);
                 text-align: right;
                 align: right bottom;

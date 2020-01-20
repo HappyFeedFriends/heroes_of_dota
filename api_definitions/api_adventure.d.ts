@@ -20,7 +20,12 @@ declare const enum Adventure_Party_Slot_Type {
 
 declare const enum Adventure_Party_Change_Type {
     set_slot = 0,
-    set_health = 1
+    set_health = 1,
+    set_hero_item = 2
+}
+
+declare const enum Adventure_Constants {
+    max_hero_items = 3
 }
 
 type Adventure_Handlers = {
@@ -134,6 +139,7 @@ type Adventure_Party_Slot = {
     type: Adventure_Party_Slot_Type.hero
     hero: Hero_Type
     health: number
+    items: Item_Id[]
 } | {
     type: Adventure_Party_Slot_Type.creep
     creep: Creep_Type
@@ -151,4 +157,9 @@ type Adventure_Party_Change = {
     type: Adventure_Party_Change_Type.set_health
     slot_index: number
     health: number
+} | {
+    type: Adventure_Party_Change_Type.set_hero_item
+    slot_index: number
+    item_slot_index: number
+    item_id: Item_Id | undefined
 }

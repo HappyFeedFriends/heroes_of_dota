@@ -54,7 +54,7 @@ import {
     change_party_change_health,
     change_party_empty_slot,
     find_empty_party_slot_index,
-    collapse_adventure_party_changes
+    collapse_adventure_party_changes, change_party_add_item
 } from "./adventure_party";
 
 import {
@@ -1454,6 +1454,27 @@ function register_dev_handlers() {
 
                 case "crp": {
                     changes_from_cheat(enum_names_to_values<Creep_Type>(), change_party_add_creep);
+                    break;
+                }
+
+                case "item": {
+                    const targets = parse_enum_query(parts[1], enum_names_to_values<Hero_Type>());
+                    const items = parse_enum_query(parts[2], enum_names_to_values<Item_Id>());
+
+                    for (const [index, slot] of party.slots.entries()) {
+                        if (slot.type == Adventure_Party_Slot_Type.hero && targets.indexOf(slot.hero) != -1) {
+                            for (let item_slot = 0; item_slot < Adventure_Constants.max_hero_items; item_slot++) {
+                                if (!slot.items[item_slot]) {
+                                    for (const item of items) {
+                                        push_party_change(party, change_party_add_item(index, item_slot, item));
+                                    }
+
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
                     break;
                 }
 
