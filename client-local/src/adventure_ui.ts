@@ -1,4 +1,5 @@
 const adventure_ui = {
+    party_container: adventure_ui_root.FindChildTraverse("adventure_party"),
     card_container: adventure_ui_root.FindChildTraverse("adventure_cards"),
     currency_label: adventure_ui_root.FindChildTraverse("currency_remaining") as LabelPanel,
     tooltip: {
@@ -23,7 +24,16 @@ const adventure_ui = {
         base_head: 0
     },
     ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
+    drag_state: default_inventory_drag_state()
 };
+
+type Inventory_Drag_State = {
+    dragging: false
+} | {
+    dragging: true
+    dragged_panel: Panel
+    item: Item_Id
+}
 
 type Adventure_Animation_Promise = () => boolean;
 
@@ -33,10 +43,10 @@ type Adventure_Party_Slot_UI = { container: Panel } & ({
     type: Adventure_Party_Slot_Type.hero
     hero: Hero_Type
     health: number
+    items: Item_Panel_UI[]
     ui: {
         card_panel: Panel
         health_number: LabelPanel
-        item_panels: Panel[]
     }
 } | {
     type: Adventure_Party_Slot_Type.creep
@@ -56,7 +66,18 @@ type Base_Slot_UI = {
     art: Panel
 }
 
+type Item_Panel_UI = {
+    item: Item_Id | undefined
+    slot_index: number
+    panel: Panel
+    drop_layer: Panel
+}
+
 hide_adventure_tooltip();
+
+function default_inventory_drag_state(): Inventory_Drag_State {
+    return { dragging: false }
+}
 
 function create_adventure_card_tooltip(root: Panel) {
     const parent = $.CreatePanel("Panel", root, "card_tooltip");
@@ -139,14 +160,84 @@ function fill_adventure_empty_slot(container: Panel): Adventure_Party_Slot_UI {
     }
 }
 
-function update_item_panel_ui(item_panel: Panel, item_in_slot: Item_Id | undefined) {
+function update_item_panel_ui(ui: Item_Panel_UI, item_in_slot: Item_Id | undefined) {
+    const item_panel = ui.panel;
+
     item_panel.SetHasClass("empty", item_in_slot == undefined);
 
     if (item_in_slot == undefined) {
         item_panel.style.backgroundImage = "none";
     } else {
-        safely_set_panel_background_image(item_panel, `file://{images}/${get_item_icon(item_in_slot)}.png`);
+        const image = `file://{images}/${get_item_icon(item_in_slot)}.png`;
+        safely_set_panel_background_image(item_panel, image);
+
+        $.RegisterEventHandler("DragStart", item_panel, (id, drag) => {
+            const dragged_panel = $.CreatePanel("Panel", item_panel, "");
+            dragged_panel.AddClass("dragged_inventory_slot");
+            dragged_panel.hittest = false;
+            safely_set_panel_background_image(dragged_panel, image);
+
+            const [w, h] = [item_panel.actuallayoutwidth, item_panel.actuallayoutheight];
+
+            drag.displayPanel = dragged_panel;
+            drag.offsetX = w;
+            drag.offsetY = h;
+
+            adventure_ui.drag_state = {
+                dragging: true,
+                item: item_in_slot,
+                dragged_panel: dragged_panel
+            };
+
+            item_panel.AddClass("being_dragged");
+            item_panel.style.backgroundImage = "none";
+
+            adventure_ui.party_container.AddClass("dragging_item");
+
+            return true;
+        });
+
+        $.RegisterEventHandler("DragEnd", item_panel, (id, dragged) => {
+            dragged.DeleteAsync(0);
+
+            adventure_ui.party_container.RemoveClass("dragging_item");
+            adventure_ui.party_container.RemoveClass("has_drop_target");
+            adventure_ui.drag_state = { dragging: false };
+
+            item_panel.RemoveClass("drop_hover");
+            item_panel.RemoveClass("being_dragged");
+            safely_set_panel_background_image(item_panel, image);
+
+            return true;
+        });
     }
+
+    $.RegisterEventHandler("DragEnter", item_panel, (id, panel) => {
+        if (!adventure_ui.drag_state.dragging) return true;
+
+        const dragged_item_image = `file://{images}/${get_item_icon(adventure_ui.drag_state.item)}.png`;
+        const dragged_panel = adventure_ui.drag_state.dragged_panel;
+
+        adventure_ui.party_container.AddClass("has_drop_target");
+        item_panel.AddClass("drop_hover");
+        dragged_panel.AddClass("drop_hover");
+
+        safely_set_panel_background_image(ui.drop_layer, dragged_item_image);
+
+        return true;
+    });
+
+    $.RegisterEventHandler("DragLeave", item_panel, () => {
+        if (!adventure_ui.drag_state.dragging) return true;
+
+        const dragged_panel = adventure_ui.drag_state.dragged_panel;
+
+        adventure_ui.party_container.RemoveClass("has_drop_target");
+        dragged_panel.RemoveClass("drop_hover");
+        item_panel.RemoveClass("drop_hover");
+
+        return true;
+    });
 }
 
 function fill_adventure_hero_slot(container: Panel, hero: Hero_Type, health: number, items: Item_Id[]): Adventure_Party_Slot_UI {
@@ -157,16 +248,28 @@ function fill_adventure_hero_slot(container: Panel, hero: Hero_Type, health: num
     base.card_panel.SetHasClass("dead", health == 0);
 
     const inventory_parent = $.CreatePanel("Panel", base.card_panel, "inventory");
-    const item_panels: Panel[] = [];
+    const item_panels: Item_Panel_UI[] = [];
 
     for (let index = 0; index < Adventure_Constants.max_hero_items; index++) {
         const item_in_slot = items[index];
         const item_panel = $.CreatePanel("Panel", inventory_parent, "");
+
         item_panel.AddClass("slot");
+        item_panel.SetDraggable(true);
 
-        update_item_panel_ui(item_panel, item_in_slot);
+        const drop_layer = $.CreatePanel("Panel", item_panel, "drop_layer");
+        drop_layer.hittest = false;
 
-        item_panels.push(item_panel);
+        const item_ui = {
+            item: item_in_slot,
+            panel: item_panel,
+            slot_index: index,
+            drop_layer: drop_layer
+        };
+
+        update_item_panel_ui(item_ui, item_in_slot);
+
+        item_panels.push(item_ui);
     }
 
     $.CreatePanel("Panel", base.card_panel, "dead_overlay");
@@ -185,10 +288,10 @@ function fill_adventure_hero_slot(container: Panel, hero: Hero_Type, health: num
         hero: hero,
         health: health,
         container: base.container,
+        items: item_panels,
         ui: {
             card_panel: base.card_panel,
-            health_number: health_label,
-            item_panels: item_panels
+            health_number: health_label
         }
     }
 }
@@ -398,6 +501,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
 
             const flash = $.CreatePanel("Panel", new_slot.container, "");
             flash.AddClass("animate_add_to_deck_flash");
+            flash.hittest = false;
 
             return fixed_duration(0.2);
         }
@@ -407,7 +511,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             if (!slot) return proceed;
             if (slot.type != Adventure_Party_Slot_Type.hero) return proceed;
 
-            const item_panel = slot.ui.item_panels[change.item_slot_index];
+            const item_panel = slot.items[change.item_slot_index];
             if (!item_panel) return proceed;
 
             update_item_panel_ui(item_panel, change.item_id);
