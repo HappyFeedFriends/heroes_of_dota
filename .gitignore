@@ -5,6 +5,7 @@
 dist/game/maps
 dist/game/particles
 server-remote/dist
+client-web/dist
 battle-sim/dist
 dist/content/panorama/
 dist/game/materials
