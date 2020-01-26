@@ -1,5 +1,7 @@
 <root>
     <scripts>
+        <include src="file://{resources}/scripts/custom_game/module.js" />
+
         <include src="file://{resources}/scripts/custom_game/battle_sim.js" />
         <include src="file://{resources}/scripts/custom_game/hero_sounds.js" />
         <include src="file://{resources}/scripts/custom_game/main_ui.js" />
@@ -48,7 +50,7 @@
 
             <Label id="current_turning_player_label"/>
 
-            <Button id="end_turn_button" onactivate="ui_end_turn();">
+            <Button id="end_turn_button">
                 <Label text="End turn"/>
             </Button>
 
@@ -74,7 +76,7 @@
 
         <Panel id="global_map_ui" hittest="false" class="ui_state">
             <Panel id="action_bar">
-                <Button id="collection_button" onactivate="ui_toggle_collection();">
+                <Button id="collection_button">
                     <Label text="Collection"/>
                 </Button>
             </Panel>

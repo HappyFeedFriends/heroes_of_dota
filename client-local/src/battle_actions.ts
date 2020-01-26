@@ -1,4 +1,20 @@
-function take_battle_action(action: Turn_Action, success_callback?: () => void) {
+import {get_access_token, api_request} from "./main_ui";
+import {
+    battle,
+    selection,
+    color_green,
+    color_red,
+    control_panel,
+    find_grid_path,
+    highlight_outline_temporarily,
+    is_unit_selection,
+    receive_battle_deltas,
+    Hover_Type,
+    Hover_State_Cell,
+    Hover_State_Unit,
+} from "./battle_ui";
+
+export function take_battle_action(action: Turn_Action, success_callback?: () => void) {
     $.Msg("Take action ", action);
 
     const request = {
@@ -19,7 +35,7 @@ function random_int_up_to(upper_bound: number) {
     return Math.floor(Math.random() * upper_bound);
 }
 
-function emit_random_sound(sounds: string[]) {
+export function emit_random_sound(sounds: string[]) {
     Game.EmitSound(sounds[random_int_up_to(sounds.length)]);
 }
 
@@ -50,17 +66,17 @@ function native_error(reason: number): Error_Reason {
     return { reason: reason };
 }
 
-function custom_error(message: string) {
+export function custom_error(message: string) {
     return { reason: 80, message: message };
 }
 
-function show_error_ui(reason: Error_Reason): undefined {
+export function show_error_ui(reason: Error_Reason): undefined {
     GameEvents.SendEventClientSide("dota_hud_error_message", reason);
 
     return;
 }
 
-function show_generic_error(error: string) {
+export function show_generic_error(error: string) {
     GameEvents.SendEventClientSide("dota_hud_error_message", { reason: 80, message: error });
 }
 
@@ -127,7 +143,7 @@ function move_order_error_reason(error: Action_Error<Move_Order_Error>): Error_R
     }
 }
 
-function card_use_error_reason(error: Action_Error<Card_Use_Error>): Error_Reason {
+export function card_use_error_reason(error: Action_Error<Card_Use_Error>): Error_Reason {
     switch (error.kind) {
         case Card_Use_Error.other: return custom_error("Error");
         case Card_Use_Error.has_used_a_card_this_turn: return custom_error("Already used a card this turn");
@@ -192,7 +208,7 @@ function purchase_item_error_reason(error: Action_Error<Purchase_Item_Error>): E
 }
 
 // Return type is for 'return show_action_error_ui' syntax sugar
-function show_action_error_ui<T>(error: Action_Error<T>, supplier: (error: Action_Error<T>) => Error_Reason): undefined {
+export function show_action_error_ui<T>(error: Action_Error<T>, supplier: (error: Action_Error<T>) => Error_Reason): undefined {
     show_error_ui(supplier(error));
     return;
 }
@@ -214,7 +230,7 @@ function show_ability_use_error_ui(caster: Unit, ability_id: Ability_Id, error: 
     }
 }
 
-function show_player_action_error_ui(error: Action_Error<Player_Action_Error>): undefined {
+export function show_player_action_error_ui(error: Action_Error<Player_Action_Error>): undefined {
     if (error.kind == Player_Action_Error.not_your_turn && is_unit_selection(selection)) {
         (() => {
             const act_on_unit_permission = authorize_act_on_known_unit(battle, selection.unit);
@@ -255,7 +271,7 @@ function authorize_unit_order_with_error_ui(unit: Unit): Order_Unit_Permission |
     return order_permission;
 }
 
-function authorize_ability_use_with_error_ui(unit: Unit, ability: Ability): Ability_Use_Permission | undefined {
+export function authorize_ability_use_with_error_ui(unit: Unit, ability: Ability): Ability_Use_Permission | undefined {
     const order_permission = authorize_unit_order_with_error_ui(unit);
     if (!order_permission) return;
 
@@ -265,7 +281,7 @@ function authorize_ability_use_with_error_ui(unit: Unit, ability: Ability): Abil
     return ability_use;
 }
 
-function try_attack_target(source: Unit, target: XY, flash_ground_on_error: boolean) {
+export function try_attack_target(source: Unit, target: XY, flash_ground_on_error: boolean) {
     if (!source.attack) {
         show_error_ui(custom_error("Can't attack"));
         return;
@@ -307,7 +323,7 @@ function try_attack_target(source: Unit, target: XY, flash_ground_on_error: bool
     }
 }
 
-function try_use_targeted_ability(unit: Unit, ability: Ability, at_position: XY, cursor_entity_unit?: Unit): boolean {
+export function try_use_targeted_ability(unit: Unit, ability: Ability, at_position: XY, cursor_entity_unit?: Unit): boolean {
     const ability_select_permission = authorize_ability_use_with_error_ui(unit, ability);
 
     if (!ability_select_permission) return false;
@@ -386,7 +402,7 @@ function highlight_move_path(unit: Unit, to: XY) {
     highlight_outline_temporarily(battle.grid, cell_index_to_highlight, color_green, 0.5);
 }
 
-function try_order_unit_to_pick_up_rune(unit: Unit, rune: Rune) {
+export function try_order_unit_to_pick_up_rune(unit: Unit, rune: Rune) {
     const order_permission = authorize_unit_order_with_error_ui(unit);
     if (!order_permission) return;
 
@@ -407,7 +423,7 @@ function try_order_unit_to_pick_up_rune(unit: Unit, rune: Rune) {
     });
 }
 
-function try_order_unit_to_move(unit: Unit, move_where: XY) {
+export function try_order_unit_to_move(unit: Unit, move_where: XY) {
     const order_permission = authorize_unit_order_with_error_ui(unit);
     if (!order_permission) return;
 
@@ -487,7 +503,7 @@ function try_use_card_spell(spell: Card_Spell, hover: Hover_State_Unit | Hover_S
     }
 }
 
-function try_use_card(card: Card, hover: Hover_State_Unit | Hover_State_Cell, success_callback: () => void) {
+export function try_use_card(card: Card, hover: Hover_State_Unit | Hover_State_Cell, success_callback: () => void) {
     const action_permission = authorize_action_by_player(battle, battle.this_player);
     if (!action_permission.ok) return show_player_action_error_ui(action_permission);
 
@@ -543,7 +559,7 @@ function try_use_card(card: Card, hover: Hover_State_Unit | Hover_State_Cell, su
     }
 }
 
-function try_purchase_item(unit: Unit, shop: Shop, item_id: Item_Id, success_callback: () => void) {
+export function try_purchase_item(unit: Unit, shop: Shop, item_id: Item_Id, success_callback: () => void) {
     const act_on_owned_unit_permission = authorized_act_on_owned_unit_with_error_ui(unit);
     if (!act_on_owned_unit_permission) return;
 

@@ -1,28 +1,43 @@
-type XYZ = { x: number, y: number, z: number };
-type RGB = [ number, number, number ] & { _color_id_brand: any };
-type Player_Name_Callback = (name: string) => void;
+import {
+    adventure_editor_filter_mouse_click,
+    battleground_editor_filter_mouse_click,
+    editor,
+    Editor_Type
+} from "./editor_ui";
+import {battle_filter_mouse_click, battle_process_state_transition} from "./battle_ui";
+import {adventure_filter_mouse_click} from "./adventure_ui";
 
-$.Msg("TS initialized");
+export type XYZ = { x: number, y: number, z: number };
+export type RGB = [ number, number, number ] & { _color_id_brand: any };
+type Player_Name_Callback = (name: string) => void;
 
 const remote_root = Game.IsInToolsMode() ? "http://127.0.0.1:3638" : "http://cia-is.moe:3638";
 const player_name_storage: Record<number, string> = {};
 const player_name_requests: Record<number, Player_Name_Callback[]> = {};
-const map_camera_height = 1300;
 
-let current_state = Player_State.not_logged_in;
+export let current_state = Player_State.not_logged_in;
 
-const global_map_ui_root = $("#global_map_ui");
-const adventure_ui_root = $("#adventure_ui");
+export const global_map_ui_root = $("#global_map_ui");
+export const adventure_ui_root = $("#adventure_ui");
 
 let local_request_id_counter = 0;
 
 const ongoing_local_requests: Record<number, (body: object) => void> = {};
 
+export declare const enum Const {
+    hand_base_x = 400,
+    hand_base_y = 957,
+
+    battle_cell_size = 144,
+
+    map_camera_height = 1300
+}
+
 function next_local_request_id() {
     return local_request_id_counter++ as Local_Api_Request_Id;
 }
 
-function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>, callback: (response: Find_Response<T>) => void, fail?: () => void) {
+export function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>, callback: (response: Find_Response<T>) => void, fail?: () => void) {
     $.AsyncWebRequest(remote_root + "/api" + type, {
         type: "POST",
         data: { json_data: JSON.stringify(body) },
@@ -36,7 +51,7 @@ function api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>,
     });
 }
 
-function async_api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>): Promise<Find_Response<T>> {
+export function async_api_request<T extends Api_Request_Type>(type: T, body: Find_Request<T>): Promise<Find_Response<T>> {
     const promise = new Promise<Find_Response<T>>((resolve, reject) => {
         $.AsyncWebRequest(remote_root + "/api" + type, {
             type: "POST",
@@ -54,7 +69,7 @@ function async_api_request<T extends Api_Request_Type>(type: T, body: Find_Reque
     return promise;
 }
 
-function async_local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>): Promise<Find_Local_Response<T>> {
+export function async_local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>): Promise<Find_Local_Response<T>> {
     const packet: Local_Api_Request_Packet = {
         type: type,
         body: body,
@@ -92,7 +107,7 @@ function async_local_api_request<T extends Local_Api_Request_Type>(type: T, body
     return promise;
 }
 
-function async_get_player_name(player_id: Player_Id, callback: Player_Name_Callback): void {
+export function async_get_player_name(player_id: Player_Id, callback: Player_Name_Callback): void {
     const cached_name = player_name_storage[player_id];
 
     if (cached_name) {
@@ -125,7 +140,7 @@ function async_get_player_name(player_id: Player_Id, callback: Player_Name_Callb
     }, () => delete player_name_requests[player_id]);
 }
 
-function fire_event<T extends To_Server_Event_Type>(type: T, data: Find_To_Server_Payload<T>) {
+export function fire_event<T extends To_Server_Event_Type>(type: T, data: Find_To_Server_Payload<T>) {
     GameEvents.SendCustomGameEventToServer(`${Prefixes.to_server_event}${type}`, data);
 }
 
@@ -133,7 +148,7 @@ function get_net_table<T>(table_name: string, key: string): T {
     return CustomNetTables.GetTableValue(table_name, key) as T;
 }
 
-function get_access_token() {
+export function get_access_token() {
     const net_table = get_net_table<Game_Net_Table>("main", "game");
 
     if (net_table.state == Player_State.not_logged_in) {
@@ -143,7 +158,7 @@ function get_access_token() {
     return net_table.token;
 }
 
-function get_visualiser_delta_head(): number | undefined {
+export function get_visualiser_delta_head(): number | undefined {
     const net_table = get_net_table<Game_Net_Table>("main", "game");
 
     if (net_table.state == Player_State.in_battle) {
@@ -153,19 +168,19 @@ function get_visualiser_delta_head(): number | undefined {
     return undefined;
 }
 
-function xyz(x: number, y: number, z: number): XYZ {
+export function xyz(x: number, y: number, z: number): XYZ {
     return { x: x, y: y, z: z };
 }
 
-function xyz_to_array(xyz: XYZ): [ number, number, number ] {
+export function xyz_to_array(xyz: XYZ): [ number, number, number ] {
     return [xyz.x, xyz.y, xyz.z];
 }
 
-function rgb(r: number, g: number, b: number): RGB {
+export function rgb(r: number, g: number, b: number): RGB {
     return [r, g, b] as RGB;
 }
 
-function get_screen_world_position(cursor: [number, number]): XYZ | undefined {
+export function get_screen_world_position(cursor: [number, number]): XYZ | undefined {
     const position = GameUI.GetScreenWorldPosition(cursor);
 
     if (!position) {
@@ -181,13 +196,13 @@ function subscribe_to_raw_custom_event<T extends object>(event_name: string, han
     })
 }
 
-function subscribe_to_custom_event<T extends To_Client_Event_Type>(type: T, handler: (data: Find_To_Client_Payload<T>) => void) {
+export function subscribe_to_custom_event<T extends To_Client_Event_Type>(type: T, handler: (data: Find_To_Client_Payload<T>) => void) {
     GameEvents.Subscribe(`${Prefixes.to_client_event}${type}`, event_data => {
         handler(event_data as Find_To_Client_Payload<T>);
     })
 }
 
-function subscribe_to_net_table_key<T>(table: string, key: string, callback: (data: T) => void){
+export function subscribe_to_net_table_key<T>(table: string, key: string, callback: (data: T) => void){
     const listener = CustomNetTables.SubscribeNetTableListener(table, function(table, table_key, data){
         if (key == table_key){
             if (!data) {
@@ -209,7 +224,7 @@ function subscribe_to_net_table_key<T>(table: string, key: string, callback: (da
     return listener;
 }
 
-function get_hero_name(hero: Hero_Type): string {
+export function get_hero_name(hero: Hero_Type): string {
     const enum_string = enum_to_string(hero);
 
     return enum_string.split("_")
@@ -217,7 +232,7 @@ function get_hero_name(hero: Hero_Type): string {
         .reduce((prev, value) => prev + " " + value);
 }
 
-function get_creep_name(creep: Creep_Type) {
+export function get_creep_name(creep: Creep_Type) {
     const enum_string = enum_to_string(creep);
 
     return enum_string.split("_")
@@ -236,13 +251,13 @@ if (Game.IsInToolsMode()) {
     };
 }
 
-function safely_set_panel_background_image(panel: Panel, image: string) {
+export function safely_set_panel_background_image(panel: Panel, image: string) {
     panel.style.backgroundImage = `url('${image}')`;
     panel.AddClass("fix_bg");
     panel.RemoveClass("fix_bg");
 }
 
-function from_server_array<T>(array: Array<T>): Array<T> {
+export function from_server_array<T>(array: Array<T>): Array<T> {
     const result: Array<T> = [];
 
     for (const index in array) {
@@ -256,7 +271,7 @@ interface Temporary_Storage_Panel extends Panel {
     temporary_particles: ParticleId[] | undefined;
 }
 
-function register_particle_for_reload(particle: ParticleId) {
+export function register_particle_for_reload(particle: ParticleId) {
     if (!Game.IsInToolsMode()) {
         return;
     }
@@ -273,7 +288,7 @@ function register_particle_for_reload(particle: ParticleId) {
     array.push(particle);
 }
 
-function destroy_fx(id: ParticleId) {
+export function destroy_fx(id: ParticleId) {
     Particles.DestroyParticleEffect(id, false);
     Particles.ReleaseParticleIndex(id);
 }
@@ -297,10 +312,10 @@ function clean_up_particles_after_reload() {
     }
 }
 
-const enum Align_H { left, center, right}
-const enum Align_V { top, center, bottom}
+export const enum Align_H { left, center, right}
+export const enum Align_V { top, center, bottom}
 
-function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, h: Align_H, v: Align_V) {
+export function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, h: Align_H, v: Align_V) {
     const screen_ratio = Game.GetScreenHeight() / 1080;
 
     const screen_x = Game.WorldToScreenX(position.x, position.y, position.z);
@@ -406,7 +421,7 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
         GameUI.SetCameraPitchMin(60);
         GameUI.SetCameraPitchMax(60);
     } else {
-        GameUI.SetCameraDistance(map_camera_height);
+        GameUI.SetCameraDistance(Const.map_camera_height);
         GameUI.SetCameraYaw(0);
         GameUI.SetCameraPitchMin(60);
         GameUI.SetCameraPitchMax(60);

@@ -1,4 +1,21 @@
-const adventure_ui = {
+import {
+    adventure_ui_root,
+    async_api_request, current_state,
+    from_server_array,
+    get_access_token,
+    subscribe_to_custom_event, subscribe_to_net_table_key, fire_event, safely_set_panel_background_image, get_creep_name
+} from "./main_ui";
+import {get_item_icon} from "./battle_ui";
+import {
+    create_card_container_ui, create_hero_card_ui_base,
+    create_spell_card_ui_base,
+    create_unit_card_ui_base,
+    get_creep_card_art, get_hero_card_art, get_spell_card_art,
+    get_spell_text
+} from "./card_ui";
+import {emit_random_sound} from "./battle_actions";
+
+export const adventure_ui = {
     party_container: adventure_ui_root.FindChildTraverse("adventure_party"),
     card_container: adventure_ui_root.FindChildTraverse("adventure_cards"),
     currency_label: adventure_ui_root.FindChildTraverse("currency_remaining") as LabelPanel,
@@ -424,7 +441,7 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
     });
 }
 
-function merge_adventure_party_changes(head_before_merge: number, changes: Adventure_Party_Change[]) {
+export function merge_adventure_party_changes(head_before_merge: number, changes: Adventure_Party_Change[]) {
     $.Msg(`Received ${changes.length} party changes, inserting after ${head_before_merge}`);
 
     for (let index = 0; index < changes.length; index++) {
@@ -439,7 +456,7 @@ function hide_adventure_popup() {
     adventure_ui.popup.background.SetHasClass("visible", false);
 }
 
-function adventure_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
+export function adventure_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
     return false;
 }
 

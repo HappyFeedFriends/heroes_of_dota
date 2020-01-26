@@ -1,4 +1,6 @@
-function get_spell_name(spell_id: Spell_Id): string {
+import { get_hero_name } from "./main_ui";
+
+export function get_spell_name(spell_id: Spell_Id): string {
     switch (spell_id) {
         case Spell_Id.buyback: return "Buyback";
         case Spell_Id.euls_scepter: return "Eul's Scepter";
@@ -12,7 +14,7 @@ function get_spell_name(spell_id: Spell_Id): string {
     }
 }
 
-function get_spell_text(spell: Card_Spell_Definition): string {
+export function get_spell_text(spell: Card_Spell_Definition): string {
     switch (spell.spell_id) {
         case Spell_Id.buyback: return `Spend gold to return a dead ally hero to your hand`;
         case Spell_Id.euls_scepter: return `Make target untargetable until next turn`;
@@ -26,11 +28,11 @@ function get_spell_text(spell: Card_Spell_Definition): string {
     }
 }
 
-function get_hero_card_art(hero_type: Hero_Type) {
+export function get_hero_card_art(hero_type: Hero_Type) {
     return `file://{images}/custom_game/heroes/${get_hero_dota_name(hero_type)}.jpg`;
 }
 
-function get_creep_card_art(creep_type: Creep_Type) {
+export function get_creep_card_art(creep_type: Creep_Type) {
     const folder = "file://{images}/custom_game/creeps";
 
     switch (creep_type) {
@@ -40,7 +42,7 @@ function get_creep_card_art(creep_type: Creep_Type) {
     }
 }
 
-function get_spell_card_art(spell_id: Spell_Id): string {
+export function get_spell_card_art(spell_id: Spell_Id): string {
     return `file://{images}/${get_spell_card_art_file(spell_id)}`;
 }
 
@@ -58,7 +60,7 @@ function get_spell_card_art_file(spell_id: Spell_Id): string {
     }
 }
 
-function create_card_container_ui(parent: Panel, in_preview: boolean, type?: Card_Type) {
+export function create_card_container_ui(parent: Panel, in_preview: boolean, type?: Card_Type) {
     const card = $.CreatePanel("Panel", parent, "");
     card.AddClass("card");
 
@@ -84,7 +86,7 @@ function create_card_container_ui(parent: Panel, in_preview: boolean, type?: Car
     return card;
 }
 
-function create_unit_card_ui_base(container: Panel, name: string, art_file: string, health: number, attack: number, move: number) {
+export function create_unit_card_ui_base(container: Panel, name: string, art_file: string, health: number, attack: number, move: number) {
     function create_stat_container(parent: Panel, id: string, value: number) {
         const stat_container = $.CreatePanel("Panel", parent, id);
         stat_container.AddClass("stat_container");
@@ -111,11 +113,11 @@ function create_unit_card_ui_base(container: Panel, name: string, art_file: stri
     create_stat_container(stat_panel, "move_points", move);
 }
 
-function create_hero_card_ui_base(container: Panel, hero_type: Hero_Type, health: number, attack: number, move: number) {
+export function create_hero_card_ui_base(container: Panel, hero_type: Hero_Type, health: number, attack: number, move: number) {
     create_unit_card_ui_base(container, get_hero_name(hero_type), get_hero_card_art(hero_type), health, attack, move);
 }
 
-function create_spell_card_ui_base(container: Panel, spell: Spell_Id, spell_text: string) {
+export function create_spell_card_ui_base(container: Panel, spell: Spell_Id, spell_text: string) {
     const name_panel = $.CreatePanel("Panel", container, "name_panel");
     const spell_name = $.CreatePanel("Label", name_panel, "");
     spell_name.text = get_spell_name(spell);

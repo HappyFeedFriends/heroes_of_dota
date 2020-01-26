@@ -1,4 +1,46 @@
-const enum Selection_Type {
+import {
+    subscribe_to_custom_event,
+    subscribe_to_net_table_key,
+    XYZ,
+    Const,
+    get_screen_world_position,
+    xyz_to_array,
+    current_state,
+    Align_V,
+    Align_H,
+    xyz,
+    position_panel_over_position_in_the_world,
+    register_particle_for_reload,
+    safely_set_panel_background_image,
+    async_get_player_name,
+    from_server_array,
+    RGB,
+    rgb,
+    api_request,
+    get_access_token,
+    fire_event, get_visualiser_delta_head
+} from "./main_ui";
+import {
+    create_card_container_ui,
+    create_hero_card_ui_base,
+    create_spell_card_ui_base,
+    get_spell_text
+} from "./card_ui";
+import {
+    authorize_ability_use_with_error_ui, card_use_error_reason,
+    custom_error,
+    show_action_error_ui,
+    show_error_ui, show_generic_error,
+    show_player_action_error_ui,
+    take_battle_action,
+    try_attack_target,
+    try_order_unit_to_move,
+    try_order_unit_to_pick_up_rune, try_purchase_item,
+    try_use_card,
+    try_use_targeted_ability
+} from "./battle_actions";
+
+export const enum Selection_Type {
     none,
     unit,
     ability,
@@ -6,7 +48,7 @@ const enum Selection_Type {
     card
 }
 
-const enum Hover_Type {
+export const enum Hover_Type {
     none = 0,
     cell = 1,
     unit = 2,
@@ -160,23 +202,23 @@ type Card_Panel = {
     hovered: boolean
 }
 
-type Hover_State = Hover_State_None | Hover_State_Cell | Hover_State_Unit | Hover_State_Ability;
+export type Hover_State = Hover_State_None | Hover_State_Cell | Hover_State_Unit | Hover_State_Ability;
 
-type Hover_State_None = {
+export type Hover_State_None = {
     type: Hover_Type.none
 }
 
-type Hover_State_Cell = {
+export type Hover_State_Cell = {
     type: Hover_Type.cell
     cell: XY
 }
 
-type Hover_State_Unit = {
+export type Hover_State_Unit = {
     type: Hover_Type.unit
     unit: Unit
 }
 
-type Hover_State_Ability = {
+export type Hover_State_Ability = {
     type: Hover_Type.ability
     unit: Unit
     ability: Ability
@@ -184,14 +226,14 @@ type Hover_State_Ability = {
 
 type UI_Grid = World_Grid<UI_Cell>;
 
-type World_Grid<T extends Cell_Like> = Grid<T> & {
+export type World_Grid<T extends Cell_Like> = Grid<T> & {
     world_origin: XYZ
 }
 
-let battle: UI_Battle;
+export let battle: UI_Battle;
 let ui_player_data: UI_Player_Data[] = [];
 
-let selection: Selection_State = {
+export let selection: Selection_State = {
     type: Selection_Type.none
 };
 
@@ -204,17 +246,10 @@ let ui_shop_data: UI_Shop_Data[] = [];
 const current_targeted_ability_ui = $("#current_targeted_ability");
 const card_selection_overlay = $("#card_selection_overlay");
 
-const control_panel: Control_Panel = {
+export const control_panel: Control_Panel = {
     panel: $("#hero_rows"),
     hero_rows: []
 };
-
-declare const enum Const {
-    hand_base_x = 400,
-    hand_base_y = 957,
-
-    battle_cell_size = 144
-}
 
 const hand: Card_Panel[] = [];
 
@@ -254,7 +289,7 @@ function is_overlay_unit_selection(selection: Selection_State): selection is Car
     return false;
 }
 
-function is_unit_selection(selection: Selection_State): selection is (Unit_Selection | Shop_Selection | Ability_Selection) {
+export function is_unit_selection(selection: Selection_State): selection is (Unit_Selection | Shop_Selection | Ability_Selection) {
     return selection.type == Selection_Type.unit || selection.type == Selection_Type.shop || selection.type == Selection_Type.ability;
 }
 
@@ -416,7 +451,7 @@ function rebuild_cell_indexes() {
     }
 }
 
-function receive_battle_deltas(head_before_merge: number, deltas: Delta[]) {
+export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]) {
     $.Msg(`Received ${deltas.length} new deltas`);
 
     for (let index = 0; index < deltas.length; index++) {
@@ -483,7 +518,7 @@ function receive_battle_deltas(head_before_merge: number, deltas: Delta[]) {
     }
 }
 
-function request_battle_deltas() {
+export function request_battle_deltas() {
     const head_before = battle.delta_head;
 
     api_request(Api_Request_Type.query_battle_deltas, {
@@ -505,7 +540,7 @@ function periodically_request_battle_deltas_when_in_battle() {
     request_battle_deltas();
 }
 
-function create_cell_particle_at(position: XYZ) {
+export function create_cell_particle_at(position: XYZ) {
     const particle = Particles.CreateParticle("particles/ui/square_overlay.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
 
     Particles.SetParticleControl(particle, 0, xyz_to_array(position));
@@ -537,7 +572,7 @@ function on_battle_event(battle: UI_Battle, event: Battle_Event) {
     }
 }
 
-function battle_process_state_transition(from: Player_State, new_state: Game_Net_Table) {
+export function battle_process_state_transition(from: Player_State, new_state: Game_Net_Table) {
     $.Msg(`Transition from ${from} to ${new_state.state}`);
 
     if (from == Player_State.in_battle) {
@@ -612,7 +647,7 @@ function battle_process_state_transition(from: Player_State, new_state: Game_Net
     }
 }
 
-function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | undefined {
+export function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | undefined {
     const cell_from = grid_cell_at(battle.grid, from);
     const cell_to = grid_cell_at(battle.grid, to);
 
@@ -645,12 +680,12 @@ function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | undefine
     return path.reverse();
 }
 
-const color_nothing = rgb(255, 255, 255);
-const color_green = rgb(128, 255, 128);
-const color_red = rgb(255, 128, 128);
-const color_yellow = rgb(255, 255, 0);
+export const color_nothing = rgb(255, 255, 255);
+export const color_green = rgb(128, 255, 128);
+export const color_red = rgb(255, 128, 128);
+export const color_yellow = rgb(255, 255, 0);
 
-function create_particle_for_outline_edge(edge: Edge, world_origin: XYZ, start: XY, finish: XY, color: RGB) {
+export function create_particle_for_outline_edge(edge: Edge, world_origin: XYZ, start: XY, finish: XY, color: RGB) {
     const fx = Particles.CreateParticle("particles/ui/highlight_rope.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
     const half = Const.battle_cell_size / 2;
     const height = 32;
@@ -772,7 +807,7 @@ function highlight_outline<T extends Cell_Like>(grid: World_Grid<T>, cell_index_
     return particles;
 }
 
-function highlight_outline_temporarily(grid: UI_Grid, cell_index_to_highlight: boolean[], color: RGB, highlight_time: number) {
+export function highlight_outline_temporarily(grid: UI_Grid, cell_index_to_highlight: boolean[], color: RGB, highlight_time: number) {
     const particles = highlight_outline(grid, cell_index_to_highlight, color);
 
     $.Schedule(highlight_time, () => {
@@ -923,7 +958,7 @@ function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, 
     return [color_nothing, 20];
 }
 
-function update_outline<T extends Cell_Like>(grid: World_Grid<T>, storage: ParticleId[], cell_index_to_highlight: boolean[], color: RGB): ParticleId[] {
+export function update_outline<T extends Cell_Like>(grid: World_Grid<T>, storage: ParticleId[], cell_index_to_highlight: boolean[], color: RGB): ParticleId[] {
     for (const old_particle of storage) {
         Particles.DestroyParticleEffect(old_particle, false);
         Particles.ReleaseParticleIndex(old_particle);
@@ -1189,14 +1224,7 @@ function periodically_drop_selection_in_battle() {
     }
 }
 
-// Used from XML
-function ui_end_turn() {
-    take_battle_action({
-        type: Action_Type.end_turn
-    });
-}
-
-function get_item_icon(id: Item_Id) {
+export function get_item_icon(id: Item_Id) {
     function get_item_icon_name(id: Item_Id): string {
         switch (id) {
             case Item_Id.satanic: return "satanic";
@@ -1540,14 +1568,14 @@ function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In
     }
 }
 
-function world_position_to_battle_position(world_origin: XY, position: XYZ): XY {
+export function world_position_to_battle_position(world_origin: XY, position: XYZ): XY {
     return {
         x: Math.floor((position.x - world_origin.x) / Const.battle_cell_size),
         y: Math.floor((position.y - world_origin.y) / Const.battle_cell_size)
     }
 }
 
-function battle_position_to_world_position_center(world_origin: XYZ, position: XY): XYZ {
+export function battle_position_to_world_position_center(world_origin: XYZ, position: XY): XYZ {
     return {
         x: world_origin.x + position.x * Const.battle_cell_size + Const.battle_cell_size / 2,
         y: world_origin.y + position.y * Const.battle_cell_size + Const.battle_cell_size / 2,
@@ -1839,7 +1867,7 @@ function get_full_ability_icon_path(id: Ability_Id): string {
     return `file://{images}/spellicons/${get_ability_icon(id)}.png`;
 }
 
-function get_full_unit_icon_path(type: Hero_Type): string {
+export function get_full_unit_icon_path(type: Hero_Type): string {
     return `file://{images}/heroes/npc_dota_hero_${get_hero_dota_name(type)}.png`;
 }
 
@@ -1851,7 +1879,8 @@ function create_level_bar(parent: Panel, id: string): Level_Bar {
         pips: []
     };
 
-    for (let index = 0; index < Const.max_unit_level; index++) {
+    // TODO TODO TODO Const.max_unit_level
+    for (let index = 0; index < 3; index++) {
         const pip = $.CreatePanel("Panel", panel, "");
         pip.AddClass("level_pip");
         level_bar.pips.push(pip);
@@ -2348,14 +2377,14 @@ function periodically_update_stat_bar_display() {
     }
 }
 
-declare const enum Edge {
+export declare const enum Edge {
     top = 0,
     bottom = 1,
     left = 2,
     right = 3
 }
 
-function get_entity_under_cursor(cursor: [ number, number ]): EntityId | undefined {
+export function get_entity_under_cursor(cursor: [ number, number ]): EntityId | undefined {
     const entities_under_cursor = GameUI.FindScreenEntities(cursor);
 
     for (const entity of entities_under_cursor) {
@@ -2371,7 +2400,7 @@ function get_entity_under_cursor(cursor: [ number, number ]): EntityId | undefin
     return undefined;
 }
 
-function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
+export function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
     if (event == "pressed" || event == "doublepressed") {
         const click_behaviors = GameUI.GetClickBehaviors();
         const cursor = GameUI.GetCursorPosition();
@@ -2865,6 +2894,12 @@ function setup_custom_ability_hotkeys() {
     bind_ability_at_index_to_command("AbilityPrimary3", 2);
     bind_ability_at_index_to_command("AbilityUltimate", 3);
 }
+
+$("#end_turn_button").SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+    take_battle_action({
+        type: Action_Type.end_turn
+    });
+});
 
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
     if (battle && data.state == Player_State.in_battle) {

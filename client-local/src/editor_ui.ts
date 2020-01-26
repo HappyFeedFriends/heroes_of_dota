@@ -1,3 +1,38 @@
+import {
+    subscribe_to_net_table_key,
+    api_request,
+    get_access_token,
+    rgb,
+    position_panel_over_position_in_the_world,
+    Align_H,
+    Align_V,
+    get_screen_world_position,
+    xyz,
+    destroy_fx,
+    RGB,
+    xyz_to_array,
+    async_local_api_request,
+    register_particle_for_reload,
+    XYZ,
+    fire_event,
+    current_state,
+    from_server_array,
+    async_api_request,
+    Const
+} from "./main_ui";
+import {
+    create_cell_particle_at,
+    battle_position_to_world_position_center,
+    update_outline,
+    color_green,
+    World_Grid,
+    create_particle_for_outline_edge,
+    Edge,
+    world_position_to_battle_position,
+    color_yellow,
+    get_entity_under_cursor
+} from "./battle_ui";
+
 const editor_root = $("#editor_ui");
 const buttons_root = editor_root.FindChildTraverse("editor_buttons");
 const indicator = editor_root.FindChildTraverse("editor_indicator");
@@ -18,7 +53,7 @@ const zone_color = rgb(64, 200, 255);
 // To prevent click-through
 entity_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
 
-const enum Editor_Type {
+export const enum Editor_Type {
     none,
     adventure,
     battleground
@@ -148,7 +183,7 @@ type Rect_Outline = {
 
 let pinned_context_menu_position = xyz(0, 0, 0);
 let context_menu_particle: ParticleId | undefined = undefined;
-let editor: Editor = { type: Editor_Type.none };
+export let editor: Editor = { type: Editor_Type.none };
 
 const adventure_editor: Adventure_Editor = {
     type: Editor_Type.adventure,
@@ -184,7 +219,7 @@ function update_editor_indicator(editor: Editor) {
 }
 
 function update_editor_camera_height(editor: Editor) {
-    GameUI.SetCameraDistance(editor.type == Editor_Type.adventure ? 1200 + 200 * editor.camera_height_index : map_camera_height);
+    GameUI.SetCameraDistance(editor.type == Editor_Type.adventure ? 1200 + 200 * editor.camera_height_index : Const.map_camera_height);
 }
 
 function enum_value_from_modifier<T extends number>(entity: EntityId, modifier_name: string): T | undefined {
@@ -748,7 +783,7 @@ function battleground_editor_set_grid_brush_selection_state(editor: Battleground
     }
 }
 
-function battleground_editor_filter_mouse_click(editor: Battleground_Editor, event: MouseEvent, button: MouseButton | WheelScroll) {
+export function battleground_editor_filter_mouse_click(editor: Battleground_Editor, event: MouseEvent, button: MouseButton | WheelScroll) {
     const cursor = GameUI.GetCursorPosition();
     const world_position = get_screen_world_position(cursor);
 
@@ -847,7 +882,7 @@ function battleground_editor_filter_mouse_click(editor: Battleground_Editor, eve
 }
 
 // Returns if event should be consumed or not
-function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: MouseEvent, button: MouseButton | WheelScroll): boolean {
+export function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: MouseEvent, button: MouseButton | WheelScroll): boolean {
     if (event != "pressed") {
         return true;
     }
