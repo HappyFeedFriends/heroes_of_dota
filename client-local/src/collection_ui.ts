@@ -1,6 +1,4 @@
 import {
-    get_access_token,
-    api_request,
     safely_set_panel_background_image,
     get_hero_name,
     global_map_ui_root
@@ -15,6 +13,7 @@ import {
 } from "./card_ui";
 import {get_full_unit_icon_path} from "./battle_ui";
 import {show_generic_error} from "./battle_actions";
+import {api_request, get_access_token} from "./interop";
 
 type Deck_Counter = {
     root: Panel;

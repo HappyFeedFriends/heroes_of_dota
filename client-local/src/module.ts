@@ -65,7 +65,7 @@ $.Schedule(0, () => {
             const resolved = systems.find(system => `./${system.name}` === dependency.name);
 
             if (!resolved) {
-                throw `Unresolved dependency: ${dependency} in module ${system.name}`;
+                throw `Unresolved dependency: ${dependency.name} in module ${system.name}`;
             }
 
             $.Msg("\tLoading dependency: ", dependency.name);

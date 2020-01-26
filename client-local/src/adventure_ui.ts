@@ -1,21 +1,30 @@
 import {
-    adventure_ui_root,
-    async_api_request, current_state,
-    from_server_array,
-    get_access_token,
-    subscribe_to_custom_event, subscribe_to_net_table_key, fire_event, safely_set_panel_background_image, get_creep_name
-} from "./main_ui";
+    subscribe_to_custom_event,
+    subscribe_to_net_table_key,
+    get_access_token, async_api_request, fire_event,
+} from "./interop";
 import {get_item_icon} from "./battle_ui";
 import {
-    create_card_container_ui, create_hero_card_ui_base,
+    create_card_container_ui,
+    create_hero_card_ui_base,
     create_spell_card_ui_base,
     create_unit_card_ui_base,
-    get_creep_card_art, get_hero_card_art, get_spell_card_art,
+    get_creep_card_art,
+    get_hero_card_art,
+    get_spell_card_art,
     get_spell_text
 } from "./card_ui";
 import {emit_random_sound} from "./battle_actions";
+import {api_request} from "./interop";
+import {
+    adventure_ui_root,
+    current_state,
+    from_server_array,
+    get_creep_name,
+    safely_set_panel_background_image
+} from "./main_ui";
 
-export const adventure_ui = {
+const adventure_ui = {
     party_container: adventure_ui_root.FindChildTraverse("adventure_party"),
     card_container: adventure_ui_root.FindChildTraverse("adventure_cards"),
     currency_label: adventure_ui_root.FindChildTraverse("currency_remaining") as LabelPanel,
@@ -441,7 +450,7 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
     });
 }
 
-export function merge_adventure_party_changes(head_before_merge: number, changes: Adventure_Party_Change[]) {
+function merge_adventure_party_changes(head_before_merge: number, changes: Adventure_Party_Change[]) {
     $.Msg(`Received ${changes.length} party changes, inserting after ${head_before_merge}`);
 
     for (let index = 0; index < changes.length; index++) {
@@ -449,6 +458,16 @@ export function merge_adventure_party_changes(head_before_merge: number, changes
     }
 
     adventure_ui.party.current_head = head_before_merge + changes.length;
+}
+
+export function try_adventure_cheat(text: string) {
+    const head = adventure_ui.party.current_head;
+
+    api_request(Api_Request_Type.adventure_party_cheat, {
+        access_token: get_access_token(),
+        cheat: text,
+        current_head: head
+    }, response => merge_adventure_party_changes(head, response.party_updates));
 }
 
 function hide_adventure_popup() {

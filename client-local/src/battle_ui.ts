@@ -1,6 +1,4 @@
 import {
-    subscribe_to_custom_event,
-    subscribe_to_net_table_key,
     XYZ,
     Const,
     get_screen_world_position,
@@ -12,14 +10,11 @@ import {
     position_panel_over_position_in_the_world,
     register_particle_for_reload,
     safely_set_panel_background_image,
-    async_get_player_name,
     from_server_array,
     RGB,
-    rgb,
-    api_request,
-    get_access_token,
-    fire_event, get_visualiser_delta_head
+    rgb
 } from "./main_ui";
+
 import {
     create_card_container_ui,
     create_hero_card_ui_base,
@@ -40,7 +35,16 @@ import {
     try_use_targeted_ability
 } from "./battle_actions";
 
-export const enum Selection_Type {
+import {
+    subscribe_to_custom_event,
+    subscribe_to_net_table_key,
+    async_get_player_name,
+    api_request,
+    get_access_token,
+    fire_event, get_visualiser_delta_head
+} from "./interop";
+
+const enum Selection_Type {
     none,
     unit,
     ability,
@@ -518,7 +522,17 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
     }
 }
 
-export function request_battle_deltas() {
+export function try_battle_cheat(text: string) {
+    const unit = selection.type == Selection_Type.unit ? selection.unit : undefined;
+
+    api_request(Api_Request_Type.battle_cheat, {
+        access_token: get_access_token(),
+        cheat: text,
+        selected_unit_id: unit ? unit.id : -1 as Unit_Id
+    }, request_battle_deltas);
+}
+
+function request_battle_deltas() {
     const head_before = battle.delta_head;
 
     api_request(Api_Request_Type.query_battle_deltas, {

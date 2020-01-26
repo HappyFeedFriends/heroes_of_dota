@@ -1,7 +1,4 @@
 import {
-    subscribe_to_net_table_key,
-    api_request,
-    get_access_token,
     rgb,
     position_panel_over_position_in_the_world,
     Align_H,
@@ -11,15 +8,20 @@ import {
     destroy_fx,
     RGB,
     xyz_to_array,
-    async_local_api_request,
     register_particle_for_reload,
     XYZ,
-    fire_event,
     current_state,
     from_server_array,
-    async_api_request,
     Const
 } from "./main_ui";
+import {
+    fire_event,
+    subscribe_to_net_table_key,
+    async_local_api_request,
+    async_api_request,
+    api_request,
+    get_access_token
+} from "./interop";
 import {
     create_cell_particle_at,
     battle_position_to_world_position_center,

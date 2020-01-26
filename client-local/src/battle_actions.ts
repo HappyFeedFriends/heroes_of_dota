@@ -1,4 +1,3 @@
-import {get_access_token, api_request} from "./main_ui";
 import {
     battle,
     selection,
@@ -13,6 +12,8 @@ import {
     Hover_State_Cell,
     Hover_State_Unit,
 } from "./battle_ui";
+
+import {get_access_token, api_request} from "./interop";
 
 export function take_battle_action(action: Turn_Action, success_callback?: () => void) {
     $.Msg("Take action ", action);

@@ -1,12 +1,14 @@
 import {
-    async_get_player_name,
-    get_access_token,
-    api_request,
+    subscribe_to_custom_event,
     subscribe_to_net_table_key,
-    subscribe_to_custom_event, current_state
-} from "./main_ui";
-import {adventure_ui, merge_adventure_party_changes} from "./adventure_ui";
-import {request_battle_deltas, selection, Selection_Type} from "./battle_ui";
+    async_get_player_name,
+    api_request,
+    get_access_token,
+} from "./interop";
+
+import {try_adventure_cheat} from "./adventure_ui";
+import {try_battle_cheat} from "./battle_ui";
+import {current_state} from "./main_ui";
 
 function add_new_chat_messages(messages: Chat_Message[]) {
     const messages_panel = $("#chat_messages");
@@ -73,21 +75,9 @@ function hack_into_game_chat() {
                         Game.ServerCmd("dota_ping");
                     } else {
                         if (current_state == Player_State.in_battle) {
-                            const unit = selection.type == Selection_Type.unit ? selection.unit : undefined;
-
-                            api_request(Api_Request_Type.battle_cheat, {
-                                access_token: get_access_token(),
-                                cheat: text.substring(1),
-                                selected_unit_id: unit ? unit.id : -1 as Unit_Id
-                            }, request_battle_deltas);
+                            try_battle_cheat(text.substring(1));
                         } else if (current_state == Player_State.on_adventure) {
-                            const head = adventure_ui.party.current_head;
-
-                            api_request(Api_Request_Type.adventure_party_cheat, {
-                                access_token: get_access_token(),
-                                cheat: text.substring(1),
-                                current_head: head
-                            }, response => merge_adventure_party_changes(head, response.party_updates));
+                            try_adventure_cheat(text.substring(1));
                         }
                     }
                 } else {
