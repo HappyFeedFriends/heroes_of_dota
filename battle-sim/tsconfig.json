@@ -9,8 +9,10 @@
     "strictNullChecks": true,
     "sourceMap": true,
     "declaration": true,
+    "declarationMap": true,
     "outDir": "dist",
     "outFile": "dist/battle_sim.js",
+    "composite": true,
     "lib": [
       "es2016"
     ],

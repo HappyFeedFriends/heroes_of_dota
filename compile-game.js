@@ -5,7 +5,7 @@ const { compile, copy_sim, copy_code_shared_with_lua, panorama_scripts_dir } = r
 
     copy_code_shared_with_lua();
 
-    const ok = await compile("battle-sim", "client-local", "server-remote", "server-local");
+    const ok = await compile("client-local", "server-remote", "server-local");
 
     copy_sim("server-remote/dist/battle_sim.js");
     copy_sim(`${panorama_scripts_dir}/battle_sim.js`);

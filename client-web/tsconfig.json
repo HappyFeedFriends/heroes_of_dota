@@ -12,6 +12,11 @@
       }
     ]
   },
+  "references": [
+    {
+      "path": "../battle-sim"
+    }
+  ],
   "include": [
     "**/*.ts",
     "../api_definitions/api.d.ts",
@@ -20,7 +25,6 @@
     "../api_definitions/api_editor.d.ts",
     "../api_definitions/abilities.d.ts",
     "../api_definitions/modifiers.d.ts",
-    "../battle-sim/dist/battle_sim.d.ts",
     "../api_definitions/spells.d.ts",
     "../api_definitions/items.d.ts"
   ]
