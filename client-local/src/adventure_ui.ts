@@ -19,10 +19,9 @@ import {api_request} from "./interop";
 import {
     adventure_ui_root,
     current_state,
-    from_server_array,
-    get_creep_name,
-    safely_set_panel_background_image
+    get_creep_name
 } from "./main_ui";
+import {from_server_array, safely_set_panel_background_image} from "./commons";
 
 const adventure_ui = {
     party_container: adventure_ui_root.FindChildTraverse("adventure_party"),

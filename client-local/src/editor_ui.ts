@@ -1,19 +1,20 @@
 import {
-    rgb,
-    position_panel_over_position_in_the_world,
-    Align_H,
-    Align_V,
-    get_screen_world_position,
-    xyz,
-    destroy_fx,
-    RGB,
-    xyz_to_array,
-    register_particle_for_reload,
-    XYZ,
     current_state,
-    from_server_array,
     Const
 } from "./main_ui";
+import {
+    XYZ,
+    RGB,
+    Align_H,
+    Align_V,
+    rgb,
+    xyz,
+    xyz_to_array,
+    get_screen_world_position,
+    position_panel_over_position_in_the_world,
+    register_particle_for_reload,
+    from_server_array, destroy_fx
+} from "./commons";
 import {
     fire_event,
     subscribe_to_net_table_key,

@@ -1,5 +1,4 @@
 import {
-    safely_set_panel_background_image,
     get_hero_name,
     global_map_ui_root
 } from "./main_ui";
@@ -14,6 +13,7 @@ import {
 import {get_full_unit_icon_path} from "./battle_ui";
 import {show_generic_error} from "./battle_actions";
 import {api_request, get_access_token} from "./interop";
+import {safely_set_panel_background_image} from "./commons";
 
 type Deck_Counter = {
     root: Panel;
