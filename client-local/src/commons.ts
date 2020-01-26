@@ -1,9 +1,9 @@
-export type XYZ = { x: number, y: number, z: number };
-export type RGB = [ number, number, number ] & { _color_id_brand: any };
-export const enum Align_H { left, center, right}
-export const enum Align_V { top, center, bottom}
+type XYZ = { x: number, y: number, z: number };
+type RGB = [ number, number, number ] & { _color_id_brand: any };
+const enum Align_H { left, center, right}
+const enum Align_V { top, center, bottom}
 
-export declare const enum Const {
+declare const enum Const {
     hand_base_x = 400,
     hand_base_y = 957,
 
@@ -12,7 +12,7 @@ export declare const enum Const {
     map_camera_height = 1300
 }
 
-export type Error_Reason = {
+type Error_Reason = {
     reason: number,
     message?: string
 };
@@ -21,19 +21,19 @@ interface Temporary_Storage_Panel extends Panel {
     temporary_particles: ParticleId[] | undefined;
 }
 
-export function xyz(x: number, y: number, z: number): XYZ {
+function xyz(x: number, y: number, z: number): XYZ {
     return { x: x, y: y, z: z };
 }
 
-export function xyz_to_array(xyz: XYZ): [ number, number, number ] {
+function xyz_to_array(xyz: XYZ): [ number, number, number ] {
     return [xyz.x, xyz.y, xyz.z];
 }
 
-export function rgb(r: number, g: number, b: number): RGB {
+function rgb(r: number, g: number, b: number): RGB {
     return [r, g, b] as RGB;
 }
 
-export function get_screen_world_position(cursor: [number, number]): XYZ | undefined {
+function get_screen_world_position(cursor: [number, number]): XYZ | undefined {
     const position = GameUI.GetScreenWorldPosition(cursor);
 
     if (!position) {
@@ -43,7 +43,7 @@ export function get_screen_world_position(cursor: [number, number]): XYZ | undef
     return xyz(position[0], position[1], position[2]);
 }
 
-export function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, h: Align_H, v: Align_V) {
+function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, h: Align_H, v: Align_V) {
     const screen_ratio = Game.GetScreenHeight() / 1080;
 
     const screen_x = Game.WorldToScreenX(position.x, position.y, position.z);
@@ -66,7 +66,7 @@ export function position_panel_over_position_in_the_world(panel: Panel, position
     panel.style.y = Math.floor(screen_y / screen_ratio - panel_offset_y) + "px";
 }
 
-export function get_entity_under_cursor(cursor: [ number, number ]): EntityId | undefined {
+function get_entity_under_cursor(cursor: [ number, number ]): EntityId | undefined {
     const entities_under_cursor = GameUI.FindScreenEntities(cursor);
 
     for (const entity of entities_under_cursor) {
@@ -82,13 +82,13 @@ export function get_entity_under_cursor(cursor: [ number, number ]): EntityId | 
     return undefined;
 }
 
-export function safely_set_panel_background_image(panel: Panel, image: string) {
+function safely_set_panel_background_image(panel: Panel, image: string) {
     panel.style.backgroundImage = `url('${image}')`;
     panel.AddClass("fix_bg");
     panel.RemoveClass("fix_bg");
 }
 
-export function from_server_array<T>(array: Array<T>): Array<T> {
+function from_server_array<T>(array: Array<T>): Array<T> {
     const result: Array<T> = [];
 
     for (const index in array) {
@@ -98,7 +98,7 @@ export function from_server_array<T>(array: Array<T>): Array<T> {
     return result;
 }
 
-export function register_particle_for_reload(particle: ParticleId) {
+function register_particle_for_reload(particle: ParticleId) {
     if (!Game.IsInToolsMode()) {
         return;
     }
@@ -115,12 +115,12 @@ export function register_particle_for_reload(particle: ParticleId) {
     array.push(particle);
 }
 
-export function destroy_fx(id: ParticleId) {
+function destroy_fx(id: ParticleId) {
     Particles.DestroyParticleEffect(id, false);
     Particles.ReleaseParticleIndex(id);
 }
 
-export function emit_random_sound(sounds: string[]) {
+function emit_random_sound(sounds: string[]) {
     Game.EmitSound(sounds[random_int_up_to(sounds.length)]);
 }
 
@@ -128,17 +128,17 @@ function random_int_up_to(upper_bound: number) {
     return Math.floor(Math.random() * upper_bound);
 }
 
-export function custom_error(message: string) {
+function custom_error(message: string) {
     return { reason: 80, message: message };
 }
 
-export function show_error_ui(reason: Error_Reason): undefined {
+function show_error_ui(reason: Error_Reason): undefined {
     GameEvents.SendEventClientSide("dota_hud_error_message", reason);
 
     return;
 }
 
-export function show_generic_error(error: string) {
+function show_generic_error(error: string) {
     GameEvents.SendEventClientSide("dota_hud_error_message", { reason: 80, message: error });
 }
 
@@ -160,5 +160,3 @@ function clean_up_particles_after_reload() {
         storage.temporary_particles = [];
     }
 }
-
-clean_up_particles_after_reload();

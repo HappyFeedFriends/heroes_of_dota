@@ -1,20 +1,4 @@
 import {current_state} from "./main_ui";
-import {
-    Const,
-    XYZ,
-    RGB,
-    Align_H,
-    Align_V,
-    rgb,
-    xyz,
-    xyz_to_array,
-    get_screen_world_position,
-    get_entity_under_cursor,
-    position_panel_over_position_in_the_world,
-    register_particle_for_reload,
-    from_server_array,
-    destroy_fx
-} from "./commons";
 
 import {
     fire_event,
@@ -24,18 +8,6 @@ import {
     api_request,
     get_access_token
 } from "./interop";
-
-import {
-    World_Grid,
-    Edge,
-    color_green,
-    color_yellow,
-    create_cell_particle_at,
-    create_particle_for_outline_edge,
-    world_position_to_battle_position,
-    battle_position_to_world_position_center,
-    update_outline
-} from "./grid";
 
 const editor_root = $("#editor_ui");
 const buttons_root = editor_root.FindChildTraverse("editor_buttons");

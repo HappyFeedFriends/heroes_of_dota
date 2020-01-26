@@ -1,4 +1,4 @@
-export function get_hero_name(hero: Hero_Type): string {
+function get_hero_name(hero: Hero_Type): string {
     const enum_string = enum_to_string(hero);
 
     return enum_string.split("_")
@@ -6,7 +6,7 @@ export function get_hero_name(hero: Hero_Type): string {
         .reduce((prev, value) => prev + " " + value);
 }
 
-export function get_creep_name(creep: Creep_Type) {
+function get_creep_name(creep: Creep_Type) {
     const enum_string = enum_to_string(creep);
 
     return enum_string.split("_")
@@ -14,7 +14,7 @@ export function get_creep_name(creep: Creep_Type) {
         .reduce((prev, value) => prev + " " + value);
 }
 
-export function get_item_icon(id: Item_Id) {
+function get_item_icon(id: Item_Id) {
     function get_item_icon_name(id: Item_Id): string {
         switch (id) {
             case Item_Id.satanic: return "satanic";
@@ -40,7 +40,7 @@ export function get_item_icon(id: Item_Id) {
     return `items/${get_item_icon_name(id)}`;
 }
 
-export function get_spell_name(spell_id: Spell_Id): string {
+function get_spell_name(spell_id: Spell_Id): string {
     switch (spell_id) {
         case Spell_Id.buyback: return "Buyback";
         case Spell_Id.euls_scepter: return "Eul's Scepter";
@@ -54,7 +54,7 @@ export function get_spell_name(spell_id: Spell_Id): string {
     }
 }
 
-export function get_spell_text(spell: Card_Spell_Definition): string {
+function get_spell_text(spell: Card_Spell_Definition): string {
     switch (spell.spell_id) {
         case Spell_Id.buyback: return `Spend gold to return a dead ally hero to your hand`;
         case Spell_Id.euls_scepter: return `Make target untargetable until next turn`;
@@ -68,11 +68,11 @@ export function get_spell_text(spell: Card_Spell_Definition): string {
     }
 }
 
-export function get_hero_card_art(hero_type: Hero_Type) {
+function get_hero_card_art(hero_type: Hero_Type) {
     return `file://{images}/custom_game/heroes/${get_hero_dota_name(hero_type)}.jpg`;
 }
 
-export function get_creep_card_art(creep_type: Creep_Type) {
+function get_creep_card_art(creep_type: Creep_Type) {
     const folder = "file://{images}/custom_game/creeps";
 
     switch (creep_type) {
@@ -82,29 +82,29 @@ export function get_creep_card_art(creep_type: Creep_Type) {
     }
 }
 
-export function get_full_unit_icon_path(type: Hero_Type): string {
+function get_full_unit_icon_path(type: Hero_Type): string {
     return `file://{images}/heroes/npc_dota_hero_${get_hero_dota_name(type)}.png`;
 }
 
-export function get_spell_card_art(spell_id: Spell_Id): string {
+function get_spell_card_art(spell_id: Spell_Id): string {
+    function get_spell_card_art_file(spell_id: Spell_Id): string {
+        switch (spell_id) {
+            case Spell_Id.buyback: return "profile_badges/level_46.png";
+            case Spell_Id.euls_scepter: return "profile_badges/level_71.png";
+            case Spell_Id.mekansm: return "profile_badges/level_45.png";
+            case Spell_Id.buckler: return "profile_badges/level_21.png";
+            case Spell_Id.drums_of_endurance: return "profile_badges/level_42.png";
+            case Spell_Id.town_portal_scroll: return "custom_game/spells/teleport_scroll.png";
+            case Spell_Id.pocket_tower: return "custom_game/spells/pocket_tower.png";
+            case Spell_Id.call_to_arms: return "custom_game/spells/call_to_arms.png";
+            case Spell_Id.refresher_orb: return "profile_badges/level_95.png";
+        }
+    }
+    
     return `file://{images}/${get_spell_card_art_file(spell_id)}`;
 }
 
-function get_spell_card_art_file(spell_id: Spell_Id): string {
-    switch (spell_id) {
-        case Spell_Id.buyback: return "profile_badges/level_46.png";
-        case Spell_Id.euls_scepter: return "profile_badges/level_71.png";
-        case Spell_Id.mekansm: return "profile_badges/level_45.png";
-        case Spell_Id.buckler: return "profile_badges/level_21.png";
-        case Spell_Id.drums_of_endurance: return "profile_badges/level_42.png";
-        case Spell_Id.town_portal_scroll: return "custom_game/spells/teleport_scroll.png";
-        case Spell_Id.pocket_tower: return "custom_game/spells/pocket_tower.png";
-        case Spell_Id.call_to_arms: return "custom_game/spells/call_to_arms.png";
-        case Spell_Id.refresher_orb: return "profile_badges/level_95.png";
-    }
-}
-
-export function create_card_container_ui(parent: Panel, in_preview: boolean, type?: Card_Type) {
+function create_card_container_ui(parent: Panel, in_preview: boolean, type?: Card_Type) {
     const card = $.CreatePanel("Panel", parent, "");
     card.AddClass("card");
 
@@ -130,7 +130,7 @@ export function create_card_container_ui(parent: Panel, in_preview: boolean, typ
     return card;
 }
 
-export function create_unit_card_ui_base(container: Panel, name: string, art_file: string, health: number, attack: number, move: number) {
+function create_unit_card_ui_base(container: Panel, name: string, art_file: string, health: number, attack: number, move: number) {
     function create_stat_container(parent: Panel, id: string, value: number) {
         const stat_container = $.CreatePanel("Panel", parent, id);
         stat_container.AddClass("stat_container");
@@ -157,11 +157,11 @@ export function create_unit_card_ui_base(container: Panel, name: string, art_fil
     create_stat_container(stat_panel, "move_points", move);
 }
 
-export function create_hero_card_ui_base(container: Panel, hero_type: Hero_Type, health: number, attack: number, move: number) {
+function create_hero_card_ui_base(container: Panel, hero_type: Hero_Type, health: number, attack: number, move: number) {
     create_unit_card_ui_base(container, get_hero_name(hero_type), get_hero_card_art(hero_type), health, attack, move);
 }
 
-export function create_spell_card_ui_base(container: Panel, spell: Spell_Id, spell_text: string) {
+function create_spell_card_ui_base(container: Panel, spell: Spell_Id, spell_text: string) {
     const name_panel = $.CreatePanel("Panel", container, "name_panel");
     const spell_name = $.CreatePanel("Label", name_panel, "");
     spell_name.text = get_spell_name(spell);

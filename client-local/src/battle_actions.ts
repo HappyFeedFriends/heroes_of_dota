@@ -11,8 +11,6 @@ import {
 } from "./battle_ui";
 
 import {get_access_token, api_request} from "./interop";
-import {custom_error, emit_random_sound, Error_Reason, show_error_ui} from "./commons";
-import {color_green, color_red, highlight_outline_temporarily} from "./grid";
 
 export function take_battle_action(action: Turn_Action, success_callback?: () => void) {
     $.Msg("Take action ", action);

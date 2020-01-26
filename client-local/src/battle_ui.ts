@@ -1,40 +1,15 @@
 import {current_state} from "./main_ui";
 
 import {
-    Const,
-    XYZ,
-    RGB,
-    Align_H,
-    Align_V,
-    xyz,
-    xyz_to_array,
-    get_screen_world_position,
-    get_entity_under_cursor,
-    position_panel_over_position_in_the_world,
-    register_particle_for_reload,
-    safely_set_panel_background_image,
-    from_server_array,
-    custom_error,
-    show_error_ui,
-    show_generic_error
-} from "./commons";
-
-import {
-    create_card_container_ui,
-    create_hero_card_ui_base,
-    create_spell_card_ui_base,
-    get_full_unit_icon_path, get_item_icon,
-    get_spell_text
-} from "./card_ui";
-
-import {
-    authorize_ability_use_with_error_ui, card_use_error_reason,
+    authorize_ability_use_with_error_ui,
+    card_use_error_reason,
     show_action_error_ui,
     show_player_action_error_ui,
     take_battle_action,
     try_attack_target,
     try_order_unit_to_move,
-    try_order_unit_to_pick_up_rune, try_purchase_item,
+    try_order_unit_to_pick_up_rune,
+    try_purchase_item,
     try_use_card,
     try_use_targeted_ability
 } from "./battle_actions";
@@ -45,21 +20,9 @@ import {
     async_get_player_name,
     api_request,
     get_access_token,
-    fire_event, get_visualiser_delta_head
+    fire_event,
+    get_visualiser_delta_head
 } from "./interop";
-
-import {
-    World_Grid,
-    color_green,
-    color_nothing,
-    color_red,
-    color_yellow,
-    create_cell_particle_at,
-    world_position_to_battle_position,
-    battle_position_to_world_position_center,
-    update_outline,
-    highlight_outline_temporarily
-} from "./grid";
 
 const enum Selection_Type {
     none,
@@ -1692,8 +1655,7 @@ function create_level_bar(parent: Panel, id: string): Level_Bar {
         pips: []
     };
 
-    // TODO TODO TODO Const.max_unit_level
-    for (let index = 0; index < 3; index++) {
+    for (let index = 0; index < Const.max_unit_level; index++) {
         const pip = $.CreatePanel("Panel", panel, "");
         pip.AddClass("level_pip");
         level_bar.pips.push(pip);

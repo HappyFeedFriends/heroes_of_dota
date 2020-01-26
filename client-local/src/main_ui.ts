@@ -7,7 +7,6 @@ import {
 import {battle_filter_mouse_click, battle_process_state_transition} from "./battle_ui";
 import {adventure_filter_mouse_click} from "./adventure_ui";
 import {subscribe_to_net_table_key} from "./interop";
-import {Const} from "./commons";
 
 export let current_state = Player_State.not_logged_in;
 
@@ -81,6 +80,7 @@ function hide_default_ui() {
 
 hide_default_ui();
 setup_mouse_filter();
+clean_up_particles_after_reload();
 
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
     global_map_ui_root.SetHasClass("active", data.state == Player_State.on_global_map);

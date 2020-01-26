@@ -1,14 +1,4 @@
-import {
-    create_card_container_ui,
-    create_hero_card_ui_base,
-    create_spell_card_ui_base, get_full_unit_icon_path,
-    get_spell_card_art,
-    get_spell_name,
-    get_spell_text,
-    get_hero_name
-} from "./card_ui";
 import {api_request, get_access_token} from "./interop";
-import {safely_set_panel_background_image, show_generic_error} from "./commons";
 import {global_map_ui_root} from "./main_ui";
 
 type Deck_Counter = {

@@ -1,34 +1,27 @@
-import {
-    Const,
-    register_particle_for_reload,
-    RGB, rgb,
-    XYZ, xyz_to_array
-} from "./commons";
-
-export declare const enum Edge {
+declare const enum Edge {
     top = 0,
     bottom = 1,
     left = 2,
     right = 3
 }
 
-export type World_Grid<T extends Cell_Like> = Grid<T> & {
+type World_Grid<T extends Cell_Like> = Grid<T> & {
     world_origin: XYZ
 }
 
-export const color_nothing = rgb(255, 255, 255);
-export const color_green = rgb(128, 255, 128);
-export const color_red = rgb(255, 128, 128);
-export const color_yellow = rgb(255, 255, 0);
+const color_nothing = rgb(255, 255, 255);
+const color_green = rgb(128, 255, 128);
+const color_red = rgb(255, 128, 128);
+const color_yellow = rgb(255, 255, 0);
 
-export function world_position_to_battle_position(world_origin: XY, position: XYZ): XY {
+function world_position_to_battle_position(world_origin: XY, position: XYZ): XY {
     return {
         x: Math.floor((position.x - world_origin.x) / Const.battle_cell_size),
         y: Math.floor((position.y - world_origin.y) / Const.battle_cell_size)
     }
 }
 
-export function battle_position_to_world_position_center(world_origin: XYZ, position: XY): XYZ {
+function battle_position_to_world_position_center(world_origin: XYZ, position: XY): XYZ {
     return {
         x: world_origin.x + position.x * Const.battle_cell_size + Const.battle_cell_size / 2,
         y: world_origin.y + position.y * Const.battle_cell_size + Const.battle_cell_size / 2,
@@ -36,7 +29,7 @@ export function battle_position_to_world_position_center(world_origin: XYZ, posi
     }
 }
 
-export function create_cell_particle_at(position: XYZ) {
+function create_cell_particle_at(position: XYZ) {
     const particle = Particles.CreateParticle("particles/ui/square_overlay.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
 
     Particles.SetParticleControl(particle, 0, xyz_to_array(position));
@@ -47,7 +40,7 @@ export function create_cell_particle_at(position: XYZ) {
     return particle;
 }
 
-export function update_outline<T extends Cell_Like>(grid: World_Grid<T>, storage: ParticleId[], cell_index_to_highlight: boolean[], color: RGB): ParticleId[] {
+function update_outline<T extends Cell_Like>(grid: World_Grid<T>, storage: ParticleId[], cell_index_to_highlight: boolean[], color: RGB): ParticleId[] {
     for (const old_particle of storage) {
         Particles.DestroyParticleEffect(old_particle, false);
         Particles.ReleaseParticleIndex(old_particle);
@@ -66,7 +59,7 @@ export function update_outline<T extends Cell_Like>(grid: World_Grid<T>, storage
     }
 }
 
-export function create_particle_for_outline_edge(edge: Edge, world_origin: XYZ, start: XY, finish: XY, color: RGB) {
+function create_particle_for_outline_edge(edge: Edge, world_origin: XYZ, start: XY, finish: XY, color: RGB) {
     const fx = Particles.CreateParticle("particles/ui/highlight_rope.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
     const half = Const.battle_cell_size / 2;
     const height = 32;
@@ -111,7 +104,7 @@ export function create_particle_for_outline_edge(edge: Edge, world_origin: XYZ, 
     return fx;
 }
 
-export function highlight_outline_temporarily<T extends Cell_Like>(grid: World_Grid<T>, cell_index_to_highlight: boolean[], color: RGB, highlight_time: number) {
+function highlight_outline_temporarily<T extends Cell_Like>(grid: World_Grid<T>, cell_index_to_highlight: boolean[], color: RGB, highlight_time: number) {
     const particles = highlight_outline(grid, cell_index_to_highlight, color);
 
     $.Schedule(highlight_time, () => {
@@ -122,7 +115,7 @@ export function highlight_outline_temporarily<T extends Cell_Like>(grid: World_G
     });
 }
 
-export function highlight_outline<T extends Cell_Like>(grid: World_Grid<T>, cell_index_to_highlight: boolean[], color: RGB): ParticleId[] {
+function highlight_outline<T extends Cell_Like>(grid: World_Grid<T>, cell_index_to_highlight: boolean[], color: RGB): ParticleId[] {
     const cell_index_to_edges: Array<{ edge: Edge, from: XY, to: XY, deleted: boolean }[]> = [];
     const unique_edges: { edge: Edge, from: XY, to: XY, deleted: boolean }[] = [];
 
