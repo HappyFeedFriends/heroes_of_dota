@@ -1,4 +1,44 @@
-import { get_hero_name } from "./main_ui";
+export function get_hero_name(hero: Hero_Type): string {
+    const enum_string = enum_to_string(hero);
+
+    return enum_string.split("_")
+        .map(word => word[0].toUpperCase() + word.slice(1))
+        .reduce((prev, value) => prev + " " + value);
+}
+
+export function get_creep_name(creep: Creep_Type) {
+    const enum_string = enum_to_string(creep);
+
+    return enum_string.split("_")
+        .map(word => word[0].toUpperCase() + word.slice(1))
+        .reduce((prev, value) => prev + " " + value);
+}
+
+export function get_item_icon(id: Item_Id) {
+    function get_item_icon_name(id: Item_Id): string {
+        switch (id) {
+            case Item_Id.satanic: return "satanic";
+            case Item_Id.heart_of_tarrasque: return "heart";
+            case Item_Id.tome_of_knowledge: return "tome_of_knowledge";
+            case Item_Id.assault_cuirass: return "assault";
+            case Item_Id.divine_rapier: return "rapier";
+            case Item_Id.boots_of_travel: return "travel_boots";
+            case Item_Id.refresher_shard: return "refresher_shard";
+            case Item_Id.mask_of_madness: return "mask_of_madness";
+            case Item_Id.armlet: return "armlet_active";
+            case Item_Id.boots_of_speed: return "boots";
+            case Item_Id.blades_of_attack: return "blades_of_attack";
+            case Item_Id.belt_of_strength: return "belt_of_strength";
+            case Item_Id.morbid_mask: return "lifesteal";
+            case Item_Id.chainmail: return "chainmail";
+            case Item_Id.enchanted_mango: return "enchanted_mango";
+            case Item_Id.octarine_core: return "octarine_core";
+            case Item_Id.basher: return "basher";
+        }
+    }
+
+    return `items/${get_item_icon_name(id)}`;
+}
 
 export function get_spell_name(spell_id: Spell_Id): string {
     switch (spell_id) {
@@ -40,6 +80,10 @@ export function get_creep_card_art(creep_type: Creep_Type) {
 
         default: return ``;
     }
+}
+
+export function get_full_unit_icon_path(type: Hero_Type): string {
+    return `file://{images}/heroes/npc_dota_hero_${get_hero_dota_name(type)}.png`;
 }
 
 export function get_spell_card_art(spell_id: Spell_Id): string {

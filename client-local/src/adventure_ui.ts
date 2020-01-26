@@ -3,25 +3,24 @@ import {
     subscribe_to_net_table_key,
     get_access_token, async_api_request, fire_event,
 } from "./interop";
-import {get_item_icon} from "./battle_ui";
 import {
     create_card_container_ui,
     create_hero_card_ui_base,
     create_spell_card_ui_base,
     create_unit_card_ui_base,
+    get_creep_name,
     get_creep_card_art,
     get_hero_card_art,
     get_spell_card_art,
-    get_spell_text
+    get_spell_text,
+    get_item_icon
 } from "./card_ui";
-import {emit_random_sound} from "./battle_actions";
 import {api_request} from "./interop";
 import {
     adventure_ui_root,
     current_state,
-    get_creep_name
 } from "./main_ui";
-import {from_server_array, safely_set_panel_background_image} from "./commons";
+import {emit_random_sound, from_server_array, safely_set_panel_background_image} from "./commons";
 
 const adventure_ui = {
     party_container: adventure_ui_root.FindChildTraverse("adventure_party"),

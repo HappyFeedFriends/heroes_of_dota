@@ -1,34 +1,35 @@
-import {
-    current_state,
-    Const
-} from "./main_ui";
+import {current_state} from "./main_ui";
 
 import {
+    Const,
     XYZ,
     RGB,
     Align_H,
     Align_V,
-    rgb,
     xyz,
     xyz_to_array,
     get_screen_world_position,
+    get_entity_under_cursor,
     position_panel_over_position_in_the_world,
     register_particle_for_reload,
     safely_set_panel_background_image,
-    from_server_array
+    from_server_array,
+    custom_error,
+    show_error_ui,
+    show_generic_error
 } from "./commons";
 
 import {
     create_card_container_ui,
     create_hero_card_ui_base,
     create_spell_card_ui_base,
+    get_full_unit_icon_path, get_item_icon,
     get_spell_text
 } from "./card_ui";
+
 import {
     authorize_ability_use_with_error_ui, card_use_error_reason,
-    custom_error,
     show_action_error_ui,
-    show_error_ui, show_generic_error,
     show_player_action_error_ui,
     take_battle_action,
     try_attack_target,
@@ -46,6 +47,19 @@ import {
     get_access_token,
     fire_event, get_visualiser_delta_head
 } from "./interop";
+
+import {
+    World_Grid,
+    color_green,
+    color_nothing,
+    color_red,
+    color_yellow,
+    create_cell_particle_at,
+    world_position_to_battle_position,
+    battle_position_to_world_position_center,
+    update_outline,
+    highlight_outline_temporarily
+} from "./grid";
 
 const enum Selection_Type {
     none,
@@ -232,10 +246,6 @@ export type Hover_State_Ability = {
 }
 
 type UI_Grid = World_Grid<UI_Cell>;
-
-export type World_Grid<T extends Cell_Like> = Grid<T> & {
-    world_origin: XYZ
-}
 
 export let battle: UI_Battle;
 let ui_player_data: UI_Player_Data[] = [];
@@ -557,17 +567,6 @@ function periodically_request_battle_deltas_when_in_battle() {
     request_battle_deltas();
 }
 
-export function create_cell_particle_at(position: XYZ) {
-    const particle = Particles.CreateParticle("particles/ui/square_overlay.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
-
-    Particles.SetParticleControl(particle, 0, xyz_to_array(position));
-    Particles.SetParticleControl(particle, 1, [Const.battle_cell_size / 2, 0, 0]);
-    Particles.SetParticleControl(particle, 2, [255, 255, 255]);
-    Particles.SetParticleControl(particle, 3, [50, 0, 0]);
-
-    return particle;
-}
-
 function on_battle_event(battle: UI_Battle, event: Battle_Event) {
     $.Msg(`Received event ${enum_to_string(event.type)}`);
 
@@ -696,145 +695,6 @@ export function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | u
 
     return path.reverse();
 }
-
-export const color_nothing = rgb(255, 255, 255);
-export const color_green = rgb(128, 255, 128);
-export const color_red = rgb(255, 128, 128);
-export const color_yellow = rgb(255, 255, 0);
-
-export function create_particle_for_outline_edge(edge: Edge, world_origin: XYZ, start: XY, finish: XY, color: RGB) {
-    const fx = Particles.CreateParticle("particles/ui/highlight_rope.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
-    const half = Const.battle_cell_size / 2;
-    const height = 32;
-
-    register_particle_for_reload(fx);
-
-    const fr = battle_position_to_world_position_center(world_origin, start);
-    const to = battle_position_to_world_position_center(world_origin, finish);
-
-    switch (edge) {
-        case Edge.bottom: {
-            Particles.SetParticleControl(fx, 0, [fr.x - half, fr.y - half, fr.z + height]);
-            Particles.SetParticleControl(fx, 1, [to.x + half, to.y - half, to.z + height]);
-
-            break;
-        }
-
-        case Edge.top: {
-            Particles.SetParticleControl(fx, 0, [fr.x + half, fr.y + half, fr.z + height]);
-            Particles.SetParticleControl(fx, 1, [to.x - half, to.y + half, to.z + height]);
-
-            break;
-        }
-
-        case Edge.left: {
-            Particles.SetParticleControl(fx, 0, [fr.x - half, fr.y + half, fr.z + height]);
-            Particles.SetParticleControl(fx, 1, [to.x - half, to.y - half, to.z + height]);
-
-            break;
-        }
-
-        case Edge.right: {
-            Particles.SetParticleControl(fx, 0, [fr.x + half, fr.y - half, fr.z + height]);
-            Particles.SetParticleControl(fx, 1, [to.x + half, to.y + half, to.z + height]);
-
-            break;
-        }
-    }
-
-    Particles.SetParticleControl(fx, 2, color);
-
-    return fx;
-}
-
-function highlight_outline<T extends Cell_Like>(grid: World_Grid<T>, cell_index_to_highlight: boolean[], color: RGB): ParticleId[] {
-    const cell_index_to_edges: Array<{ edge: Edge, from: XY, to: XY, deleted: boolean }[]> = [];
-    const unique_edges: { edge: Edge, from: XY, to: XY, deleted: boolean }[] = [];
-
-    function merge_edges(at: XY, going_towards: Edge, right_relative: number | undefined, left_relative: number | undefined, index: number) {
-        const right_neighbor = right_relative != undefined && cell_index_to_edges[right_relative];
-        const right_edge = right_neighbor && right_neighbor.find(old => old.edge == going_towards);
-        const left_neighbor = left_relative != undefined && cell_index_to_edges[left_relative];
-        const left_edge = left_neighbor && left_neighbor.find(old => old.edge == going_towards);
-
-        if (right_edge && left_edge) {
-            right_edge.to = left_edge.to;
-            left_edge.deleted = true;
-            cell_index_to_edges[index].push(right_edge);
-        } else {
-            if (right_edge) {
-                right_edge.to = at;
-                cell_index_to_edges[index].push(right_edge);
-            }
-
-            if (left_edge) {
-                left_edge.from = at;
-                cell_index_to_edges[index].push(left_edge);
-            }
-        }
-
-        if (!right_edge && !left_edge) {
-            const new_edge = { edge: going_towards, from: at, to: at, deleted: false };
-            cell_index_to_edges[index].push(new_edge);
-            unique_edges.push(new_edge);
-        }
-    }
-
-    for (let index = 0; index < cell_index_to_highlight.length; index++) {
-        const is_highlighted = cell_index_to_highlight[index];
-
-        if (!is_highlighted) continue;
-
-        const cell = grid.cells[index];
-        const at = cell.position;
-
-        const right = grid_cell_index_raw(grid, at.x + 1, at.y);
-        const left = grid_cell_index_raw(grid, at.x - 1, at.y);
-        const top = grid_cell_index_raw(grid, at.x, at.y + 1);
-        const bottom = grid_cell_index_raw(grid, at.x, at.y - 1);
-
-        const edge_side_right_left: [Edge, number | undefined, number | undefined, number | undefined][] = [
-            [ Edge.top, top, right, left ],
-            [ Edge.bottom, bottom, left, right ],
-            [ Edge.right, right, bottom, top ],
-            [ Edge.left, left, top, bottom ]
-        ];
-
-        for (const [ edge, side, right, left ] of edge_side_right_left) {
-            if (side == undefined || !cell_index_to_highlight[side]) {
-                if (!cell_index_to_edges[index]) {
-                    cell_index_to_edges[index] = [];
-                }
-
-                merge_edges(at, edge, right, left, index);
-            }
-        }
-    }
-
-    const particles: ParticleId[] = [];
-
-    for (const { edge, from, to, deleted } of unique_edges) {
-        if (deleted) continue;
-
-        const fx = create_particle_for_outline_edge(edge, grid.world_origin, from, to, color);
-
-        particles.push(fx);
-    }
-
-    return particles;
-}
-
-export function highlight_outline_temporarily(grid: UI_Grid, cell_index_to_highlight: boolean[], color: RGB, highlight_time: number) {
-    const particles = highlight_outline(grid, cell_index_to_highlight, color);
-
-    $.Schedule(highlight_time, () => {
-        for (const particle of particles) {
-            Particles.DestroyParticleEffect(particle, false);
-            Particles.ReleaseParticleIndex(particle);
-        }
-    });
-}
-
 
 type Grid_Selection_None = {
     type: Selection_Type.none
@@ -973,25 +833,6 @@ function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, 
     }
 
     return [color_nothing, 20];
-}
-
-export function update_outline<T extends Cell_Like>(grid: World_Grid<T>, storage: ParticleId[], cell_index_to_highlight: boolean[], color: RGB): ParticleId[] {
-    for (const old_particle of storage) {
-        Particles.DestroyParticleEffect(old_particle, false);
-        Particles.ReleaseParticleIndex(old_particle);
-    }
-
-    if (cell_index_to_highlight.length > 0) {
-        const result = highlight_outline(grid, cell_index_to_highlight, color);
-
-        for (const particle of result) {
-            register_particle_for_reload(particle);
-        }
-
-        return result;
-    } else {
-        return [];
-    }
 }
 
 function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell_index_to_highlight: boolean[]) {
@@ -1239,32 +1080,6 @@ function periodically_drop_selection_in_battle() {
     if (selected_entities.length > 0 && selected_entities[0] != hero) {
         GameUI.SelectUnit(-1, false);
     }
-}
-
-export function get_item_icon(id: Item_Id) {
-    function get_item_icon_name(id: Item_Id): string {
-        switch (id) {
-            case Item_Id.satanic: return "satanic";
-            case Item_Id.heart_of_tarrasque: return "heart";
-            case Item_Id.tome_of_knowledge: return "tome_of_knowledge";
-            case Item_Id.assault_cuirass: return "assault";
-            case Item_Id.divine_rapier: return "rapier";
-            case Item_Id.boots_of_travel: return "travel_boots";
-            case Item_Id.refresher_shard: return "refresher_shard";
-            case Item_Id.mask_of_madness: return "mask_of_madness";
-            case Item_Id.armlet: return "armlet_active";
-            case Item_Id.boots_of_speed: return "boots";
-            case Item_Id.blades_of_attack: return "blades_of_attack";
-            case Item_Id.belt_of_strength: return "belt_of_strength";
-            case Item_Id.morbid_mask: return "lifesteal";
-            case Item_Id.chainmail: return "chainmail";
-            case Item_Id.enchanted_mango: return "enchanted_mango";
-            case Item_Id.octarine_core: return "octarine_core";
-            case Item_Id.basher: return "basher";
-        }
-    }
-
-    return `items/${get_item_icon_name(id)}`;
 }
 
 function create_ui_shop_data(shop: Shop): UI_Shop_Data {
@@ -1585,21 +1400,6 @@ function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In
     }
 }
 
-export function world_position_to_battle_position(world_origin: XY, position: XYZ): XY {
-    return {
-        x: Math.floor((position.x - world_origin.x) / Const.battle_cell_size),
-        y: Math.floor((position.y - world_origin.y) / Const.battle_cell_size)
-    }
-}
-
-export function battle_position_to_world_position_center(world_origin: XYZ, position: XY): XYZ {
-    return {
-        x: world_origin.x + position.x * Const.battle_cell_size + Const.battle_cell_size / 2,
-        y: world_origin.y + position.y * Const.battle_cell_size + Const.battle_cell_size / 2,
-        z: world_origin.z
-    }
-}
-
 function move_order_particle(world_position: XYZ) {
     const particle = Particles.CreateParticle("particles/ui_mouseactions/clicked_moveto.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
 
@@ -1882,10 +1682,6 @@ function get_modifier_icon(applied: Modifier_Data): string {
 
 function get_full_ability_icon_path(id: Ability_Id): string {
     return `file://{images}/spellicons/${get_ability_icon(id)}.png`;
-}
-
-export function get_full_unit_icon_path(type: Hero_Type): string {
-    return `file://{images}/heroes/npc_dota_hero_${get_hero_dota_name(type)}.png`;
 }
 
 function create_level_bar(parent: Panel, id: string): Level_Bar {
@@ -2392,29 +2188,6 @@ function periodically_update_stat_bar_display() {
             }
         }
     }
-}
-
-export declare const enum Edge {
-    top = 0,
-    bottom = 1,
-    left = 2,
-    right = 3
-}
-
-export function get_entity_under_cursor(cursor: [ number, number ]): EntityId | undefined {
-    const entities_under_cursor = GameUI.FindScreenEntities(cursor);
-
-    for (const entity of entities_under_cursor) {
-        if (entity.accurateCollision) {
-            return entity.entityIndex;
-        }
-    }
-
-    if (entities_under_cursor.length > 0) {
-        return entities_under_cursor[0].entityIndex;
-    }
-
-    return undefined;
 }
 
 export function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {

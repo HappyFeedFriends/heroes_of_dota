@@ -7,36 +7,12 @@ import {
 import {battle_filter_mouse_click, battle_process_state_transition} from "./battle_ui";
 import {adventure_filter_mouse_click} from "./adventure_ui";
 import {subscribe_to_net_table_key} from "./interop";
+import {Const} from "./commons";
 
 export let current_state = Player_State.not_logged_in;
 
 export const global_map_ui_root = $("#global_map_ui");
 export const adventure_ui_root = $("#adventure_ui");
-
-export declare const enum Const {
-    hand_base_x = 400,
-    hand_base_y = 957,
-
-    battle_cell_size = 144,
-
-    map_camera_height = 1300
-}
-
-export function get_hero_name(hero: Hero_Type): string {
-    const enum_string = enum_to_string(hero);
-
-    return enum_string.split("_")
-        .map(word => word[0].toUpperCase() + word.slice(1))
-        .reduce((prev, value) => prev + " " + value);
-}
-
-export function get_creep_name(creep: Creep_Type) {
-    const enum_string = enum_to_string(creep);
-
-    return enum_string.split("_")
-        .map(word => word[0].toUpperCase() + word.slice(1))
-        .reduce((prev, value) => prev + " " + value);
-}
 
 if (Game.IsInToolsMode()) {
     Error.prototype.toString = function (this: Error) {

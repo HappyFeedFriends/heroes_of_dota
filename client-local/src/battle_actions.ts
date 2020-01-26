@@ -1,11 +1,8 @@
 import {
     battle,
     selection,
-    color_green,
-    color_red,
     control_panel,
     find_grid_path,
-    highlight_outline_temporarily,
     is_unit_selection,
     receive_battle_deltas,
     Hover_Type,
@@ -14,6 +11,8 @@ import {
 } from "./battle_ui";
 
 import {get_access_token, api_request} from "./interop";
+import {custom_error, emit_random_sound, Error_Reason, show_error_ui} from "./commons";
+import {color_green, color_red, highlight_outline_temporarily} from "./grid";
 
 export function take_battle_action(action: Turn_Action, success_callback?: () => void) {
     $.Msg("Take action ", action);
@@ -32,24 +31,11 @@ export function take_battle_action(action: Turn_Action, success_callback?: () =>
     });
 }
 
-function random_int_up_to(upper_bound: number) {
-    return Math.floor(Math.random() * upper_bound);
-}
-
-export function emit_random_sound(sounds: string[]) {
-    Game.EmitSound(sounds[random_int_up_to(sounds.length)]);
-}
-
 function try_emit_random_hero_sound(unit: Unit, supplier: (sounds: Hero_Sounds) => string[]) {
     if (unit.supertype == Unit_Supertype.hero) {
         emit_random_sound(supplier(hero_sounds_by_hero_type(unit.type)));
     }
 }
-
-type Error_Reason = {
-    reason: number,
-    message?: string
-};
 
 // 24 - silenced
 // 25 - can't move
@@ -65,20 +51,6 @@ type Error_Reason = {
 // 80 - custom "message" argument
 function native_error(reason: number): Error_Reason {
     return { reason: reason };
-}
-
-export function custom_error(message: string) {
-    return { reason: 80, message: message };
-}
-
-export function show_error_ui(reason: Error_Reason): undefined {
-    GameEvents.SendEventClientSide("dota_hud_error_message", reason);
-
-    return;
-}
-
-export function show_generic_error(error: string) {
-    GameEvents.SendEventClientSide("dota_hud_error_message", { reason: 80, message: error });
 }
 
 function player_act_error_reason(error: Action_Error<Player_Action_Error>): Error_Reason {

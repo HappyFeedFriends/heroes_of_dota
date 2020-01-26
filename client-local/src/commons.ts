@@ -3,6 +3,20 @@ export type RGB = [ number, number, number ] & { _color_id_brand: any };
 export const enum Align_H { left, center, right}
 export const enum Align_V { top, center, bottom}
 
+export declare const enum Const {
+    hand_base_x = 400,
+    hand_base_y = 957,
+
+    battle_cell_size = 144,
+
+    map_camera_height = 1300
+}
+
+export type Error_Reason = {
+    reason: number,
+    message?: string
+};
+
 interface Temporary_Storage_Panel extends Panel {
     temporary_particles: ParticleId[] | undefined;
 }
@@ -52,6 +66,22 @@ export function position_panel_over_position_in_the_world(panel: Panel, position
     panel.style.y = Math.floor(screen_y / screen_ratio - panel_offset_y) + "px";
 }
 
+export function get_entity_under_cursor(cursor: [ number, number ]): EntityId | undefined {
+    const entities_under_cursor = GameUI.FindScreenEntities(cursor);
+
+    for (const entity of entities_under_cursor) {
+        if (entity.accurateCollision) {
+            return entity.entityIndex;
+        }
+    }
+
+    if (entities_under_cursor.length > 0) {
+        return entities_under_cursor[0].entityIndex;
+    }
+
+    return undefined;
+}
+
 export function safely_set_panel_background_image(panel: Panel, image: string) {
     panel.style.backgroundImage = `url('${image}')`;
     panel.AddClass("fix_bg");
@@ -90,6 +120,27 @@ export function destroy_fx(id: ParticleId) {
     Particles.ReleaseParticleIndex(id);
 }
 
+export function emit_random_sound(sounds: string[]) {
+    Game.EmitSound(sounds[random_int_up_to(sounds.length)]);
+}
+
+function random_int_up_to(upper_bound: number) {
+    return Math.floor(Math.random() * upper_bound);
+}
+
+export function custom_error(message: string) {
+    return { reason: 80, message: message };
+}
+
+export function show_error_ui(reason: Error_Reason): undefined {
+    GameEvents.SendEventClientSide("dota_hud_error_message", reason);
+
+    return;
+}
+
+export function show_generic_error(error: string) {
+    GameEvents.SendEventClientSide("dota_hud_error_message", { reason: 80, message: error });
+}
 
 function clean_up_particles_after_reload() {
     if (!Game.IsInToolsMode()) {
