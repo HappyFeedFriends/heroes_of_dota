@@ -954,6 +954,7 @@ register_api_handler(Api_Request_Type.battle_cheat, req => {
         if (player.online.state != Player_State.in_battle) return;
 
         cheat(player.online.battle, player.online.battle_player, req.cheat, req.selected_unit_id);
+        check_if_battle_is_over(player.online.battle);
 
         return true;
     });
