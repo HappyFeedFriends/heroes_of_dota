@@ -54,7 +54,8 @@ import {
     change_party_change_health,
     change_party_empty_slot,
     find_empty_party_slot_index,
-    collapse_adventure_party_changes, change_party_add_item
+    change_party_add_item,
+    act_on_adventure_party
 } from "./adventure_party";
 
 import {
@@ -478,14 +479,23 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
         creeps: [],
     };
 
-    for (const slot of player_on_adventure.party.slots) {
+    // TODO this function mutates player state, bad, just return it?
+    const links = player_on_adventure.party.links;
+
+    for (const [index, slot] of player_on_adventure.party.slots.entries()) {
         switch (slot.type) {
             case Adventure_Party_Slot_Type.hero: {
                 if (slot.health > 0) {
-                    slot.battle_unit_id = next_id() as Unit_Id;
+                    const id = next_id() as Unit_Id;
+
+                    links.heroes.push({
+                        slot: slot,
+                        slot_index: index,
+                        unit: id
+                    });
 
                     participant.heroes.push({
-                        id: slot.battle_unit_id,
+                        id: id,
                         health: slot.health,
                         type: slot.hero
                     });
@@ -496,10 +506,16 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
 
             case Adventure_Party_Slot_Type.creep: {
                 if (slot.health > 0) {
-                    slot.battle_unit_id = next_id() as Unit_Id;
+                    const id = next_id() as Unit_Id;
+
+                    links.creeps.push({
+                        slot: slot,
+                        slot_index: index,
+                        unit: id
+                    });
 
                     participant.creeps.push({
-                        id: slot.battle_unit_id,
+                        id: id,
                         health: slot.health,
                         type: slot.creep
                     });
@@ -509,10 +525,15 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
             }
 
             case Adventure_Party_Slot_Type.spell: {
-                slot.card_id = next_id() as Card_Id;
+                const id = next_id() as Unit_Id;
+
+                links.spells.push({
+                    slot_index: index,
+                    card: id
+                });
 
                 participant.spells.push({
-                    id: slot.card_id,
+                    id: id,
                     spell: slot.spell
                 });
 
@@ -622,57 +643,50 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
     }
 
     function update_player_adventure_state_from_battle(player: Map_Player_On_Adventure, battle_counterpart: Battle_Player) {
-        for (let index = 0; index < player.party.slots.length; index++) {
-            const slot = player.party.slots[index];
+        const links = player.party.links;
 
-            switch (slot.type) {
-                case Adventure_Party_Slot_Type.hero: {
-                    const unit_id = slot.battle_unit_id;
-                    const source_unit = battle.units.find(unit => unit.id == unit_id);
+        for (const link of links.heroes) {
+            const slot = link.slot;
+            const unit_id = link.unit;
+            const source_unit = battle.units.find(unit => unit.id == unit_id);
+            if (!source_unit) continue;
 
-                    slot.battle_unit_id = -1 as Unit_Id;
-
-                    if (!source_unit) break;
-
-                    if (slot.health != source_unit.health) {
-                        const new_health = Math.min(source_unit.health, hero_definition_by_type(slot.hero).health);
-                        push_party_change(player.party, change_party_change_health(index, new_health));
-                    }
-
-                    break;
-                }
-
-                case Adventure_Party_Slot_Type.creep: {
-                    const unit_id = slot.battle_unit_id;
-                    const source_unit = battle.units.find(unit => unit.id == unit_id);
-
-                    slot.battle_unit_id = -1 as Unit_Id;
-
-                    if (!source_unit) break;
-
-                    if (source_unit.health > 0) {
-                        if (slot.health != source_unit.health) {
-                            const new_health = Math.min(source_unit.health, creep_definition_by_type(slot.creep).health);
-                            push_party_change(player.party, change_party_change_health(index, new_health));
-                        }
-                    } else {
-                        push_party_change(player.party, change_party_empty_slot(index));
-                    }
-
-                    break;
-                }
-
-                case Adventure_Party_Slot_Type.spell: {
-                    const card = battle_counterpart.hand.find(card => card.id == slot.card_id);
-
-                    if (!card) {
-                        push_party_change(player.party, change_party_empty_slot(index));
-                    }
-
-                    slot.card_id = -1 as Card_Id;
-                }
+            if (slot.health != source_unit.health) {
+                const new_health = Math.min(source_unit.health, hero_definition_by_type(slot.hero).health);
+                push_party_change(player.party, change_party_change_health(link.slot_index, new_health));
             }
         }
+
+        for (const link of links.creeps) {
+            const unit_id = link.unit;
+            const source_unit = battle.units.find(unit => unit.id == unit_id);
+            if (!source_unit) continue;
+
+            if (source_unit.health > 0) {
+                const slot = link.slot;
+
+                if (slot.health != source_unit.health) {
+                    const new_health = Math.min(source_unit.health, creep_definition_by_type(slot.creep).health);
+                    push_party_change(player.party, change_party_change_health(link.slot_index, new_health));
+                }
+            } else {
+                push_party_change(player.party, change_party_empty_slot(link.slot_index));
+            }
+        }
+
+        for (const link of links.spells) {
+            const card = battle_counterpart.hand.find(card => card.id == link.card);
+
+            if (!card) {
+                push_party_change(player.party, change_party_empty_slot(link.slot_index));
+            }
+        }
+
+        player.party.links = {
+            heroes: [],
+            creeps: [],
+            spells: []
+        };
     }
 
     for (const battle_player of battle.players) {
@@ -1083,7 +1097,13 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
         const party: Map_Player_Party = {
             currency: 0,
             slots: [],
-            changes: []
+            changes: [],
+            bag: [],
+            links: {
+                heroes: [],
+                creeps: [],
+                spells: []
+            }
         };
 
         for (let empty = 10; empty > 0; empty--) {
@@ -1180,30 +1200,11 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
     });
 });
 
-register_api_handler(Api_Request_Type.get_adventure_party_changes, req => {
+register_api_handler(Api_Request_Type.act_on_adventure_party, req => {
     return with_player_in_request(req, player => {
         if (player.online.state != Player_State.on_adventure) return;
 
-        const all_changes = player.online.party.changes;
-        const origin_head = all_changes.length;
-        const delta = origin_head - req.current_head;
-
-        if (delta > 20) {
-            const collapsed_state = collapse_adventure_party_changes(player.online.party.slots.length, all_changes);
-
-            return {
-                snapshot: true,
-                slots: collapsed_state,
-                origin_head: origin_head
-            }
-        } else {
-            const result = all_changes.slice(req.current_head);
-
-            return {
-                snapshot: false,
-                changes: result
-            }
-        }
+        return act_on_adventure_party(player.online.party, req);
     });
 });
 
@@ -1459,21 +1460,10 @@ function register_dev_handlers() {
                 }
 
                 case "item": {
-                    const targets = parse_enum_query(parts[1], enum_names_to_values<Hero_Type>());
-                    const items = parse_enum_query(parts[2], enum_names_to_values<Item_Id>());
+                    const elements = parse_enum_query(parts[1], enum_names_to_values<Item_Id>());
 
-                    for (const [index, slot] of party.slots.entries()) {
-                        if (slot.type == Adventure_Party_Slot_Type.hero && targets.indexOf(slot.hero) != -1) {
-                            for (let item_slot = 0; item_slot < Adventure_Constants.max_hero_items; item_slot++) {
-                                if (!slot.items[item_slot]) {
-                                    for (const item of items) {
-                                        push_party_change(party, change_party_add_item(index, item_slot, item));
-                                    }
-
-                                    break;
-                                }
-                            }
-                        }
+                    for (const element of elements) {
+                        push_party_change(party, change_party_add_item(element));
                     }
 
                     break;

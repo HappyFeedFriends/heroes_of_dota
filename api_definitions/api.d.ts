@@ -33,7 +33,7 @@ declare const enum Api_Request_Type {
     start_adventure_enemy_fight = 204,
     submit_adventure_player_movement = 205,
     interact_with_adventure_entity = 206,
-    get_adventure_party_changes = 207,
+    act_on_adventure_party = 207,
 
     battle_cheat = 50,
     map_cheat = 51,

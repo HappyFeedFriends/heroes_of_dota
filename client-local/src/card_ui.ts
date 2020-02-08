@@ -37,7 +37,7 @@ function get_item_icon(id: Item_Id) {
         }
     }
 
-    return `items/${get_item_icon_name(id)}`;
+    return `file://{images}/items/${get_item_icon_name(id)}.png`;
 }
 
 function get_spell_name(spell_id: Spell_Id): string {

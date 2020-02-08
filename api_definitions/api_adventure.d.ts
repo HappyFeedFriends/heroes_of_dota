@@ -21,7 +21,13 @@ declare const enum Adventure_Party_Slot_Type {
 declare const enum Adventure_Party_Change_Type {
     set_slot = 0,
     set_health = 1,
-    set_hero_item = 2
+    add_item_to_bag = 2,
+    move_item_from_bag_to_hero = 3
+}
+
+declare const enum Adventure_Party_Action_Type {
+    fetch = 0,
+    drag_bag_item_on_hero = 1
 }
 
 declare const enum Adventure_Constants {
@@ -77,18 +83,9 @@ type Adventure_Handlers = {
         updated_entity: Adventure_Entity_State
     }
 } | {
-    type: Api_Request_Type.get_adventure_party_changes
-    request: {
-        current_head: number
-    } & With_Token
-    response: {
-        snapshot: true
-        slots: Adventure_Party_Slot[]
-        origin_head: number
-    } | {
-        snapshot: false
-        changes: Adventure_Party_Change[]
-    }
+    type: Api_Request_Type.act_on_adventure_party
+    request: Adventure_Party_Action & With_Token
+    response: Adventure_Party_Response
 } | {
     type: Api_Request_Type.adventure_party_cheat
     request: {
@@ -158,8 +155,33 @@ type Adventure_Party_Change = {
     slot_index: number
     health: number
 } | {
-    type: Adventure_Party_Change_Type.set_hero_item
-    slot_index: number
+    type: Adventure_Party_Change_Type.add_item_to_bag
+    item_id: Item_Id
+} | {
+    type: Adventure_Party_Change_Type.move_item_from_bag_to_hero
+    bag_slot_index: number
+    hero_slot_index: number
     item_slot_index: number
-    item_id: Item_Id | undefined
+}
+
+type Adventure_Party_Action = { current_head: number } & ({
+    type: Adventure_Party_Action_Type.fetch
+} | {
+    type: Adventure_Party_Action_Type.drag_bag_item_on_hero
+    bag_slot: number
+    party_slot: number
+})
+
+type Adventure_Party_Response = {
+    snapshot: true
+    content: Party_Snapshot
+    origin_head: number
+} | {
+    snapshot: false
+    changes: Adventure_Party_Change[]
+}
+
+type Party_Snapshot = {
+    slots: Adventure_Party_Slot[]
+    bag: Item_Id[]
 }

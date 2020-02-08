@@ -15,9 +15,11 @@
   height: @slot-side * 2;
   border: 1px solid #111;
   background-size: auto 100%;
+  transition: transform 0.05s linear 0s;
 
   &.drop_hover {
-    visibility: collapse;
+    //box-shadow: 0px 0px 4px #dcdcdc;
+    transform: scale3d(0.5, 0.5, 1);
   }
 }
 
@@ -44,7 +46,6 @@
 
       #adventure_party_header {
         width: 100%;
-        margin-bottom: 8px;
 
         #adventure_party_label {
           font-family: @font-title;
@@ -53,11 +54,13 @@
           color: white;
           text-shadow: 0px 0px 2px 3 black;
           white-space: nowrap;
+          margin-bottom: 8px;
         }
 
         #adventure_currency {
           flow-children: right;
           align: right bottom;
+          margin-bottom: 8px;
 
           #currency_icon {
             vertical-align: center;
@@ -76,6 +79,31 @@
             align: center bottom;
             font-size: 30px;
             text-shadow: 0px 0px 2px 3 black;
+          }
+        }
+
+        #adventure_party_bag {
+          flow-children: right;
+          align: center bottom;
+          // panorama/images/hud/stash_icon_png.vtex
+          //background-image: url("s2r://panorama/images/hud/reborn/statbranch_background_description_psd.vtex");
+          //background-size: 100% 100%;
+          //width: 100%;
+          //padding-left: 30px;
+          //padding-right: 30px;
+          //padding-top: 10px;
+          padding: 10px;
+          //border-radius: 2px;
+          //box-shadow: 0px 0px 4px black;
+
+          .item {
+            width: 32px;
+            height: 32px;
+            background-size: auto 100%;
+            border: 1px solid black;
+            margin: 0 2px;
+            border-radius: 1px;
+            box-shadow: 0px 0px 4px black;
           }
         }
       }
@@ -103,6 +131,17 @@
               border-right: 1px solid black;
               box-shadow: inset 0px 0px 8px black;
 
+              #drop_overlay {
+                width: 100%;
+                height: 100%;
+                background-color: #9dffdd;
+                transition: opacity 0.1s linear 0s;
+
+                &.drop_hover {
+                  opacity: 0.5;
+                }
+              }
+
               &.dead {
                 #dead_overlay {
                   width: 100%;
@@ -129,7 +168,7 @@
                 margin-bottom: 2px;
 
                 .slot {
-                  margin: 2px;
+                  margin: 1px;
                   width: @slot-side;
                   height: @slot-side;
                   border: 1px solid #111;
@@ -137,6 +176,7 @@
                   background-color: #54788066;
                   transition-property: box-shadow;
                   transition-duration: 0.2s;
+                  border-radius: 1px;
 
                   &.empty, &.being_dragged {
                     background-image: url("s2r://panorama/images/hud/reborn/inventory_item_well_psd.vtex");
@@ -224,9 +264,19 @@
         }
       }
 
-      &.dragging_item:not(.has_drop_target) #adventure_card #inventory .slot {
-        box-shadow: 0px 0px 4px white;
-        border: 0;
+      // Highlight all targetable slots
+      &.dragging_item #adventure_card #drop_overlay {
+        opacity: 0.2;
+      }
+
+      // Fade other slots, when one is a drop target
+      &.dragging_item.has_drop_target #adventure_card #drop_overlay {
+        opacity: 0.1;
+      }
+
+      // Hide highlights when not dragging
+      &:not(.dragging_item) #adventure_card #drop_overlay {
+        opacity: 0;
       }
     }
   }

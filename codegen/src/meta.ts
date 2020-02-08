@@ -1,4 +1,5 @@
 import * as ts from "typescript";
+import {SyntaxKind} from "typescript";
 import {
     SimpleType,
     SimpleTypeEnumMember,

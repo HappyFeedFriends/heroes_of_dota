@@ -32,7 +32,18 @@ const System = {
         const stack = new Error().stack;
         if (!stack) throw "FATAL ERROR: could not obtain module name";
 
-        const called_from_start = stack.lastIndexOf("\\") + 1;
+        const called_from_start = (() => {
+            for (let index = stack.length - 1; index >= 0; index--) {
+                const char = stack.charAt(index);
+
+                if (char == "\\" || char == "/") {
+                    return index + 1;
+                }
+            }
+
+            return -1;
+        })();
+
         const called_from_end = stack.lastIndexOf(".");
         const called_from = stack.substring(called_from_start, called_from_end);
 

@@ -29,6 +29,7 @@ const adventure_ui = {
         button_no: adventure_ui_root.FindChildTraverse("adventure_popup_no")
     },
     party: {
+        bag: bag(),
         slots: new Array<Adventure_Party_Slot_UI>(),
         changes: new Array<Adventure_Party_Change>(),
         currently_playing_change_index: 0,
@@ -41,12 +42,26 @@ const adventure_ui = {
     drag_state: default_inventory_drag_state()
 };
 
+const enum Drag_Source_Type {
+    bag,
+    hero
+}
+
 type Inventory_Drag_State = {
     dragging: false
 } | {
     dragging: true
     dragged_panel: Panel
     item: Item_Id
+    source: Drag_Source
+}
+
+type Drag_Source = {
+    type: Drag_Source_Type.bag
+    bag_slot: number
+} | {
+    type: Drag_Source_Type.hero
+    inventory_slot: number
 }
 
 type Adventure_Animation_Promise = () => boolean;
@@ -57,7 +72,7 @@ type Adventure_Party_Slot_UI = { container: Panel } & ({
     type: Adventure_Party_Slot_Type.hero
     hero: Hero_Type
     health: number
-    items: Item_Panel_UI[]
+    items: Inventory_Item_UI[]
     ui: {
         card_panel: Panel
         health_number: LabelPanel
@@ -80,17 +95,34 @@ type Base_Slot_UI = {
     art: Panel
 }
 
-type Item_Panel_UI = {
+type Inventory_Item_UI = {
     item: Item_Id | undefined
     slot_index: number
     panel: Panel
     drop_layer: Panel
 }
 
+type Bag_UI = {
+    panel: Panel
+    items: Bag_Item_UI[]
+}
+
+type Bag_Item_UI = {
+    item: Item_Id
+    panel: Panel
+}
+
 hide_adventure_tooltip();
 
 function default_inventory_drag_state(): Inventory_Drag_State {
     return { dragging: false }
+}
+
+function bag(): Bag_UI {
+    return {
+        panel: $("#adventure_party_bag"),
+        items: []
+    }
 }
 
 function create_adventure_card_tooltip(root: Panel) {
@@ -174,7 +206,75 @@ function fill_adventure_empty_slot(container: Panel): Adventure_Party_Slot_UI {
     }
 }
 
-function update_item_panel_ui(ui: Item_Panel_UI, item_in_slot: Item_Id | undefined) {
+function add_bag_item(item: Item_Id) {
+    const item_panel = $.CreatePanel("Panel", adventure_ui.party.bag.panel, "");
+    item_panel.AddClass("item");
+    item_panel.SetDraggable(true);
+    safely_set_panel_background_image(item_panel, get_item_icon(item));
+    register_slot_drag_events(item_panel, item, {
+        type: Drag_Source_Type.bag,
+        bag_slot: adventure_ui.party.bag.items.length
+    });
+
+    adventure_ui.party.bag.items.push({
+        item: item,
+        panel: item_panel
+    });
+}
+
+function set_drag_state(state: Inventory_Drag_State) {
+    adventure_ui.drag_state = state;
+
+    if (state.dragging) {
+        adventure_ui.party_container.AddClass("dragging_item");
+    } else {
+        adventure_ui.party_container.RemoveClass("dragging_item");
+        adventure_ui.party_container.RemoveClass("has_drop_target");
+    }
+}
+
+function register_slot_drag_events(slot: Panel, item: Item_Id, drag_source: Drag_Source) {
+    const image = get_item_icon(item);
+
+    $.RegisterEventHandler("DragStart", slot, (id, drag) => {
+        const dragged_panel = $.CreatePanel("Panel", slot, "");
+        dragged_panel.AddClass("dragged_inventory_slot");
+        dragged_panel.hittest = false;
+        safely_set_panel_background_image(dragged_panel, image);
+
+        const [w, h] = [slot.actuallayoutwidth, slot.actuallayoutheight];
+
+        drag.displayPanel = dragged_panel;
+        drag.offsetX = w;
+        drag.offsetY = h;
+
+        set_drag_state({
+            dragging: true,
+            item: item,
+            dragged_panel: dragged_panel,
+            source: drag_source
+        });
+
+        slot.AddClass("being_dragged");
+        slot.style.backgroundImage = "none";
+
+        return true;
+    });
+
+    $.RegisterEventHandler("DragEnd", slot, (id, dragged) => {
+        dragged.DeleteAsync(0);
+
+        set_drag_state({ dragging: false });
+
+        slot.RemoveClass("drop_hover");
+        slot.RemoveClass("being_dragged");
+        safely_set_panel_background_image(slot, image);
+
+        return true;
+    });
+}
+
+function update_hero_inventory_item_ui(ui: Inventory_Item_UI, slot_index: number, item_in_slot: Item_Id | undefined) {
     const item_panel = ui.panel;
 
     item_panel.SetHasClass("empty", item_in_slot == undefined);
@@ -182,54 +282,18 @@ function update_item_panel_ui(ui: Item_Panel_UI, item_in_slot: Item_Id | undefin
     if (item_in_slot == undefined) {
         item_panel.style.backgroundImage = "none";
     } else {
-        const image = `file://{images}/${get_item_icon(item_in_slot)}.png`;
+        const image = get_item_icon(item_in_slot);
         safely_set_panel_background_image(item_panel, image);
-
-        $.RegisterEventHandler("DragStart", item_panel, (id, drag) => {
-            const dragged_panel = $.CreatePanel("Panel", item_panel, "");
-            dragged_panel.AddClass("dragged_inventory_slot");
-            dragged_panel.hittest = false;
-            safely_set_panel_background_image(dragged_panel, image);
-
-            const [w, h] = [item_panel.actuallayoutwidth, item_panel.actuallayoutheight];
-
-            drag.displayPanel = dragged_panel;
-            drag.offsetX = w;
-            drag.offsetY = h;
-
-            adventure_ui.drag_state = {
-                dragging: true,
-                item: item_in_slot,
-                dragged_panel: dragged_panel
-            };
-
-            item_panel.AddClass("being_dragged");
-            item_panel.style.backgroundImage = "none";
-
-            adventure_ui.party_container.AddClass("dragging_item");
-
-            return true;
-        });
-
-        $.RegisterEventHandler("DragEnd", item_panel, (id, dragged) => {
-            dragged.DeleteAsync(0);
-
-            adventure_ui.party_container.RemoveClass("dragging_item");
-            adventure_ui.party_container.RemoveClass("has_drop_target");
-            adventure_ui.drag_state = { dragging: false };
-
-            item_panel.RemoveClass("drop_hover");
-            item_panel.RemoveClass("being_dragged");
-            safely_set_panel_background_image(item_panel, image);
-
-            return true;
+        register_slot_drag_events(item_panel, item_in_slot, {
+            type: Drag_Source_Type.hero,
+            inventory_slot: slot_index
         });
     }
 
     $.RegisterEventHandler("DragEnter", item_panel, (id, panel) => {
         if (!adventure_ui.drag_state.dragging) return true;
 
-        const dragged_item_image = `file://{images}/${get_item_icon(adventure_ui.drag_state.item)}.png`;
+        const dragged_item_image = get_item_icon(adventure_ui.drag_state.item);
         const dragged_panel = adventure_ui.drag_state.dragged_panel;
 
         adventure_ui.party_container.AddClass("has_drop_target");
@@ -254,7 +318,7 @@ function update_item_panel_ui(ui: Item_Panel_UI, item_in_slot: Item_Id | undefin
     });
 }
 
-function fill_adventure_hero_slot(container: Panel, hero: Hero_Type, health: number, items: Item_Id[]): Adventure_Party_Slot_UI {
+function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: Hero_Type, health: number, items: Item_Id[]): Adventure_Party_Slot_UI {
     const base = fill_adventure_base_slot_ui(container);
     base.art.AddClass("hero");
     safely_set_panel_background_image(base.art, get_hero_card_art(hero));
@@ -262,7 +326,7 @@ function fill_adventure_hero_slot(container: Panel, hero: Hero_Type, health: num
     base.card_panel.SetHasClass("dead", health == 0);
 
     const inventory_parent = $.CreatePanel("Panel", base.card_panel, "inventory");
-    const item_panels: Item_Panel_UI[] = [];
+    const item_panels: Inventory_Item_UI[] = [];
 
     for (let index = 0; index < Adventure_Constants.max_hero_items; index++) {
         const item_in_slot = items[index];
@@ -281,15 +345,49 @@ function fill_adventure_hero_slot(container: Panel, hero: Hero_Type, health: num
             drop_layer: drop_layer
         };
 
-        update_item_panel_ui(item_ui, item_in_slot);
+        update_hero_inventory_item_ui(item_ui, index, item_in_slot);
 
         item_panels.push(item_ui);
     }
 
-    $.CreatePanel("Panel", base.card_panel, "dead_overlay");
-
     const health_label = $.CreatePanel("Label", base.card_panel, "health_number");
     health_label.text = health.toString(10);
+
+    const drop_overlay = $.CreatePanel("Panel", base.card_panel, "drop_overlay");
+
+    function update_panels_from_drag_state(dragging: boolean) {
+        if (!adventure_ui.drag_state.dragging) return true;
+
+        adventure_ui.party_container.SetHasClass("has_drop_target", dragging);
+        adventure_ui.drag_state.dragged_panel.SetHasClass("drop_hover", dragging);
+        drop_overlay.SetHasClass("drop_hover", dragging);
+    }
+
+    $.RegisterEventHandler("DragEnter", drop_overlay, (id, panel) => {
+        update_panels_from_drag_state(true);
+        return true;
+    });
+
+    $.RegisterEventHandler("DragLeave", drop_overlay, () => {
+        update_panels_from_drag_state(false);
+        return true;
+    });
+
+    $.RegisterEventHandler("DragDrop", drop_overlay, () => {
+        if (!adventure_ui.drag_state.dragging) return true;
+
+        const head_before = adventure_ui.party.current_head;
+
+        api_request(Api_Request_Type.act_on_adventure_party, {
+            type: Adventure_Party_Action_Type.drag_bag_item_on_hero,
+            access_token: get_access_token(),
+            bag_slot: 0, // TODO
+            party_slot: slot_index,
+            current_head: head_before
+        }, response => accept_adventure_party_response(response, head_before));
+    });
+
+    $.CreatePanel("Panel", base.card_panel, "dead_overlay");
 
     const def = hero_definition_by_type(hero);
 
@@ -355,6 +453,9 @@ function reinitialize_adventure_ui(slots: number) {
     const card_container = adventure_ui.card_container;
     card_container.RemoveAndDeleteChildren();
 
+    adventure_ui.party.bag.panel.RemoveAndDeleteChildren();
+    adventure_ui.party.bag.items = [];
+
     adventure_ui.party.slots = [];
 
     for (; slots > 0; slots--) {
@@ -365,7 +466,7 @@ function reinitialize_adventure_ui(slots: number) {
 function set_adventure_party_slot(slot_index: number, slot: Adventure_Party_Slot): Adventure_Party_Slot_UI {
     function make_new_slot(slot: Adventure_Party_Slot, container: Panel): Adventure_Party_Slot_UI {
         switch (slot.type) {
-            case Adventure_Party_Slot_Type.hero: return fill_adventure_hero_slot(container, slot.hero, slot.health, slot.items);
+            case Adventure_Party_Slot_Type.hero: return fill_adventure_hero_slot(container, slot_index, slot.hero, slot.health, slot.items);
             case Adventure_Party_Slot_Type.creep: return fill_adventure_creep_slot(container, slot.creep, slot.health);
             case Adventure_Party_Slot_Type.spell: return fill_adventure_spell_slot(container, slot.spell);
             case Adventure_Party_Slot_Type.empty: return fill_adventure_empty_slot(container);
@@ -530,15 +631,27 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             return fixed_duration(0.2);
         }
 
-        case Adventure_Party_Change_Type.set_hero_item: {
-            const slot = adventure_ui.party.slots[change.slot_index];
-            if (!slot) return proceed;
-            if (slot.type != Adventure_Party_Slot_Type.hero) return proceed;
+        case Adventure_Party_Change_Type.add_item_to_bag: {
+            add_bag_item(change.item_id);
 
-            const item_panel = slot.items[change.item_slot_index];
+            break;
+        }
+
+        case Adventure_Party_Change_Type.move_item_from_bag_to_hero: {
+            const bag_slot = adventure_ui.party.bag.items[change.bag_slot_index];
+            if (!bag_slot) return proceed;
+
+            const hero_slot = adventure_ui.party.slots[change.hero_slot_index];
+            if (!hero_slot) return proceed;
+            if (hero_slot.type != Adventure_Party_Slot_Type.hero) return proceed;
+
+            const item_panel = hero_slot.items[change.item_slot_index];
             if (!item_panel) return proceed;
 
-            update_item_panel_ui(item_panel, change.item_id);
+            bag_slot.panel.DeleteAsync(0);
+            adventure_ui.party.bag.items.splice(change.bag_slot_index, 1);
+
+            update_hero_inventory_item_ui(item_panel, change.item_slot_index, bag_slot.item);
 
             return fixed_duration(0.2);
         }
@@ -609,6 +722,39 @@ function periodically_update_party_ui() {
     }
 }
 
+function reset_party_state() {
+    adventure_ui.party.currently_playing_change_index = 0;
+    adventure_ui.party.changes = [];
+    adventure_ui.party.current_head = 0;
+    adventure_ui.party.base_head = 0;
+}
+
+function restore_from_snapshot(snapshot: Party_Snapshot, origin_head: number) {
+    reset_party_state();
+    reinitialize_adventure_ui(snapshot.slots.length);
+
+    $.Msg(`Restoring head ${origin_head} from snapshot`);
+
+    for (const item of snapshot.bag) {
+        add_bag_item(item);
+    }
+
+    for (let index = 0; index < snapshot.slots.length; index++) {
+        set_adventure_party_slot(index, snapshot.slots[index]);
+    }
+
+    adventure_ui.party.base_head = origin_head;
+    adventure_ui.party.current_head = origin_head;
+}
+
+function accept_adventure_party_response(response: Adventure_Party_Response, head_before_merge: number) {
+    if (response.snapshot) {
+        restore_from_snapshot(response.content, response.origin_head);
+    } else {
+        merge_adventure_party_changes(head_before_merge, response.changes);
+    }
+}
+
 periodically_update_party_ui();
 
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", async data => {
@@ -620,31 +766,21 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", async data => {
             reinitialize_adventure_ui(data.num_party_slots);
         }
 
-        const result = await async_api_request(Api_Request_Type.get_adventure_party_changes, {
+        const result = await async_api_request(Api_Request_Type.act_on_adventure_party, {
+            type: Adventure_Party_Action_Type.fetch,
             access_token: get_access_token(),
             current_head: head_before_merge
         });
 
-        if (reinitialize_ui || result.snapshot) {
-            adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
-            adventure_ui.party.currently_playing_change_index = 0;
-            adventure_ui.party.changes = [];
-            adventure_ui.party.current_head = 0;
-            adventure_ui.party.base_head = 0;
-
-            reinitialize_adventure_ui(result.snapshot ? result.slots.length : data.num_party_slots);
-        }
-
         if (result.snapshot) {
-            $.Msg(`Restoring head ${result.origin_head} from snapshot`);
-
-            for (let index = 0; index < result.slots.length; index++) {
-                set_adventure_party_slot(index, result.slots[index]);
+            restore_from_snapshot(result.content, result.origin_head);
+        } else {
+            // A safety net in case things are still happening with the old UI
+            if (reinitialize_ui) {
+                reinitialize_adventure_ui(data.num_party_slots);
+                reset_party_state();
             }
 
-            adventure_ui.party.base_head = result.origin_head;
-            adventure_ui.party.current_head = result.origin_head;
-        } else {
             merge_adventure_party_changes(head_before_merge, result.changes);
         }
     }

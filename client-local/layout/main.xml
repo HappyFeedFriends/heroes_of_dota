@@ -128,6 +128,7 @@
                             <Panel id="currency_icon"/>
                             <Label id="currency_remaining"/>
                         </Panel>
+                        <Panel id="adventure_party_bag"/>
                     </Panel>
                     <Panel id="adventure_party_row">
                         <Panel id="adventure_cards"/>

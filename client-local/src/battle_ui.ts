@@ -1070,7 +1070,7 @@ function create_ui_shop_data(shop: Shop): UI_Shop_Data {
         const item_image = $.CreatePanel("Image", item_button, "image");
         const item_cost = $.CreatePanel("Label", item_button, "cost");
 
-        item_image.SetImage(`file://{images}/${get_item_icon(item.id)}.png`);
+        item_image.SetImage(get_item_icon(item.id));
 
         item_button.AddClass("item_button");
         item_button.SetPanelEvent(PanelEvent.ON_RIGHT_CLICK, () => {
@@ -1272,7 +1272,7 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
         const modifier_panel = $.CreatePanel("Panel", ui.modifier_bar, "");
         const modifier_image = $.CreatePanel("Image", modifier_panel, "image");
 
-        modifier_image.SetImage(`file://{images}/${get_modifier_icon(modifier)}.png`);
+        modifier_image.SetImage(get_modifier_icon(modifier));
         modifier_image.SetScaling(ScalingFunction.STRETCH_TO_FIT_Y_PRESERVE_ASPECT);
 
         modifier_panel.AddClass("modifier");
@@ -1617,19 +1617,23 @@ function get_ability_icon(ability_id: Ability_Id): string {
 }
 
 function get_modifier_icon(applied: Modifier_Data): string {
-    function from_ability(ability_id: Ability_Id): string {
-        return `spellicons/${get_ability_icon(ability_id)}`
+    function maybe_from_modifier_id() {
+        switch (applied.modifier.id) {
+            case Modifier_Id.spell_euls_scepter: return "items/cyclone";
+            case Modifier_Id.spell_buckler: return "items/buckler";
+            case Modifier_Id.spell_drums_of_endurance: return "items/ancient_janggo";
+
+            case Modifier_Id.rune_double_damage: return "spellicons/rune_doubledamage";
+            case Modifier_Id.rune_haste: return "spellicons/rune_haste";
+
+            case Modifier_Id.returned_to_hand: return "items/tpscroll";
+        }
     }
 
-    switch (applied.modifier.id) {
-        case Modifier_Id.spell_euls_scepter: return "items/cyclone";
-        case Modifier_Id.spell_buckler: return "items/buckler";
-        case Modifier_Id.spell_drums_of_endurance: return "items/ancient_janggo";
+    const maybe_icon = maybe_from_modifier_id();
 
-        case Modifier_Id.rune_double_damage: return "spellicons/rune_doubledamage";
-        case Modifier_Id.rune_haste: return "spellicons/rune_haste";
-
-        case Modifier_Id.returned_to_hand: return "items/tpscroll";
+    if (maybe_icon) {
+        return `file://{images}/spellicons/${maybe_icon}.png`
     }
 
     if (applied.source.type == Source_Type.item) {
@@ -1637,7 +1641,7 @@ function get_modifier_icon(applied: Modifier_Data): string {
     }
 
     if (applied.source.type == Source_Type.unit) {
-        return from_ability(applied.source.ability_id);
+        return get_full_ability_icon_path(applied.source.ability_id);
     }
 
     return "";
