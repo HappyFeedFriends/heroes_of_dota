@@ -286,11 +286,11 @@ function on_player_order_async(callback: (event: ExecuteOrderEvent) => boolean) 
 }
 
 function on_raw_custom_event_async<T>(event_name: string, callback: (data: T) => void) {
-    CustomGameEventManager.RegisterListener(event_name, (user_id, event) => fork(() => callback(event as T)));
+    CustomGameEventManager.RegisterListener(event_name, (user_id, event) => fork(() => callback(event as unknown as T)));
 }
 
 function on_custom_event_async<T extends To_Server_Event_Type>(type: T, callback: (data: Find_To_Server_Payload<T>) => void) {
-    CustomGameEventManager.RegisterListener(`${Prefixes.to_server_event}${type}`, (user_id, event) => fork(() => callback(event as Find_To_Server_Payload<T>)));
+    CustomGameEventManager.RegisterListener(`${Prefixes.to_server_event}${type}`, (user_id, event) => fork(() => callback(event as unknown as Find_To_Server_Payload<T>)));
 }
 
 function fire_event<T extends To_Client_Event_Type>(type: T, payload: Find_To_Client_Payload<T>) {
