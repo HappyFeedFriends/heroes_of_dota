@@ -22,12 +22,18 @@ declare const enum Adventure_Party_Change_Type {
     set_slot = 0,
     set_health = 1,
     add_item_to_bag = 2,
-    move_item_from_bag_to_hero = 3
+    move_item = 3
 }
 
 declare const enum Adventure_Party_Action_Type {
     fetch = 0,
-    drag_bag_item_on_hero = 1
+    drag_bag_item_on_hero = 1,
+    drag_hero_item_on_hero = 2
+}
+
+declare const enum Adventure_Party_Item_Container_Type {
+    hero = 0,
+    bag = 1
 }
 
 declare const enum Adventure_Constants {
@@ -158,10 +164,18 @@ type Adventure_Party_Change = {
     type: Adventure_Party_Change_Type.add_item_to_bag
     item_id: Item_Id
 } | {
-    type: Adventure_Party_Change_Type.move_item_from_bag_to_hero
-    bag_slot_index: number
+    type: Adventure_Party_Change_Type.move_item
+    source: Adventure_Party_Item_Container
+    target: Adventure_Party_Item_Container
+}
+
+type Adventure_Party_Item_Container = {
+    type: Adventure_Party_Item_Container_Type.hero
     hero_slot_index: number
     item_slot_index: number
+} | {
+    type: Adventure_Party_Item_Container_Type.bag
+    bag_slot_index: number
 }
 
 type Adventure_Party_Action = { current_head: number } & ({
@@ -170,6 +184,11 @@ type Adventure_Party_Action = { current_head: number } & ({
     type: Adventure_Party_Action_Type.drag_bag_item_on_hero
     bag_slot: number
     party_slot: number
+} | {
+    type: Adventure_Party_Action_Type.drag_hero_item_on_hero
+    source_hero_slot: number
+    source_hero_item_slot: number
+    target_hero_slot: number
 })
 
 type Adventure_Party_Response = {

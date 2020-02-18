@@ -70,16 +70,59 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
             break;
         }
 
-        case Adventure_Party_Change_Type.move_item_from_bag_to_hero: {
-            const bag_slot = party.bag[change.bag_slot_index];
-            if (bag_slot == undefined) return;
+        case Adventure_Party_Change_Type.move_item: {
+            function get_and_remove_item_from_slot(source: Adventure_Party_Item_Container): Item_Id | undefined {
+                switch (source.type) {
+                    case Adventure_Party_Item_Container_Type.bag: {
+                        const bag_slot = party.bag[source.bag_slot_index];
+                        if (bag_slot == undefined) return;
 
-            const hero_slot = party.slots[change.hero_slot_index];
-            if (!hero_slot) return;
-            if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
+                        party.bag.splice(source.bag_slot_index, 1);
 
-            hero_slot.items[change.item_slot_index] = bag_slot;
-            party.bag.splice(change.bag_slot_index, 1);
+                        return bag_slot;
+                    }
+
+                    case Adventure_Party_Item_Container_Type.hero: {
+                        const hero_slot = party.slots[source.hero_slot_index];
+                        if (!hero_slot) return;
+                        if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
+
+                        const item = hero_slot.items[source.item_slot_index];
+                        if (item == undefined) return;
+
+                        delete hero_slot.items[source.item_slot_index];
+
+                        return item;
+                    }
+                }
+            }
+
+            function put_item_in_slot(target: Adventure_Party_Item_Container, item: Item_Id) {
+                switch (target.type) {
+                    case Adventure_Party_Item_Container_Type.bag: {
+                        party.bag[target.bag_slot_index] = item;
+
+                        break;
+                    }
+
+                    case Adventure_Party_Item_Container_Type.hero: {
+                        const hero_slot = party.slots[target.hero_slot_index];
+                        if (!hero_slot) return;
+                        if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
+
+                        hero_slot.items[target.item_slot_index] = item;
+
+                        break;
+                    }
+
+                    default: unreachable(target);
+                }
+            }
+
+            const item_from_slot = get_and_remove_item_from_slot(change.source);
+            if (item_from_slot == undefined) break;
+
+            put_item_in_slot(change.target, item_from_slot);
 
             break;
         }
@@ -94,7 +137,8 @@ export function act_on_adventure_party(party: Map_Player_Party, action: Adventur
             const item = party.bag[action.bag_slot];
             const slot = party.slots[action.party_slot];
 
-            if (!item) break;
+            // TODO somehow figure out a way to handle this common error in meta.ts
+            if (item == undefined) break;
             if (!slot) break;
             if (slot.type != Adventure_Party_Slot_Type.hero) break;
 
@@ -103,10 +147,53 @@ export function act_on_adventure_party(party: Map_Player_Party, action: Adventur
 
                 if (item_slot == undefined) {
                     push_party_change(party, {
-                        type: Adventure_Party_Change_Type.move_item_from_bag_to_hero,
-                        bag_slot_index: action.bag_slot,
-                        hero_slot_index: action.party_slot,
-                        item_slot_index: index
+                        type: Adventure_Party_Change_Type.move_item,
+                        source: {
+                            type: Adventure_Party_Item_Container_Type.bag,
+                            bag_slot_index: action.bag_slot
+                        },
+                        target: {
+                            type: Adventure_Party_Item_Container_Type.hero,
+                            hero_slot_index: action.party_slot,
+                            item_slot_index: index
+                        }
+                    });
+
+                    break;
+                }
+            }
+
+            break;
+        }
+
+        case Adventure_Party_Action_Type.drag_hero_item_on_hero: {
+            const source_hero = party.slots[action.source_hero_slot];
+            if (!source_hero) break;
+            if (source_hero.type != Adventure_Party_Slot_Type.hero) break;
+
+            const source_item = source_hero.items[action.source_hero_item_slot];
+            if (source_item == undefined) break;
+
+            const target_hero = party.slots[action.target_hero_slot];
+            if (!target_hero) break;
+            if (target_hero.type != Adventure_Party_Slot_Type.hero) break;
+
+            for (let item_index = 0; item_index < Adventure_Constants.max_hero_items; item_index++) {
+                const item_slot = target_hero.items[item_index];
+
+                if (item_slot == undefined) {
+                    push_party_change(party, {
+                        type: Adventure_Party_Change_Type.move_item,
+                        source: {
+                            type: Adventure_Party_Item_Container_Type.hero,
+                            hero_slot_index: action.source_hero_slot,
+                            item_slot_index: action.source_hero_item_slot
+                        },
+                        target: {
+                            type: Adventure_Party_Item_Container_Type.hero,
+                            hero_slot_index: action.target_hero_slot,
+                            item_slot_index: item_index
+                        }
                     });
 
                     break;
