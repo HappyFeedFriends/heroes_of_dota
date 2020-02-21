@@ -203,6 +203,30 @@ export function act_on_adventure_party(party: Map_Player_Party, action: Adventur
             break;
         }
 
+        case Adventure_Party_Action_Type.drag_hero_item_on_bag: {
+            const source_hero = party.slots[action.source_hero_slot];
+            if (!source_hero) break;
+            if (source_hero.type != Adventure_Party_Slot_Type.hero) break;
+
+            const source_item = source_hero.items[action.source_hero_item_slot];
+            if (source_item == undefined) break;
+
+            push_party_change(party, {
+                type: Adventure_Party_Change_Type.move_item,
+                source: {
+                    type: Adventure_Party_Item_Container_Type.hero,
+                    hero_slot_index: action.source_hero_slot,
+                    item_slot_index: action.source_hero_item_slot
+                },
+                target: {
+                    type: Adventure_Party_Item_Container_Type.bag,
+                    bag_slot_index: party.bag.length // Insert into a new slot at the end
+                }
+            });
+
+            break;
+        }
+
         case Adventure_Party_Action_Type.fetch: {
             break;
         }

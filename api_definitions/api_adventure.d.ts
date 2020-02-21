@@ -28,7 +28,8 @@ declare const enum Adventure_Party_Change_Type {
 declare const enum Adventure_Party_Action_Type {
     fetch = 0,
     drag_bag_item_on_hero = 1,
-    drag_hero_item_on_hero = 2
+    drag_hero_item_on_hero = 2,
+    drag_hero_item_on_bag = 3
 }
 
 declare const enum Adventure_Party_Item_Container_Type {
@@ -189,6 +190,10 @@ type Adventure_Party_Action = { current_head: number } & ({
     source_hero_slot: number
     source_hero_item_slot: number
     target_hero_slot: number
+} | {
+    type: Adventure_Party_Action_Type.drag_hero_item_on_bag
+    source_hero_slot: number
+    source_hero_item_slot: number
 })
 
 type Adventure_Party_Response = {

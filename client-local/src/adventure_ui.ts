@@ -16,6 +16,7 @@ const adventure_ui = {
     party_container: adventure_ui_root.FindChildTraverse("adventure_party"),
     card_container: adventure_ui_root.FindChildTraverse("adventure_cards"),
     currency_label: adventure_ui_root.FindChildTraverse("currency_remaining") as LabelPanel,
+    bag_drop_layer: adventure_ui_root.FindChildTraverse("adventure_party_bag_drop_layer"),
     tooltip: {
         ...create_adventure_card_tooltip(adventure_ui_root.FindChildTraverse("adventure_card_tooltips")),
         css_class: ""
@@ -309,32 +310,66 @@ function update_hero_inventory_item_ui(ui: Inventory_Item_UI, hero_slot_index: n
         }));
     }
 
-    $.RegisterEventHandler("DragEnter", item_panel, (id, panel) => {
+    $.RegisterEventHandler("DragEnter", item_panel, () => {
         if (!adventure_ui.drag_state.dragging) return true;
 
         const dragged_item_image = get_item_icon(adventure_ui.drag_state.item);
-        const dragged_panel = adventure_ui.drag_state.dragged_panel;
-
-        adventure_ui.party_container.AddClass("has_drop_target");
-        item_panel.AddClass("drop_hover");
-        dragged_panel.AddClass("drop_hover");
-
+        update_drag_and_drop_styles(item_panel, true);
         safely_set_panel_background_image(ui.drop_layer, dragged_item_image);
 
         return true;
     });
 
     $.RegisterEventHandler("DragLeave", item_panel, () => {
-        if (!adventure_ui.drag_state.dragging) return true;
-
-        const dragged_panel = adventure_ui.drag_state.dragged_panel;
-
-        adventure_ui.party_container.RemoveClass("has_drop_target");
-        dragged_panel.RemoveClass("drop_hover");
-        item_panel.RemoveClass("drop_hover");
+        update_drag_and_drop_styles(item_panel, false);
 
         return true;
     });
+}
+
+function update_drag_and_drop_styles(for_panel: Panel, dragging_onto_that_panel: boolean) {
+    if (!adventure_ui.drag_state.dragging) return;
+
+    const dragged_panel = adventure_ui.drag_state.dragged_panel;
+
+    adventure_ui.party_container.SetHasClass("has_drop_target", dragging_onto_that_panel);
+    for_panel.SetHasClass("drop_hover", dragging_onto_that_panel);
+    dragged_panel.SetHasClass("drop_hover", dragging_onto_that_panel);
+}
+
+function register_bag_drop_events(bag_panel: Panel) {
+    $.RegisterEventHandler("DragEnter", bag_panel, () => {
+        if (adventure_ui.drag_state.dragging && adventure_ui.drag_state.source.type == Drag_Source_Type.hero) {
+            update_drag_and_drop_styles(bag_panel, true);
+        }
+
+        return true;
+    });
+
+    $.RegisterEventHandler("DragLeave", bag_panel, () => {
+        if (adventure_ui.drag_state.dragging && adventure_ui.drag_state.source.type == Drag_Source_Type.hero) {
+            update_drag_and_drop_styles(bag_panel, false);
+        }
+
+        return true;
+    });
+
+    $.RegisterEventHandler("DragDrop", bag_panel, () => {
+        const drag_state = adventure_ui.drag_state;
+
+        if (drag_state.dragging && drag_state.source.type == Drag_Source_Type.hero) {
+            const head_before = adventure_ui.party.current_head;
+
+            api_request(Api_Request_Type.act_on_adventure_party, {
+                type: Adventure_Party_Action_Type.drag_hero_item_on_bag,
+                access_token: get_access_token(),
+                source_hero_slot: drag_state.source.hero_slot,
+                source_hero_item_slot: drag_state.source.inventory_slot,
+                current_head: head_before
+            }, response => accept_adventure_party_response(response, head_before));
+        }
+    });
+
 }
 
 function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: Hero_Type, health: number, items: Item_Id[]): Adventure_Party_Slot_UI {
@@ -374,21 +409,13 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
 
     const drop_overlay = $.CreatePanel("Panel", base.card_panel, "drop_overlay");
 
-    function update_panels_from_drag_state(dragging: boolean) {
-        if (!adventure_ui.drag_state.dragging) return true;
-
-        adventure_ui.party_container.SetHasClass("has_drop_target", dragging);
-        adventure_ui.drag_state.dragged_panel.SetHasClass("drop_hover", dragging);
-        drop_overlay.SetHasClass("drop_hover", dragging);
-    }
-
     $.RegisterEventHandler("DragEnter", drop_overlay, (id, panel) => {
-        update_panels_from_drag_state(true);
+        update_drag_and_drop_styles(drop_overlay, true);
         return true;
     });
 
     $.RegisterEventHandler("DragLeave", drop_overlay, () => {
-        update_panels_from_drag_state(false);
+        update_drag_and_drop_styles(drop_overlay, false);
         return true;
     });
 
@@ -885,3 +912,5 @@ subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, e
 subscribe_to_custom_event(To_Client_Event_Type.adventure_receive_party_changes, event => {
     merge_adventure_party_changes(event.current_head, from_server_array(event.changes));
 });
+
+register_bag_drop_events(adventure_ui.bag_drop_layer);

@@ -106,6 +106,17 @@
             box-shadow: 0px 0px 4px black;
           }
         }
+
+        #adventure_party_bag_drop_layer {
+          width: 100%;
+          height: 120px;
+          background-color: #9dffdd;
+          transition: opacity 0.1s linear 0s;
+
+          &.drop_hover {
+            opacity: 0.1;
+          }
+        }
       }
 
       #adventure_party_row {
@@ -265,8 +276,15 @@
       }
 
       // Highlight all targetable slots
-      &.dragging_item #adventure_card #drop_overlay {
-        opacity: 0.2;
+      &.dragging_item {
+        #adventure_card #drop_overlay {
+          opacity: 0.2;
+        }
+
+        #adventure_party_bag_drop_layer {
+          // opacity: 0 makes the panel uninteractive, we keep a small value just so it could be dragged on
+          opacity: 0.001;
+        }
       }
 
       // Fade other slots, when one is a drop target
@@ -275,8 +293,10 @@
       }
 
       // Hide highlights when not dragging
-      &:not(.dragging_item) #adventure_card #drop_overlay {
-        opacity: 0;
+      &:not(.dragging_item) {
+        #adventure_card #drop_overlay, #adventure_party_bag_drop_layer {
+          opacity: 0;
+        }
       }
     }
   }
