@@ -20,6 +20,9 @@
   "references": [
     {
       "path": "../battle-sim"
+    },
+    {
+      "path": "../party-sim"
     }
   ],
   "include": [

@@ -1,8 +1,6 @@
-import {Id_Generator, import_battle_sim} from "./server";
+import {Id_Generator} from "./server";
 import {XY} from "./common";
 import {Random} from "./random";
-
-import_battle_sim();
 
 export type Battle_Record = Battle & {
     id: Battle_Id

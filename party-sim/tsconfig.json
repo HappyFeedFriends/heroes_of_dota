@@ -11,7 +11,7 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "dist",
-    "outFile": "dist/battle_sim.js",
+    "outFile": "dist/party_sim.js",
     "composite": true,
     "lib": [
       "es2016"

@@ -10,14 +10,14 @@ popd
 
 pushd codegen
 npm ci
-npx ttsc -p ../battle-sim/tsconfig.json
-npx ttsc -p ../client-web/tsconfig.json
-npx ttsc -p ../server-remote/tsconfig.json
+npx ttsc -b ../client-web/tsconfig.json
+npx ttsc -b ../server-remote/tsconfig.json
 popd
 
 cp client-web/src/game.html server-remote/dist/game.html
 cp client-web/dist/web_main.js server-remote/dist/web_main.js
 cp battle-sim/dist/battle_sim.js server-remote/dist/battle_sim.js
+cp party-sim/dist/party_sim.js server-remote/dist/party_sim.js
 
 pushd server-remote
 kill -9 $(cat run.pid)

@@ -1,4 +1,5 @@
 *.bin
+*.tsbuildinfo
 **/vscripts/
 **/node_modules
 .idea/*
@@ -7,6 +8,7 @@ dist/game/particles
 server-remote/dist
 client-web/dist
 battle-sim/dist
+party-sim/dist
 dist/content/panorama/
 dist/game/materials
 dist/game/panorama

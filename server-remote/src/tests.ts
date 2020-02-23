@@ -1,7 +1,4 @@
 import {run_tests, test_battle} from "./test_framework";
-import {import_battle_sim} from "./server";
-
-import_battle_sim();
 
 function test_player_can_spawn_hero_from_hand() {
     const battle = test_battle();

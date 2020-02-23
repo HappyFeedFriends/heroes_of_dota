@@ -29,23 +29,44 @@ const adventure_ui = {
         button_yes: adventure_ui_root.FindChildTraverse("adventure_popup_yes"),
         button_no: adventure_ui_root.FindChildTraverse("adventure_popup_no")
     },
-    party: {
-        bag: bag(),
-        slots: new Array<Adventure_Party_Slot_UI>(),
-        changes: new Array<Adventure_Party_Change>(),
-        currently_playing_change_index: 0,
-        currently_playing_a_change: false,
-        next_change_promise: () => true,
-        current_head: 0,
-        base_head: 0
-    },
     ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
+};
+
+const party: Party_UI = {
+    bag: {
+        panel: $("#adventure_party_bag"),
+        items: []
+    },
+    slots: [],
+    changes: [],
+    currently_playing_change_index: 0,
+    currently_playing_a_change: false,
+    next_change_promise: () => true,
+    current_head: 0,
+    base_head: 0,
+    base_snapshot: {
+        bag: [],
+        slots: []
+    },
     drag_state: default_inventory_drag_state()
 };
 
 const enum Drag_Source_Type {
     bag,
     hero
+}
+
+type Party_UI = {
+    bag: Bag_UI
+    slots: Adventure_Party_Slot_UI[]
+    changes: Adventure_Party_Change[]
+    currently_playing_change_index: number
+    currently_playing_a_change: boolean
+    next_change_promise: () => boolean
+    current_head: number
+    base_head: number
+    base_snapshot: Party_Snapshot
+    drag_state: Inventory_Drag_State
 }
 
 type Inventory_Drag_State = {
@@ -121,13 +142,6 @@ function default_inventory_drag_state(): Inventory_Drag_State {
     return { dragging: false }
 }
 
-function bag(): Bag_UI {
-    return {
-        panel: $("#adventure_party_bag"),
-        items: []
-    }
-}
-
 function create_adventure_card_tooltip(root: Panel) {
     const parent = $.CreatePanel("Panel", root, "card_tooltip");
     const card = create_card_container_ui(parent, true);
@@ -153,6 +167,47 @@ function fill_adventure_base_slot_ui(container: Panel): Base_Slot_UI {
         card_panel: card_panel,
         art: art,
     }
+}
+
+function extract_original_slot(ui_slot: Adventure_Party_Slot_UI): Adventure_Party_Slot {
+    switch (ui_slot.type) {
+        case Adventure_Party_Slot_Type.creep: {
+            return {
+                type: ui_slot.type,
+                creep: ui_slot.creep,
+                health: ui_slot.health
+            }
+        }
+
+        case Adventure_Party_Slot_Type.hero: {
+            return {
+                type: ui_slot.type,
+                hero: ui_slot.hero,
+                items: ui_slot.items.map(item => item.item!), // We cast Item_Id? to Item_Id here, but it doesn't matter...
+                health: ui_slot.health
+            }
+        }
+
+        case Adventure_Party_Slot_Type.spell: {
+            return {
+                type: ui_slot.type,
+                spell: ui_slot.spell
+            }
+        }
+
+        case Adventure_Party_Slot_Type.empty: {
+            return {
+                type: ui_slot.type,
+            }
+        }
+    }
+}
+
+function extract_party_snapshot(): Party_Snapshot {
+    return {
+        slots: party.slots.map(extract_original_slot),
+        bag: party.bag.items.map(item => item.item)
+    };
 }
 
 function show_and_prepare_adventure_tooltip(parent: Panel, css_class: string) {
@@ -209,8 +264,8 @@ function fill_adventure_empty_slot(container: Panel): Adventure_Party_Slot_UI {
     }
 }
 
-function add_bag_item(item: Item_Id, slot_index = adventure_ui.party.bag.items.length) {
-    const item_panel = $.CreatePanel("Panel", adventure_ui.party.bag.panel, "");
+function add_bag_item(item: Item_Id, slot_index = party.bag.items.length) {
+    const item_panel = $.CreatePanel("Panel", party.bag.panel, "");
     item_panel.AddClass("item");
     item_panel.SetDraggable(true);
     safely_set_panel_background_image(item_panel, get_item_icon(item));
@@ -226,21 +281,21 @@ function add_bag_item(item: Item_Id, slot_index = adventure_ui.party.bag.items.l
         bag_slot: slot.slot
     }));
 
-    adventure_ui.party.bag.items[slot_index] = slot;
+    party.bag.items[slot_index] = slot;
 }
 
 function remove_bag_item(ui: Bag_Item_UI) {
     ui.panel.DeleteAsync(0);
 
-    adventure_ui.party.bag.items.splice(ui.slot, 1);
+    party.bag.items.splice(ui.slot, 1);
 
-    for (let index = 0; index < adventure_ui.party.bag.items.length; index++) {
-        adventure_ui.party.bag.items[index].slot = index;
+    for (let index = 0; index < party.bag.items.length; index++) {
+        party.bag.items[index].slot = index;
     }
 }
 
 function set_drag_state(state: Inventory_Drag_State) {
-    adventure_ui.drag_state = state;
+    party.drag_state = state;
 
     if (state.dragging) {
         adventure_ui.party_container.AddClass("dragging_item");
@@ -311,9 +366,9 @@ function update_hero_inventory_item_ui(ui: Inventory_Item_UI, hero_slot_index: n
     }
 
     $.RegisterEventHandler("DragEnter", item_panel, () => {
-        if (!adventure_ui.drag_state.dragging) return true;
+        if (!party.drag_state.dragging) return true;
 
-        const dragged_item_image = get_item_icon(adventure_ui.drag_state.item);
+        const dragged_item_image = get_item_icon(party.drag_state.item);
         update_drag_and_drop_styles(item_panel, true);
         safely_set_panel_background_image(ui.drop_layer, dragged_item_image);
 
@@ -328,9 +383,9 @@ function update_hero_inventory_item_ui(ui: Inventory_Item_UI, hero_slot_index: n
 }
 
 function update_drag_and_drop_styles(for_panel: Panel, dragging_onto_that_panel: boolean) {
-    if (!adventure_ui.drag_state.dragging) return;
+    if (!party.drag_state.dragging) return;
 
-    const dragged_panel = adventure_ui.drag_state.dragged_panel;
+    const dragged_panel = party.drag_state.dragged_panel;
 
     adventure_ui.party_container.SetHasClass("has_drop_target", dragging_onto_that_panel);
     for_panel.SetHasClass("drop_hover", dragging_onto_that_panel);
@@ -339,7 +394,7 @@ function update_drag_and_drop_styles(for_panel: Panel, dragging_onto_that_panel:
 
 function register_bag_drop_events(bag_panel: Panel) {
     $.RegisterEventHandler("DragEnter", bag_panel, () => {
-        if (adventure_ui.drag_state.dragging && adventure_ui.drag_state.source.type == Drag_Source_Type.hero) {
+        if (party.drag_state.dragging && party.drag_state.source.type == Drag_Source_Type.hero) {
             update_drag_and_drop_styles(bag_panel, true);
         }
 
@@ -347,7 +402,7 @@ function register_bag_drop_events(bag_panel: Panel) {
     });
 
     $.RegisterEventHandler("DragLeave", bag_panel, () => {
-        if (adventure_ui.drag_state.dragging && adventure_ui.drag_state.source.type == Drag_Source_Type.hero) {
+        if (party.drag_state.dragging && party.drag_state.source.type == Drag_Source_Type.hero) {
             update_drag_and_drop_styles(bag_panel, false);
         }
 
@@ -355,18 +410,17 @@ function register_bag_drop_events(bag_panel: Panel) {
     });
 
     $.RegisterEventHandler("DragDrop", bag_panel, () => {
-        const drag_state = adventure_ui.drag_state;
+        const drag_state = party.drag_state;
 
         if (drag_state.dragging && drag_state.source.type == Drag_Source_Type.hero) {
-            const head_before = adventure_ui.party.current_head;
+            const head_before = party.current_head;
 
-            api_request(Api_Request_Type.act_on_adventure_party, {
+            perform_adventure_party_action({
                 type: Adventure_Party_Action_Type.drag_hero_item_on_bag,
-                access_token: get_access_token(),
                 source_hero_slot: drag_state.source.hero_slot,
                 source_hero_item_slot: drag_state.source.inventory_slot,
                 current_head: head_before
-            }, response => accept_adventure_party_response(response, head_before));
+            })
         }
     });
 
@@ -420,33 +474,31 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
     });
 
     $.RegisterEventHandler("DragDrop", drop_overlay, () => {
-        const drag_state = adventure_ui.drag_state;
+        const drag_state = party.drag_state;
         if (!drag_state.dragging) return true;
 
-        const head_before = adventure_ui.party.current_head;
+        const head_before = party.current_head;
 
         switch (drag_state.source.type) {
             case Drag_Source_Type.hero: {
-                api_request(Api_Request_Type.act_on_adventure_party, {
+                perform_adventure_party_action({
                     type: Adventure_Party_Action_Type.drag_hero_item_on_hero,
-                    access_token: get_access_token(),
                     source_hero_slot: drag_state.source.hero_slot,
                     source_hero_item_slot: drag_state.source.inventory_slot,
                     target_hero_slot: slot_index,
                     current_head: head_before
-                }, response => accept_adventure_party_response(response, head_before));
+                });
 
                 break;
             }
 
             case Drag_Source_Type.bag: {
-                api_request(Api_Request_Type.act_on_adventure_party, {
+                perform_adventure_party_action({
                     type: Adventure_Party_Action_Type.drag_bag_item_on_hero,
-                    access_token: get_access_token(),
                     bag_slot: drag_state.source.bag_slot,
                     party_slot: slot_index,
                     current_head: head_before
-                }, response => accept_adventure_party_response(response, head_before));
+                });
 
                 break;
             }
@@ -521,13 +573,13 @@ function reinitialize_adventure_ui(slots: number) {
     const card_container = adventure_ui.card_container;
     card_container.RemoveAndDeleteChildren();
 
-    adventure_ui.party.bag.panel.RemoveAndDeleteChildren();
-    adventure_ui.party.bag.items = [];
+    party.bag.panel.RemoveAndDeleteChildren();
+    party.bag.items = [];
 
-    adventure_ui.party.slots = [];
+    party.slots = [];
 
     for (; slots > 0; slots--) {
-        adventure_ui.party.slots.push(create_adventure_empty_slot(card_container));
+        party.slots.push(create_adventure_empty_slot(card_container));
     }
 }
 
@@ -541,13 +593,13 @@ function set_adventure_party_slot(slot_index: number, slot: Adventure_Party_Slot
         }
     }
 
-    const old_slot = adventure_ui.party.slots[slot_index];
+    const old_slot = party.slots[slot_index];
     const container = old_slot.container;
     container.RemoveAndDeleteChildren();
 
     const new_slot = make_new_slot(slot, container);
 
-    adventure_ui.party.slots[slot_index] = new_slot;
+    party.slots[slot_index] = new_slot;
 
     return new_slot;
 }
@@ -592,7 +644,7 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
     popup.button_yes.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
         fire_event(To_Server_Event_Type.adventure_interact_with_entity, {
             entity_id: entity_id,
-            current_head: adventure_ui.party.current_head
+            current_head: party.current_head
         });
 
         hide_adventure_popup();
@@ -607,18 +659,128 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
     });
 }
 
+function changes_equal(left: Adventure_Party_Change, right: Adventure_Party_Change) {
+    function objects_equal(left: Record<string, any>, right: Record<string, any>): boolean {
+        // TODO doesn't work with arrays or nulls
+
+        const left_keys = Object.keys(left);
+        const right_keys = Object.keys(right);
+
+        if (left_keys.length != right_keys.length) {
+            return false;
+        }
+
+        for (const key of left_keys) {
+            const left_value = left[key];
+            const right_value = right[key];
+
+            if (typeof left_value != typeof right_value) {
+                return false;
+            }
+
+            if (typeof left_value == "object") {
+                const children_equal = objects_equal(left_value, right_value);
+                if (!children_equal) {
+                    return false;
+                }
+            } else if (left_value !== right_value) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    return objects_equal(left, right);
+}
+
+function copy_snapshot(snapshot: Party_Snapshot) {
+    function copy_value<T extends any>(source: T): T {
+        if (source == null) {
+            return source;
+        }
+
+        if (typeof source == "object") {
+            if (Array.isArray(source)) {
+                return source.map((value: any) => copy_value(value));
+            } else {
+                const result: Record<any, string> = {};
+                const keys = Object.keys(source);
+
+                for (const key of keys) {
+                    result[key] = copy_value(source[key]);
+                }
+
+                return result;
+            }
+        } else {
+            return source;
+        }
+    }
+
+    return copy_value(snapshot);
+}
+
 function merge_adventure_party_changes(head_before_merge: number, changes: Adventure_Party_Change[]) {
     $.Msg(`Received ${changes.length} party changes, inserting after ${head_before_merge}`);
 
+    // TODO consider the case when head_before_merge + changes.length < party.current_head!!
+    //      we need to discard the extra changes and rollback to the previous state
+    //      That condition makes little sense on its own, we need to somehow only consider it when
+    //      receiving changes from server? Also in general we need a way for the server word to be
+    //      authoritative in this API, currently whoever submits the changes last wins
+    //      Also need to check what happens if the server is slow to respond and we do multiple changes
+
+    let merge_conflict = false;
+
     for (let index = 0; index < changes.length; index++) {
-        adventure_ui.party.changes[head_before_merge + index - adventure_ui.party.base_head] = changes[index];
+        const change_location = head_before_merge + index - party.base_head;
+        if (change_location < 0) continue;
+
+        const existing_change = party.changes[change_location];
+        const new_change = changes[index];
+
+        $.Msg(`#${head_before_merge + index}: ${enum_to_string(new_change.type)}`);
+
+        if (!merge_conflict && existing_change && !changes_equal(existing_change, new_change)) {
+            merge_conflict = true;
+
+            $.Msg(`Detected merge conflict at change ${head_before_merge + index}`);
+        }
+
+        party.changes[change_location] = new_change;
     }
 
-    adventure_ui.party.current_head = head_before_merge + changes.length;
+    party.current_head = head_before_merge + changes.length;
+
+    if (merge_conflict) {
+        const snapshot = copy_snapshot(party.base_snapshot);
+
+        for (const change of party.changes) {
+            collapse_party_change(snapshot, change);
+        }
+
+        reinitialize_adventure_ui(party.slots.length);
+        fill_ui_from_snapshot(snapshot);
+
+        party.currently_playing_change_index = party.changes.length;
+
+        $.Msg(`State restored from snapshot after merge conflict`);
+    }
+}
+
+function perform_adventure_party_action(action: Adventure_Party_Action) {
+    consume_adventure_party_action(extract_party_snapshot(), action, change => merge_adventure_party_changes(party.current_head, [ change ]));
+
+    api_request(Api_Request_Type.act_on_adventure_party, {
+        type: Adventure_Party_Action_Type.drag_hero_item_on_hero,
+        access_token: get_access_token(),
+        ...action,
+    }, response => accept_adventure_party_response(response));
 }
 
 export function try_adventure_cheat(text: string) {
-    const head = adventure_ui.party.current_head;
+    const head = party.current_head;
 
     api_request(Api_Request_Type.adventure_party_cheat, {
         access_token: get_access_token(),
@@ -693,7 +855,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
 
         switch (source.type) {
             case Adventure_Party_Item_Container_Type.bag: {
-                const bag_slot = adventure_ui.party.bag.items[source.bag_slot_index];
+                const bag_slot = party.bag.items[source.bag_slot_index];
                 if (bag_slot == undefined) return;
 
                 remove_bag_item(bag_slot);
@@ -702,7 +864,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             }
 
             case Adventure_Party_Item_Container_Type.hero: {
-                const hero_slot = adventure_ui.party.slots[source.hero_slot_index];
+                const hero_slot = party.slots[source.hero_slot_index];
                 if (!hero_slot) return;
                 if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
 
@@ -722,7 +884,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
     }
 
     function put_item_in_slot(target: Adventure_Party_Item_Container, item: Item_Id) {
-        $.Msg(`Put ${enum_to_string(item)} into ${enum_to_string(target.type)}}`);
+        $.Msg(`Put ${enum_to_string(item)} into ${enum_to_string(target.type)}`);
 
         switch (target.type) {
             case Adventure_Party_Item_Container_Type.bag: {
@@ -731,7 +893,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             }
 
             case Adventure_Party_Item_Container_Type.hero: {
-                const hero_slot = adventure_ui.party.slots[target.hero_slot_index];
+                const hero_slot = party.slots[target.hero_slot_index];
                 if (!hero_slot) return;
                 if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
 
@@ -774,7 +936,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         }
 
         case Adventure_Party_Change_Type.set_health: {
-            const slot = adventure_ui.party.slots[change.slot_index];
+            const slot = party.slots[change.slot_index];
             if (!slot) return proceed;
 
             switch (slot.type) {
@@ -823,7 +985,6 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
 function periodically_update_party_ui() {
     $.Schedule(0, periodically_update_party_ui);
 
-    const party = adventure_ui.party;
     const current_change = party.changes[party.currently_playing_change_index];
 
     if (current_change) {
@@ -840,10 +1001,20 @@ function periodically_update_party_ui() {
 }
 
 function reset_party_state() {
-    adventure_ui.party.currently_playing_change_index = 0;
-    adventure_ui.party.changes = [];
-    adventure_ui.party.current_head = 0;
-    adventure_ui.party.base_head = 0;
+    party.currently_playing_change_index = 0;
+    party.changes = [];
+    party.current_head = 0;
+    party.base_head = 0;
+}
+
+function fill_ui_from_snapshot(snapshot: Party_Snapshot) {
+    for (const item of snapshot.bag) {
+        add_bag_item(item);
+    }
+
+    for (let index = 0; index < snapshot.slots.length; index++) {
+        set_adventure_party_slot(index, snapshot.slots[index]);
+    }
 }
 
 function restore_from_snapshot(snapshot: Party_Snapshot, origin_head: number) {
@@ -852,23 +1023,18 @@ function restore_from_snapshot(snapshot: Party_Snapshot, origin_head: number) {
 
     $.Msg(`Restoring head ${origin_head} from snapshot`);
 
-    for (const item of snapshot.bag) {
-        add_bag_item(item);
-    }
+    fill_ui_from_snapshot(snapshot);
 
-    for (let index = 0; index < snapshot.slots.length; index++) {
-        set_adventure_party_slot(index, snapshot.slots[index]);
-    }
-
-    adventure_ui.party.base_head = origin_head;
-    adventure_ui.party.current_head = origin_head;
+    party.base_head = origin_head;
+    party.current_head = origin_head;
+    party.base_snapshot = snapshot;
 }
 
-function accept_adventure_party_response(response: Adventure_Party_Response, head_before_merge: number) {
+function accept_adventure_party_response(response: Adventure_Party_Response) {
     if (response.snapshot) {
         restore_from_snapshot(response.content, response.origin_head);
     } else {
-        merge_adventure_party_changes(head_before_merge, response.changes);
+        merge_adventure_party_changes(response.apply_to_head, response.changes);
     }
 }
 
@@ -877,7 +1043,7 @@ periodically_update_party_ui();
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", async data => {
     if (data.state == Player_State.on_adventure) {
         const reinitialize_ui = adventure_ui.ongoing_adventure_id != data.ongoing_adventure_id;
-        const head_before_merge = reinitialize_ui ? 0 : adventure_ui.party.current_head;
+        const head_before_merge = reinitialize_ui ? 0 : party.current_head;
 
         if (reinitialize_ui) {
             reinitialize_adventure_ui(data.num_party_slots);

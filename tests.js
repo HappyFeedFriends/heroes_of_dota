@@ -4,7 +4,7 @@ const exec = require("child_process").exec;
 (async () => {
     console.time("Compile");
 
-    const ok = await compile("battle-sim", "server-remote");
+    const ok = await compile("server-remote");
 
     copy_sim("server-remote/dist/battle_sim.js");
 

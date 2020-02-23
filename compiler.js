@@ -56,6 +56,12 @@ exports.compile = function(...modules) {
     })
 };
 
+exports.copy_party_sim = function(to) {
+    const source_file = "party-sim/dist/party_sim.js";
+
+    copy(source_file, to);
+};
+
 exports.copy_sim = function(to) {
     const source_file = "battle-sim/dist/battle_sim.js";
 

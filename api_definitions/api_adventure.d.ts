@@ -203,6 +203,7 @@ type Adventure_Party_Response = {
 } | {
     snapshot: false
     changes: Adventure_Party_Change[]
+    apply_to_head: number
 }
 
 type Party_Snapshot = {

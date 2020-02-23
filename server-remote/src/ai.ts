@@ -4,7 +4,7 @@ import {
     try_take_turn_action
 } from "./battle";
 import {performance} from "perf_hooks";
-import {check_if_battle_is_over, import_battle_sim, random_seed} from "./server";
+import {check_if_battle_is_over, random_seed} from "./server";
 import {
     cell_size,
     debug,
@@ -13,8 +13,6 @@ import {
     rescale_colors,
     clear_debug_ai_data
 } from "./debug_draw";
-
-import_battle_sim();
 
 type AI = {
     battle: Battle_Record

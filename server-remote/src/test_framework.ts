@@ -1,7 +1,7 @@
 import {Battle_Record, make_battle_record, submit_external_battle_delta, try_take_turn_action} from "./battle";
 import {performance} from "perf_hooks";
 import {Random} from "./random";
-import {import_battle_sim} from "./server";
+import {readFileSync} from "fs";
 
 type Test = () => void;
 
@@ -19,8 +19,6 @@ const red = "\x1b[31m";
 const green = "\x1b[32m";
 const yellow = "\x1b[33m";
 const reset = "\x1b[0m";
-
-import_battle_sim();
 
 export function test_battle() {
     return new Test_Battle();
@@ -500,6 +498,8 @@ class Assert_For_Player_Unit {
 }
 
 export function run_tests(tests: Test[]) {
+    eval.call(global, readFileSync("dist/battle_sim.js", "utf8"));
+
     const all_start_at = performance.now();
 
     console.log(`Running ${clr(green, tests.length)} tests`);

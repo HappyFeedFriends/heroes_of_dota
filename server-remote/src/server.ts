@@ -1,10 +1,4 @@
 import {readFileSync} from "fs";
-const battle_sim_code = readFileSync("dist/battle_sim.js", "utf8");
-
-export function import_battle_sim() {
-    eval.call(process, battle_sim_code);
-}
-
 import {createServer} from "http";
 import {randomBytes} from "crypto"
 import {performance} from "perf_hooks"
@@ -67,8 +61,6 @@ import {
     delete_battleground_by_id,
     duplicate_battleground
 } from "./battleground";
-
-import_battle_sim();
 
 const enum Result_Type {
     ok = 0,
@@ -1551,6 +1543,9 @@ function static_file(path: string): () => string {
 }
 
 export function start_server(dev: boolean, seed: number) {
+    eval.call(global, readFileSync("dist/battle_sim.js", "utf8"));
+    eval.call(global, readFileSync("dist/party_sim.js", "utf8"));
+
     dev_mode = dev;
 
     // TODO this is xorshift32, replace with a better algo
