@@ -1088,6 +1088,8 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", async data => {
 
             merge_adventure_party_changes(head_before_merge, result.changes);
         }
+
+        adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
     }
 });
 
