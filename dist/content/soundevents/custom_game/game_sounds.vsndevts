@@ -225,4 +225,14 @@
         pitch_rand_max = 0.05
         vsnd_files = "sounds/weapons/hero/broodmother/spiderling_hatch.vsnd"
     }
+
+    party_hero_item_pickup = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/ui/item_pickup_world.vsnd"
+    }
+
+    party_bag_item_pickup = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/ui/item_drop_shop.vsnd"
+    }
 }

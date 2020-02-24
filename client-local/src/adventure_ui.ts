@@ -32,25 +32,6 @@ const adventure_ui = {
     ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
 };
 
-const party: Party_UI = {
-    bag: {
-        panel: $("#adventure_party_bag"),
-        items: []
-    },
-    slots: [],
-    changes: [],
-    currently_playing_change_index: 0,
-    currently_playing_a_change: false,
-    next_change_promise: () => true,
-    current_head: 0,
-    base_head: 0,
-    base_snapshot: {
-        bag: [],
-        slots: []
-    },
-    drag_state: default_inventory_drag_state()
-};
-
 const enum Drag_Source_Type {
     bag,
     hero
@@ -67,6 +48,7 @@ type Party_UI = {
     base_head: number
     base_snapshot: Party_Snapshot
     drag_state: Inventory_Drag_State
+    thanks_started_playing_at: number
 }
 
 type Inventory_Drag_State = {
@@ -135,6 +117,26 @@ type Bag_Item_UI = {
     item: Item_Id
     panel: Panel
 }
+
+const party: Party_UI = {
+    bag: {
+        panel: $("#adventure_party_bag"),
+        items: []
+    },
+    slots: [],
+    changes: [],
+    currently_playing_change_index: 0,
+    currently_playing_a_change: false,
+    next_change_promise: () => true,
+    current_head: 0,
+    base_head: 0,
+    base_snapshot: {
+        bag: [],
+        slots: []
+    },
+    drag_state: default_inventory_drag_state(),
+    thanks_started_playing_at: 0
+};
 
 hide_adventure_tooltip();
 
@@ -889,6 +891,9 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         switch (target.type) {
             case Adventure_Party_Item_Container_Type.bag: {
                 add_bag_item(item, target.bag_slot_index);
+
+                Game.EmitSound("party_bag_item_pickup");
+
                 break;
             }
 
@@ -901,6 +906,15 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                 if (!item_panel) return;
 
                 update_hero_inventory_item_ui(item_panel, target.hero_slot_index, target.item_slot_index, item);
+
+                Game.EmitSound("party_hero_item_pickup");
+
+                const now = Game.Time();
+                if (now - party.thanks_started_playing_at > 3) {
+                    emit_random_sound(hero_sounds_by_hero_type(hero_slot.hero).thanks);
+
+                    party.thanks_started_playing_at = now;
+                }
 
                 break;
             }

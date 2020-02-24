@@ -9,6 +9,7 @@ type Hero_Sounds = {
     not_yet: string[]
     level_up: string[]
     purchase: string[]
+    thanks: string[]
 }
 
 function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
@@ -43,7 +44,8 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             deny: range("pudge_pud_deny", 12),
             not_yet: range("pudge_pud_notyet", 3),
             pain: range("pudge_pud_pain", 7),
-            purchase: range("pudge_pud_purch", 5)
+            purchase: range("pudge_pud_purch", 5),
+            thanks: range("pudge_pud_thanks", 3)
         };
 
         case Hero_Type.tidehunter: return {
@@ -56,7 +58,8 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             deny: range("tidehunter_tide_deny", 8),
             not_yet: range("tidehunter_tide_notyet", 9),
             pain: range("tidehunter_tide_pain", 5),
-            purchase: range("tidehunter_tide_purch", 3)
+            purchase: range("tidehunter_tide_purch", 3),
+            thanks: range("tidehunter_tide_thanks", 2)
         };
 
         case Hero_Type.luna: return {
@@ -69,7 +72,8 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             deny: range("luna_luna_deny", 13),
             not_yet: range("luna_luna_notyet", 9),
             pain: range("luna_luna_pain", 11),
-            purchase: range("luna_luna_purch", 3)
+            purchase: range("luna_luna_purch", 3),
+            thanks: range("luna_luna_thanks", 3)
         };
 
         case Hero_Type.skywrath_mage: return {
@@ -82,7 +86,8 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             deny: range("skywrath_mage_drag_deny", 16),
             not_yet: range("skywrath_mage_drag_notyet", 9),
             pain: range("skywrath_mage_drag_pain", 9),
-            purchase: range("skywrath_mage_drag_purch", 3)
+            purchase: range("skywrath_mage_drag_purch", 3),
+            thanks: range("skywrath_mage_drag_thanks", 2)
         };
 
         case Hero_Type.dragon_knight: return {
@@ -96,7 +101,8 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             deny: range("dragon_knight_drag_deny", 9),
             not_yet: range("dragon_knight_drag_notyet", 9),
             pain: range("dragon_knight_drag_pain", 8),
-            purchase: range("dragon_knight_drag_purch", 3)
+            purchase: range("dragon_knight_drag_purch", 3),
+            thanks: range("dragon_knight_drag_thanks", 3)
         };
 
         case Hero_Type.lion: return {
@@ -109,7 +115,8 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             deny: range("lion_lion_deny", 10),
             not_yet: range("lion_lion_notyet", 10),
             pain: range("lion_lion_pain", 10),
-            purchase: range("lion_lion_purc", 3)
+            purchase: range("lion_lion_purc", 3),
+            thanks: range("lion_lion_thanks", 2)
         };
 
         case Hero_Type.mirana: return {
@@ -122,7 +129,8 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             deny: range("mirana_mir_deny", 19),
             not_yet: range("mirana_mir_notyet", 9),
             pain: range("mirana_mir_pain", 10),
-            purchase: range("mirana_mir_purch", 3)
+            purchase: range("mirana_mir_purch", 3),
+            thanks: range("mirana_mir_thanks", 2)
         };
 
         case Hero_Type.vengeful_spirit: return {
@@ -135,7 +143,8 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             deny: range("vengefulspirit_vng_deny", 4),
             not_yet: range("vengefulspirit_vng_notyet", 9),
             pain: range("vengefulspirit_vng_pain", 5),
-            purchase: range("vengefulspirit_vng_purch", 2)
+            purchase: range("vengefulspirit_vng_purch", 2),
+            thanks: range("vengefulspirit_vng_thanks", 2)
         };
 
         case Hero_Type.dark_seer: return {
@@ -148,7 +157,8 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             deny: range("dark_seer_dkseer_deny", 8),
             not_yet: range("dark_seer_dkseer_notyet", 9),
             pain: range("dark_seer_dkseer_pain", 11),
-            purchase: range("dark_seer_dkseer_purch", 3)
+            purchase: range("dark_seer_dkseer_purch", 3),
+            thanks: range("dark_seer_dkseer_thanks", 2)
         };
 
         case Hero_Type.ember_spirit: return {
@@ -165,7 +175,8 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
                 "ember_spirit_embr_purch_01",
                 "ember_spirit_embr_purch_02",
                 "ember_spirit_embr_purch_04"
-            ]
+            ],
+            thanks: range("ember_spirit_embr_thanks_", 2)
         };
 
         case Hero_Type.earthshaker: return {
@@ -173,12 +184,13 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             spawn: range("earthshaker_erth_spawn", 6),
             move: range("earthshaker_erth_move", 17),
             attack: range("earthshaker_erth_attack", 8),
-            level_up: range("earthshaker_erth_level_01", 9),
+            level_up: range("earthshaker_erth_level", 9),
             kill: range("earthshaker_erth_kill", 11),
             deny: range("earthshaker_erth_deny", 5),
             not_yet: range("earthshaker_erth_notyet", 6),
             pain: range("earthshaker_erth_pain", 10),
-            purchase: range("earthshaker_erth_purch_01", 3)
+            purchase: range("earthshaker_erth_purch", 3),
+            thanks: range("earthshaker_erth_thanks", 3),
         };
 
         // ^".*
