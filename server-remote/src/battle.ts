@@ -22,6 +22,7 @@ type Hero_Spawn = {
     id: Unit_Id
     type: Hero_Type
     health: number
+    items: Item_Id[]
 }
 
 type Creep_Spawn = {
@@ -2266,6 +2267,18 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
             if (!spawn_at) break;
 
             submit_battle_delta(battle, spawn_hero(hero.id, player, spawn_at.position, hero.type, hero.health));
+
+            const spawned_hero = find_hero_by_id(battle, hero.id);
+
+            if (spawned_hero) {
+                const equips = hero.items.map(item_id => equip_item(battle, spawned_hero, item_id_to_item(item_id)));
+
+                submit_battle_delta(battle, {
+                    type: Delta_Type.equip_items,
+                    unit_id: hero.id,
+                    items: equips
+                });
+            }
         }
 
         for (const creep of creeps) {

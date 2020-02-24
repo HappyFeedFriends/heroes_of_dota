@@ -450,7 +450,8 @@ function player_to_battle_participant(next_id: Id_Generator, player: Map_Player)
         heroes: player.deck.heroes.map(type => ({
             id: next_id() as Unit_Id,
             type: type,
-            health: hero_definition_by_type(type).health
+            health: hero_definition_by_type(type).health,
+            items: []
         })),
         spells: player.deck.spells.map(spell => ({
             id: next_id() as Card_Id,
@@ -489,7 +490,8 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                     participant.heroes.push({
                         id: id,
                         health: slot.health,
-                        type: slot.hero
+                        type: slot.hero,
+                        items: slot.items.filter(item => item != undefined)
                     });
                 }
 

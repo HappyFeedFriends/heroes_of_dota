@@ -37,11 +37,11 @@ type Item =
     Item_Octarine_Core |
     Item_Basher
 
-type Delta_Equip_Item =
-    Delta_Equip_Item_With_Modifier |
-    Delta_Equip_Tome_Of_Knowledge |
-    Delta_Equip_Refresher_Shard |
-    Delta_Equip_Enchanted_Mango
+type Equip_Item =
+    Equip_Item_With_Modifier |
+    Equip_Tome_Of_Knowledge |
+    Equip_Refresher_Shard |
+    Equip_Enchanted_Mango
 
 type Item_Base = {
     gold_cost: number
@@ -129,12 +129,7 @@ type Item_Basher = Item_Base & {
     id: Item_Id.basher
 }
 
-type Delta_Equip_Item_Base = {
-    type: Delta_Type.equip_item
-    unit_id: Unit_Id
-}
-
-type Delta_Equip_Item_With_Modifier = Delta_Equip_Item_Base & {
+type Equip_Item_With_Modifier = {
     item_id:
         Item_Id.satanic |
         Item_Id.heart_of_tarrasque |
@@ -154,12 +149,12 @@ type Delta_Equip_Item_With_Modifier = Delta_Equip_Item_Base & {
     modifier: Modifier_Application
 }
 
-type Delta_Equip_Tome_Of_Knowledge = Delta_Equip_Item_Base & {
+type Equip_Tome_Of_Knowledge = {
     item_id: Item_Id.tome_of_knowledge
     new_level: number
 }
 
-type Delta_Equip_Refresher_Shard = Delta_Equip_Item_Base & {
+type Equip_Refresher_Shard = {
     item_id: Item_Id.refresher_shard
     charge_changes: {
         ability_id: Ability_Id
@@ -167,7 +162,7 @@ type Delta_Equip_Refresher_Shard = Delta_Equip_Item_Base & {
     }[]
 }
 
-type Delta_Equip_Enchanted_Mango = Delta_Equip_Item_Base & {
+type Equip_Enchanted_Mango = {
     item_id: Item_Id.enchanted_mango
     change: {
         ability_id: Ability_Id

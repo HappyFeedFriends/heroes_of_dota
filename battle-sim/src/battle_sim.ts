@@ -1581,12 +1581,12 @@ function collapse_unit_target_spell_use(battle: Battle, caster: Battle_Player, t
     }
 }
 
-function collapse_item_equip(battle: Battle, hero: Hero, delta: Delta_Equip_Item) {
-    const source = item_source(delta.item_id);
+function collapse_item_equip(battle: Battle, hero: Hero, equip: Equip_Item) {
+    const source = item_source(equip.item_id);
 
-    switch (delta.item_id) {
+    switch (equip.item_id) {
         case Item_Id.refresher_shard: {
-            for (const change of delta.charge_changes) {
+            for (const change of equip.charge_changes) {
                 const ability = find_unit_ability(hero, change.ability_id);
 
                 if (ability && ability.type != Ability_Type.passive) {
@@ -1598,93 +1598,93 @@ function collapse_item_equip(battle: Battle, hero: Hero, delta: Delta_Equip_Item
         }
 
         case Item_Id.enchanted_mango: {
-            if (!delta.change) break;
+            if (!equip.change) break;
 
-            const ability = find_unit_ability(hero, delta.change.ability_id);
+            const ability = find_unit_ability(hero, equip.change.ability_id);
 
             if (ability && ability.type != Ability_Type.passive) {
-                ability.charges_remaining = delta.change.charges_remaining;
+                ability.charges_remaining = equip.change.charges_remaining;
             }
 
             break;
         }
 
         case Item_Id.tome_of_knowledge: {
-            hero.level = delta.new_level;
+            hero.level = equip.new_level;
             break;
         }
 
         case Item_Id.blades_of_attack: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break;
         }
 
         case Item_Id.assault_cuirass: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break;
         }
 
         case Item_Id.divine_rapier: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break
         }
 
         case Item_Id.heart_of_tarrasque: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break
         }
 
         case Item_Id.satanic: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break
         }
 
         case Item_Id.boots_of_travel: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break
         }
 
         case Item_Id.boots_of_speed: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break
         }
 
         case Item_Id.mask_of_madness: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break
         }
 
         case Item_Id.armlet: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break;
         }
 
         case Item_Id.belt_of_strength: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break;
         }
 
         case Item_Id.morbid_mask: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break;
         }
 
         case Item_Id.chainmail: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break;
         }
 
         case Item_Id.octarine_core: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break;
         }
 
         case Item_Id.basher: {
-            apply_modifier(battle, source, hero, delta.modifier);
+            apply_modifier(battle, source, hero, equip.modifier);
             break;
         }
 
-        default: unreachable(delta);
+        default: unreachable(equip);
     }
 }
 
@@ -2095,6 +2095,21 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                 hero.items.push(item);
 
                 collapse_item_equip(battle, hero, delta);
+            }
+
+            break;
+        }
+
+        case Delta_Type.equip_items: {
+            const hero = find_hero_by_id(battle, delta.unit_id);
+            if (!hero) break;
+
+            for (const equip of delta.items) {
+                const item = item_id_to_item(equip.item_id);
+
+                hero.items.push(item);
+
+                collapse_item_equip(battle, hero, equip);
             }
 
             break;

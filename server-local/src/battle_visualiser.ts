@@ -2643,56 +2643,51 @@ function play_rune_pickup_delta(game: Game, unit: Hero, delta: Delta_Rune_Pick_U
     }
 }
 
-function play_item_equip_delta(game: Game, hero: Hero, delta: Delta_Equip_Item) {
-    wait(0.3);
-
-    unit_emit_sound(hero, "Item.PickUpShop");
-    try_play_random_sound_for_hero(hero, sounds => sounds.purchase);
-
+function apply_item_equip_effects(game: Game, hero: Hero, equip: Equip_Item) {
     const source: Modifier_Data_Source = {
         type: Source_Type.item,
-        item_id: delta.item_id
+        item_id: equip.item_id
     };
 
-    switch (delta.item_id) {
+    switch (equip.item_id) {
         case Item_Id.assault_cuirass: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             break;
         }
 
         case Item_Id.boots_of_travel: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             break;
         }
 
         case Item_Id.boots_of_speed: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             break;
         }
 
         case Item_Id.blades_of_attack: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             break;
         }
 
         case Item_Id.divine_rapier: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             break;
         }
 
         case Item_Id.heart_of_tarrasque: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             break;
         }
 
         case Item_Id.satanic: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             unit_emit_sound(hero, "equip_satanic");
             break;
         }
 
         case Item_Id.tome_of_knowledge: {
-            change_hero_level(game, hero, delta.new_level);
+            change_hero_level(game, hero, equip.new_level);
             break;
         }
 
@@ -2704,43 +2699,43 @@ function play_item_equip_delta(game: Game, hero: Hero, delta: Delta_Equip_Item) 
         }
 
         case Item_Id.mask_of_madness: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             unit_emit_sound(hero, "DOTA_Item.MaskOfMadness.Activate");
 
             break;
         }
 
         case Item_Id.armlet: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             unit_emit_sound(hero, "DOTA_Item.Armlet.Activate");
 
             break;
         }
 
         case Item_Id.belt_of_strength: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
 
             break;
         }
 
         case Item_Id.morbid_mask: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
 
             break;
         }
 
         case Item_Id.chainmail: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             break;
         }
 
         case Item_Id.octarine_core: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             break;
         }
 
         case Item_Id.basher: {
-            apply_modifier(game, hero, delta.modifier, source);
+            apply_modifier(game, hero, equip.modifier, source);
             break;
         }
 
@@ -2751,8 +2746,16 @@ function play_item_equip_delta(game: Game, hero: Hero, delta: Delta_Equip_Item) 
             break;
         }
 
-        default: unreachable(delta);
+        default: unreachable(equip);
     }
+}
+
+function play_item_equip_delta(game: Game, hero: Hero, equip: Equip_Item) {
+    wait(0.3);
+
+    unit_emit_sound(hero, "Item.PickUpShop");
+    try_play_random_sound_for_hero(hero, sounds => sounds.purchase);
+    apply_item_equip_effects(game, hero, equip);
 
     wait(1.2);
 }
@@ -3284,6 +3287,19 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             if (hero) {
                 play_item_equip_delta(game, hero, delta);
             }
+
+            break;
+        }
+
+        case Delta_Type.equip_items: {
+            const hero = find_hero_by_id(delta.unit_id);
+            if (!hero) break;
+
+            for (const equip of from_client_array(delta.items)) {
+                apply_item_equip_effects(game, hero, equip);
+            }
+
+            update_game_net_table(game);
 
             break;
         }

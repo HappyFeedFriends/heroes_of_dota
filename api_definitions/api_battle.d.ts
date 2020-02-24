@@ -33,6 +33,7 @@ declare const enum Delta_Type {
     rune_pick_up = 26,
     purchase_item = 27,
     equip_item = 28,
+    equip_items = 29,
 
     end_turn = 50,
     game_start = 51,
@@ -545,6 +546,17 @@ type Delta_Purchase_Item = {
     item_id: Item_Id
 }
 
+type Delta_Equip_Item = Equip_Item & {
+    type: Delta_Type.equip_item
+    unit_id: Unit_Id
+}
+
+type Delta_Equip_Items = {
+    type: Delta_Type.equip_items
+    unit_id: Unit_Id
+    items: Equip_Item[]
+}
+
 type Delta_Shop_Spawn = {
     type: Delta_Type.shop_spawn
     shop_type: Shop_Type
@@ -648,6 +660,7 @@ type Delta =
     Delta_Use_Card |
     Delta_Purchase_Item |
     Delta_Equip_Item |
+    Delta_Equip_Items |
     Delta_Gold_Change |
     Delta_End_Turn |
     Delta_Game_Start |
