@@ -300,6 +300,8 @@ function set_drag_state(state: Inventory_Drag_State) {
     party.drag_state = state;
 
     if (state.dragging) {
+        hide_adventure_tooltip();
+
         adventure_ui.party_container.AddClass("dragging_item");
     } else {
         adventure_ui.party_container.RemoveClass("dragging_item");
@@ -852,6 +854,14 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         }
     }
 
+    function flash_slot(slot: Adventure_Party_Slot_UI) {
+        const flash = $.CreatePanel("Panel", slot.container, "");
+        flash.AddClass("animate_add_to_deck_flash");
+        flash.hittest = false;
+
+        flash.DeleteAsync(2);
+    }
+
     function get_and_remove_item_from_slot(source: Adventure_Party_Item_Container): Item_Id | undefined {
         $.Msg(`Remove from ${enum_to_string(source.type)}`);
 
@@ -905,6 +915,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                 const item_panel = hero_slot.items[target.item_slot_index];
                 if (!item_panel) return;
 
+                flash_slot(hero_slot);
                 update_hero_inventory_item_ui(item_panel, target.hero_slot_index, target.item_slot_index, item);
 
                 Game.EmitSound("party_hero_item_pickup");
@@ -926,10 +937,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
     switch (change.type) {
         case Adventure_Party_Change_Type.set_slot: {
             const new_slot = set_adventure_party_slot(change.slot_index, change.slot);
-
-            const flash = $.CreatePanel("Panel", new_slot.container, "");
-            flash.AddClass("animate_add_to_deck_flash");
-            flash.hittest = false;
+            flash_slot(new_slot);
 
             return fixed_duration(0.2);
         }
