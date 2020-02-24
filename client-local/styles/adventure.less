@@ -47,63 +47,56 @@
       #adventure_party_header {
         width: 100%;
 
-        #adventure_party_label {
-          font-family: @font-title;
-          font-size: 24px;
-          vertical-align: bottom;
-          color: white;
-          text-shadow: 0px 0px 2px 3 black;
-          white-space: nowrap;
-          margin-bottom: 8px;
-        }
-
-        #adventure_currency {
+        #adventure_party_items {
           flow-children: right;
-          align: right bottom;
-          margin-bottom: 8px;
+          align: left bottom;
 
-          #currency_icon {
-            vertical-align: center;
-            width: 32px;
-            height: 32px;
-            margin-right: 4px;
-            background-size: 100% auto;
-            background-position: center center;
-            background-repeat: no-repeat no-repeat;
-            background-image: url("s2r://panorama/images/hud/reborn/gold_small_psd.vtex");
+          #adventure_currency {
+            align: center center;
+
+            width: 40px;
+            height: 48px;
+
+            #currency_icon {
+              vertical-align: center;
+              width: 32px;
+              height: 32px;
+              background-size: 100% auto;
+              background-position: center center;
+              background-repeat: no-repeat no-repeat;
+              background-image: url("s2r://panorama/images/hud/reborn/gold_small_psd.vtex");
+            }
+
+            #currency_remaining {
+              align: right bottom;
+              color: white;
+              font-family: @font-mono;
+              font-size: 20px;
+              text-shadow: 0px 0px 2px 3 black;
+            }
           }
 
-          #currency_remaining {
-            color: white;
-            font-family: @font-mono;
+          #adventure_party_bag {
+            flow-children: right;
             align: center bottom;
-            font-size: 30px;
-            text-shadow: 0px 0px 2px 3 black;
-          }
-        }
+            // panorama/images/hud/stash_icon_png.vtex
+            //width: 100%;
+            //padding-left: 30px;
+            //padding-right: 30px;
+            //padding-top: 10px;
+            padding: 6px;
+            //border-radius: 2px;
+            //box-shadow: 0px 0px 4px black;
 
-        #adventure_party_bag {
-          flow-children: right;
-          align: center bottom;
-          // panorama/images/hud/stash_icon_png.vtex
-          //background-image: url("s2r://panorama/images/hud/reborn/statbranch_background_description_psd.vtex");
-          //background-size: 100% 100%;
-          //width: 100%;
-          //padding-left: 30px;
-          //padding-right: 30px;
-          //padding-top: 10px;
-          padding: 10px;
-          //border-radius: 2px;
-          //box-shadow: 0px 0px 4px black;
-
-          .item {
-            width: 32px;
-            height: 32px;
-            background-size: auto 100%;
-            border: 1px solid black;
-            margin: 0 2px;
-            border-radius: 1px;
-            box-shadow: 0px 0px 4px black;
+            .item {
+              width: 32px;
+              height: 32px;
+              background-size: auto 100%;
+              border: 1px solid black;
+              margin: 0 1px;
+              border-radius: 1px;
+              box-shadow: 0px 0px 4px black;
+            }
           }
         }
 

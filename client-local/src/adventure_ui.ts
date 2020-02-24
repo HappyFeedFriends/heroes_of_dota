@@ -577,6 +577,8 @@ function reinitialize_adventure_ui(slots: number) {
     const card_container = adventure_ui.card_container;
     card_container.RemoveAndDeleteChildren();
 
+    adventure_ui.currency_label.text = "0";
+
     party.bag.panel.RemoveAndDeleteChildren();
     party.bag.items = [];
 

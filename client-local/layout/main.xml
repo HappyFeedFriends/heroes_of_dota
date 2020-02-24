@@ -125,12 +125,13 @@
                 <Panel id="left_flare"/>
                 <Panel id="adventure_party">
                     <Panel id="adventure_party_header">
-                        <Label id="adventure_party_label" text="Party status"/>
-                        <Panel id="adventure_currency">
-                            <Panel id="currency_icon"/>
-                            <Label id="currency_remaining"/>
+                        <Panel id="adventure_party_items">
+                            <Panel id="adventure_currency">
+                                <Panel id="currency_icon"/>
+                                <Label id="currency_remaining"/>
+                            </Panel>
+                            <Panel id="adventure_party_bag"/>
                         </Panel>
-                        <Panel id="adventure_party_bag"/>
                         <Panel id="adventure_party_bag_drop_layer"/>
                     </Panel>
                     <Panel id="adventure_party_row">
