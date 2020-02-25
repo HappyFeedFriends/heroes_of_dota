@@ -3291,12 +3291,15 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             break;
         }
 
-        case Delta_Type.equip_items: {
-            const hero = find_hero_by_id(delta.unit_id);
-            if (!hero) break;
+        case Delta_Type.adventure_items_applied: {
+            const unit = find_unit_by_id(delta.unit_id);
+            if (!unit) break;
 
-            for (const equip of from_client_array(delta.items)) {
-                apply_item_equip_effects(game, hero, equip);
+            for (const modifier of from_client_array(delta.modifiers)) {
+                apply_modifier(game, unit, modifier, {
+                    type: Source_Type.adventure_item,
+                    item_id: modifier.source_item
+                });
             }
 
             update_game_net_table(game);

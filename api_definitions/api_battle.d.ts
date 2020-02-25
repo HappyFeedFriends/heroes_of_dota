@@ -33,7 +33,7 @@ declare const enum Delta_Type {
     rune_pick_up = 26,
     purchase_item = 27,
     equip_item = 28,
-    equip_items = 29,
+    adventure_items_applied = 29,
 
     end_turn = 50,
     game_start = 51,
@@ -137,7 +137,8 @@ declare const enum Source_Type {
     unit = 1,
     player = 2,
     item = 3,
-    modifier = 4
+    modifier = 4,
+    adventure_item = 5
 }
 
 declare const enum Timed_Effect_Type {
@@ -551,10 +552,12 @@ type Delta_Equip_Item = Equip_Item & {
     unit_id: Unit_Id
 }
 
-type Delta_Equip_Items = {
-    type: Delta_Type.equip_items
+type Delta_Adventure_Items_Applied = {
+    type: Delta_Type.adventure_items_applied
     unit_id: Unit_Id
-    items: Equip_Item[]
+    modifiers: Array<Modifier_Application & {
+        source_item: Adventure_Wearable_Item_Id
+    }>
 }
 
 type Delta_Shop_Spawn = {
@@ -650,6 +653,7 @@ type Delta =
     Delta_Level_Change |
     Delta_Modifier_Applied |
     Delta_Modifier_Removed |
+    Delta_Adventure_Items_Applied |
     Delta_Set_Ability_Charges_Remaining |
     Delta_Ability_Effect_Applied<Ability_Effect> |
     Delta_Modifier_Effect_Applied |
@@ -660,7 +664,6 @@ type Delta =
     Delta_Use_Card |
     Delta_Purchase_Item |
     Delta_Equip_Item |
-    Delta_Equip_Items |
     Delta_Gold_Change |
     Delta_End_Turn |
     Delta_Game_Start |

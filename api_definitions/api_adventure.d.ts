@@ -32,9 +32,32 @@ declare const enum Adventure_Party_Action_Type {
     drag_hero_item_on_bag = 3
 }
 
-declare const enum Adventure_Party_Item_Container_Type {
+declare const enum Adventure_Item_Container_Type {
     hero = 0,
     bag = 1
+}
+
+declare const enum Adventure_Item_Type {
+    wearable = 0,
+    consumable = 1
+}
+
+declare const enum Adventure_Wearable_Item_Id {
+    boots_of_travel = 0,
+    assault_cuirass = 1,
+    divine_rapier = 2,
+    mask_of_madness = 3,
+    boots_of_speed = 4,
+    blades_of_attack = 5,
+    belt_of_strength = 6,
+    chainmail = 7,
+    basher = 8
+}
+
+declare const enum Adventure_Consumable_Item_Id {
+    healing_salve = 0,
+    enchanted_mango = 1,
+    tome_of_knowledge = 2
 }
 
 declare const enum Adventure_Constants {
@@ -143,7 +166,7 @@ type Adventure_Party_Slot = {
     type: Adventure_Party_Slot_Type.hero
     hero: Hero_Type
     health: number
-    items: Item_Id[]
+    items: Adventure_Hero_Inventory
 } | {
     type: Adventure_Party_Slot_Type.creep
     creep: Creep_Type
@@ -163,19 +186,19 @@ type Adventure_Party_Change = {
     health: number
 } | {
     type: Adventure_Party_Change_Type.add_item_to_bag
-    item_id: Item_Id
+    item: Adventure_Item
 } | {
     type: Adventure_Party_Change_Type.move_item
-    source: Adventure_Party_Item_Container
-    target: Adventure_Party_Item_Container
+    source: Adventure_Item_Container
+    target: Adventure_Item_Container
 }
 
-type Adventure_Party_Item_Container = {
-    type: Adventure_Party_Item_Container_Type.hero
+type Adventure_Item_Container = {
+    type: Adventure_Item_Container_Type.hero
     hero_slot_index: number
     item_slot_index: number
 } | {
-    type: Adventure_Party_Item_Container_Type.bag
+    type: Adventure_Item_Container_Type.bag
     bag_slot_index: number
 }
 
@@ -206,7 +229,23 @@ type Adventure_Party_Response = {
     apply_to_head: number
 }
 
+type Adventure_Item = Adventure_Consumable_Item | Adventure_Wearable_Item
+
+type Adventure_Consumable_Item = {
+    type: Adventure_Item_Type.consumable
+    item_id: Adventure_Consumable_Item_Id
+    charges: number
+}
+
+type Adventure_Wearable_Item = {
+    type: Adventure_Item_Type.wearable
+    item_id: Adventure_Wearable_Item_Id
+    modifier: Modifier
+}
+
+type Adventure_Hero_Inventory = Array<Adventure_Item | undefined> // Sparse array
+
 type Party_Snapshot = {
     slots: Adventure_Party_Slot[]
-    bag: Item_Id[]
+    bag: Adventure_Item[]
 }

@@ -56,7 +56,7 @@ type Inventory_Drag_State = {
 } | {
     dragging: true
     dragged_panel: Panel
-    item: Item_Id
+    item: Adventure_Item
     source: Drag_Source
 }
 
@@ -101,7 +101,7 @@ type Base_Slot_UI = {
 }
 
 type Inventory_Item_UI = {
-    item: Item_Id | undefined
+    item: Adventure_Item | undefined
     slot_index: number
     panel: Panel
     drop_layer: Panel
@@ -114,7 +114,7 @@ type Bag_UI = {
 
 type Bag_Item_UI = {
     slot: number
-    item: Item_Id
+    item: Adventure_Item
     panel: Panel
 }
 
@@ -185,7 +185,7 @@ function extract_original_slot(ui_slot: Adventure_Party_Slot_UI): Adventure_Part
             return {
                 type: ui_slot.type,
                 hero: ui_slot.hero,
-                items: ui_slot.items.map(item => item.item!), // We cast Item_Id? to Item_Id here, but it doesn't matter...
+                items: ui_slot.items.map(item => item.item),
                 health: ui_slot.health
             }
         }
@@ -266,11 +266,11 @@ function fill_adventure_empty_slot(container: Panel): Adventure_Party_Slot_UI {
     }
 }
 
-function add_bag_item(item: Item_Id, slot_index = party.bag.items.length) {
+function add_bag_item(item: Adventure_Item, slot_index = party.bag.items.length) {
     const item_panel = $.CreatePanel("Panel", party.bag.panel, "");
     item_panel.AddClass("item");
     item_panel.SetDraggable(true);
-    safely_set_panel_background_image(item_panel, get_item_icon(item));
+    safely_set_panel_background_image(item_panel, get_adventure_item_icon(item));
 
     const slot = {
         slot: slot_index,
@@ -309,8 +309,8 @@ function set_drag_state(state: Inventory_Drag_State) {
     }
 }
 
-function register_slot_drag_events(slot: Panel, item: Item_Id, drag_source_source: () => Drag_Source) {
-    const image = get_item_icon(item);
+function register_slot_drag_events(slot: Panel, item: Adventure_Item, drag_source_source: () => Drag_Source) {
+    const image = get_adventure_item_icon(item);
 
     $.RegisterEventHandler("DragStart", slot, (id, drag) => {
         const dragged_panel = $.CreatePanel("Panel", slot, "");
@@ -350,7 +350,7 @@ function register_slot_drag_events(slot: Panel, item: Item_Id, drag_source_sourc
     });
 }
 
-function update_hero_inventory_item_ui(ui: Inventory_Item_UI, hero_slot_index: number, inventory_slot_index: number, item_in_slot: Item_Id | undefined) {
+function update_hero_inventory_item_ui(ui: Inventory_Item_UI, hero_slot_index: number, inventory_slot_index: number, item_in_slot: Adventure_Item | undefined) {
     const item_panel = ui.panel;
 
     ui.item = item_in_slot;
@@ -359,8 +359,11 @@ function update_hero_inventory_item_ui(ui: Inventory_Item_UI, hero_slot_index: n
 
     if (item_in_slot == undefined) {
         item_panel.style.backgroundImage = "none";
+        item_panel.SetDraggable(false);
     } else {
-        const image = get_item_icon(item_in_slot);
+        item_panel.SetDraggable(true);
+
+        const image = get_adventure_item_icon(item_in_slot);
         safely_set_panel_background_image(item_panel, image);
         register_slot_drag_events(item_panel, item_in_slot, () => ({
             type: Drag_Source_Type.hero,
@@ -372,7 +375,7 @@ function update_hero_inventory_item_ui(ui: Inventory_Item_UI, hero_slot_index: n
     $.RegisterEventHandler("DragEnter", item_panel, () => {
         if (!party.drag_state.dragging) return true;
 
-        const dragged_item_image = get_item_icon(party.drag_state.item);
+        const dragged_item_image = get_adventure_item_icon(party.drag_state.item);
         update_drag_and_drop_styles(item_panel, true);
         safely_set_panel_background_image(ui.drop_layer, dragged_item_image);
 
@@ -430,7 +433,7 @@ function register_bag_drop_events(bag_panel: Panel) {
 
 }
 
-function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: Hero_Type, health: number, items: Item_Id[]): Adventure_Party_Slot_UI {
+function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: Hero_Type, health: number, items: Adventure_Hero_Inventory): Adventure_Party_Slot_UI {
     const base = fill_adventure_base_slot_ui(container);
     base.art.AddClass("hero");
     safely_set_panel_background_image(base.art, get_hero_card_art(hero));
@@ -445,7 +448,6 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
         const item_panel = $.CreatePanel("Panel", inventory_parent, "");
 
         item_panel.AddClass("slot");
-        item_panel.SetDraggable(true);
 
         const drop_layer = $.CreatePanel("Panel", item_panel, "drop_layer");
         drop_layer.hittest = false;
@@ -864,20 +866,20 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         flash.DeleteAsync(2);
     }
 
-    function get_and_remove_item_from_slot(source: Adventure_Party_Item_Container): Item_Id | undefined {
+    function get_and_remove_item_from_slot(source: Adventure_Item_Container): Adventure_Item | undefined {
         $.Msg(`Remove from ${enum_to_string(source.type)}`);
 
         switch (source.type) {
-            case Adventure_Party_Item_Container_Type.bag: {
+            case Adventure_Item_Container_Type.bag: {
                 const bag_slot = party.bag.items[source.bag_slot_index];
-                if (bag_slot == undefined) return;
+                if (!bag_slot) return;
 
                 remove_bag_item(bag_slot);
 
                 return bag_slot.item;
             }
 
-            case Adventure_Party_Item_Container_Type.hero: {
+            case Adventure_Item_Container_Type.hero: {
                 const hero_slot = party.slots[source.hero_slot_index];
                 if (!hero_slot) return;
                 if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
@@ -897,11 +899,11 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         }
     }
 
-    function put_item_in_slot(target: Adventure_Party_Item_Container, item: Item_Id) {
+    function put_item_in_slot(target: Adventure_Item_Container, item: Adventure_Item) {
         $.Msg(`Put ${enum_to_string(item)} into ${enum_to_string(target.type)}`);
 
         switch (target.type) {
-            case Adventure_Party_Item_Container_Type.bag: {
+            case Adventure_Item_Container_Type.bag: {
                 add_bag_item(item, target.bag_slot_index);
 
                 Game.EmitSound("party_bag_item_pickup");
@@ -909,7 +911,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                 break;
             }
 
-            case Adventure_Party_Item_Container_Type.hero: {
+            case Adventure_Item_Container_Type.hero: {
                 const hero_slot = party.slots[target.hero_slot_index];
                 if (!hero_slot) return;
                 if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
@@ -945,7 +947,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         }
 
         case Adventure_Party_Change_Type.add_item_to_bag: {
-            add_bag_item(change.item_id);
+            add_bag_item(change.item);
 
             break;
         }

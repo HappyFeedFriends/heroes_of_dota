@@ -173,6 +173,9 @@ type Modifier_Data_Source = {
     type: Source_Type.unit
     unit_id: Unit_Id
     ability_id: Ability_Id
+} | {
+    type: Source_Type.adventure_item
+    item_id: Adventure_Wearable_Item_Id
 }
 
 type Modifier_Data = {

@@ -14,6 +14,32 @@ function get_creep_name(creep: Creep_Type) {
         .reduce((prev, value) => prev + " " + value);
 }
 
+function get_adventure_wearable_item_icon(id: Adventure_Wearable_Item_Id): string {
+    switch (id) {
+        case Adventure_Wearable_Item_Id.boots_of_travel: return get_item_icon(Item_Id.boots_of_travel);
+        case Adventure_Wearable_Item_Id.assault_cuirass: return get_item_icon(Item_Id.assault_cuirass);
+        case Adventure_Wearable_Item_Id.divine_rapier: return get_item_icon(Item_Id.divine_rapier);
+        case Adventure_Wearable_Item_Id.mask_of_madness: return get_item_icon(Item_Id.mask_of_madness);
+        case Adventure_Wearable_Item_Id.boots_of_speed: return get_item_icon(Item_Id.boots_of_speed);
+        case Adventure_Wearable_Item_Id.blades_of_attack: return get_item_icon(Item_Id.blades_of_attack);
+        case Adventure_Wearable_Item_Id.belt_of_strength: return get_item_icon(Item_Id.belt_of_strength);
+        case Adventure_Wearable_Item_Id.chainmail: return get_item_icon(Item_Id.chainmail);
+        case Adventure_Wearable_Item_Id.basher: return get_item_icon(Item_Id.basher);
+    }
+}
+
+function get_adventure_item_icon(item: Adventure_Item): string {
+    switch (item.type) {
+        case Adventure_Item_Type.wearable: {
+            return get_adventure_wearable_item_icon(item.item_id);
+        }
+
+        case Adventure_Item_Type.consumable: {
+            return get_item_icon(Item_Id.enchanted_mango); // TODO placeholder
+        }
+    }
+}
+
 function get_item_icon(id: Item_Id) {
     function get_item_icon_name(id: Item_Id): string {
         switch (id) {

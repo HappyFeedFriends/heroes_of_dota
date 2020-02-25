@@ -29,7 +29,12 @@ type Source_Modifier = {
     applied: Applied_Modifier
 }
 
-type Source = Source_None | Source_Unit | Source_Item | Source_Player | Source_Modifier
+type Source_Adventure_Item = {
+    type: Source_Type.adventure_item
+    item_id: Adventure_Wearable_Item_Id
+}
+
+type Source = Source_None | Source_Unit | Source_Item | Source_Player | Source_Modifier | Source_Adventure_Item
 
 type Battle = {
     state: {
@@ -418,13 +423,13 @@ function ability_has_flag(ability: Ability_Active, flag: Ability_Flag) {
     return ability.flags.indexOf(flag) != -1;
 }
 
-function no_source(): Source_None {
+function no_source(): Source {
     return {
         type: Source_Type.none
     }
 }
 
-function unit_source(unit: Unit, ability_id: Ability_Id): Source_Unit {
+function unit_source(unit: Unit, ability_id: Ability_Id): Source {
     return {
         type: Source_Type.unit,
         unit: unit,
@@ -432,24 +437,31 @@ function unit_source(unit: Unit, ability_id: Ability_Id): Source_Unit {
     }
 }
 
-function player_source(player: Battle_Player): Source_Player {
+function player_source(player: Battle_Player): Source {
     return {
         type: Source_Type.player,
         player: player
     }
 }
 
-function item_source(item_id: Item_Id): Source_Item {
+function item_source(item_id: Item_Id): Source {
     return {
         type: Source_Type.item,
         item_id: item_id
     }
 }
 
-function modifier_source(applied: Applied_Modifier): Source_Modifier {
+function modifier_source(applied: Applied_Modifier): Source {
     return {
         type: Source_Type.modifier,
         applied: applied
+    }
+}
+
+function adventure_item_source(item_id: Adventure_Wearable_Item_Id): Source {
+    return {
+        type: Source_Type.adventure_item,
+        item_id: item_id
     }
 }
 
@@ -1961,6 +1973,17 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             break;
         }
 
+        case Delta_Type.adventure_items_applied: {
+            const unit = find_unit_by_id(battle, delta.unit_id);
+            if (!unit) break;
+
+            for (const modifier of delta.modifiers) {
+                apply_modifier(battle, adventure_item_source(modifier.source_item), unit, modifier);
+            }
+
+            break;
+        }
+
         case Delta_Type.modifier_applied: {
             const unit = find_unit_by_id(battle, delta.unit_id);
             if (!unit) break;
@@ -2095,21 +2118,6 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                 hero.items.push(item);
 
                 collapse_item_equip(battle, hero, delta);
-            }
-
-            break;
-        }
-
-        case Delta_Type.equip_items: {
-            const hero = find_hero_by_id(battle, delta.unit_id);
-            if (!hero) break;
-
-            for (const equip of delta.items) {
-                const item = item_id_to_item(equip.item_id);
-
-                hero.items.push(item);
-
-                collapse_item_equip(battle, hero, equip);
             }
 
             break;

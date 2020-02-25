@@ -115,10 +115,94 @@ export function change_party_change_health(slot: number, health: number): Advent
     }
 }
 
-export function change_party_add_item(item: Item_Id): Adventure_Party_Change {
+export function change_party_add_item(item: Adventure_Item): Adventure_Party_Change {
     return {
         type: Adventure_Party_Change_Type.add_item_to_bag,
-        item_id: item
+        item: item
+    }
+}
+
+export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_Id): Adventure_Item {
+    switch (id) {
+        case Adventure_Wearable_Item_Id.boots_of_travel: return {
+            type: Adventure_Item_Type.wearable,
+            item_id: id,
+            modifier: {
+                id: Modifier_Id.item_boots_of_travel,
+                move_bonus: 3
+            }
+        };
+
+        case Adventure_Wearable_Item_Id.assault_cuirass: return {
+            type: Adventure_Item_Type.wearable,
+            item_id: id,
+            modifier: {
+                id: Modifier_Id.item_assault_cuirass,
+                armor: 4
+            }
+        };
+
+        case Adventure_Wearable_Item_Id.divine_rapier: return {
+            type: Adventure_Item_Type.wearable,
+            item_id: id,
+            modifier: {
+                id: Modifier_Id.item_divine_rapier,
+                attack: 8
+            }
+        };
+
+        case Adventure_Wearable_Item_Id.mask_of_madness: return {
+            type: Adventure_Item_Type.wearable,
+            item_id: id,
+            modifier: {
+                id: Modifier_Id.item_mask_of_madness,
+                attack: 4
+            }
+        };
+
+        case Adventure_Wearable_Item_Id.boots_of_speed: return {
+            type: Adventure_Item_Type.wearable,
+            item_id: id,
+            modifier: {
+                id: Modifier_Id.item_boots_of_speed,
+                move_bonus: 1
+            }
+        };
+
+        case Adventure_Wearable_Item_Id.blades_of_attack: return {
+            type: Adventure_Item_Type.wearable,
+            item_id: id,
+            modifier: {
+                id: Modifier_Id.item_blades_of_attack,
+                attack: 2
+            }
+        };
+
+        case Adventure_Wearable_Item_Id.belt_of_strength: return {
+            type: Adventure_Item_Type.wearable,
+            item_id: id,
+            modifier: {
+                id: Modifier_Id.item_belt_of_strength,
+                health: 4
+            }
+        };
+
+        case Adventure_Wearable_Item_Id.chainmail: return {
+            type: Adventure_Item_Type.wearable,
+            item_id: id,
+            modifier: {
+                id: Modifier_Id.item_chainmail,
+                armor: 1
+            }
+        };
+
+        case Adventure_Wearable_Item_Id.basher: return {
+            type: Adventure_Item_Type.wearable,
+            item_id: id,
+            modifier: {
+                id: Modifier_Id.item_basher_bearer
+            }
+        };
     }
 }
 

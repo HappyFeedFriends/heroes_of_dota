@@ -1397,6 +1397,11 @@ function make_battle_snapshot(): Battle_Snapshot {
                 unit_id: source.unit.id,
                 ability_id: source.ability_id
             };
+
+            case Source_Type.adventure_item: return {
+                type: source.type,
+                item_id: source.item_id
+            }
         }
     }
 
@@ -1642,6 +1647,10 @@ function get_modifier_icon(applied: Modifier_Data): string {
 
     if (applied.source.type == Source_Type.unit) {
         return get_full_ability_icon_path(applied.source.ability_id);
+    }
+
+    if (applied.source.type == Source_Type.adventure_item) {
+        return get_adventure_wearable_item_icon(applied.source.item_id);
     }
 
     return "";

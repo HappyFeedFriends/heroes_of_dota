@@ -17,6 +17,7 @@ import {get_debug_ai_data} from "./debug_draw";
 import {get_nearby_neutrals} from "./npc_controller";
 
 import {
+    Adventure_Item_Modifier,
     Battle_Participant,
     Battle_Record,
     start_battle,
@@ -49,7 +50,8 @@ import {
     change_party_empty_slot,
     find_empty_party_slot_index,
     change_party_add_item,
-    act_on_adventure_party
+    act_on_adventure_party,
+    adventure_wearable_item_id_to_item
 } from "./adventure_party";
 
 import {
@@ -451,7 +453,7 @@ function player_to_battle_participant(next_id: Id_Generator, player: Map_Player)
             id: next_id() as Unit_Id,
             type: type,
             health: hero_definition_by_type(type).health,
-            items: []
+            modifiers: []
         })),
         spells: player.deck.spells.map(spell => ({
             id: next_id() as Card_Id,
@@ -480,6 +482,16 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
             case Adventure_Party_Slot_Type.hero: {
                 if (slot.health > 0) {
                     const id = next_id() as Unit_Id;
+                    const modifiers: Adventure_Item_Modifier[] = [];
+
+                    for (const item of slot.items) {
+                        if (item && item.type == Adventure_Item_Type.wearable) {
+                            modifiers.push({
+                                item: item.item_id,
+                                modifier: item.modifier
+                            })
+                        }
+                    }
 
                     links.heroes.push({
                         slot: slot,
@@ -491,7 +503,7 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                         id: id,
                         health: slot.health,
                         type: slot.hero,
-                        items: slot.items.filter(item => item != undefined)
+                        modifiers: modifiers
                     });
                 }
 
@@ -1454,10 +1466,10 @@ function register_dev_handlers() {
                 }
 
                 case "item": {
-                    const elements = parse_enum_query(parts[1], enum_names_to_values<Item_Id>());
+                    const elements = parse_enum_query(parts[1], enum_names_to_values<Adventure_Wearable_Item_Id>());
 
                     for (const element of elements) {
-                        push_party_change(party, change_party_add_item(element));
+                        push_party_change(party, change_party_add_item(adventure_wearable_item_id_to_item(element)));
                     }
 
                     break;

@@ -22,11 +22,11 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
                     change_consumer({
                         type: Adventure_Party_Change_Type.move_item,
                         source: {
-                            type: Adventure_Party_Item_Container_Type.bag,
+                            type: Adventure_Item_Container_Type.bag,
                             bag_slot_index: action.bag_slot
                         },
                         target: {
-                            type: Adventure_Party_Item_Container_Type.hero,
+                            type: Adventure_Item_Container_Type.hero,
                             hero_slot_index: action.party_slot,
                             item_slot_index: index
                         }
@@ -58,12 +58,12 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
                     change_consumer({
                         type: Adventure_Party_Change_Type.move_item,
                         source: {
-                            type: Adventure_Party_Item_Container_Type.hero,
+                            type: Adventure_Item_Container_Type.hero,
                             hero_slot_index: action.source_hero_slot,
                             item_slot_index: action.source_hero_item_slot
                         },
                         target: {
-                            type: Adventure_Party_Item_Container_Type.hero,
+                            type: Adventure_Item_Container_Type.hero,
                             hero_slot_index: action.target_hero_slot,
                             item_slot_index: item_index
                         }
@@ -87,12 +87,12 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
             change_consumer({
                 type: Adventure_Party_Change_Type.move_item,
                 source: {
-                    type: Adventure_Party_Item_Container_Type.hero,
+                    type: Adventure_Item_Container_Type.hero,
                     hero_slot_index: action.source_hero_slot,
                     item_slot_index: action.source_hero_item_slot
                 },
                 target: {
-                    type: Adventure_Party_Item_Container_Type.bag,
+                    type: Adventure_Item_Container_Type.bag,
                     bag_slot_index: party.bag.length // Insert into a new slot at the end
                 }
             });
@@ -140,30 +140,30 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
         }
 
         case Adventure_Party_Change_Type.add_item_to_bag: {
-            party.bag.push(change.item_id);
+            party.bag.push(change.item);
 
             break;
         }
 
         case Adventure_Party_Change_Type.move_item: {
-            function get_and_remove_item_from_slot(source: Adventure_Party_Item_Container): Item_Id | undefined {
+            function get_and_remove_item_from_slot(source: Adventure_Item_Container): Adventure_Item | undefined {
                 switch (source.type) {
-                    case Adventure_Party_Item_Container_Type.bag: {
+                    case Adventure_Item_Container_Type.bag: {
                         const bag_slot = party.bag[source.bag_slot_index];
-                        if (bag_slot == undefined) return;
+                        if (!bag_slot) return;
 
                         party.bag.splice(source.bag_slot_index, 1);
 
                         return bag_slot;
                     }
 
-                    case Adventure_Party_Item_Container_Type.hero: {
+                    case Adventure_Item_Container_Type.hero: {
                         const hero_slot = party.slots[source.hero_slot_index];
                         if (!hero_slot) return;
                         if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
 
                         const item = hero_slot.items[source.item_slot_index];
-                        if (item == undefined) return;
+                        if (!item) return;
 
                         delete hero_slot.items[source.item_slot_index];
 
@@ -172,15 +172,15 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
                 }
             }
 
-            function put_item_in_slot(target: Adventure_Party_Item_Container, item: Item_Id) {
+            function put_item_in_slot(target: Adventure_Item_Container, item: Adventure_Item) {
                 switch (target.type) {
-                    case Adventure_Party_Item_Container_Type.bag: {
+                    case Adventure_Item_Container_Type.bag: {
                         party.bag[target.bag_slot_index] = item;
 
                         break;
                     }
 
-                    case Adventure_Party_Item_Container_Type.hero: {
+                    case Adventure_Item_Container_Type.hero: {
                         const hero_slot = party.slots[target.hero_slot_index];
                         if (!hero_slot) return;
                         if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
