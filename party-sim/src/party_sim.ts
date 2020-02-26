@@ -1,5 +1,21 @@
-function unreachable(x: never): never {
-    throw new Error("Didn't expect to get here");
+function compute_adventure_hero_inventory_field_bonus(inventory: Adventure_Hero_Inventory, field: Modifier_Field) {
+    let bonus = 0;
+
+    for (const item of inventory) {
+        if (!item) continue;
+
+        const changes = calculate_modifier_changes(item.modifier);
+
+        for (const change of changes) {
+            if (change.type == Modifier_Change_Type.field_change) {
+                if (change.field == field) {
+                    bonus += change.delta;
+                }
+            }
+        }
+    }
+
+    return bonus;
 }
 
 // TODO This is wack, because we change the snapshot we pass on server when consuming changes, but not on the client
@@ -122,7 +138,11 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
             if (!slot) return;
 
             switch (slot.type) {
-                case Adventure_Party_Slot_Type.hero:
+                case Adventure_Party_Slot_Type.hero: {
+                    slot.base_health = change.health;
+                    break;
+                }
+
                 case Adventure_Party_Slot_Type.creep: {
                     slot.health = change.health;
                     break;
@@ -184,6 +204,7 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
                         const hero_slot = party.slots[target.hero_slot_index];
                         if (!hero_slot) return;
                         if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
+                        if (item.type != Adventure_Item_Type.wearable) return;
 
                         hero_slot.items[target.item_slot_index] = item;
 

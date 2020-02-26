@@ -78,7 +78,7 @@ export function change_party_add_hero(slot: number, hero: Hero_Type): Adventure_
         slot: {
             type: Adventure_Party_Slot_Type.hero,
             hero: hero,
-            health: hero_definition_by_type(hero).health,
+            base_health: hero_definition_by_type(hero).health,
             items: []
         }
     }

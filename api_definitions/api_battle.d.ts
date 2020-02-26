@@ -435,7 +435,6 @@ type Delta_Hero_Spawn = {
     hero_type: Hero_Type
     unit_id: Unit_Id
     owner_id: Battle_Player_Id
-    health: number
     at_position: XY
 }
 
@@ -555,6 +554,7 @@ type Delta_Equip_Item = Equip_Item & {
 type Delta_Adventure_Items_Applied = {
     type: Delta_Type.adventure_items_applied
     unit_id: Unit_Id
+    final_health: number
     modifiers: Array<Modifier_Application & {
         source_item: Adventure_Wearable_Item_Id
     }>

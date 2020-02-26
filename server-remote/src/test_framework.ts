@@ -110,7 +110,6 @@ class For_Player {
             type: Delta_Type.hero_spawn,
             hero_type: hero,
             at_position: at,
-            health: hero_definition_by_type(hero).health,
             owner_id: this.player.id,
             unit_id: id
         });

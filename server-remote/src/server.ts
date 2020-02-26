@@ -480,7 +480,10 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
     for (const [index, slot] of player_on_adventure.party.slots.entries()) {
         switch (slot.type) {
             case Adventure_Party_Slot_Type.hero: {
-                if (slot.health > 0) {
+                const health_bonus = compute_adventure_hero_inventory_field_bonus(slot.items, Modifier_Field.health_bonus);
+                const actual_health = slot.base_health + health_bonus;
+
+                if (actual_health > 0) {
                     const id = next_id() as Unit_Id;
                     const modifiers: Adventure_Item_Modifier[] = [];
 
@@ -501,7 +504,7 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
 
                     participant.heroes.push({
                         id: id,
-                        health: slot.health,
+                        health: actual_health,
                         type: slot.hero,
                         modifiers: modifiers
                     });
@@ -657,9 +660,16 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
             const source_unit = battle.units.find(unit => unit.id == unit_id);
             if (!source_unit) continue;
 
-            if (slot.health != source_unit.health) {
-                const new_health = Math.min(source_unit.health, hero_definition_by_type(slot.hero).health);
-                push_party_change(player.party, change_party_change_health(link.slot_index, new_health));
+            // Base health can go into negatives
+            // Display health or health in combat = health bonus + base health
+            const health_bonus = compute_adventure_hero_inventory_field_bonus(slot.items, Modifier_Field.health_bonus);
+            const post_combat_health = source_unit.health;
+            const max_base_health = hero_definition_by_type(slot.hero).health;
+            const new_base_health = post_combat_health - health_bonus;
+            const clamped_base_health = Math.min(new_base_health, max_base_health);
+
+            if (clamped_base_health != slot.base_health) {
+                push_party_change(player.party, change_party_change_health(link.slot_index, clamped_base_health));
             }
         }
 

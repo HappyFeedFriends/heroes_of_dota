@@ -1776,8 +1776,6 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                 items: []
             };
 
-            hero.health = delta.health;
-
             battle.units.push(hero);
 
             occupy_cell_at(battle, delta.at_position);
@@ -1980,6 +1978,8 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             for (const modifier of delta.modifiers) {
                 apply_modifier(battle, adventure_item_source(modifier.source_item), unit, modifier);
             }
+
+            unit.health = delta.final_health;
 
             break;
         }

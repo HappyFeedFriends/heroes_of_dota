@@ -22,6 +22,11 @@
       }
     ]
   },
+  "references": [
+    {
+      "path": "../battle-sim"
+    }
+  ],
   "include": [
     "**/*.ts",
     "../api_definitions/api.d.ts",

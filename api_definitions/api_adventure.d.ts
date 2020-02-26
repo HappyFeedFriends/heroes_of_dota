@@ -165,7 +165,7 @@ type Adventure_Party_Slot = {
 } | {
     type: Adventure_Party_Slot_Type.hero
     hero: Hero_Type
-    health: number
+    base_health: number // Can be negative, if compensated by item bonuses
     items: Adventure_Hero_Inventory
 } | {
     type: Adventure_Party_Slot_Type.creep
@@ -243,7 +243,7 @@ type Adventure_Wearable_Item = {
     modifier: Modifier
 }
 
-type Adventure_Hero_Inventory = Array<Adventure_Item | undefined> // Sparse array
+type Adventure_Hero_Inventory = Array<Adventure_Wearable_Item | undefined> // Sparse array
 
 type Party_Snapshot = {
     slots: Adventure_Party_Slot[]

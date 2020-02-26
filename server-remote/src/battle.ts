@@ -1518,7 +1518,7 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
             const { player, card } = hero_card_use_permission;
 
             submit_battle_delta(battle, use_card(player, card));
-            submit_battle_delta(battle, spawn_hero(get_next_entity_id(battle) as Unit_Id, player, action.at, card.hero_type, hero_definition_by_type(card.hero_type).health));
+            submit_battle_delta(battle, spawn_hero(get_next_entity_id(battle) as Unit_Id, player, action.at, card.hero_type));
 
             break;
         }
@@ -1655,14 +1655,13 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
     }
 }
 
-function spawn_hero(id: Unit_Id, owner: Battle_Player, at_position: XY, type: Hero_Type, health: number) : Delta_Hero_Spawn {
+function spawn_hero(id: Unit_Id, owner: Battle_Player, at_position: XY, type: Hero_Type) : Delta_Hero_Spawn {
     return {
         type: Delta_Type.hero_spawn,
         at_position: at_position,
         owner_id: owner.id,
         hero_type: type,
-        unit_id: id,
-        health: health
+        unit_id: id
     };
 }
 
@@ -2271,7 +2270,7 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
             const spawn_at = random_spawn_cell();
             if (!spawn_at) break;
 
-            submit_battle_delta(battle, spawn_hero(hero.id, player, spawn_at.position, hero.type, hero.health));
+            submit_battle_delta(battle, spawn_hero(hero.id, player, spawn_at.position, hero.type));
 
             const spawned_hero = find_hero_by_id(battle, hero.id);
 
@@ -2284,7 +2283,8 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
                 submit_battle_delta(battle, {
                     type: Delta_Type.adventure_items_applied,
                     unit_id: hero.id,
-                    modifiers: modifiers
+                    modifiers: modifiers,
+                    final_health: hero.health
                 });
             }
         }
