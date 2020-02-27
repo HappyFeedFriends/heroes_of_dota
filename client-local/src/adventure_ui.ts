@@ -937,14 +937,14 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         const damage = $.CreatePanel("Panel", slot.container, "");
         damage.AddClass("animation");
         damage.AddClass("animate_damage");
-        damage.DeleteAsync(0.3);
+        damage.DeleteAsync(1);
     }
 
     function flash_slot_health_restored(slot: Adventure_Party_Slot_UI) {
         const heal = $.CreatePanel("Panel", slot.container, "");
         heal.AddClass("animation");
         heal.AddClass("animate_heal");
-        heal.DeleteAsync(0.3);
+        heal.DeleteAsync(1);
     }
 
     function flash_slot(slot: Adventure_Party_Slot_UI) {
