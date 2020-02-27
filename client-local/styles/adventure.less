@@ -135,7 +135,35 @@
               border-right: 1px solid black;
               box-shadow: inset 0px 0px 8px black;
 
+              #hero_card_stats {
+                z-index: 0;
+
+                align: right top;
+                flow-children: down;
+                height: 100%;
+                padding-left: 2px;
+                padding-right: 2px;
+                //background-image: url("s2r://panorama/images/hud/reborn/query_statbranch_gradient_psd.vtex");
+                //background-size: 100% 100%;
+                background-color: gradient( linear, 0% 0%, 100% 0%, from( #00000000 ), to( #000000 ) );
+
+                .stat_container {
+                  horizontal-align: right;
+
+                  #icon {
+                    width: 14px;
+                    height: 14px;
+                  }
+
+                  #value {
+                    font-size: 18px;
+                  }
+                }
+              }
+
               #drop_overlay {
+                z-index: 3;
+
                 width: 100%;
                 height: 100%;
                 background-color: #9dffdd;
@@ -148,6 +176,8 @@
 
               &.dead {
                 #dead_overlay {
+                  z-index: 2;
+
                   width: 100%;
                   height: 100%;
                   background-image: url("s2r://panorama/images/hero_selection/banned_overlay_psd.vtex");
@@ -156,7 +186,7 @@
                   wash-color: #bf0000;
                 }
 
-                #health_number {
+                #hero_card_stats {
                   visibility: collapse;
                 }
 
@@ -170,6 +200,7 @@
                 flow-children: right;
                 align: center bottom;
                 margin-bottom: 2px;
+                z-index: 1;
 
                 .slot {
                   margin: 1px;
@@ -186,10 +217,6 @@
                     background-image: url("s2r://panorama/images/hud/reborn/inventory_item_well_psd.vtex");
                   }
 
-                  &.drop_hover {
-                    box-shadow: 0 0 4px white;
-                  }
-
                   &.drop_hover #drop_layer {
                     visibility: visible;
                   }
@@ -202,16 +229,6 @@
                     visibility: collapse;
                   }
                 }
-              }
-
-              #health_number {
-                margin: 0 10px 32px 0;
-                text-shadow: 0px 0px 2px 2.5 rgb(9, 136, 0);
-                text-align: right;
-                align: right bottom;
-                color: white;
-                font-size: 28px;
-                font-family: @font-mono;
               }
 
               #adventure_card_art {
