@@ -235,4 +235,9 @@
         type = "dota_src1_2d"
         vsnd_files = "sounds/ui/item_drop_shop.vsnd"
     }
+
+    healing_salve = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/items/healing_salve.vsnd"
+    }
 }

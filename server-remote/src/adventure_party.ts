@@ -107,11 +107,12 @@ export function change_party_add_spell(slot: number, spell: Spell_Id): Adventure
     }
 }
 
-export function change_party_change_health(slot: number, health: number): Adventure_Party_Change {
+export function change_party_change_health(slot: number, health: number, reason: Adventure_Health_Change_Reason): Adventure_Party_Change {
     return {
         type: Adventure_Party_Change_Type.set_health,
         slot_index: slot,
-        health: health
+        health: health,
+        reason: reason
     }
 }
 
@@ -202,6 +203,25 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
             modifier: {
                 id: Modifier_Id.item_basher_bearer
             }
+        };
+    }
+}
+
+export function adventure_consumable_item_id_to_item(id: Adventure_Consumable_Item_Id): Adventure_Item {
+    switch (id) {
+        case Adventure_Consumable_Item_Id.enchanted_mango: return {
+            type: Adventure_Item_Type.consumable,
+            item_id: id
+        };
+
+        case Adventure_Consumable_Item_Id.tome_of_knowledge: return {
+            type: Adventure_Item_Type.consumable,
+            item_id: id
+        };
+
+        case Adventure_Consumable_Item_Id.healing_salve: return {
+            type: Adventure_Item_Type.consumable,
+            item_id: id
         };
     }
 }

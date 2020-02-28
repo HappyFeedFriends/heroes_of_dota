@@ -29,13 +29,21 @@ function get_adventure_wearable_item_icon(id: Adventure_Wearable_Item_Id): strin
 }
 
 function get_adventure_item_icon(item: Adventure_Item): string {
+    function get_consumable_icon_name(id: Adventure_Consumable_Item_Id): string {
+        switch (id) {
+            case Adventure_Consumable_Item_Id.enchanted_mango: return "enchanted_mango";
+            case Adventure_Consumable_Item_Id.healing_salve: return "salve";
+            case Adventure_Consumable_Item_Id.tome_of_knowledge: return "tome_of_knowledge";
+        }
+    }
+
     switch (item.type) {
         case Adventure_Item_Type.wearable: {
             return get_adventure_wearable_item_icon(item.item_id);
         }
 
         case Adventure_Item_Type.consumable: {
-            return get_item_icon(Item_Id.enchanted_mango); // TODO placeholder
+            return `file://{images}/items/${get_consumable_icon_name(item.item_id)}.png`;
         }
     }
 }

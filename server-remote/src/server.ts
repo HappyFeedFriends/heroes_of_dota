@@ -51,7 +51,8 @@ import {
     find_empty_party_slot_index,
     change_party_add_item,
     act_on_adventure_party,
-    adventure_wearable_item_id_to_item
+    adventure_wearable_item_id_to_item,
+    adventure_consumable_item_id_to_item
 } from "./adventure_party";
 
 import {
@@ -669,7 +670,7 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
             const clamped_base_health = Math.min(new_base_health, max_base_health);
 
             if (clamped_base_health != slot.base_health) {
-                push_party_change(player.party, change_party_change_health(link.slot_index, clamped_base_health));
+                push_party_change(player.party, change_party_change_health(link.slot_index, clamped_base_health, Adventure_Health_Change_Reason.combat));
             }
         }
 
@@ -683,7 +684,7 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
 
                 if (slot.health != source_unit.health) {
                     const new_health = Math.min(source_unit.health, creep_definition_by_type(slot.creep).health);
-                    push_party_change(player.party, change_party_change_health(link.slot_index, new_health));
+                    push_party_change(player.party, change_party_change_health(link.slot_index, new_health, Adventure_Health_Change_Reason.combat));
                 }
             } else {
                 push_party_change(player.party, change_party_empty_slot(link.slot_index));
@@ -1476,10 +1477,15 @@ function register_dev_handlers() {
                 }
 
                 case "item": {
-                    const elements = parse_enum_query(parts[1], enum_names_to_values<Adventure_Wearable_Item_Id>());
+                    const wearables = parse_enum_query(parts[1], enum_names_to_values<Adventure_Wearable_Item_Id>());
+                    const consumables = parse_enum_query(parts[1], enum_names_to_values<Adventure_Consumable_Item_Id>());
 
-                    for (const element of elements) {
-                        push_party_change(party, change_party_add_item(adventure_wearable_item_id_to_item(element)));
+                    for (const id of wearables) {
+                        push_party_change(party, change_party_add_item(adventure_wearable_item_id_to_item(id)));
+                    }
+
+                    for (const id of consumables) {
+                        push_party_change(party, change_party_add_item(adventure_consumable_item_id_to_item(id)));
                     }
 
                     break;
@@ -1491,7 +1497,7 @@ function register_dev_handlers() {
 
                     for (const [index, slot] of party.slots.entries()) {
                         if (slot.type == Adventure_Party_Slot_Type.hero && targets.indexOf(slot.hero) != -1) {
-                            push_party_change(party, change_party_change_health(index, health));
+                            push_party_change(party, change_party_change_health(index, health, Adventure_Health_Change_Reason.combat));
                         }
                     }
 

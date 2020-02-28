@@ -22,14 +22,16 @@ declare const enum Adventure_Party_Change_Type {
     set_slot = 0,
     set_health = 1,
     add_item_to_bag = 2,
-    move_item = 3
+    move_item = 3,
+    remove_bag_item = 4
 }
 
 declare const enum Adventure_Party_Action_Type {
     fetch = 0,
     drag_bag_item_on_hero = 1,
     drag_hero_item_on_hero = 2,
-    drag_hero_item_on_bag = 3
+    drag_hero_item_on_bag = 3,
+    use_consumable = 4
 }
 
 declare const enum Adventure_Item_Container_Type {
@@ -62,6 +64,11 @@ declare const enum Adventure_Consumable_Item_Id {
 
 declare const enum Adventure_Constants {
     max_hero_items = 3
+}
+
+declare const enum Adventure_Health_Change_Reason {
+    combat = 0,
+    healing_salve = 1
 }
 
 type Adventure_Handlers = {
@@ -184,6 +191,7 @@ type Adventure_Party_Change = {
     type: Adventure_Party_Change_Type.set_health
     slot_index: number
     health: number
+    reason: Adventure_Health_Change_Reason
 } | {
     type: Adventure_Party_Change_Type.add_item_to_bag
     item: Adventure_Item
@@ -191,6 +199,9 @@ type Adventure_Party_Change = {
     type: Adventure_Party_Change_Type.move_item
     source: Adventure_Item_Container
     target: Adventure_Item_Container
+} | {
+    type: Adventure_Party_Change_Type.remove_bag_item
+    slot_index: number
 }
 
 type Adventure_Item_Container = {
@@ -217,6 +228,10 @@ type Adventure_Party_Action = { current_head: number } & ({
     type: Adventure_Party_Action_Type.drag_hero_item_on_bag
     source_hero_slot: number
     source_hero_item_slot: number
+} | {
+    type: Adventure_Party_Action_Type.use_consumable
+    bag_slot: number
+    party_slot: number
 })
 
 type Adventure_Party_Response = {
@@ -234,7 +249,6 @@ type Adventure_Item = Adventure_Consumable_Item | Adventure_Wearable_Item
 type Adventure_Consumable_Item = {
     type: Adventure_Item_Type.consumable
     item_id: Adventure_Consumable_Item_Id
-    charges: number
 }
 
 type Adventure_Wearable_Item = {

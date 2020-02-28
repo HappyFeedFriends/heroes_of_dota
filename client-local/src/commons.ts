@@ -124,6 +124,10 @@ function emit_random_sound(sounds: string[]) {
     Game.EmitSound(sounds[random_int_up_to(sounds.length)]);
 }
 
+function emit_sound(sound: string) {
+    Game.EmitSound(sound);
+}
+
 function random_int_up_to(upper_bound: number) {
     return Math.floor(Math.random() * upper_bound);
 }

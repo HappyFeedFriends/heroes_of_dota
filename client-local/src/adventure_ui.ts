@@ -360,6 +360,10 @@ function set_drag_state(state: Inventory_Drag_State) {
 function register_slot_drag_events(slot: Panel, item: Adventure_Item, drag_source_source: () => Drag_Source) {
     const image = get_adventure_item_icon(item);
 
+    // This fixes a bug, where if a draggable panel is clicked on
+    // the input focus is moved to a seemingly random panel on the screen
+    slot.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
+
     $.RegisterEventHandler("DragStart", slot, (id, drag) => {
         const dragged_panel = $.CreatePanel("Panel", slot, "");
         dragged_panel.AddClass("dragged_inventory_slot");
@@ -573,12 +577,21 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
             }
 
             case Drag_Source_Type.bag: {
-                perform_adventure_party_action({
-                    type: Adventure_Party_Action_Type.drag_bag_item_on_hero,
-                    bag_slot: drag_state.source.bag_slot,
-                    party_slot: slot_index,
-                    current_head: head_before
-                });
+                if (drag_state.item.type == Adventure_Item_Type.wearable) {
+                    perform_adventure_party_action({
+                        type: Adventure_Party_Action_Type.drag_bag_item_on_hero,
+                        bag_slot: drag_state.source.bag_slot,
+                        party_slot: slot_index,
+                        current_head: head_before
+                    });
+                } else {
+                    perform_adventure_party_action({
+                        type: Adventure_Party_Action_Type.use_consumable,
+                        bag_slot: drag_state.source.bag_slot,
+                        party_slot: slot_index,
+                        current_head: head_before
+                    });
+                }
 
                 break;
             }
@@ -897,7 +910,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         return () => Game.Time() >= finish_at;
     }
 
-    function animate_integer(start_from: number, finish_on: number, consumer: (value: number) => void): Adventure_Animation_Promise {
+    function animate_integer(start_from: number, finish_on: number, period: number, consumer: (value: number) => void): Adventure_Animation_Promise {
         let finished_updating = false;
         let current_value = start_from;
 
@@ -909,7 +922,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                 return;
             }
 
-            $.Schedule(0.03, update_number);
+            $.Schedule(period, update_number);
 
             current_value += normal;
 
@@ -933,15 +946,17 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         return true;
     }
 
-    function flash_slot_damaged(slot: Adventure_Party_Slot_UI) {
+    function flash_slot_damaged(slot: Adventure_Party_Slot_UI, duration: number) {
         const damage = $.CreatePanel("Panel", slot.container, "");
+        damage.style.animationDuration = duration + "s";
         damage.AddClass("animation");
         damage.AddClass("animate_damage");
         damage.DeleteAsync(1);
     }
 
-    function flash_slot_health_restored(slot: Adventure_Party_Slot_UI) {
+    function flash_slot_health_restored(slot: Adventure_Party_Slot_UI, duration: number) {
         const heal = $.CreatePanel("Panel", slot.container, "");
+        heal.style.animationDuration = duration + "s";
         heal.AddClass("animation");
         heal.AddClass("animate_heal");
         heal.DeleteAsync(1);
@@ -1041,7 +1056,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             const new_value = stat.value_provider(new_stats);
 
             if (old_value != new_value) {
-                animations.push(animate_integer(old_value, new_value, value => stat.value_updater(stat, value)))
+                animations.push(animate_integer(old_value, new_value, 0.04, value => stat.value_updater(stat, value)))
             }
         };
 
@@ -1051,6 +1066,13 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         maybe_animate_stat(slot.ui.stat_armor);
 
         return all(animations);
+    }
+
+    function health_change_animation_period(reason: Adventure_Health_Change_Reason): number {
+        switch (reason) {
+            case Adventure_Health_Change_Reason.combat: return 0.03;
+            case Adventure_Health_Change_Reason.healing_salve: return 0.1;
+        }
     }
 
     switch (change.type) {
@@ -1063,6 +1085,16 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
 
         case Adventure_Party_Change_Type.add_item_to_bag: {
             add_bag_item(change.item);
+
+            break;
+        }
+
+        case Adventure_Party_Change_Type.remove_bag_item: {
+            const bag_slot = party.bag.items[change.slot_index];
+
+            if (bag_slot) {
+                remove_bag_item(bag_slot);
+            }
 
             break;
         }
@@ -1090,35 +1122,43 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             const slot = party.slots[change.slot_index];
             if (!slot) return proceed;
 
+            const period = health_change_animation_period(change.reason);
+            const flash_duration = period * 10;
+
             switch (slot.type) {
                 case Adventure_Party_Slot_Type.hero: {
                     const old_health = slot.ui.stat_health.displayed_value;
                     const new_health = compute_hero_display_health(slot.items, change.health);
+                    const period = health_change_animation_period(change.reason)
+
+                    if (change.reason == Adventure_Health_Change_Reason.healing_salve) {
+                        emit_sound("healing_salve");
+                    }
 
                     if (new_health < old_health) {
                         emit_random_sound(hero_sounds_by_hero_type(slot.hero).pain);
-                        flash_slot_damaged(slot);
+                        flash_slot_damaged(slot, flash_duration);
                     } else {
-                        flash_slot_health_restored(slot);
+                        flash_slot_health_restored(slot, flash_duration);
                     }
 
                     slot.base_health = change.health;
 
                     const ui_updater = slot.ui.stat_health.value_updater;
 
-                    return both(fixed_duration(1.0), animate_integer(old_health, new_health, value => ui_updater(slot.ui.stat_health, value)));
+                    return both(fixed_duration(1.0), animate_integer(old_health, new_health, period, value => ui_updater(slot.ui.stat_health, value)));
                 }
 
                 case Adventure_Party_Slot_Type.creep: {
                     if (change.health < slot.health) {
-                        flash_slot_damaged(slot);
+                        flash_slot_damaged(slot, flash_duration);
                     } else {
-                        flash_slot_health_restored(slot);
+                        flash_slot_health_restored(slot, flash_duration);
                     }
 
                     const ui_updater = slot.ui.stat_health.value_updater;
 
-                    return both(fixed_duration(1.0), animate_integer(slot.health, change.health, value => ui_updater(slot.ui.stat_health, value)));
+                    return both(fixed_duration(1.0), animate_integer(slot.health, change.health, period, value => ui_updater(slot.ui.stat_health, value)));
                 }
 
                 case Adventure_Party_Slot_Type.spell:

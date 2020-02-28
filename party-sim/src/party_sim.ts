@@ -24,17 +24,17 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
     switch (action.type) {
         case Adventure_Party_Action_Type.drag_bag_item_on_hero: {
             const item = party.bag[action.bag_slot];
-            const slot = party.slots[action.party_slot];
+            if (!item) break;
+            if (item.type != Adventure_Item_Type.wearable) break;
 
-            // TODO somehow figure out a way to handle this common error in meta.ts
-            if (item == undefined) break;
+            const slot = party.slots[action.party_slot];
             if (!slot) break;
             if (slot.type != Adventure_Party_Slot_Type.hero) break;
 
             for (let index = 0; index < Adventure_Constants.max_hero_items; index++) {
                 const item_slot = slot.items[index];
 
-                if (item_slot == undefined) {
+                if (!item_slot) {
                     change_consumer({
                         type: Adventure_Party_Change_Type.move_item,
                         source: {
@@ -61,7 +61,7 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
             if (source_hero.type != Adventure_Party_Slot_Type.hero) break;
 
             const source_item = source_hero.items[action.source_hero_item_slot];
-            if (source_item == undefined) break;
+            if (!source_item) break;
 
             const target_hero = party.slots[action.target_hero_slot];
             if (!target_hero) break;
@@ -70,7 +70,7 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
             for (let item_index = 0; item_index < Adventure_Constants.max_hero_items; item_index++) {
                 const item_slot = target_hero.items[item_index];
 
-                if (item_slot == undefined) {
+                if (!item_slot) {
                     change_consumer({
                         type: Adventure_Party_Change_Type.move_item,
                         source: {
@@ -98,7 +98,7 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
             if (source_hero.type != Adventure_Party_Slot_Type.hero) break;
 
             const source_item = source_hero.items[action.source_hero_item_slot];
-            if (source_item == undefined) break;
+            if (!source_item) break;
 
             change_consumer({
                 type: Adventure_Party_Change_Type.move_item,
@@ -112,6 +112,50 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
                     bag_slot_index: party.bag.length // Insert into a new slot at the end
                 }
             });
+
+            break;
+        }
+
+        case Adventure_Party_Action_Type.use_consumable: {
+            const target = party.slots[action.party_slot];
+            if (!target) break;
+            if (target.type != Adventure_Party_Slot_Type.hero) break;
+
+            const item = party.bag[action.bag_slot];
+            if (!item) break;
+            if (item.type != Adventure_Item_Type.consumable) break;
+
+            change_consumer({
+                type: Adventure_Party_Change_Type.remove_bag_item,
+                slot_index: action.bag_slot
+            });
+
+            switch (item.item_id) {
+                case Adventure_Consumable_Item_Id.healing_salve: {
+                    const max_health = hero_definition_by_type(target.hero).health;
+                    const new_health = Math.min(target.base_health + 5, max_health);
+
+                    change_consumer({
+                        type: Adventure_Party_Change_Type.set_health,
+                        slot_index: action.party_slot,
+                        health: new_health,
+                        reason: Adventure_Health_Change_Reason.healing_salve
+                    });
+
+                    break;
+                }
+
+                case Adventure_Consumable_Item_Id.tome_of_knowledge: {
+                    break;
+                }
+
+                case Adventure_Consumable_Item_Id.enchanted_mango: {
+                    break;
+                }
+
+                default: unreachable(item.item_id);
+            }
+
 
             break;
         }
@@ -161,6 +205,12 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
 
         case Adventure_Party_Change_Type.add_item_to_bag: {
             party.bag.push(change.item);
+
+            break;
+        }
+
+        case Adventure_Party_Change_Type.remove_bag_item: {
+            party.bag.splice(change.slot_index, 1);
 
             break;
         }
@@ -216,7 +266,7 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
             }
 
             const item_from_slot = get_and_remove_item_from_slot(change.source);
-            if (item_from_slot == undefined) break;
+            if (!item_from_slot) break;
 
             put_item_in_slot(change.target, item_from_slot);
 
