@@ -1422,14 +1422,21 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
     const label = $.CreatePanel("Label", toolbar_buttons, "");
     label.text = `Battleground #${id}`;
 
-    toolbar_button("New", async () => {
-        const positions = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
-        const response = await async_api_request(Api_Request_Type.editor_create_battleground, {
-            world_origin: positions[0].origin
-        });
+    dropdown_opening_button("New", async close_dropdown => {
+        const locations = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
 
-        cleanup_current_editor();
-        enter_battleground_editor(response.id, response.battleground, enemy);
+        for (const location of from_server_array(locations)) {
+            dropdown_button(location.name, async () => {
+                const response = await async_api_request(Api_Request_Type.editor_create_battleground, {
+                    world_origin: location.origin
+                });
+
+                cleanup_current_editor();
+                enter_battleground_editor(response.id, response.battleground, enemy);
+            });
+        }
+
+        dropdown_button("Cancel", () => close_dropdown());
     });
 
     toolbar_button("Duplicate", async () => {
