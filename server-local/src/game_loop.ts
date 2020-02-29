@@ -23,12 +23,11 @@ let current_camera_target: Camera_Target = {};
 let editor_override_camera_target: Camera_Target | undefined = undefined;
 let reset_camera_override_at = 0;
 let suppress_camera_change = false;
+let can_transition_into_next_state = true;
 
 let state_transition: Player_State_Data | undefined = undefined;
 
 let local_api_handlers: Record<number, (body: object) => object> = {};
-
-declare let can_transition_into_next_state: boolean;
 
 function print_table(a: object, indent: string = "") {
     let [index, value] = next(a, undefined);
@@ -529,8 +528,6 @@ function main() {
 function game_loop() {
     let player_id: PlayerID | undefined = undefined;
     let player_unit: CDOTA_BaseNPC_Hero | undefined = undefined;
-
-    can_transition_into_next_state = true;
 
     const map: Map_State = {
         players: {},
