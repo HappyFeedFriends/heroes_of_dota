@@ -277,9 +277,10 @@ function unit_at(battle: Battle, at: XY): Unit | undefined {
 
 function are_units_allies(a: Unit, b: Unit): boolean {
     /*
-                    hero monster
-            hero     ?    -
-            monster  -    +
+                    hero  creep  monster
+            hero     ?      ?       -
+            creep    ?      ?       -
+            monster  -      -       +
 
             ? : check player ids
             + : are allies
