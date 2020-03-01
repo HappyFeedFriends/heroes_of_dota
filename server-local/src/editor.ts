@@ -120,6 +120,10 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
         return array_find(game.adventure.entities, entity => entity.id == id);
     }
 
+    function find_entity_index_by_id(id: Adventure_Entity_Id) {
+        return array_find_index(game.adventure.entities, entity => entity.id == id);
+    }
+
     switch (event.type) {
         case Editor_Action_Type.toggle_map_vision: {
             editor.map_revealed = !editor.map_revealed;
@@ -147,24 +151,20 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
         }
 
         case Editor_Action_Type.delete_entity: {
-            const entity = find_entity_by_id(event.entity_id);
-            if (!entity) break;
+            const index = find_entity_index_by_id(event.entity_id);
+            if (index == -1) break;
 
-            const ok = api_request(Api_Request_Type.editor_action, {
+            const entity = game.adventure.entities[index];
+
+            cleanup_adventure_entity(entity);
+
+            game.adventure.entities.splice(index, 1);
+
+            api_request(Api_Request_Type.editor_action, {
                 type: Adventure_Editor_Action_Type.delete_entity,
                 entity_id: entity.id,
                 access_token: game.token
             });
-
-            if (ok) {
-                const index = array_find_index(game.adventure.entities, candidate => candidate == entity);
-
-                if (index != -1) {
-                    cleanup_adventure_entity(entity);
-
-                    game.adventure.entities.splice(index, 1);
-                }
-            }
 
             break;
         }
@@ -185,11 +185,26 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
         case Editor_Action_Type.set_entity_position: {
             const entity = find_entity_by_id(event.entity_id);
             if (!entity) break;
-            if (!entity.alive) break;
 
-            entity.spawn_position = event.position;
+            entity.definition.spawn_position = event.position;
 
-            FindClearSpaceForUnit(entity.handle, Vector(event.position.x, event.position.y), true);
+            switch (entity.type) {
+                case Adventure_Entity_Type.shrine: {
+                    FindClearSpaceForUnit(entity.handle, Vector(event.position.x, event.position.y), true);
+                    entity.obstruction.RemoveSelf();
+                    entity.obstruction = setup_building_obstruction(entity.handle);
+
+                    break;
+                }
+
+                default: {
+                    if (!entity.alive) break;
+
+                    FindClearSpaceForUnit(entity.handle, Vector(event.position.x, event.position.y), true);
+
+                    break;
+                }
+            }
 
             api_request(Api_Request_Type.editor_action, {
                 type: Adventure_Editor_Action_Type.set_entity_position,
@@ -204,11 +219,28 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
         case Editor_Action_Type.set_entity_facing: {
             const entity = find_entity_by_id(event.entity_id);
             if (!entity) break;
-            if (!entity.alive) break;
 
-            entity.spawn_facing = event.facing;
+            entity.definition.spawn_facing = event.facing;
 
-            entity.handle.SetForwardVector(Vector(event.facing.x, event.facing.y));
+            function set_unit_facing_fast(handle: CDOTA_BaseNPC, facing: XY) {
+                // SetForwardVector + FaceTowards achieves both fast and correct rotation
+                handle.SetForwardVector(Vector(facing.x, facing.y));
+                handle.FaceTowards(handle.GetAbsOrigin() + Vector(facing.x, facing.y) as Vector);
+            }
+
+            switch (entity.type) {
+                case Adventure_Entity_Type.shrine: {
+                    set_unit_facing_fast(entity.handle, event.facing);
+                    break;
+                }
+
+                default: {
+                    if (!entity.alive) break;
+
+                    set_unit_facing_fast(entity.handle, event.facing);
+                    break;
+                }
+            }
 
             api_request(Api_Request_Type.editor_action, {
                 type: Adventure_Editor_Action_Type.set_entity_facing,

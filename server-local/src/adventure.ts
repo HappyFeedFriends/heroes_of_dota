@@ -7,8 +7,6 @@ const enum Adventure_Creep_State {
 
 type Adventure_Entity_Base = {
     id: Adventure_Entity_Id
-    spawn_position: XY
-    spawn_facing: XY
     definition: Adventure_Entity_Definition
 }
 
@@ -160,7 +158,7 @@ function update_adventure_enemy(game: Game, enemy: Adventure_Materialized_Enemy)
 
     const player_handle = game.player.hero_unit;
     const enemy_handle = enemy.handle;
-    const enemy_spawn_location = Vector(enemy.spawn_position.x, enemy.spawn_position.y);
+    const enemy_spawn_location = Vector(enemy.definition.spawn_position.x, enemy.definition.spawn_position.y);
     const enemy_actual_location = enemy_handle.GetAbsOrigin();
     const player_location = player_handle.GetAbsOrigin();
     const player_can_see_enemy = player_handle.CanEntityBeSeenByMyTeam(enemy_handle);
@@ -233,11 +231,11 @@ function update_adventure_enemy(game: Game, enemy: Adventure_Materialized_Enemy)
                 enemy.issued_movement_order_at = now;
             }
         } else {
-            const desired_facing = Vector(enemy.spawn_facing.x, enemy.spawn_facing.y);
+            const desired_facing = Vector(enemy.definition.spawn_facing.x, enemy.definition.spawn_facing.y);
             const actual_facing = enemy_handle.GetForwardVector();
 
             if (desired_facing.Dot(actual_facing) < 0.95) {
-                enemy_handle.FaceTowards(enemy_actual_location + Vector(enemy.spawn_facing.x, enemy.spawn_facing.y) as Vector);
+                enemy_handle.FaceTowards(enemy_actual_location + desired_facing as Vector);
             }
         }
     }
@@ -247,8 +245,8 @@ function update_lost_creep(game: Game, creep: Adventure_Materialized_Lost_Creep)
     if (!creep.alive) return;
 
     const player_handle = game.player.hero_unit;
-    const spawn_location = Vector(creep.spawn_position.x, creep.spawn_position.y);
-    const spawn_facing = Vector(creep.spawn_facing.x, creep.spawn_facing.y);
+    const spawn_location = Vector(creep.definition.spawn_position.x, creep.definition.spawn_position.y);
+    const spawn_facing = Vector(creep.definition.spawn_facing.x, creep.definition.spawn_facing.y);
     const player_location = player_handle.GetAbsOrigin();
     const player_can_see_creep = player_handle.CanEntityBeSeenByMyTeam(creep.handle);
     const from_creep_to_player = (spawn_location - player_location as Vector).Length2D();
@@ -452,9 +450,7 @@ function transition_entity_state(from: Adventure_Materialized_Entity, to: Advent
     const base = {
         id: from.id,
         handle: from.handle,
-        definition: from.definition,
-        spawn_facing: from.spawn_facing,
-        spawn_position: from.spawn_position
+        definition: from.definition
     };
 
     switch (from.type) {
@@ -513,6 +509,7 @@ function cleanup_adventure_entity(entity: Adventure_Materialized_Entity) {
                 entity.ambient_fx.destroy_and_release(true);
             }
 
+            entity.obstruction.RemoveSelf();
             entity.handle.RemoveSelf();
 
             break;
