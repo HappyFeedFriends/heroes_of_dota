@@ -358,8 +358,8 @@ function is_point_in_deployment_zone(battle: Battle, xy: XY, player: Battle_Play
     return (
         xy.x >= zone.min.x &&
         xy.y >= zone.min.y &&
-        xy.x <  zone.max.x &&
-        xy.y <  zone.max.y
+        xy.x <= zone.max.x &&
+        xy.y <= zone.max.y
     );
 }
 
