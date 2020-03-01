@@ -107,7 +107,7 @@ function create_new_player_from_movement_data(data: Player_Movement_Data): Map_P
     return {
         id: data.id,
         movement_history: data.movement_history,
-        unit: create_map_unit("npc_dota_hero_lina", data.current_location),
+        unit: create_map_unit("npc_dota_hero_chaos_knight", data.current_location),
         last_recorded_x: data.current_location.x,
         last_recorded_y: data.current_location.y
     };

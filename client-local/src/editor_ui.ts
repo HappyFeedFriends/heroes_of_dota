@@ -89,7 +89,7 @@ type Adventure_Editor_Selection = {
     highlighted_creep_button?: Panel
 } | {
     selected: true
-    type: Adventure_Entity_Type.lost_creep
+    type: Adventure_Entity_Type.lost_creep | Adventure_Entity_Type.shrine
     id: Adventure_Entity_Id
     entity: EntityId
     particle: ParticleId
@@ -939,13 +939,28 @@ export function adventure_editor_filter_mouse_click(editor: Adventure_Editor, ev
                     }
                 } else {
                     context_menu_button(`Create ${entity_name}`, () => {
+                        const base = {
+                            spawn_position: xy(click_world_position.x, click_world_position.y),
+                            spawn_facing: xy(1, 0)
+                        };
+
+                        const entity_definition = (): Adventure_Entity_Definition => {
+                            switch (entity_type) {
+                                case Adventure_Entity_Type.shrine: return {
+                                    type: entity_type,
+                                    ...base
+                                };
+
+                                case Adventure_Entity_Type.lost_creep: return {
+                                    type: entity_type,
+                                    ...base
+                                }
+                            }
+                        };
+
                         dispatch_editor_action({
                             type: Editor_Action_Type.create_entity,
-                            definition: {
-                                type: entity_type,
-                                spawn_position: xy(click_world_position.x, click_world_position.y),
-                                spawn_facing: xy(1, 0),
-                            }
+                            definition: entity_definition()
                         })
                     });
                 }

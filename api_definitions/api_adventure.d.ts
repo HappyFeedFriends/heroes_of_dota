@@ -8,7 +8,8 @@ declare const enum Adventure_Id {
 
 declare const enum Adventure_Entity_Type {
     enemy = 0,
-    lost_creep = 1
+    lost_creep = 1,
+    shrine = 2
 }
 
 declare const enum Adventure_Party_Slot_Type {
@@ -68,7 +69,8 @@ declare const enum Adventure_Constants {
 
 declare const enum Adventure_Health_Change_Reason {
     combat = 0,
-    healing_salve = 1
+    healing_salve = 1,
+    shrine = 2
 }
 
 type Adventure_Handlers = {
@@ -160,7 +162,14 @@ type Adventure_Lost_Creep_Definition = Adventure_Entity_Definition_Base & {
     type: Adventure_Entity_Type.lost_creep
 }
 
-type Adventure_Entity_Definition = Adventure_Enemy_Definition | Adventure_Lost_Creep_Definition
+type Adventure_Shrine_Definition = Adventure_Entity_Definition_Base & {
+    type: Adventure_Entity_Type.shrine
+}
+
+type Adventure_Entity_Definition =
+    Adventure_Enemy_Definition |
+    Adventure_Lost_Creep_Definition |
+    Adventure_Shrine_Definition
 
 type Adventure_Entity_State = {
     id: Adventure_Entity_Id

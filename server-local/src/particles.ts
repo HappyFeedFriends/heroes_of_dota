@@ -3,9 +3,9 @@ type Handle_Provider = {
 }
 
 type FX = {
-    to_unit_attach_point(control_point: number, unit: Unit, attach_point: string, offset?: Vector): FX;
-    to_unit_origin(control_point: number, unit: Unit): FX;
-    to_unit_custom_origin(control_point: number, unit: Unit): FX;
+    to_unit_attach_point(control_point: number, unit: Handle_Provider, attach_point: string, offset?: Vector): FX;
+    to_unit_origin(control_point: number, unit: Handle_Provider): FX;
+    to_unit_custom_origin(control_point: number, unit: Handle_Provider): FX;
     to_location(control_point: number, point: XY): FX;
     with_point_value(control_point: number, x?: number, y?: number, z?: number): FX;
     with_vector_value(control_point: number, vec: Vector): FX;

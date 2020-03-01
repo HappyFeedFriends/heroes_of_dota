@@ -726,6 +726,14 @@ function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
             break;
         }
 
+        case Adventure_Entity_Type.shrine: {
+            popup.text.text = "This magical shrine can restore your party members' health";
+
+            // panorama/images/spellicons/filler_ability_png.vtex
+
+            break;
+        }
+
         case Adventure_Entity_Type.enemy: {
             break;
         }
@@ -829,13 +837,6 @@ function copy_snapshot(snapshot: Party_Snapshot) {
 
 function merge_adventure_party_changes(head_before_merge: number, changes: Adventure_Party_Change[]) {
     $.Msg(`Received ${changes.length} party changes, inserting after ${head_before_merge}`);
-
-    // TODO consider the case when head_before_merge + changes.length < party.current_head!!
-    //      we need to discard the extra changes and rollback to the previous state
-    //      That condition makes little sense on its own, we need to somehow only consider it when
-    //      receiving changes from server? Also in general we need a way for the server word to be
-    //      authoritative in this API, currently whoever submits the changes last wins
-    //      Also need to check what happens if the server is slow to respond and we do multiple changes
 
     let merge_conflict = false;
 
@@ -1072,6 +1073,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         switch (reason) {
             case Adventure_Health_Change_Reason.combat: return 0.03;
             case Adventure_Health_Change_Reason.healing_salve: return 0.1;
+            case Adventure_Health_Change_Reason.shrine: return 0.07;
         }
     }
 
@@ -1268,7 +1270,8 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", async data => {
 });
 
 subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, event => {
-    if (event.entity.type == Adventure_Entity_Type.lost_creep) {
+    // TODO it's weird that we even send that for enemies
+    if (event.entity.type != Adventure_Entity_Type.enemy) {
         show_adventure_popup(event.entity_id, event.entity);
     }
 });

@@ -226,6 +226,13 @@
         vsnd_files = "sounds/weapons/hero/broodmother/spiderling_hatch.vsnd"
     }
 
+    shrine_activate = {
+        type = "dota_update_default"
+        pitch_rand_min = -0.05
+        pitch_rand_max = 0.05
+        vsnd_files = "sounds/ambient/shrine_cast.vsnd"
+    }
+
     party_hero_item_pickup = {
         type = "dota_src1_2d"
         vsnd_files = "sounds/ui/item_pickup_world.vsnd"

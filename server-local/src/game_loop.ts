@@ -149,6 +149,14 @@ function create_map_unit_with_model(at: XY, facing: XY, model: string, scale: nu
     return unit;
 }
 
+function setup_building_obstruction(unit: CDOTA_BaseNPC): CBaseEntity {
+    unit.AddNewModifier(unit, undefined, "Modifier_Map_Building", {});
+
+    return SpawnEntityFromTableSynchronous("point_simple_obstruction", {
+        origin: unit.GetAbsOrigin()
+    });
+}
+
 function unit_to_visualizer_unit_data(unit: Unit): Visualizer_Unit_Data {
     const base: Visualizer_Unit_Data_Base = {
         ...copy(unit as Unit_Stats),
@@ -381,6 +389,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         }];
 
         for (const entity of next_state.entities) {
+            print("Create entity: ", enum_to_string(entity.definition.type), " alive ", entity.alive);
             game.adventure.entities.push(create_adventure_entity(entity));
         }
 
@@ -499,6 +508,7 @@ function main() {
     GameRules.SetCustomGameSetupRemainingTime(0);
 
     link_modifier("Modifier_Map_Unit", "modifiers/modifier_map_unit");
+    link_modifier("Modifier_Map_Building", "modifiers/modifier_map_building");
     link_modifier("Modifier_Battle_Unit", "modifiers/modifier_battle_unit");
     link_modifier("Modifier_Tide_Gush", "modifiers/modifier_tide_gush");
     link_modifier("Modifier_Damage_Effect", "modifiers/modifier_damage_effect");

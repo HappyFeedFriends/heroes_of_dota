@@ -1270,6 +1270,39 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                     break;
                 }
 
+                case Party_Event_Type.activate_shrine: {
+                    for (const [index, slot] of player.online.party.slots.entries()) {
+                        switch (slot.type) {
+                            case Adventure_Party_Slot_Type.hero: {
+                                const max_health = hero_definition_by_type(slot.hero).health;
+                                const change = change_party_change_health(index, max_health, Adventure_Health_Change_Reason.shrine);
+
+                                push_party_change(player.online.party, change);
+
+                                break;
+                            }
+
+                            case Adventure_Party_Slot_Type.creep: {
+                                const max_health = creep_definition_by_type(slot.creep).health;
+                                const change = change_party_change_health(index, max_health, Adventure_Health_Change_Reason.shrine);
+
+                                push_party_change(player.online.party, change);
+
+                                break;
+                            }
+
+                            case Adventure_Party_Slot_Type.spell:
+                            case Adventure_Party_Slot_Type.empty: {
+                                break;
+                            }
+
+                            default: unreachable(slot);
+                        }
+                    }
+
+                    break;
+                }
+
                 default: unreachable(event);
             }
         }

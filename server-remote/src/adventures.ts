@@ -10,7 +10,8 @@ export const enum Adventure_Room_Type {
 
 export const enum Party_Event_Type {
     add_creep = 0,
-    add_spell = 1
+    add_spell = 1,
+    activate_shrine = 2
 }
 
 export type Adventure = {
@@ -50,6 +51,8 @@ type Party_Event = {
 } | {
     type: Party_Event_Type.add_spell
     spell: Spell_Id
+} | {
+    type: Party_Event_Type.activate_shrine
 }
 
 type Entity_Interaction_Result = {
@@ -204,8 +207,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             }
 
             if (entity_type != Adventure_Entity_Type.enemy) {
-                entities.push({
-                    type: entity_type,
+                const base = {
                     spawn_position: {
                         x: source_entity.position[0],
                         y: source_entity.position[1]
@@ -214,7 +216,23 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
                         x: source_entity.facing[0],
                         y: source_entity.facing[1]
                     }
-                })
+                };
+
+                const to_entity = (): Adventure_Entity_Definition => {
+                    switch (entity_type) {
+                        case Adventure_Entity_Type.lost_creep: return {
+                            type: entity_type,
+                            ...base
+                        };
+
+                        case Adventure_Entity_Type.shrine: return {
+                            type: entity_type,
+                            ...base
+                        };
+                    }
+                };
+
+                entities.push(to_entity());
             }
         }
 
@@ -274,20 +292,33 @@ export function interact_with_entity(adventure: Ongoing_Adventure, entity_id: Ad
     if (!entity) return;
     if (!entity.alive) return;
 
+    const entity_state = (): Adventure_Entity_State => ({
+        id: entity.id,
+        alive: entity.alive
+    });
+
     switch (entity.definition.type) {
         case Adventure_Entity_Type.lost_creep: {
             entity.alive = false;
 
             return {
-                updated_entity: {
-                    id: entity.id,
-                    alive: entity.alive
-                },
+                updated_entity: entity_state(),
                 party_events: [{
                     type: Party_Event_Type.add_creep,
                     creep: Creep_Type.lane_creep
                 }]
             }
+        }
+
+        case Adventure_Entity_Type.shrine: {
+            entity.alive = false;
+
+            return {
+                updated_entity: entity_state(),
+                party_events: [{
+                    type: Party_Event_Type.activate_shrine
+                }]
+            };
         }
     }
 }
