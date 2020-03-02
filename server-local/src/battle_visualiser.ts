@@ -2396,7 +2396,7 @@ function play_modifier_effect_delta(game: Game, delta: Delta_Modifier_Effect_App
             break;
         }
 
-        case Modifier_Id.item_basher_bearer: {
+        case Modifier_Id.item_basher: {
             const target = find_unit_by_id(delta.target_unit_id);
             if (!target) break;
 

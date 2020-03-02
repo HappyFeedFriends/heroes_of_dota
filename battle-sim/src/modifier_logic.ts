@@ -237,6 +237,26 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
     }
 
     switch (modifier.id) {
+        case Modifier_Id.armor: return [
+            field(Modifier_Field.armor_bonus, modifier.bonus)
+        ];
+
+        case Modifier_Id.attack_damage: return [
+            field(Modifier_Field.attack_bonus, modifier.bonus)
+        ];
+
+        case Modifier_Id.move_speed: return [
+            field(Modifier_Field.move_points_bonus, modifier.bonus)
+        ];
+
+        case Modifier_Id.health: return [
+            field(Modifier_Field.health_bonus, modifier.bonus)
+        ];
+
+        case Modifier_Id.stunned: return [
+            status(Unit_Status.stunned)
+        ];
+
         case Modifier_Id.rune_double_damage: return [
             special_state(Special_Modifier_State.damage_doubled)
         ];
@@ -249,24 +269,12 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             field(Modifier_Field.move_points_bonus, -modifier.move_reduction)
         ];
 
-        case Modifier_Id.tide_anchor_smash: return [
-            field(Modifier_Field.attack_bonus, -modifier.attack_reduction)
-        ];
-
-        case Modifier_Id.tide_ravage: return [
-            status(Unit_Status.stunned)
-        ];
-
         case Modifier_Id.skywrath_concussive_shot: return [
             field(Modifier_Field.move_points_bonus, -modifier.move_reduction)
         ];
 
         case Modifier_Id.skywrath_ancient_seal: return [
             status(Unit_Status.silenced)
-        ];
-
-        case Modifier_Id.dragon_knight_dragon_tail: return [
-            status(Unit_Status.stunned)
         ];
 
         case Modifier_Id.dragon_knight_elder_dragon_form: return [
@@ -277,18 +285,6 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             status(Unit_Status.silenced),
             status(Unit_Status.disarmed),
             field(Modifier_Field.move_points_bonus, -modifier.move_reduction)
-        ];
-
-        case Modifier_Id.lion_impale: return [
-            status(Unit_Status.stunned)
-        ];
-
-        case Modifier_Id.mirana_arrow: return [
-            status(Unit_Status.stunned)
-        ];
-
-        case Modifier_Id.venge_magic_missile: return [
-            status(Unit_Status.stunned)
         ];
 
         case Modifier_Id.venge_wave_of_terror: return [
@@ -315,35 +311,15 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             status(Unit_Status.unselectable)
         ];
 
-        case Modifier_Id.shaker_fissure: return [
-            status(Unit_Status.stunned)
-        ];
-
         case Modifier_Id.shaker_enchant_totem_caster: return [
             special_state(Special_Modifier_State.damage_doubled)
-        ];
-
-        case Modifier_Id.shaker_enchant_totem: return [
-            status(Unit_Status.stunned)
-        ];
-
-        case Modifier_Id.item_boots_of_travel: return [
-            field(Modifier_Field.move_points_bonus, modifier.move_bonus)
         ];
 
         case Modifier_Id.item_heart_of_tarrasque: return [
             field(Modifier_Field.health_bonus, modifier.health)
         ];
 
-        case Modifier_Id.item_assault_cuirass: return [
-            field(Modifier_Field.armor_bonus, modifier.armor)
-        ];
-
         case Modifier_Id.item_satanic: return [
-        ];
-
-        case Modifier_Id.item_divine_rapier: return [
-            field(Modifier_Field.attack_bonus, modifier.attack)
         ];
 
         case Modifier_Id.item_mask_of_madness: return [
@@ -355,33 +331,13 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             field(Modifier_Field.health_bonus, modifier.health)
         ];
 
-        case Modifier_Id.item_boots_of_speed: return [
-            field(Modifier_Field.move_points_bonus, modifier.move_bonus)
-        ];
-
-        case Modifier_Id.item_blades_of_attack: return [
-            field(Modifier_Field.attack_bonus, modifier.attack)
-        ];
-
-        case Modifier_Id.item_belt_of_strength: return [
-            field(Modifier_Field.health_bonus, modifier.health)
-        ];
-
         case Modifier_Id.item_morbid_mask: return [
-        ];
-
-        case Modifier_Id.item_chainmail: return [
-            field(Modifier_Field.armor_bonus, modifier.armor)
         ];
 
         case Modifier_Id.item_octarine_core: return [
         ];
 
-        case Modifier_Id.item_basher_bearer: return [
-        ];
-
-        case Modifier_Id.item_basher_target: return [
-            status(Unit_Status.stunned)
+        case Modifier_Id.item_basher: return [
         ];
 
         case Modifier_Id.spell_euls_scepter: return [

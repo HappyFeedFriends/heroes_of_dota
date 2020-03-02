@@ -1067,7 +1067,7 @@ function collapse_modifier_effect(battle: Battle, effect: Delta_Modifier_Effect_
             break;
         }
 
-        case Modifier_Id.item_basher_bearer: {
+        case Modifier_Id.item_basher: {
             const target = find_unit_by_id(battle, effect.target_unit_id);
 
             if (target) {

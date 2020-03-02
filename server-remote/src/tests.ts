@@ -62,7 +62,7 @@ function test_game_doesnt_end_on_matriarch_ability() {
 
     battle.start();
 
-    hero.apply_modifier({ id: Modifier_Id.item_divine_rapier, attack: 100 });
+    hero.apply_modifier({ id: Modifier_Id.attack_damage, bonus: 100 });
     hero.order_cast_on_ground(Ability_Id.basic_attack, xy(3, 1));
 
     battle.for_enemy_player().creep_by_type(Creep_Type.spiderling).assert_found();
@@ -96,8 +96,8 @@ function test_game_over_when_all_enemies_die() {
 
     battle.start();
 
-    first_hero.apply_modifier({ id: Modifier_Id.item_divine_rapier, attack: 100 });
-    second_hero.apply_modifier({ id: Modifier_Id.item_divine_rapier, attack: 100 });
+    first_hero.apply_modifier({ id: Modifier_Id.attack_damage, bonus: 100 });
+    second_hero.apply_modifier({ id: Modifier_Id.attack_damage, bonus: 100 });
 
     first_hero.order_cast_on_ground(Ability_Id.basic_attack, xy(2, 1));
     second_hero.order_cast_on_ground(Ability_Id.basic_attack, xy(2, 2));
@@ -164,8 +164,8 @@ function test_health_modifiers_increase_current_health_along_with_maximum() {
     const bonus = 5;
 
     const health_modifier = hero.apply_modifier({
-        id: Modifier_Id.item_belt_of_strength,
-        health: bonus
+        id: Modifier_Id.health,
+        bonus: bonus
     });
 
     hero.assert()
@@ -190,8 +190,8 @@ function test_health_modifiers_decrease_health_properly() {
     hero.assert().has_health(starting_health);
 
     const health_modifier = hero.apply_modifier({
-        id: Modifier_Id.item_belt_of_strength,
-        health: bonus
+        id: Modifier_Id.health,
+        bonus: bonus
     });
 
     hero.assert().has_health(starting_health + bonus);

@@ -129,8 +129,8 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
             type: Adventure_Item_Type.wearable,
             item_id: id,
             modifier: {
-                id: Modifier_Id.item_boots_of_travel,
-                move_bonus: 3
+                id: Modifier_Id.move_speed,
+                bonus :3
             }
         };
 
@@ -138,8 +138,8 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
             type: Adventure_Item_Type.wearable,
             item_id: id,
             modifier: {
-                id: Modifier_Id.item_assault_cuirass,
-                armor: 4
+                id: Modifier_Id.armor,
+                bonus: 4
             }
         };
 
@@ -147,8 +147,8 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
             type: Adventure_Item_Type.wearable,
             item_id: id,
             modifier: {
-                id: Modifier_Id.item_divine_rapier,
-                attack: 8
+                id: Modifier_Id.attack_damage,
+                bonus: 8
             }
         };
 
@@ -165,8 +165,8 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
             type: Adventure_Item_Type.wearable,
             item_id: id,
             modifier: {
-                id: Modifier_Id.item_boots_of_speed,
-                move_bonus: 1
+                id: Modifier_Id.move_speed,
+                bonus: 1
             }
         };
 
@@ -174,8 +174,8 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
             type: Adventure_Item_Type.wearable,
             item_id: id,
             modifier: {
-                id: Modifier_Id.item_blades_of_attack,
-                attack: 2
+                id: Modifier_Id.attack_damage,
+                bonus: 2
             }
         };
 
@@ -183,8 +183,8 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
             type: Adventure_Item_Type.wearable,
             item_id: id,
             modifier: {
-                id: Modifier_Id.item_belt_of_strength,
-                health: 4
+                id: Modifier_Id.health,
+                bonus: 4
             }
         };
 
@@ -192,8 +192,8 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
             type: Adventure_Item_Type.wearable,
             item_id: id,
             modifier: {
-                id: Modifier_Id.item_chainmail,
-                armor: 1
+                id: Modifier_Id.armor,
+                bonus: 1
             }
         };
 
@@ -201,7 +201,7 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
             type: Adventure_Item_Type.wearable,
             item_id: id,
             modifier: {
-                id: Modifier_Id.item_basher_bearer
+                id: Modifier_Id.item_basher
             }
         };
     }
