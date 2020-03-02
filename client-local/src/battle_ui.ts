@@ -106,7 +106,7 @@ type UI_Unit_Data_Base = {
     stat_max_move_points: Stat_Indicator
     stat_max_health: Stat_Indicator
 
-    modifiers: Modifier_Data[]
+    modifiers: Modifier_Handle_Id[]
     modifier_bar: Panel
 
     stats: Unit_Stats
@@ -1268,16 +1268,6 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
         child.DeleteAsync(0);
     }
 
-    for (const modifier of ui.modifiers) {
-        const modifier_panel = $.CreatePanel("Panel", ui.modifier_bar, "");
-        const modifier_image = $.CreatePanel("Image", modifier_panel, "image");
-
-        modifier_image.SetImage(get_modifier_icon(modifier));
-        modifier_image.SetScaling(ScalingFunction.STRETCH_TO_FIT_Y_PRESERVE_ASPECT);
-
-        modifier_panel.AddClass("modifier");
-    }
-
     function try_find_and_update_associated_unit() {
         const unit = find_unit_by_id(battle, ui.id);
 
@@ -1285,6 +1275,19 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
             try_update_stat_bar_display(ui, true);
 
             ui.stat_bar_panel.SetHasClass("enemy", !player_owns_unit(battle.this_player, unit));
+
+            for (const modifier_handle of ui.modifiers) {
+                const modifier = unit.modifiers.find(modifier => modifier.handle_id == modifier_handle);
+                if (!modifier) continue;
+
+                const modifier_panel = $.CreatePanel("Panel", ui.modifier_bar, "");
+                const modifier_image = $.CreatePanel("Image", modifier_panel, "image");
+
+                modifier_image.SetImage(get_modifier_icon(modifier));
+                modifier_image.SetScaling(ScalingFunction.STRETCH_TO_FIT_Y_PRESERVE_ASPECT);
+
+                modifier_panel.AddClass("modifier");
+            }
         } else {
             $.Schedule(0, try_find_and_update_associated_unit);
         }
@@ -1373,39 +1376,6 @@ function move_order_particle(world_position: XYZ) {
 }
 
 function make_battle_snapshot(): Battle_Snapshot {
-    function modifier_source_to_network_model(source: Source): Modifier_Data_Source {
-        switch (source.type) {
-            case Source_Type.none: return { type: source.type };
-
-            case Source_Type.item: return {
-                type: source.type,
-                item_id: source.item_id
-            };
-
-            case Source_Type.modifier: return {
-                type: source.type,
-                modifier_id: source.applied.modifier.id
-            };
-
-            case Source_Type.player: return {
-                type: source.type,
-                player_id: source.player.id
-            };
-
-            case Source_Type.unit: return {
-                type: source.type,
-                unit_id: source.unit.id,
-                ability_id: source.ability_id
-            };
-
-            case Source_Type.adventure_item: return {
-                type: source.type,
-                item_id: source.item_id
-            }
-        }
-    }
-
-
     return {
         has_started: battle.state.status == Battle_Status.in_progress,
         players: battle.players.map(player => ({
@@ -1428,8 +1398,7 @@ function make_battle_snapshot(): Battle_Snapshot {
                     bonus: unit.bonus,
                     modifiers: unit.modifiers.map(modifier => ({
                         modifier_handle_id: modifier.handle_id,
-                        modifier: modifier.modifier,
-                        source: modifier_source_to_network_model(modifier.source)
+                        modifier: modifier.modifier
                     }))
                 };
 
@@ -1621,7 +1590,7 @@ function get_ability_icon(ability_id: Ability_Id): string {
     }
 }
 
-function get_modifier_icon(applied: Modifier_Data): string {
+function get_modifier_icon(applied: Applied_Modifier): string {
     function maybe_from_modifier_id() {
         switch (applied.modifier.id) {
             case Modifier_Id.spell_euls_scepter: return "items/cyclone";
@@ -1638,7 +1607,7 @@ function get_modifier_icon(applied: Modifier_Data): string {
     const maybe_icon = maybe_from_modifier_id();
 
     if (maybe_icon) {
-        return `file://{images}/spellicons/${maybe_icon}.png`
+        return `file://{images}/${maybe_icon}.png`
     }
 
     if (applied.source.type == Source_Type.item) {
@@ -1651,6 +1620,10 @@ function get_modifier_icon(applied: Modifier_Data): string {
 
     if (applied.source.type == Source_Type.adventure_item) {
         return get_adventure_wearable_item_icon(applied.source.item_id);
+    }
+
+    if (applied.source.type == Source_Type.modifier) {
+        return get_modifier_icon(applied.source.applied);
     }
 
     return "";

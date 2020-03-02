@@ -161,7 +161,7 @@ function unit_to_visualizer_unit_data(unit: Unit): Visualizer_Unit_Data {
     const base: Visualizer_Unit_Data_Base = {
         ...copy(unit as Unit_Stats),
         id: unit.id,
-        modifiers: unit.modifiers,
+        modifiers: unit.modifiers.map(modifier => modifier.modifier_handle_id),
         hidden: unit.hidden
     };
 
