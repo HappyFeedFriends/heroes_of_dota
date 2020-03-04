@@ -43,7 +43,6 @@ declare const enum Api_Request_Type {
     editor_action = 1000,
     editor_get_room_details = 1001,
     editor_create_entity = 1002,
-    editor_get_enemy_data = 1003,
     editor_create_battleground = 1004,
     editor_submit_battleground = 1005,
     editor_get_battleground = 1006,

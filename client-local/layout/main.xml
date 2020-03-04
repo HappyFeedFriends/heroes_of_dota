@@ -178,7 +178,8 @@
                     <Panel id="editor_entrance_marker"/>
                 </Panel>
 
-                <Panel id="editor_context_menu"/>
+                <Panel id="editor_context_menu">
+                </Panel>
             </Panel>
         </Panel>
     </Panel>

@@ -158,6 +158,12 @@ type Visualizer_Player_Data = {
     gold: number
 }
 
+type Physical_Adventure_Entity = {
+    world_entity_id: number
+    adventure_entity_id: Adventure_Entity_Id
+    data: Adventure_Entity_Definition_Data
+}
+
 type Modifier_Data = {
     modifier_handle_id: Modifier_Handle_Id
     modifier: Modifier
@@ -180,6 +186,7 @@ type Game_Net_Table_On_Adventure = Player_Net_Table_Base & {
     state: Player_State.on_adventure
     ongoing_adventure_id: Ongoing_Adventure_Id
     num_party_slots: number
+    entities: Physical_Adventure_Entity[]
 }
 
 type Game_Net_Table_In_Battle = Player_Net_Table_Base & {
@@ -287,7 +294,8 @@ declare const enum Editor_Action_Type {
     teleport = 7,
     exit_adventure = 8,
     submit_battleground = 9,
-    playtest_battleground = 10
+    playtest_battleground = 10,
+    edit_item_data = 11
 }
 
 type Editor_Action = {
@@ -340,4 +348,8 @@ type Editor_Action = {
     type: Editor_Action_Type.playtest_battleground
     battleground: Battleground_Id
     enemy: Adventure_Entity_Id
+} | {
+    type: Editor_Action_Type.edit_item_data
+    entity_id: Adventure_Entity_Id
+    item: Adventure_Item_Entity
 }

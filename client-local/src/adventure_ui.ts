@@ -155,6 +155,12 @@ const party: Party_UI = {
     thanks_started_playing_at: 0
 };
 
+const entities: Physical_Adventure_Entity[] = [];
+
+export function find_adventure_entity_by_world_index(index: EntityId): Physical_Adventure_Entity | undefined {
+    return entities.find(entity => entity.world_entity_id == index);
+}
+
 hide_adventure_tooltip();
 
 function default_inventory_drag_state(): Inventory_Drag_State {
@@ -734,6 +740,10 @@ function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
             break;
         }
 
+        case Adventure_Entity_Type.item_on_the_ground: {
+            break;
+        }
+
         case Adventure_Entity_Type.enemy: {
             break;
         }
@@ -1088,6 +1098,8 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         case Adventure_Party_Change_Type.add_item_to_bag: {
             add_bag_item(change.item);
 
+            Game.EmitSound("party_bag_item_pickup");
+
             break;
         }
 
@@ -1266,6 +1278,15 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", async data => {
         }
 
         adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
+
+        entities.length = 0;
+        entities.push(...from_server_array(data.entities));
+
+        for (const entity of entities) {
+            if (entity.data.type == Adventure_Entity_Type.enemy) {
+                entity.data.creeps = from_server_array(entity.data.creeps);
+            }
+        }
     }
 });
 

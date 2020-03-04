@@ -1,15 +1,13 @@
 function get_hero_name(hero: Hero_Type): string {
-    const enum_string = enum_to_string(hero);
-
-    return enum_string.split("_")
-        .map(word => word[0].toUpperCase() + word.slice(1))
-        .reduce((prev, value) => prev + " " + value);
+    return snake_case_to_capitalized_words(enum_to_string(hero));
 }
 
 function get_creep_name(creep: Creep_Type) {
-    const enum_string = enum_to_string(creep);
+    return snake_case_to_capitalized_words(enum_to_string(creep));
+}
 
-    return enum_string.split("_")
+function snake_case_to_capitalized_words(source: string) {
+    return source.split("_")
         .map(word => word[0].toUpperCase() + word.slice(1))
         .reduce((prev, value) => prev + " " + value);
 }
@@ -28,7 +26,7 @@ function get_adventure_wearable_item_icon(id: Adventure_Wearable_Item_Id): strin
     }
 }
 
-function get_adventure_item_icon(item: Adventure_Item): string {
+function get_adventure_consumable_item_icon(id: Adventure_Consumable_Item_Id): string {
     function get_consumable_icon_name(id: Adventure_Consumable_Item_Id): string {
         switch (id) {
             case Adventure_Consumable_Item_Id.enchanted_mango: return "enchanted_mango";
@@ -37,13 +35,17 @@ function get_adventure_item_icon(item: Adventure_Item): string {
         }
     }
 
+    return `file://{images}/items/${get_consumable_icon_name(id)}.png`;
+}
+
+function get_adventure_item_icon(item: Adventure_Item): string {
     switch (item.type) {
         case Adventure_Item_Type.wearable: {
             return get_adventure_wearable_item_icon(item.item_id);
         }
 
         case Adventure_Item_Type.consumable: {
-            return `file://{images}/items/${get_consumable_icon_name(item.item_id)}.png`;
+            return get_adventure_consumable_item_icon(item.item_id);
         }
     }
 }

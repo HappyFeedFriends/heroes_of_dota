@@ -250,12 +250,45 @@ function game_net_table(game: Game): Game_Net_Table {
         }
 
         case Player_State.on_adventure: {
+            const physical_entity = (entity: Adventure_Materialized_Entity): Physical_Adventure_Entity | undefined => {
+                switch (entity.type) {
+                    case Adventure_Entity_Type.shrine: {
+                        return {
+                            adventure_entity_id: entity.id,
+                            world_entity_id: entity.handle.entindex(),
+                            data: entity.definition
+                        }
+                    }
+
+                    default: {
+                        if (!entity.alive) return;
+
+                        return {
+                            adventure_entity_id: entity.id,
+                            world_entity_id: entity.handle.entindex(),
+                            data: entity.definition
+                        }
+                    }
+                }
+            };
+
+            const physical_entities: Physical_Adventure_Entity[] = [];
+
+            for (const entity of game.adventure.entities) {
+                const physical = physical_entity(entity);
+
+                if (physical) {
+                    physical_entities.push(physical);
+                }
+            }
+
             return {
                 state: game.state,
                 id: game.player.remote_id,
                 token: game.token,
                 ongoing_adventure_id: game.adventure.ongoing_adventure_id,
-                num_party_slots: game.adventure.num_party_slots
+                num_party_slots: game.adventure.num_party_slots,
+                entities: physical_entities
             };
         }
 
@@ -520,12 +553,6 @@ function main() {
     link_modifier("Modifier_Dummy", "modifiers/modifier_dummy");
     link_modifier("Modifier_Stunned", "modifiers/modifier_stunned");
     link_modifier("Modifier_Battle_Stunned", "modifiers/modifier_battle_stunned");
-
-    if (IsInToolsMode()) {
-        link_modifier("Modifier_Editor_Npc_Type", "modifiers/modifier_editor");
-        link_modifier("Modifier_Editor_Adventure_Entity_Id", "modifiers/modifier_editor");
-        link_modifier("Modifier_Editor_Adventure_Entity_Type", "modifiers/modifier_editor");
-    }
 
     mode.SetContextThink("scheduler_think", () => {
         update_scheduler();

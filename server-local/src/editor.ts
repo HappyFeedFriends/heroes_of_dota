@@ -177,6 +177,8 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
 
             if (created_entity) {
                 game.adventure.entities.push(create_adventure_entity(created_entity));
+
+                update_game_net_table(game);
             }
 
             break;
@@ -252,6 +254,24 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
             break;
         }
 
+        case Editor_Action_Type.edit_item_data: {
+            const entity = find_entity_by_id(event.entity_id);
+            if (!entity) break;
+            if (entity.type != Adventure_Entity_Type.item_on_the_ground) break;
+
+
+
+
+            api_request(Api_Request_Type.editor_action, {
+                type: Adventure_Editor_Action_Type.set_item_data,
+                entity_id: entity.id,
+                item: event.item,
+                access_token: game.token
+            });
+
+            break;
+        }
+
         case Editor_Action_Type.start_adventure: {
             const new_state = api_request(Api_Request_Type.start_adventure, {
                 access_token: game.token,
@@ -305,6 +325,8 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
 
             break;
         }
+
+        default: unreachable(event);
     }
 }
 

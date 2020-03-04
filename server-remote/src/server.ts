@@ -288,16 +288,6 @@ function sequential_id_generator(): Id_Generator {
     return () => id++;
 }
 
-export function try_string_to_enum_value<T>(value: string, enum_values: [string, T][]): T | undefined {
-    const result = enum_values.find(([name]) => value == name);
-
-    if (!result) {
-        return undefined;
-    }
-
-    return result[1];
-}
-
 function try_authorize_steam_player_from_dedicated_server(steam_id: string, steam_name: string): [Player_Id, string] {
     let player = steam_id_to_player.get(steam_id);
 
@@ -558,6 +548,8 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
 
     return participant;
 }
+
+type Adventure_Enemy_Definition = Find_By_Type<Adventure_Entity_Definition, Adventure_Entity_Type.enemy>;
 
 function adventure_enemy_to_battle_participant(next_id: Id_Generator, id: Adventure_Entity_Id, definition: Adventure_Enemy_Definition): Battle_Participant {
     return {
@@ -1270,6 +1262,28 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                     break;
                 }
 
+                case Party_Event_Type.add_item: {
+                    switch (event.item.type) {
+                        case Adventure_Item_Type.consumable: {
+                            const item = adventure_consumable_item_id_to_item(event.item.id);
+                            push_party_change(player.online.party, change_party_add_item(item));
+
+                            break;
+                        }
+
+                        case Adventure_Item_Type.wearable: {
+                            const item = adventure_wearable_item_id_to_item(event.item.id);
+                            push_party_change(player.online.party, change_party_add_item(item));
+
+                            break;
+                        }
+
+                        default: unreachable(event.item);
+                    }
+
+                    break;
+                }
+
                 case Party_Event_Type.activate_shrine: {
                     for (const [index, slot] of player.online.party.slots.entries()) {
                         switch (slot.type) {
@@ -1444,21 +1458,6 @@ function register_dev_handlers() {
             if (player.online.state != Player_State.on_adventure) return;
 
             return editor_create_entity(player.online.ongoing_adventure, req.definition);
-        });
-    });
-
-    register_api_handler(Api_Request_Type.editor_get_enemy_data, req => {
-        return with_player_in_request(req, player => {
-            if (player.online.state != Player_State.on_adventure) return;
-
-            const entity = player.online.ongoing_adventure.entities.find(entity => entity.id == req.entity_id);
-            if (!entity) return;
-            if (entity.definition.type != Adventure_Entity_Type.enemy) return;
-
-            return {
-                creeps: entity.definition.creeps,
-                battleground: entity.definition.battleground
-            };
         });
     });
 

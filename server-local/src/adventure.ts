@@ -42,16 +42,49 @@ type Adventure_Materialized_Shrine = Adventure_Entity_Base & { type: Adventure_E
     obstruction: CBaseEntity
 })
 
+type Adventure_Materialized_Item_On_The_Ground = Adventure_Entity_Base & { type: Adventure_Entity_Type.item_on_the_ground} & ({
+    alive: true
+    handle: CDOTA_BaseNPC
+} | {
+    alive: false
+})
+
 type Adventure_Materialized_Entity =
     Adventure_Materialized_Enemy |
     Adventure_Materialized_Lost_Creep |
-    Adventure_Materialized_Shrine
+    Adventure_Materialized_Shrine |
+    Adventure_Materialized_Item_On_The_Ground
 
 type Adventure_State = {
     entities: Adventure_Materialized_Entity[]
     current_right_click_target?: Adventure_Materialized_Entity
     ongoing_adventure_id: Ongoing_Adventure_Id
     num_party_slots: number
+}
+
+function adventure_wearable_item_id_to_model(id: Adventure_Wearable_Item_Id): string {
+    switch (id) {
+        case Adventure_Wearable_Item_Id.divine_rapier: return "models/props_gameplay/divine_rapier.vmdl";
+        case Adventure_Wearable_Item_Id.boots_of_speed: return "models/props_gameplay/boots_of_speed.vmdl";
+    }
+
+    return "models/props_gameplay/neutral_box.vmdl";
+}
+
+function adventure_consumable_item_id_to_model(id: Adventure_Consumable_Item_Id): string {
+    switch (id) {
+        case Adventure_Consumable_Item_Id.healing_salve: return "models/props_gameplay/salve.vmdl";
+        case Adventure_Consumable_Item_Id.enchanted_mango: return "models/props_gameplay/mango.vmdl";
+    }
+
+    return "models/props_gameplay/neutral_box.vmdl";
+}
+
+function adventure_item_to_model(item: Adventure_Item_Entity) {
+    switch (item.type) {
+        case Adventure_Item_Type.wearable: return adventure_wearable_item_id_to_model(item.id);
+        case Adventure_Item_Type.consumable: return adventure_consumable_item_id_to_model(item.id);
+    }
 }
 
 function create_adventure_entity(entity: Adventure_Entity): Adventure_Materialized_Entity {
@@ -63,9 +96,8 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
         definition: entity.definition
     } as const;
 
-    function transfer_editor_data(unit: CDOTA_BaseNPC) {
-        unit.AddNewModifier(unit, undefined, "Modifier_Editor_Adventure_Entity_Id",  {}).SetStackCount(entity.id);
-        unit.AddNewModifier(unit, undefined, "Modifier_Editor_Adventure_Entity_Type",  {}).SetStackCount(entity.definition.type);
+    function create_adventure_unit(model: string, scale: number) {
+        return create_map_unit_with_model(data.spawn_position, data.spawn_facing, model, scale);
     }
 
     switch (data.type) {
@@ -73,13 +105,7 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
             if (!entity.alive) return { ...base, type: data.type, alive: false };
 
             const definition = get_npc_definition(data.npc_type);
-            const unit = create_map_unit_with_model(data.spawn_position, data.spawn_facing, definition.model, definition.scale);
-
-            if (IsInToolsMode()) {
-                unit.AddNewModifier(unit, undefined, "Modifier_Editor_Npc_Type",  {}).SetStackCount(data.npc_type);
-
-                transfer_editor_data(unit);
-            }
+            const unit = create_adventure_unit(definition.model, definition.scale);
 
             return {
                 ...base,
@@ -94,15 +120,25 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
             }
         }
 
+        case Adventure_Entity_Type.item_on_the_ground: {
+            if (!entity.alive) return { ...base, type: data.type, alive: false };
+
+            const model = adventure_item_to_model(data.item);
+            const unit = create_adventure_unit(model, 1.0);
+
+            return {
+                ...base,
+                type: data.type,
+                alive: true,
+                handle: unit
+            };
+        }
+
         case Adventure_Entity_Type.lost_creep: {
             if (!entity.alive) return { ...base, type: data.type, alive: false };
 
             const [model, scale] = creep_type_to_model_and_scale(Creep_Type.lane_creep);
-            const unit = create_map_unit_with_model(data.spawn_position, data.spawn_facing, model, scale);
-
-            if (IsInToolsMode()) {
-                transfer_editor_data(unit);
-            }
+            const unit = create_adventure_unit(model, scale);
 
             return {
                 ...base,
@@ -120,12 +156,8 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
                 1.0
             ];
 
-            const unit = create_map_unit_with_model(data.spawn_position, data.spawn_facing, model, scale);
+            const unit = create_adventure_unit(model, scale);
             const obstruction = setup_building_obstruction(unit);
-
-            if (IsInToolsMode()) {
-                transfer_editor_data(unit);
-            }
 
             const child = {
                 type: Adventure_Entity_Type.shrine,
@@ -429,6 +461,8 @@ function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_
                 hero_fx.destroy_and_release(false);
             });
         }
+
+        update_game_net_table(game);
     }
 }
 
@@ -466,13 +500,23 @@ function transition_entity_state(from: Adventure_Materialized_Entity, to: Advent
             };
         }
 
+        case Adventure_Entity_Type.item_on_the_ground: {
+            from.handle.RemoveSelf();
+
+            return {
+                ...base,
+                type: from.type,
+                alive: false
+            };
+        }
+
         case Adventure_Entity_Type.lost_creep: {
             from.handle.RemoveSelf();
 
             return {
                 ...base,
                 type: from.type,
-                alive: false,
+                alive: false
             };
         }
 
@@ -486,7 +530,7 @@ function transition_entity_state(from: Adventure_Materialized_Entity, to: Advent
             return {
                 ...base,
                 type: from.type,
-                alive: false,
+                alive: false
             };
         }
 
@@ -523,6 +567,14 @@ function cleanup_adventure_entity(entity: Adventure_Materialized_Entity) {
             if (entity.noticed_particle) {
                 entity.noticed_particle.destroy_and_release(true);
             }
+
+            break;
+        }
+
+        case Adventure_Entity_Type.item_on_the_ground: {
+            if (!entity.alive) break;
+
+            entity.handle.RemoveSelf();
 
             break;
         }

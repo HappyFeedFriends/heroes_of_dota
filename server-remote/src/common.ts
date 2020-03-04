@@ -14,3 +14,13 @@ export function xy_equal(a: XY, b: XY) {
 export function unreachable(x: never): never {
     throw new Error("Didn't expect to get here");
 }
+
+export function try_string_to_enum_value<T>(value: string, enum_values: [string, T][]): T | undefined {
+    const result = enum_values.find(([name]) => value == name);
+
+    if (!result) {
+        return undefined;
+    }
+
+    return result[1];
+}

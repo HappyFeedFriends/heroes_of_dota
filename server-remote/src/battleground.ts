@@ -1,5 +1,5 @@
 import {readdirSync, readFileSync, writeFileSync, unlinkSync} from "fs";
-import {try_string_to_enum_value} from "./server";
+import {try_string_to_enum_value} from "./common";
 
 type Persistent_Battleground =  Battleground & {
     id: Battleground_Id

@@ -9,7 +9,8 @@ declare const enum Adventure_Id {
 declare const enum Adventure_Entity_Type {
     enemy = 0,
     lost_creep = 1,
-    shrine = 2
+    shrine = 2,
+    item_on_the_ground = 3
 }
 
 declare const enum Adventure_Party_Slot_Type {
@@ -151,25 +152,29 @@ type Adventure_Entity_Definition_Base = {
     }
 }
 
-type Adventure_Enemy_Definition = Adventure_Entity_Definition_Base & {
+type Adventure_Entity_Definition_Data = {
     type: Adventure_Entity_Type.enemy
     npc_type: Npc_Type
     creeps: Creep_Type[]
     battleground: Battleground_Id
-}
-
-type Adventure_Lost_Creep_Definition = Adventure_Entity_Definition_Base & {
+} | {
     type: Adventure_Entity_Type.lost_creep
-}
-
-type Adventure_Shrine_Definition = Adventure_Entity_Definition_Base & {
+} | {
     type: Adventure_Entity_Type.shrine
-}
+} | {
+    type: Adventure_Entity_Type.item_on_the_ground
+    item: Adventure_Item_Entity
+};
 
-type Adventure_Entity_Definition =
-    Adventure_Enemy_Definition |
-    Adventure_Lost_Creep_Definition |
-    Adventure_Shrine_Definition
+type Adventure_Entity_Definition = Adventure_Entity_Definition_Base & Adventure_Entity_Definition_Data
+
+type Adventure_Item_Entity = {
+    type: Adventure_Item_Type.consumable
+    id: Adventure_Consumable_Item_Id
+} | {
+    type: Adventure_Item_Type.wearable
+    id: Adventure_Wearable_Item_Id
+}
 
 type Adventure_Entity_State = {
     id: Adventure_Entity_Id

@@ -1,5 +1,5 @@
 import {readFileSync, writeFileSync, readdirSync} from "fs";
-import {try_string_to_enum_value} from "./server";
+import {try_string_to_enum_value, unreachable} from "./common";
 
 const storage_dir_path = "src/adventures";
 
@@ -11,7 +11,8 @@ export const enum Adventure_Room_Type {
 export const enum Party_Event_Type {
     add_creep = 0,
     add_spell = 1,
-    activate_shrine = 2
+    activate_shrine = 2,
+    add_item = 3
 }
 
 export type Adventure = {
@@ -33,14 +34,20 @@ type Adventure_File = {
         enemies?: Array<{
             type: string
             position: [number, number]
-            facing: [number, number],
+            facing: [number, number]
             creeps: string[]
             battleground: number
+        }>
+        items?: Array<{
+            type: string
+            position: [number, number]
+            facing: [number, number]
+            item_id: string
         }>
         other_entities?: Array<{
             type: string
             position: [number, number]
-            facing: [number, number],
+            facing: [number, number]
         }>
     }>
 }
@@ -53,6 +60,9 @@ type Party_Event = {
     spell: Spell_Id
 } | {
     type: Party_Event_Type.activate_shrine
+} | {
+    type: Party_Event_Type.add_item
+    item: Adventure_Item_Entity
 }
 
 type Entity_Interaction_Result = {
@@ -198,6 +208,62 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             })
         }
 
+        for (const source_entity of source_room.items || []) {
+            const item_type = try_string_to_enum_value(source_entity.type, enum_names_to_values<Adventure_Item_Type>());
+
+            if (item_type == undefined) {
+                console.error(`Item type ${source_entity.type} not found while parsing ${file_path}`);
+                return;
+            }
+
+            const base = {
+                spawn_position: {
+                    x: source_entity.position[0],
+                    y: source_entity.position[1]
+                },
+                spawn_facing: {
+                    x: source_entity.facing[0],
+                    y: source_entity.facing[1]
+                }
+            };
+
+            switch (item_type) {
+                case Adventure_Item_Type.consumable: {
+                    const item_id = try_string_to_enum_value(source_entity.item_id, enum_names_to_values<Adventure_Consumable_Item_Id>());
+                    if (item_id == undefined) {
+                        console.error(`Item id ${source_entity.item_id} not found while parsing ${file_path}`);
+                        return;
+                    }
+
+                    entities.push({
+                        ...base,
+                        type: Adventure_Entity_Type.item_on_the_ground,
+                        item: { type: item_type, id: item_id }
+                    });
+
+                    break;
+                }
+
+                case Adventure_Item_Type.wearable: {
+                    const item_id = try_string_to_enum_value(source_entity.item_id, enum_names_to_values<Adventure_Wearable_Item_Id>());
+                    if (item_id == undefined) {
+                        console.error(`Item id ${source_entity.item_id} not found while parsing ${file_path}`);
+                        return;
+                    }
+
+                    entities.push({
+                        ...base,
+                        type: Adventure_Entity_Type.item_on_the_ground,
+                        item: { type: item_type, id: item_id }
+                    });
+
+                    break;
+                }
+
+                default: unreachable(item_type);
+            }
+        }
+
         for (const source_entity of source_room.other_entities || []) {
             const entity_type = try_string_to_enum_value(source_entity.type, entities_enum);
 
@@ -206,33 +272,37 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
                 return;
             }
 
-            if (entity_type != Adventure_Entity_Type.enemy) {
-                const base = {
-                    spawn_position: {
-                        x: source_entity.position[0],
-                        y: source_entity.position[1]
-                    },
-                    spawn_facing: {
-                        x: source_entity.facing[0],
-                        y: source_entity.facing[1]
-                    }
-                };
+            switch (entity_type) {
+                case Adventure_Entity_Type.shrine:
+                case Adventure_Entity_Type.lost_creep: {
+                    const base = {
+                        spawn_position: {
+                            x: source_entity.position[0],
+                            y: source_entity.position[1]
+                        },
+                        spawn_facing: {
+                            x: source_entity.facing[0],
+                            y: source_entity.facing[1]
+                        }
+                    };
 
-                const to_entity = (): Adventure_Entity_Definition => {
-                    switch (entity_type) {
-                        case Adventure_Entity_Type.lost_creep: return {
-                            type: entity_type,
-                            ...base
-                        };
+                    const to_entity = (): Adventure_Entity_Definition => {
+                        switch (entity_type) {
+                            case Adventure_Entity_Type.lost_creep: return {
+                                type: entity_type,
+                                ...base
+                            };
 
-                        case Adventure_Entity_Type.shrine: return {
-                            type: entity_type,
-                            ...base
-                        };
-                    }
-                };
+                            case Adventure_Entity_Type.shrine: return {
+                                type: entity_type,
+                                ...base
+                            };
+                        }
+                    };
 
-                entities.push(to_entity());
+                    entities.push(to_entity());
+                    break;
+                }
             }
         }
 
@@ -246,28 +316,50 @@ function persist_adventure_to_file_system(adventure: Adventure) {
     const file: Adventure_File = {
         rooms: adventure.rooms.map(room => {
             const enemies: Adventure_File["rooms"][0]["enemies"] = [];
-
-            for (const entity of room.entities) {
-                if (entity.type == Adventure_Entity_Type.enemy) {
-                    enemies.push({
-                        type: enum_to_string(entity.npc_type),
-                        position: [entity.spawn_position.x, entity.spawn_position.y],
-                        facing: [entity.spawn_facing.x, entity.spawn_facing.y],
-                        creeps: entity.creeps.map(type => enum_to_string<Creep_Type>(type)),
-                        battleground: entity.battleground
-                    })
-                }
-            }
-
             const other_entities: Adventure_File["rooms"][0]["other_entities"] = [];
+            const items: Adventure_File["rooms"][0]["items"] = [];
 
             for (const entity of room.entities) {
-                if (entity.type != Adventure_Entity_Type.enemy) {
-                    other_entities.push({
-                        type: enum_to_string(entity.type),
-                        position: [entity.spawn_position.x, entity.spawn_position.y],
-                        facing: [entity.spawn_facing.x, entity.spawn_facing.y],
-                    })
+                switch (entity.type) {
+                    case Adventure_Entity_Type.enemy: {
+                        enemies.push({
+                            type: enum_to_string(entity.npc_type),
+                            position: [entity.spawn_position.x, entity.spawn_position.y],
+                            facing: [entity.spawn_facing.x, entity.spawn_facing.y],
+                            creeps: entity.creeps.map(type => enum_to_string<Creep_Type>(type)),
+                            battleground: entity.battleground
+                        });
+
+                        break;
+                    }
+
+                    case Adventure_Entity_Type.item_on_the_ground: {
+                        const item_id = () => {
+                            switch (entity.item.type) {
+                                case Adventure_Item_Type.wearable: return enum_to_string(entity.item.id);
+                                case Adventure_Item_Type.consumable: return enum_to_string(entity.item.id);
+                            }
+                        };
+
+                        items.push({
+                            type: enum_to_string(entity.item.type),
+                            position: [entity.spawn_position.x, entity.spawn_position.y],
+                            facing: [entity.spawn_facing.x, entity.spawn_facing.y],
+                            item_id: item_id()
+                        });
+
+                        break;
+                    }
+
+                    default: {
+                        other_entities.push({
+                            type: enum_to_string(entity.type),
+                            position: [entity.spawn_position.x, entity.spawn_position.y],
+                            facing: [entity.spawn_facing.x, entity.spawn_facing.y],
+                        });
+
+                        break;
+                    }
                 }
             }
 
@@ -275,6 +367,7 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                 id: room.id,
                 entrance: [room.entrance_location.x, room.entrance_location.y],
                 enemies: enemies,
+                items: items,
                 other_entities: other_entities
             };
         })
@@ -317,6 +410,18 @@ export function interact_with_entity(adventure: Ongoing_Adventure, entity_id: Ad
                 updated_entity: entity_state(),
                 party_events: [{
                     type: Party_Event_Type.activate_shrine
+                }]
+            };
+        }
+
+        case Adventure_Entity_Type.item_on_the_ground: {
+            entity.alive = false;
+
+            return {
+                updated_entity: entity_state(),
+                party_events: [{
+                    type: Party_Event_Type.add_item,
+                    item: entity.definition.item
                 }]
             };
         }
@@ -387,6 +492,16 @@ export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventur
             if (enemy.definition.type != Adventure_Entity_Type.enemy) return;
 
             enemy.definition.battleground = action.battleground;
+
+            break;
+        }
+
+        case Adventure_Editor_Action_Type.set_item_data: {
+            const item = ongoing.entities.find(entity => entity.id == action.entity_id);
+            if (!item) return;
+            if (item.definition.type != Adventure_Entity_Type.item_on_the_ground) return;
+
+            item.definition.item = action.item;
 
             break;
         }
