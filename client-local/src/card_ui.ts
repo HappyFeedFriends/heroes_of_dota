@@ -23,6 +23,7 @@ function get_adventure_wearable_item_icon(id: Adventure_Wearable_Item_Id): strin
         case Adventure_Wearable_Item_Id.belt_of_strength: return get_item_icon(Item_Id.belt_of_strength);
         case Adventure_Wearable_Item_Id.chainmail: return get_item_icon(Item_Id.chainmail);
         case Adventure_Wearable_Item_Id.basher: return get_item_icon(Item_Id.basher);
+        case Adventure_Wearable_Item_Id.iron_branch: return get_item_icon(Item_Id.iron_branch);
     }
 }
 
@@ -82,6 +83,7 @@ function get_item_icon(id: Item_Id) {
             case Item_Id.enchanted_mango: return "enchanted_mango";
             case Item_Id.octarine_core: return "octarine_core";
             case Item_Id.basher: return "basher";
+            case Item_Id.iron_branch: return "branches";
         }
     }
 

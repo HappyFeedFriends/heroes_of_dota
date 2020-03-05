@@ -204,6 +204,18 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
                 id: Modifier_Id.item_basher
             }
         };
+
+        case Adventure_Wearable_Item_Id.iron_branch: return {
+            type: Adventure_Item_Type.wearable,
+            item_id: id,
+            modifier: {
+                id: Modifier_Id.item_iron_branch,
+                armor_bonus: 1,
+                attack_bonus: 1,
+                health_bonus: 1,
+                moves_bonus: 1
+            }
+        }
     }
 }
 

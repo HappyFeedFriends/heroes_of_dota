@@ -98,5 +98,11 @@ function item_id_to_item(item_id: Item_Id): Item {
             bonus_charges: 1,
             gold_cost: 2
         };
+
+        case Item_Id.iron_branch: return {
+            id: item_id,
+            stat_bonus: 1,
+            gold_cost: 4
+        }
     }
 }

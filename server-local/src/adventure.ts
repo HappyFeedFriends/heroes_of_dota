@@ -66,6 +66,7 @@ function adventure_wearable_item_id_to_model(id: Adventure_Wearable_Item_Id): st
     switch (id) {
         case Adventure_Wearable_Item_Id.divine_rapier: return "models/props_gameplay/divine_rapier.vmdl";
         case Adventure_Wearable_Item_Id.boots_of_speed: return "models/props_gameplay/boots_of_speed.vmdl";
+        case Adventure_Wearable_Item_Id.iron_branch: return "models/props_gameplay/branch.vmdl";
     }
 
     return "models/props_gameplay/neutral_box.vmdl";

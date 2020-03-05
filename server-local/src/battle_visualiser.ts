@@ -2689,6 +2689,11 @@ function apply_item_equip_effects(game: Game, hero: Hero, equip: Equip_Item) {
             break;
         }
 
+        case Item_Id.iron_branch: {
+            apply_modifier(game, hero, equip.modifier);
+            break;
+        }
+
         case Item_Id.enchanted_mango: {
             fx_by_unit("particles/items3_fx/mango_active.vpcf", hero).release();
             unit_emit_sound(hero, "DOTA_Item.Mango.Activate");

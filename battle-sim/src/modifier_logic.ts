@@ -340,6 +340,13 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
         case Modifier_Id.item_basher: return [
         ];
 
+        case Modifier_Id.item_iron_branch: return [
+            field(Modifier_Field.armor_bonus, modifier.armor_bonus),
+            field(Modifier_Field.health_bonus, modifier.health_bonus),
+            field(Modifier_Field.attack_bonus, modifier.attack_bonus),
+            field(Modifier_Field.move_points_bonus, modifier.moves_bonus)
+        ];
+
         case Modifier_Id.spell_euls_scepter: return [
             status(Unit_Status.out_of_the_game)
         ];

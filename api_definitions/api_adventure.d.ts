@@ -55,7 +55,8 @@ declare const enum Adventure_Wearable_Item_Id {
     blades_of_attack = 5,
     belt_of_strength = 6,
     chainmail = 7,
-    basher = 8
+    basher = 8,
+    iron_branch = 9
 }
 
 declare const enum Adventure_Consumable_Item_Id {

@@ -15,7 +15,8 @@ declare const enum Item_Id {
     chainmail = 13,
     enchanted_mango = 14,
     octarine_core = 15,
-    basher = 16
+    basher = 16,
+    iron_branch = 17
 }
 
 type Item =
@@ -35,7 +36,9 @@ type Item =
     Item_Chainmail |
     Item_Enchanted_Mango |
     Item_Octarine_Core |
-    Item_Basher
+    Item_Basher |
+    Item_Iron_Branch
+
 
 type Equip_Item =
     Equip_Item_With_Modifier |
@@ -129,6 +132,11 @@ type Item_Basher = Item_Base & {
     id: Item_Id.basher
 }
 
+type Item_Iron_Branch = Item_Base & {
+    id: Item_Id.iron_branch
+    stat_bonus: number
+}
+
 type Equip_Item_With_Modifier = {
     item_id:
         Item_Id.satanic |
@@ -144,7 +152,8 @@ type Equip_Item_With_Modifier = {
         Item_Id.morbid_mask |
         Item_Id.chainmail |
         Item_Id.octarine_core |
-        Item_Id.basher
+        Item_Id.basher |
+        Item_Id.iron_branch
 
     modifier: Modifier_Application
 }

@@ -1697,6 +1697,11 @@ function collapse_item_equip(battle: Battle, hero: Hero, equip: Equip_Item) {
             break;
         }
 
+        case Item_Id.iron_branch: {
+            apply_modifier(battle, source, hero, equip.modifier);
+            break;
+        }
+
         default: unreachable(equip);
     }
 }

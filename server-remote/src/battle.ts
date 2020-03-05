@@ -1260,6 +1260,21 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
             }
         }
 
+        case Item_Id.iron_branch: {
+            return {
+                type: Delta_Type.equip_item,
+                unit_id: hero.id,
+                item_id: item.id,
+                modifier: modifier(battle, {
+                    id: Modifier_Id.item_iron_branch,
+                    moves_bonus: item.stat_bonus,
+                    attack_bonus: item.stat_bonus,
+                    health_bonus: item.stat_bonus,
+                    armor_bonus: item.stat_bonus
+                })
+            }
+        }
+
     }
 }
 

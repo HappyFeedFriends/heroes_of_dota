@@ -17,6 +17,7 @@ declare const enum Modifier_Id {
     shaker_enchant_totem_caster = 18,
 
     item_heart_of_tarrasque = 101,
+    item_iron_branch = 102,
     item_satanic = 103,
     item_mask_of_madness = 105,
     item_armlet = 106,
@@ -107,6 +108,12 @@ type Modifier = {
     id: Modifier_Id.item_octarine_core
 } | {
     id: Modifier_Id.item_basher
+} | {
+    id: Modifier_Id.item_iron_branch
+    health_bonus: number
+    attack_bonus: number
+    armor_bonus: number
+    moves_bonus: number
 } | {
     id: Modifier_Id.spell_euls_scepter
 } | {

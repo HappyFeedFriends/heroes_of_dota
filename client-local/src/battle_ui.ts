@@ -1489,6 +1489,7 @@ function get_item_tooltip(i: Item): string {
         case Item_Id.enchanted_mango: return `+${i.bonus_charges} charge to a level 1 ability`;
         case Item_Id.octarine_core: return `Restore health per damage point dealt by abilities`;
         case Item_Id.basher: return `Stun attacked targets for 1 turn`;
+        case Item_Id.iron_branch: return `+${i.stat_bonus} move points<br/>+${i.stat_bonus} attack<br/>+${i.stat_bonus} health<br/>+${i.stat_bonus} armor`;
     }
 }
 
