@@ -15,7 +15,7 @@
     hero_level_up = {
         type = "dota_src1_2d"
         event_type = 3.0
-        vsnd_files = "sounds/ui/bonus_level.vsnd"
+        vsnd_files = "sounds/ui/power_up_06.vsnd"
     }
 
     buyback_use = {
@@ -246,5 +246,20 @@
     healing_salve = {
         type = "dota_src1_2d"
         vsnd_files = "sounds/items/healing_salve.vsnd"
+    }
+
+    adventure_popup_open = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/ui/ui_message_popup_slow_01.vsnd"
+    }
+
+    adventure_popup_ok = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/ui/npe_objective_complete.vsnd"
+    }
+
+    click_simple = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/ui/buttonclick.vsnd"
     }
 }

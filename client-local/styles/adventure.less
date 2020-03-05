@@ -347,13 +347,24 @@
       align: center center;
       margin-bottom: 100px;
 
+      #adventure_popup_header {
+        horizontal-align: center;
+        color: gradient( linear, 0% 0%, 0% 100%, from(#eccc0c), to(rgb(106, 106, 78)) );
+        font-family: @font-title;
+        font-size: 40px;
+        text-align: center;
+        margin: 30px;
+        text-shadow: 0px 0px 8px 3 black;
+      }
+
       #adventure_popup_text {
-        color: white;
+        horizontal-align: center;
+        color: #dcdcdc;
         font-family: @font-regular;
-        font-size: 24px;
+        font-size: 20px;
         width: 250px;
         text-align: center;
-        margin: 20px;
+        margin-top: 30px;
       }
 
       #adventure_popup_inner_content {
@@ -361,6 +372,18 @@
 
         .card:hover {
           ui-scale: 100%;
+        }
+
+        .icon {
+          width: 128px;
+          height: 128px;
+          box-shadow: #151515 0 0 6px 0;
+        }
+
+        .item_icon {
+          width: 96px;
+          height: 64px;
+          box-shadow: #151515 0 0 6px 0;
         }
       }
     }

@@ -23,6 +23,7 @@ const adventure_ui = {
     },
     popup: {
         window: adventure_ui_root.FindChildTraverse("adventure_popup"),
+        header: adventure_ui_root.FindChildTraverse("adventure_popup_header") as LabelPanel,
         text: adventure_ui_root.FindChildTraverse("adventure_popup_text") as LabelPanel,
         content: adventure_ui_root.FindChildTraverse("adventure_popup_inner_content"),
         background: adventure_ui_root.FindChildTraverse("window_background"),
@@ -721,6 +722,7 @@ function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
 
     switch (entity.type) {
         case Adventure_Entity_Type.lost_creep: {
+            popup.header.text = "Ally";
             popup.text.text = "Lost Creep would like to join your party";
 
             const creep = Creep_Type.lane_creep;
@@ -733,14 +735,32 @@ function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
         }
 
         case Adventure_Entity_Type.shrine: {
+            popup.header.text = "Shrine";
             popup.text.text = "This magical shrine can restore your party members' health";
 
-            // panorama/images/spellicons/filler_ability_png.vtex
+            const icon = $.CreatePanel("Image", popup.content, "");
+            icon.AddClass("icon");
+            icon.SetImage("file://{images}/spellicons/filler_ability.png");
 
             break;
         }
 
         case Adventure_Entity_Type.item_on_the_ground: {
+            const item_name = ((): string => {
+                switch (entity.item.type) {
+                    case Adventure_Item_Type.consumable: return enum_to_string(entity.item.id);
+                    case Adventure_Item_Type.wearable: return enum_to_string(entity.item.id);
+                }
+            })();
+
+            popup.header.text = "Item found";
+            popup.text.text = snake_case_to_capitalized_words(item_name);
+
+            const icon = $.CreatePanel("Image", popup.content, "");
+            icon.AddClass("item_icon");
+            icon.SetImage(get_adventure_item_entity_icon(entity.item));
+            icon.SetScaling(ScalingFunction.STRETCH_TO_COVER_PRESERVE_ASPECT)
+
             break;
         }
 
@@ -758,6 +778,7 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
     popup.window.SetHasClass("visible", true);
     popup.background.SetHasClass("visible", true);
 
+    popup.header.text = "";
     popup.text.text = "";
     popup.content.RemoveAndDeleteChildren();
 
@@ -766,6 +787,8 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
     popup.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
 
     popup.button_yes.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        Game.EmitSound("adventure_popup_ok");
+
         fire_event(To_Server_Event_Type.adventure_interact_with_entity, {
             entity_id: entity_id,
             current_head: party.current_head
@@ -775,12 +798,16 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
     });
 
     popup.button_no.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        Game.EmitSound("click_simple");
+
         hide_adventure_popup();
     });
 
     popup.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
         hide_adventure_popup();
     });
+
+    Game.EmitSound("adventure_popup_open");
 }
 
 function changes_equal(left: Adventure_Party_Change, right: Adventure_Party_Change) {

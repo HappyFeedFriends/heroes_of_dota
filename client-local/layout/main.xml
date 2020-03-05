@@ -145,8 +145,9 @@
             <Panel id="window_background"/>
             <Panel id="adventure_popup">
                 <Panel id="adventure_popup_content">
-                    <Label id="adventure_popup_text"/>
+                    <Label id="adventure_popup_header"/>
                     <Panel id="adventure_popup_inner_content"/>
+                    <Label id="adventure_popup_text"/>
                 </Panel>
 
                 <Panel id="adventure_popup_buttons">

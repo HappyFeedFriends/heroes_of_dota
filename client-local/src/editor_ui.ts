@@ -920,18 +920,6 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         const wrapper = $.CreatePanel("Panel", context_menu, "context_menu_item_wrapper");
         const item_container = $.CreatePanel("Panel", wrapper, "context_menu_item_container");
 
-        function item_icon(item: Adventure_Item_Entity): string {
-            switch (item.type) {
-                case Adventure_Item_Type.wearable: {
-                    return get_adventure_wearable_item_icon(item.id);
-                }
-
-                case Adventure_Item_Type.consumable: {
-                    return get_adventure_consumable_item_icon(item.id);
-                }
-            }
-        }
-
         function item_button(name: string, item: Adventure_Item_Entity) {
             const button = $.CreatePanel("Button", item_container, "");
             button.AddClass("item");
@@ -957,7 +945,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
                 });
             });
 
-            safely_set_panel_background_image(button, item_icon(item));
+            safely_set_panel_background_image(button, get_adventure_item_entity_icon(item));
         }
 
         for (const [name, id] of enum_names_to_values<Adventure_Wearable_Item_Id>()) {

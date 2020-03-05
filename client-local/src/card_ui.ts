@@ -50,6 +50,18 @@ function get_adventure_item_icon(item: Adventure_Item): string {
     }
 }
 
+function get_adventure_item_entity_icon(item: Adventure_Item_Entity): string {
+    switch (item.type) {
+        case Adventure_Item_Type.wearable: {
+            return get_adventure_wearable_item_icon(item.id);
+        }
+
+        case Adventure_Item_Type.consumable: {
+            return get_adventure_consumable_item_icon(item.id);
+        }
+    }
+}
+
 function get_item_icon(id: Item_Id) {
     function get_item_icon_name(id: Item_Id): string {
         switch (id) {
