@@ -673,28 +673,32 @@ function pudge_hook(game: Game, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
         return from_client_bool(cast.hit); // @PanoramaBool
     }
 
-    const target = cast.target_position;
-    const hook_offset = Vector(0, 0, 96);
-    const pudge_origin = pudge.handle.GetAbsOrigin() + hook_offset as Vector;
-    const travel_direction = Vector(target.x - pudge.position.x, target.y - pudge.position.y).Normalized();
-    const travel_speed = 1600;
-
-    let travel_target: XY;
+    let target: Replace_Target_Unit_Id<Pudge_Hook_Hit> | Line_Ability_Miss;
 
     if (is_hook_hit(cast.result)) {
-        const target = find_unit_by_id(cast.result.target_unit_id);
+        const unit = find_unit_by_id(cast.result.target_unit_id);
+        if (!unit) return;
 
-        if (!target) {
-            log_chat_debug_message("Error, Pudge DAMAGE TARGET not found");
-            return;
+        target = {
+            hit: true,
+            unit: unit,
+            damage_dealt: cast.result.damage_dealt,
+            move_target_to: cast.result.move_target_to
         }
-
-        travel_target = target.position;
     } else {
-        travel_target = cast.result.final_point;
+        target = {
+            hit: false,
+            final_point: cast.result.final_point
+        }
     }
 
-    turn_unit_towards_target(pudge, target);
+    const click_target = cast.target_position;
+    const hook_offset = Vector(0, 0, 96);
+    const pudge_origin = pudge.handle.GetAbsOrigin() + hook_offset as Vector;
+    const travel_direction = Vector(click_target.x - pudge.position.x, click_target.y - pudge.position.y).Normalized();
+    const travel_speed = 1600;
+
+    turn_unit_towards_target(pudge, click_target);
 
     const hook_wearable = pudge.handle.GetTogglableWearable(DOTASlotType_t.DOTA_LOADOUT_TYPE_WEAPON);
     const pudge_gesture = unit_start_gesture(pudge, GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_1);
@@ -704,6 +708,7 @@ function pudge_hook(game: Game, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
 
     wait(0.15);
 
+    const travel_target = target.hit ? target.unit.position : target.final_point;
     const distance_to_travel = Const.battle_cell_size * Math.max(Math.abs(travel_target.x - pudge.position.x), Math.abs(travel_target.y - pudge.position.y));
     const time_to_travel = distance_to_travel / travel_speed;
 
@@ -716,44 +721,39 @@ function pudge_hook(game: Game, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
         .with_point_value(5)
         .to_unit_custom_origin(7, pudge);
 
-    if (is_hook_hit(cast.result)) {
-        const target = find_unit_by_id(cast.result.target_unit_id);
-
-        if (!target) {
-            log_chat_debug_message("Error, Pudge DAMAGE TARGET not found");
-            return;
-        }
+    if (target.hit) {
+        const target_unit = target.unit;
 
         wait(time_to_travel);
-        change_health(game, pudge, target, cast.result.damage_dealt);
+        change_health(game, pudge, target_unit, target.damage_dealt);
 
         chain_sound.stop();
 
-        unit_emit_sound(target, "Hero_Pudge.AttackHookImpact");
+        unit_emit_sound(target_unit, "Hero_Pudge.AttackHookImpact");
 
-        const target_chain_sound = unit_emit_sound(target, "Hero_Pudge.AttackHookExtend");
-        const target_flail = unit_start_gesture(target, GameActivity_t.ACT_DOTA_FLAIL);
+        const target_chain_sound = unit_emit_sound(target_unit, "Hero_Pudge.AttackHookExtend");
+        const target_flail = unit_start_gesture(target_unit, GameActivity_t.ACT_DOTA_FLAIL);
 
         fx("particles/units/heroes/hero_pudge/pudge_meathook_impact.vpcf")
-            .to_unit_attach_point(0, target, "attach_hitloc")
+            .to_unit_attach_point(0, target_unit, "attach_hitloc")
             .release();
 
-        chain.to_unit_attach_point(1, target, "attach_hitloc", target.handle.GetOrigin() + hook_offset as Vector);
+        chain.to_unit_attach_point(1, target_unit, "attach_hitloc", target_unit.handle.GetOrigin() + hook_offset as Vector);
 
-        const target_world_position = battle_position_to_world_position_center(battle.world_origin, cast.result.move_target_to);
-        const travel_position_start = target.handle.GetAbsOrigin();
-        const travel_position_finish = GetGroundPosition(Vector(target_world_position.x, target_world_position.y), target.handle);
+        const target_world_position = battle_position_to_world_position_center(battle.world_origin, target.move_target_to);
+        const travel_position_start = target_unit.handle.GetAbsOrigin();
+        const travel_position_finish = GetGroundPosition(Vector(target_world_position.x, target_world_position.y), target_unit.handle);
 
         do_each_frame_for(time_to_travel, progress => {
             const travel_position = (travel_position_finish - travel_position_start) * progress + travel_position_start as Vector;
 
-            target.handle.SetAbsOrigin(travel_position);
+            target_unit.handle.SetAbsOrigin(travel_position);
         });
 
         target_chain_sound.stop();
         target_flail.fade();
 
-        target.position = cast.result.move_target_to;
+        target_unit.position = target.move_target_to;
     } else {
         wait(time_to_travel);
 
@@ -795,7 +795,7 @@ function tide_ravage(game: Game, caster: Unit, cast: Delta_Ability_Tide_Ravage) 
 
     const fx = fx_by_unit("particles/tide_ravage/tide_ravage.vpcf", caster);
     const particle_delay = 0.1;
-    const deltas_by_distance: Ravage_Target[][] = [];
+    const deltas_by_distance: Replace_Target_Unit_Id<Ravage_Target>[][] = [];
 
     // @HardcodedConstant
     for (let distance = 1; distance <= 5; distance++) {
@@ -804,16 +804,9 @@ function tide_ravage(game: Game, caster: Unit, cast: Delta_Ability_Tide_Ravage) 
 
     fx.release();
 
-    for (const target_data of from_client_array(cast.targets)) {
-        const target = find_unit_by_id(target_data.target_unit_id);
-
-        if (!target) {
-            log_chat_debug_message(`Target with id ${target_data.target_unit_id} not found`);
-            continue;
-        }
-
+    for (const target of filter_and_map_existing_units(cast.targets)) {
         const from = caster.position;
-        const to = target.position;
+        const to = target.unit.position;
         const manhattan_distance = Math.abs(from.x - to.x) + Math.abs(from.y - to.y);
 
         let by_distance = deltas_by_distance[manhattan_distance];
@@ -823,7 +816,7 @@ function tide_ravage(game: Game, caster: Unit, cast: Delta_Ability_Tide_Ravage) 
             deltas_by_distance[manhattan_distance] = by_distance;
         }
 
-        by_distance.push(target_data);
+        by_distance.push(target);
     }
 
     const forks: Fork[] = [];
@@ -833,22 +826,17 @@ function tide_ravage(game: Game, caster: Unit, cast: Delta_Ability_Tide_Ravage) 
 
         if (!by_distance) continue;
 
-        for (const target_data of by_distance) {
-            const target = find_unit_by_id(target_data.target_unit_id);
-
-            if (!target) {
-                log_chat_debug_message(`Target with id ${target_data.target_unit_id} not found`);
-                continue;
-            }
+        for (const target of by_distance) {
+            const victim = target.unit;
 
             forks.push(fork(() => {
-                fx_by_unit("particles/units/heroes/hero_tidehunter/tidehunter_spell_ravage_hit.vpcf", target).release();
-                unit_emit_sound(target, "Hero_Tidehunter.RavageDamage");
-                toss_target_up(target);
+                fx_by_unit("particles/units/heroes/hero_tidehunter/tidehunter_spell_ravage_hit.vpcf", victim).release();
+                unit_emit_sound(victim, "Hero_Tidehunter.RavageDamage");
+                toss_target_up(victim);
             }));
 
-            change_health(game, caster, target, target_data.change);
-            apply_modifier(game, target, target_data.modifier);
+            change_health(game, caster, victim, target.change);
+            apply_modifier(game, victim, target.modifier);
         }
 
         wait(particle_delay);
