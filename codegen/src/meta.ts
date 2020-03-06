@@ -1,4 +1,5 @@
 import * as ts from "typescript";
+import * as utils from "tsutils";
 import {SyntaxKind} from "typescript";
 import {
     SimpleType,
@@ -101,9 +102,17 @@ export default function run_transformer(program: ts.Program, options: Options): 
     }
 
     function process_node(node: ts.Node): ts.Node | undefined {
-        if (node.kind == ts.SyntaxKind.CallExpression) {
-            const call = node as ts.CallExpression;
-            const signature = checker.getResolvedSignature(call);
+        if (utils.isPrefixUnaryExpression(node)) {
+            if (node.operator == SyntaxKind.ExclamationToken) {
+                const operand = node.operand;
+                const type = checker.getTypeAtLocation(operand);
+
+                if (utils.isTypeAssignableToNumber(checker, type)) {
+                    error_out(node, `Implicitly coercing number to boolean in expression '${node.getText()}', use != undefined instead`);
+                }
+            }
+        } else if (utils.isCallExpression(node)) {
+            const signature = checker.getResolvedSignature(node);
             const decl = signature.declaration;
 
             if (!decl) return;
@@ -112,14 +121,14 @@ export default function run_transformer(program: ts.Program, options: Options): 
                 const function_name = decl.name.escapedText;
 
                 if (function_name == "enum_to_string") {
-                    const argument = call.arguments[0];
+                    const argument = node.arguments[0];
                     const type = resolve_alias(toSimpleType(argument, checker));
                     const enum_members: SimpleTypeEnumMember[] = resolve_enum_members(type);
 
                     ok:
                     if (type.kind == SimpleTypeKind.GENERIC_PARAMETER) {
-                        if (call.typeArguments) {
-                            const type_arg = call.typeArguments[0];
+                        if (node.typeArguments) {
+                            const type_arg = node.typeArguments[0];
 
                             if (type_arg) {
                                 const arg_type = resolve_alias(toSimpleType(type_arg, checker));
@@ -167,33 +176,33 @@ export default function run_transformer(program: ts.Program, options: Options): 
 
                     return ts.createCall(arrow_function, undefined, [argument]);
                 } else if (function_name == "enum_names_to_values") {
-                    const argument = resolve_alias(toSimpleType(call.typeArguments[0], checker));
+                    const argument = resolve_alias(toSimpleType(node.typeArguments[0], checker));
                     const enum_members: SimpleTypeEnumMember[] = resolve_enum_members(argument);
 
                     return ts.createArrayLiteral(enum_members.map(member => {
                         const literal = enum_member_to_literal(member);
 
                         if (!literal) {
-                            error_out(call, "Unsupported member type " + member.type);
+                            error_out(node, "Unsupported member type " + member.type);
                         }
 
                         return ts.createArrayLiteral([ ts.createStringLiteral(member.name), literal ]);
                     }), true);
             } else if (function_name == "enum_values") {
-                    const argument = resolve_alias(toSimpleType(call.typeArguments[0], checker));
+                    const argument = resolve_alias(toSimpleType(node.typeArguments[0], checker));
                     const enum_members: SimpleTypeEnumMember[] = resolve_enum_members(argument);
 
                     return ts.createArrayLiteral(enum_members.map(member => {
                         const literal = enum_member_to_literal(member);
 
                         if (!literal) {
-                            error_out(call, "Unsupported member type " + member.type);
+                            error_out(node, "Unsupported member type " + member.type);
                         }
 
                         return literal;
                     }), true);
                 } else if (function_name == "embed_base64") {
-                    const argument = call.arguments[0];
+                    const argument = node.arguments[0];
                     const type = resolve_alias(toSimpleType(checker.getTypeAtLocation(argument), checker));
 
                     if (type.kind == SimpleTypeKind.STRING_LITERAL) {
@@ -208,8 +217,8 @@ export default function run_transformer(program: ts.Program, options: Options): 
                         error_out(argument, "Only string literals are supported, " + type.kind + " given");
                     }
                 } else if (function_name == "spell" || function_name == "active_ability" || function_name == "passive_ability") {
-                    const type = resolve_alias(toSimpleType(call.typeArguments[0], checker));
-                    const argument = call.arguments[0];
+                    const type = resolve_alias(toSimpleType(node.typeArguments[0], checker));
+                    const argument = node.arguments[0];
 
                     const base_type_members = extract_members([ type ]);
                     const result_properties: ts.PropertyAssignment[] = [];
@@ -236,7 +245,7 @@ export default function run_transformer(program: ts.Program, options: Options): 
 
                     return ts.createObjectLiteral(result_properties, true);
                 } else if (function_name == "copy") {
-                    const argument = call.arguments[0];
+                    const argument = node.arguments[0];
                     const type = resolve_alias(toSimpleType(argument, checker));
 
                     if (type.kind == SimpleTypeKind.UNION || type.kind == SimpleTypeKind.INTERSECTION) {
