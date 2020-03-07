@@ -1368,6 +1368,8 @@ function periodically_update_entity_ui() {
 
     if (entity_name.following && lingering) {
         const entity_origin = Entities.GetAbsOrigin(entity_name.following.world_entity_id);
+        if (!entity_origin) return;
+
         const panel_world_origin = xyz(entity_origin[0], entity_origin[1], entity_origin[2] + entity_type_to_z_offset(entity_name.following.data.type));
 
         const screen_x = Game.WorldToScreenX(panel_world_origin.x, panel_world_origin.y, panel_world_origin.z);
