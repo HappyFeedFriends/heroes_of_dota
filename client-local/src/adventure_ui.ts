@@ -71,6 +71,14 @@ type Drag_Source = {
     inventory_slot: number
 }
 
+type Entity_Name_UI = {
+    label: LabelPanel
+    following?: Physical_Adventure_Entity
+    last_followed_at: number
+    previous_screen_x: number
+    previous_screen_y: number
+}
+
 type Adventure_Animation_Promise = () => boolean;
 
 type Adventure_Party_Slot_UI = { container: Panel } & ({
@@ -157,6 +165,13 @@ const party: Party_UI = {
     },
     drag_state: default_inventory_drag_state(),
     thanks_started_playing_at: 0
+};
+
+const entity_name: Entity_Name_UI = {
+    label: adventure_ui_root.FindChildTraverse("adventure_entity_name_indicator") as LabelPanel,
+    last_followed_at: 0,
+    previous_screen_x: 0,
+    previous_screen_y: 0
 };
 
 const entities: Physical_Adventure_Entity[] = [];
@@ -756,8 +771,8 @@ function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
         case Adventure_Entity_Type.item_on_the_ground: {
             const item_name = ((): string => {
                 switch (entity.item.type) {
-                    case Adventure_Item_Type.consumable: return enum_to_string(entity.item.id);
-                    case Adventure_Item_Type.wearable: return enum_to_string(entity.item.id);
+                    case Adventure_Item_Type.consumable: return get_adventure_consumable_item_name(entity.item.id);
+                    case Adventure_Item_Type.wearable: return get_adventure_wearable_item_name(entity.item.id);
                 }
             })();
 
@@ -1312,6 +1327,62 @@ function accept_adventure_party_response(response: Adventure_Party_Response) {
     }
 }
 
+function periodically_update_entity_ui() {
+    $.Schedule(0, periodically_update_entity_ui);
+
+    const entity_under_cursor = get_entity_under_cursor(GameUI.GetCursorPosition());
+
+    let entity_found = false;
+
+    function entity_type_to_z_offset(type: Adventure_Entity_Type): number {
+        switch (type) {
+            case Adventure_Entity_Type.gold_bag: return 120;
+            case Adventure_Entity_Type.enemy: return 180;
+            case Adventure_Entity_Type.lost_creep: return 180;
+            case Adventure_Entity_Type.item_on_the_ground: return 120;
+            case Adventure_Entity_Type.shrine: return 300;
+        }
+    }
+
+    const now = Game.Time();
+
+    for (const entity of entities) {
+        if (entity.world_entity_id == entity_under_cursor) {
+            entity_found = true;
+
+            entity_name.label.text = get_adventure_entity_name(entity.data);
+            entity_name.last_followed_at = now;
+            entity_name.following = entity;
+
+            break;
+        }
+    }
+
+    entity_name.label.SetHasClass("visible", entity_found);
+
+    const lingering = now - entity_name.last_followed_at < 0.2;
+
+    if (!entity_found && !lingering) {
+        entity_name.following = undefined;
+    }
+
+    if (entity_name.following && lingering) {
+        const entity_origin = Entities.GetAbsOrigin(entity_name.following.world_entity_id);
+        const panel_world_origin = xyz(entity_origin[0], entity_origin[1], entity_origin[2] + entity_type_to_z_offset(entity_name.following.data.type));
+
+        const screen_x = Game.WorldToScreenX(panel_world_origin.x, panel_world_origin.y, panel_world_origin.z);
+        const screen_y = Game.WorldToScreenY(panel_world_origin.x, panel_world_origin.y, panel_world_origin.z);
+
+        const camera_is_not_moving = entity_name.previous_screen_x == screen_x && entity_name.previous_screen_y == screen_y;
+
+        entity_name.previous_screen_x = screen_x;
+        entity_name.previous_screen_y = screen_y;
+
+        position_panel_over_position_in_the_world(entity_name.label, panel_world_origin, Align_H.center, Align_V.center, camera_is_not_moving);
+    }
+}
+
+periodically_update_entity_ui();
 periodically_update_party_ui();
 
 subscribe_to_net_table_key<Game_Net_Table>("main", "game", async data => {

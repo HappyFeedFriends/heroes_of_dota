@@ -43,7 +43,7 @@ function get_screen_world_position(cursor: [number, number]): XYZ | undefined {
     return xyz(position[0], position[1], position[2]);
 }
 
-function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, h: Align_H, v: Align_V) {
+function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, h: Align_H, v: Align_V, floor = true) {
     const screen_ratio = Game.GetScreenHeight() / 1080;
 
     const screen_x = Game.WorldToScreenX(position.x, position.y, position.z);
@@ -62,8 +62,13 @@ function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, 
     if (v == Align_V.center) panel_offset_y = panel.actuallayoutheight / 2.0;
     if (v == Align_V.top) panel_offset_y = panel.actuallayoutheight;
 
-    panel.style.x = Math.floor(screen_x / screen_ratio - panel_offset_x) + "px";
-    panel.style.y = Math.floor(screen_y / screen_ratio - panel_offset_y) + "px";
+    if (floor) {
+        panel.style.x = Math.floor(screen_x / screen_ratio - panel_offset_x) + "px";
+        panel.style.y = Math.floor(screen_y / screen_ratio - panel_offset_y) + "px";
+    } else {
+        panel.style.x = (screen_x / screen_ratio - panel_offset_x) + "px";
+        panel.style.y = (screen_y / screen_ratio - panel_offset_y) + "px";
+    }
 }
 
 function get_entity_under_cursor(cursor: [ number, number ]): EntityId | undefined {

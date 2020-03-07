@@ -258,11 +258,13 @@
     adventure_popup_open = {
         type = "dota_src1_2d"
         vsnd_files = "sounds/ui/ui_message_popup_slow_01.vsnd"
+        volume  = 0.3
     }
 
     adventure_popup_ok = {
         type = "dota_src1_2d"
         vsnd_files = "sounds/ui/npe_objective_complete.vsnd"
+        volume  = 0.3
     }
 
     click_simple = {

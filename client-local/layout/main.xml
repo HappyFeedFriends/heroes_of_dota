@@ -4,6 +4,7 @@
 
         <include src="file://{resources}/scripts/custom_game/interop.js" />
         <include src="file://{resources}/scripts/custom_game/commons.js" />
+        <include src="file://{resources}/scripts/custom_game/text.js" />
         <include src="file://{resources}/scripts/custom_game/grid.js" />
         <include src="file://{resources}/scripts/custom_game/hero_sounds.js" />
         <include src="file://{resources}/scripts/custom_game/card_ui.js" />
@@ -121,6 +122,7 @@
         </Panel>
 
         <Panel id="adventure_ui" hittest="false" class="ui_state">
+            <Label id="adventure_entity_name_indicator"/>
             <Panel id="adventure_party_container">
                 <Panel id="left_flare"/>
                 <Panel id="adventure_party">

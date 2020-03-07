@@ -1,17 +1,3 @@
-function get_hero_name(hero: Hero_Type): string {
-    return snake_case_to_capitalized_words(enum_to_string(hero));
-}
-
-function get_creep_name(creep: Creep_Type) {
-    return snake_case_to_capitalized_words(enum_to_string(creep));
-}
-
-function snake_case_to_capitalized_words(source: string) {
-    return source.split("_")
-        .map(word => word[0].toUpperCase() + word.slice(1))
-        .reduce((prev, value) => prev + " " + value);
-}
-
 function get_adventure_wearable_item_icon(id: Adventure_Wearable_Item_Id): string {
     switch (id) {
         case Adventure_Wearable_Item_Id.boots_of_travel: return get_item_icon(Item_Id.boots_of_travel);
@@ -88,34 +74,6 @@ function get_item_icon(id: Item_Id) {
     }
 
     return `file://{images}/items/${get_item_icon_name(id)}.png`;
-}
-
-function get_spell_name(spell_id: Spell_Id): string {
-    switch (spell_id) {
-        case Spell_Id.buyback: return "Buyback";
-        case Spell_Id.euls_scepter: return "Eul's Scepter";
-        case Spell_Id.mekansm: return "Mekansm";
-        case Spell_Id.buckler: return "Buckler";
-        case Spell_Id.drums_of_endurance: return "Drums of Endurance";
-        case Spell_Id.town_portal_scroll: return "Town Portal Scroll";
-        case Spell_Id.pocket_tower: return "Pocket Tower";
-        case Spell_Id.call_to_arms: return "Call to Arms";
-        case Spell_Id.refresher_orb: return "Refresher Orb";
-    }
-}
-
-function get_spell_text(spell: Card_Spell_Definition): string {
-    switch (spell.spell_id) {
-        case Spell_Id.buyback: return `Spend gold to return a dead ally hero to your hand`;
-        case Spell_Id.euls_scepter: return `Make target untargetable until next turn`;
-        case Spell_Id.mekansm: return `Restore ${spell.heal} health to all allies`;
-        case Spell_Id.buckler: return `Give allies ${spell.armor} armor for ${spell.duration} turns`;
-        case Spell_Id.drums_of_endurance: return `Give allies ${spell.move_points_bonus} move points this turn`;
-        case Spell_Id.town_portal_scroll: return `Restore hero's health and return them to your hand`;
-        case Spell_Id.pocket_tower: return `Summon a tower to attack a random enemy each turn. Extends deployment zone`;
-        case Spell_Id.call_to_arms: return `Summon ${spell.creeps_to_summon} lane creeps in your deployment zone`;
-        case Spell_Id.refresher_orb: return `Restore charges of all abilities for target`;
-    }
 }
 
 function get_hero_card_art(hero_type: Hero_Type) {

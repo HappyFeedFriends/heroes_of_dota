@@ -448,6 +448,21 @@
       }
     }
   }
+
+  #adventure_entity_name_indicator {
+    font-size: 24px;
+    font-family: @font-title;
+    transition-property: opacity;
+    transition-duration: 0.1s;
+    opacity: 0;
+
+    color: gradient( linear, 0% 0%, 0% 100%, from(#fff7f4), to(rgb(198, 198, 197)) );
+    text-shadow: 0px 0px 4px 3 black;
+
+    &.visible {
+      opacity: 1;
+    }
+  }
 }
 
 @adventure_slot_damage_animation: 'adventure_slot_damage_animation';
