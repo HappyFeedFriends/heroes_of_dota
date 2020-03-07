@@ -9,10 +9,11 @@ export const enum Adventure_Room_Type {
 }
 
 export const enum Party_Event_Type {
-    add_creep = 0,
-    add_spell = 1,
-    activate_shrine = 2,
-    add_item = 3
+    add_creep,
+    add_spell,
+    activate_shrine,
+    add_item,
+    add_currency
 }
 
 export type Adventure = {
@@ -63,6 +64,9 @@ type Party_Event = {
 } | {
     type: Party_Event_Type.add_item
     item: Adventure_Item_Entity
+} | {
+    type: Party_Event_Type.add_currency
+    amount: number
 }
 
 type Entity_Interaction_Result = {
@@ -385,45 +389,40 @@ export function interact_with_entity(adventure: Ongoing_Adventure, entity_id: Ad
     if (!entity) return;
     if (!entity.alive) return;
 
-    const entity_state = (): Adventure_Entity_State => ({
-        id: entity.id,
-        alive: entity.alive
-    });
+    const generate_event = (): Party_Event | undefined => {
+        switch (entity.definition.type) {
+            case Adventure_Entity_Type.lost_creep: return {
+                type: Party_Event_Type.add_creep,
+                creep: Creep_Type.lane_creep
+            };
 
-    switch (entity.definition.type) {
-        case Adventure_Entity_Type.lost_creep: {
-            entity.alive = false;
+            case Adventure_Entity_Type.shrine: return {
+                type: Party_Event_Type.activate_shrine
+            };
 
-            return {
-                updated_entity: entity_state(),
-                party_events: [{
-                    type: Party_Event_Type.add_creep,
-                    creep: Creep_Type.lane_creep
-                }]
+            case Adventure_Entity_Type.item_on_the_ground: return {
+                type: Party_Event_Type.add_item,
+                item: entity.definition.item
+            };
+
+            case Adventure_Entity_Type.gold_bag: return {
+                type: Party_Event_Type.add_currency,
+                amount: entity.definition.amount
             }
         }
+    };
 
-        case Adventure_Entity_Type.shrine: {
-            entity.alive = false;
+    const event = generate_event();
 
-            return {
-                updated_entity: entity_state(),
-                party_events: [{
-                    type: Party_Event_Type.activate_shrine
-                }]
-            };
-        }
+    if (event) {
+        entity.alive = false;
 
-        case Adventure_Entity_Type.item_on_the_ground: {
-            entity.alive = false;
-
-            return {
-                updated_entity: entity_state(),
-                party_events: [{
-                    type: Party_Event_Type.add_item,
-                    item: entity.definition.item
-                }]
-            };
+        return {
+            updated_entity: {
+                id: entity.id,
+                alive: entity.alive
+            },
+            party_events: [ event ]
         }
     }
 }

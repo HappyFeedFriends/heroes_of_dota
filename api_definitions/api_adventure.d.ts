@@ -10,7 +10,8 @@ declare const enum Adventure_Entity_Type {
     enemy = 0,
     lost_creep = 1,
     shrine = 2,
-    item_on_the_ground = 3
+    item_on_the_ground = 3,
+    gold_bag = 4
 }
 
 declare const enum Adventure_Party_Slot_Type {
@@ -25,7 +26,8 @@ declare const enum Adventure_Party_Change_Type {
     set_health = 1,
     add_item_to_bag = 2,
     move_item = 3,
-    remove_bag_item = 4
+    remove_bag_item = 4,
+    set_currency_amount = 5
 }
 
 declare const enum Adventure_Party_Action_Type {
@@ -165,6 +167,9 @@ type Adventure_Entity_Definition_Data = {
 } | {
     type: Adventure_Entity_Type.item_on_the_ground
     item: Adventure_Item_Entity
+} | {
+    type: Adventure_Entity_Type.gold_bag
+    amount: number
 };
 
 type Adventure_Entity_Definition = Adventure_Entity_Definition_Base & Adventure_Entity_Definition_Data
@@ -217,6 +222,9 @@ type Adventure_Party_Change = {
 } | {
     type: Adventure_Party_Change_Type.remove_bag_item
     slot_index: number
+} | {
+    type: Adventure_Party_Change_Type.set_currency_amount
+    amount: number
 }
 
 type Adventure_Item_Container = {
@@ -275,6 +283,7 @@ type Adventure_Wearable_Item = {
 type Adventure_Hero_Inventory = Array<Adventure_Wearable_Item | undefined> // Sparse array
 
 type Party_Snapshot = {
+    currency: number
     slots: Adventure_Party_Slot[]
     bag: Adventure_Item[]
 }

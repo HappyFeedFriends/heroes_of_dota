@@ -91,7 +91,11 @@ type Adventure_Editor_Selection = {
     highlighted_creep_button?: Panel
 } | {
     selected: true
-    type: Adventure_Entity_Type.lost_creep | Adventure_Entity_Type.shrine | Adventure_Entity_Type.item_on_the_ground
+    type:
+        Adventure_Entity_Type.lost_creep |
+        Adventure_Entity_Type.shrine |
+        Adventure_Entity_Type.item_on_the_ground |
+        Adventure_Entity_Type.gold_bag
     id: Adventure_Entity_Id
     entity: EntityId
     particle: ParticleId
@@ -315,6 +319,10 @@ function adventure_editor_select_entity(editor: Adventure_Editor, world_id: Enti
                 }
 
                 break;
+            }
+
+            case Adventure_Entity_Type.gold_bag: {
+                return `${data.amount} gold`;
             }
 
             default: return snake_case_to_capitalized_words(enum_to_string(data.type));
@@ -893,6 +901,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
 
         context_menu_button(`Create enemy`, enemy_creation_buttons);
         context_menu_button(`Create item`, item_creation_buttons);
+        context_menu_button(`Create gold bag`, () => gold_bag_buttons(10));
         context_menu_button(`Create ...`, entity_creation_buttons);
 
         context_menu_button(`Set entrance to here`, () => {
@@ -1008,6 +1017,28 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         entity_button(enum_to_string(Adventure_Entity_Type.shrine), {
             type: Adventure_Entity_Type.shrine
         });
+    }
+
+    function gold_bag_buttons(amount: number) {
+        prepare_context_menu();
+        context_menu_button("Back", () => standard_buttons());
+        context_menu_button(`${amount} gold`, () => {
+            dispatch_editor_action({
+                type: Editor_Action_Type.create_entity,
+                definition: {
+                    type: Adventure_Entity_Type.gold_bag,
+                    amount: amount,
+                    spawn_position: click,
+                    spawn_facing: xy(1, 0),
+                }
+            })
+        });
+
+        for (const change of [5, 2, 1, -1, -2, -5]) {
+            context_menu_button(`${change > 0 ? "+" : ""}${change}`, () => {
+                gold_bag_buttons(amount + change);
+            });
+        }
     }
 
     if (editor.selection.selected) {

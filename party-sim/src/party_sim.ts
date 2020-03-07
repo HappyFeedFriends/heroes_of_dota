@@ -171,6 +171,12 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
 
 function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Change) {
     switch (change.type) {
+        case Adventure_Party_Change_Type.set_currency_amount: {
+            party.currency = change.amount;
+
+            break;
+        }
+
         case Adventure_Party_Change_Type.set_slot: {
             party.slots[change.slot_index] = change.slot;
 

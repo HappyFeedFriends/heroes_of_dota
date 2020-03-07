@@ -49,11 +49,19 @@ type Adventure_Materialized_Item_On_The_Ground = Adventure_Entity_Base & { type:
     alive: false
 })
 
+type Adventure_Materialized_Gold_Bag = Adventure_Entity_Base & { type: Adventure_Entity_Type.gold_bag} & ({
+    alive: true
+    handle: CDOTA_BaseNPC
+} | {
+    alive: false
+})
+
 type Adventure_Materialized_Entity =
     Adventure_Materialized_Enemy |
     Adventure_Materialized_Lost_Creep |
     Adventure_Materialized_Shrine |
-    Adventure_Materialized_Item_On_The_Ground
+    Adventure_Materialized_Item_On_The_Ground |
+    Adventure_Materialized_Gold_Bag
 
 type Adventure_State = {
     entities: Adventure_Materialized_Entity[]
@@ -126,6 +134,19 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
 
             const model = adventure_item_to_model(data.item);
             const unit = create_adventure_unit(model, 1.0);
+
+            return {
+                ...base,
+                type: data.type,
+                alive: true,
+                handle: unit
+            };
+        }
+
+        case Adventure_Entity_Type.gold_bag: {
+            if (!entity.alive) return { ...base, type: data.type, alive: false };
+
+            const unit = create_adventure_unit("models/props_gameplay/gold_bag.vmdl", 1.0);
 
             return {
                 ...base,
@@ -442,6 +463,17 @@ function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_
     });
 
     if (state_update) {
+        const hero = { handle: game.player.hero_unit };
+
+        if (entity.type == Adventure_Entity_Type.gold_bag) {
+            unit_emit_sound(hero, "gold_bag_activate");
+
+            fx("particles/items2_fx/hand_of_midas.vpcf")
+                .to_unit_origin(0, entity)
+                .to_unit_attach_point(1, hero, "attach_hitloc")
+                .release();
+        }
+
         game.adventure.entities[entity_index] = transition_entity_state(entity, state_update.updated_entity);
 
         fire_event(To_Client_Event_Type.adventure_receive_party_changes, {
@@ -454,7 +486,6 @@ function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_
             fx_follow_unit("particles/world_shrine/radiant_shrine_active.vpcf", entity).release();
 
             fork(() => {
-                const hero = { handle: game.player.hero_unit };
                 const hero_fx = fx_by_unit("particles/world_shrine/radiant_shrine_regen.vpcf", hero)
                     .to_unit_attach_point(0, hero, "attach_hitloc");
 
@@ -502,6 +533,16 @@ function transition_entity_state(from: Adventure_Materialized_Entity, to: Advent
         }
 
         case Adventure_Entity_Type.item_on_the_ground: {
+            from.handle.RemoveSelf();
+
+            return {
+                ...base,
+                type: from.type,
+                alive: false
+            };
+        }
+
+        case Adventure_Entity_Type.gold_bag: {
             from.handle.RemoveSelf();
 
             return {
@@ -574,9 +615,13 @@ function cleanup_adventure_entity(entity: Adventure_Materialized_Entity) {
 
         case Adventure_Entity_Type.item_on_the_ground: {
             if (!entity.alive) break;
-
             entity.handle.RemoveSelf();
+            break;
+        }
 
+        case Adventure_Entity_Type.gold_bag: {
+            if (!entity.alive) break;
+            entity.handle.RemoveSelf();
             break;
         }
 

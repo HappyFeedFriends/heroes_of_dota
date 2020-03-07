@@ -233,6 +233,13 @@
         vsnd_files = "sounds/ambient/shrine_cast.vsnd"
     }
 
+    gold_bag_activate = {
+        type = "dota_update_default"
+        pitch_rand_min = -0.05
+        pitch_rand_max = 0.05
+        vsnd_files = "sounds/ui/coins.vsnd"
+    }
+
     party_hero_item_pickup = {
         type = "dota_src1_2d"
         vsnd_files = "sounds/ui/item_pickup_world.vsnd"
@@ -261,5 +268,14 @@
     click_simple = {
         type = "dota_src1_2d"
         vsnd_files = "sounds/ui/buttonclick.vsnd"
+    }
+
+    gold_increment = {
+        type = "dota_src1_2d"
+        vsnd_files = [
+            "sounds/npc/courier/lockjaw/lockjaw_run_gold_01.vsnd",
+            "sounds/npc/courier/lockjaw/lockjaw_run_gold_02.vsnd",
+            "sounds/npc/courier/lockjaw/lockjaw_run_gold_03.vsnd"
+        ]
     }
 }

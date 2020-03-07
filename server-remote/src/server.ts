@@ -48,6 +48,7 @@ import {
     change_party_add_spell,
     change_party_change_health,
     change_party_empty_slot,
+    change_party_set_currency,
     find_empty_party_slot_index,
     change_party_add_item,
     act_on_adventure_party,
@@ -1242,21 +1243,23 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
         const result = interact_with_entity(player.online.ongoing_adventure, req.target_entity_id);
         if (!result) return;
 
+        const party = player.online.party;
+
         for (const event of result.party_events) {
             switch (event.type) {
                 case Party_Event_Type.add_creep: {
-                    const slot_index = find_empty_party_slot_index(player.online.party);
+                    const slot_index = find_empty_party_slot_index(party);
                     if (slot_index != -1) {
-                        push_party_change(player.online.party, change_party_add_creep(slot_index, event.creep));
+                        push_party_change(party, change_party_add_creep(slot_index, event.creep));
                     }
 
                     break;
                 }
 
                 case Party_Event_Type.add_spell: {
-                    const slot_index = find_empty_party_slot_index(player.online.party);
+                    const slot_index = find_empty_party_slot_index(party);
                     if (slot_index != -1) {
-                        push_party_change(player.online.party, change_party_add_spell(slot_index, event.spell));
+                        push_party_change(party, change_party_add_spell(slot_index, event.spell));
                     }
 
                     break;
@@ -1266,14 +1269,14 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                     switch (event.item.type) {
                         case Adventure_Item_Type.consumable: {
                             const item = adventure_consumable_item_id_to_item(event.item.id);
-                            push_party_change(player.online.party, change_party_add_item(item));
+                            push_party_change(party, change_party_add_item(item));
 
                             break;
                         }
 
                         case Adventure_Item_Type.wearable: {
                             const item = adventure_wearable_item_id_to_item(event.item.id);
-                            push_party_change(player.online.party, change_party_add_item(item));
+                            push_party_change(party, change_party_add_item(item));
 
                             break;
                         }
@@ -1285,13 +1288,13 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                 }
 
                 case Party_Event_Type.activate_shrine: {
-                    for (const [index, slot] of player.online.party.slots.entries()) {
+                    for (const [index, slot] of party.slots.entries()) {
                         switch (slot.type) {
                             case Adventure_Party_Slot_Type.hero: {
                                 const max_health = hero_definition_by_type(slot.hero).health;
                                 const change = change_party_change_health(index, max_health, Adventure_Health_Change_Reason.shrine);
 
-                                push_party_change(player.online.party, change);
+                                push_party_change(party, change);
 
                                 break;
                             }
@@ -1300,7 +1303,7 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                                 const max_health = creep_definition_by_type(slot.creep).health;
                                 const change = change_party_change_health(index, max_health, Adventure_Health_Change_Reason.shrine);
 
-                                push_party_change(player.online.party, change);
+                                push_party_change(party, change);
 
                                 break;
                             }
@@ -1317,12 +1320,18 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                     break;
                 }
 
+                case Party_Event_Type.add_currency: {
+                    push_party_change(party, change_party_set_currency(party.currency + event.amount));
+
+                    break;
+                }
+
                 default: unreachable(event);
             }
         }
 
         return {
-            party_updates: player.online.party.changes.slice(req.current_head),
+            party_updates: party.changes.slice(req.current_head),
             updated_entity: result.updated_entity
         };
     });

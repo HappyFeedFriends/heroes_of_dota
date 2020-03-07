@@ -42,6 +42,7 @@ type Party_UI = {
     bag: Bag_UI
     slots: Adventure_Party_Slot_UI[]
     changes: Adventure_Party_Change[]
+    currency: number
     currently_playing_change_index: number
     currently_playing_a_change: boolean
     next_change_promise: () => boolean
@@ -137,6 +138,7 @@ type Bag_Item_UI = {
 }
 
 const party: Party_UI = {
+    currency: 0,
     bag: {
         panel: $("#adventure_party_bag"),
         items: []
@@ -149,6 +151,7 @@ const party: Party_UI = {
     current_head: 0,
     base_head: 0,
     base_snapshot: {
+        currency: 0,
         bag: [],
         slots: []
     },
@@ -231,6 +234,7 @@ function extract_original_slot(ui_slot: Adventure_Party_Slot_UI): Adventure_Part
 
 function extract_party_snapshot(): Party_Snapshot {
     return {
+        currency: party.currency,
         slots: party.slots.map(extract_original_slot),
         bag: party.bag.items.map(item => item.item)
     };
@@ -321,7 +325,7 @@ function fill_adventure_empty_slot(container: Panel): Adventure_Party_Slot_UI {
     }
 }
 
-function add_bag_item(item: Adventure_Item, slot_index = party.bag.items.length) {
+function add_bag_item(item: Adventure_Item, slot_index = party.bag.items.length): Bag_Item_UI {
     const item_panel = $.CreatePanel("Panel", party.bag.panel, "");
     item_panel.AddClass("item");
     item_panel.SetDraggable(true);
@@ -339,6 +343,8 @@ function add_bag_item(item: Adventure_Item, slot_index = party.bag.items.length)
     }));
 
     party.bag.items[slot_index] = slot;
+
+    return slot;
 }
 
 function remove_bag_item(ui: Bag_Item_UI) {
@@ -686,6 +692,8 @@ function reinitialize_adventure_ui(slots: number) {
 
     adventure_ui.currency_label.text = "0";
 
+    party.currency = 0;
+
     party.bag.panel.RemoveAndDeleteChildren();
     party.bag.items = [];
 
@@ -759,7 +767,18 @@ function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
             const icon = $.CreatePanel("Image", popup.content, "");
             icon.AddClass("item_icon");
             icon.SetImage(get_adventure_item_entity_icon(entity.item));
-            icon.SetScaling(ScalingFunction.STRETCH_TO_COVER_PRESERVE_ASPECT)
+            icon.SetScaling(ScalingFunction.STRETCH_TO_COVER_PRESERVE_ASPECT);
+
+            break;
+        }
+
+        case Adventure_Entity_Type.gold_bag: {
+            popup.header.text = "Gold Bag";
+            popup.text.text = "You've found a bag full of gold";
+
+            const icon = $.CreatePanel("Image", popup.content, "");
+            icon.AddClass("no_border_icon");
+            icon.SetImage("file://{images}/compendium/compendiumcoins_ti5.png");
 
             break;
         }
@@ -1000,8 +1019,8 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         heal.DeleteAsync(1);
     }
 
-    function flash_slot(slot: Adventure_Party_Slot_UI) {
-        const flash = $.CreatePanel("Panel", slot.container, "");
+    function flash_panel(panel: Panel) {
+        const flash = $.CreatePanel("Panel", panel, "");
         flash.AddClass("animate_add_to_deck_flash");
         flash.hittest = false;
 
@@ -1060,7 +1079,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                 const item_panel = hero_slot.items[target.item_slot_index];
                 if (!item_panel) return;
 
-                flash_slot(hero_slot);
+                flash_panel(hero_slot.container);
                 update_hero_inventory_item_ui(item_panel, target.hero_slot_index, target.item_slot_index, item);
 
                 Game.EmitSound("party_hero_item_pickup");
@@ -1115,15 +1134,31 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
     }
 
     switch (change.type) {
+        case Adventure_Party_Change_Type.set_currency_amount: {
+            const start_at = party.currency;
+            const direction = Math.sign(change.amount - start_at);
+
+            party.currency = change.amount;
+
+            return animate_integer(start_at, change.amount, 0.05, value => {
+                adventure_ui.currency_label.text = value.toString(10);
+
+                if (direction == 1) {
+                    Game.EmitSound("gold_increment");
+                }
+            });
+        }
+
         case Adventure_Party_Change_Type.set_slot: {
             const new_slot = set_adventure_party_slot(change.slot_index, change.slot);
-            flash_slot(new_slot);
+            flash_panel(new_slot.container);
 
             return fixed_duration(0.2);
         }
 
         case Adventure_Party_Change_Type.add_item_to_bag: {
-            add_bag_item(change.item);
+            const ui = add_bag_item(change.item);
+            flash_panel(ui.panel);
 
             Game.EmitSound("party_bag_item_pickup");
 
@@ -1245,6 +1280,8 @@ function reset_party_state() {
 }
 
 function fill_ui_from_snapshot(snapshot: Party_Snapshot) {
+    adventure_ui.currency_label.text = snapshot.currency.toString(10);
+
     for (const item of snapshot.bag) {
         add_bag_item(item);
     }

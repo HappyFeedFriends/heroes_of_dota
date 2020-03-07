@@ -1,6 +1,6 @@
 import * as ts from "typescript";
+import {SyntaxKind, TypeFlags} from "typescript";
 import * as utils from "tsutils";
-import {SyntaxKind} from "typescript";
 import {
     SimpleType,
     SimpleTypeEnumMember,
@@ -106,8 +106,9 @@ export default function run_transformer(program: ts.Program, options: Options): 
             if (node.operator == SyntaxKind.ExclamationToken) {
                 const operand = node.operand;
                 const type = checker.getTypeAtLocation(operand);
+                const is_not_any = (type.flags & TypeFlags.Any) == 0;
 
-                if (utils.isTypeAssignableToNumber(checker, type)) {
+                if (is_not_any && utils.isTypeAssignableToNumber(checker, type)) {
                     error_out(node, `Implicitly coercing number to boolean in expression '${node.getText()}', use != undefined instead`);
                 }
             }

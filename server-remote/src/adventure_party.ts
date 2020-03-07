@@ -1,5 +1,4 @@
 export type Map_Player_Party = Party_Snapshot & {
-    currency: number
     changes: Adventure_Party_Change[]
     links: {
         heroes: Hero_Slot_To_Unit[]
@@ -123,6 +122,13 @@ export function change_party_add_item(item: Adventure_Item): Adventure_Party_Cha
     }
 }
 
+export function change_party_set_currency(amount: number): Adventure_Party_Change {
+    return {
+        type: Adventure_Party_Change_Type.set_currency_amount,
+        amount: amount
+    }
+}
+
 export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_Id): Adventure_Item {
     switch (id) {
         case Adventure_Wearable_Item_Id.boots_of_travel: return {
@@ -241,7 +247,8 @@ export function adventure_consumable_item_id_to_item(id: Adventure_Consumable_It
 function collapse_adventure_party_changes(num_slots: number, changes: Adventure_Party_Change[]): Party_Snapshot {
     const party: Party_Snapshot = {
         slots: [],
-        bag: []
+        bag: [],
+        currency: 0
     };
 
     for (; num_slots > 0; num_slots--) {
