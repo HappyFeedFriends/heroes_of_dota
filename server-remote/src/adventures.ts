@@ -307,6 +307,11 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
                     entities.push(to_entity());
                     break;
                 }
+
+                default: {
+                    console.error(`Unsupported entity type ${source_entity.type} while parsing ${file_path}`);
+                    return;
+                }
             }
         }
 

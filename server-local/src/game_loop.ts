@@ -683,7 +683,8 @@ function game_loop() {
             }
 
             return [
-                entity_to_battle_location("Forest", "battle_bottom_left")
+                entity_to_battle_location("Forest 1", "bg_forest_1"),
+                entity_to_battle_location("Forest 2", "bg_forest_2")
             ]
         });
 
