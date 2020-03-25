@@ -432,6 +432,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
 
     game.state = next_state.state;
 
+    update_current_camera_target(game);
     update_game_net_table(game);
 }
 
@@ -522,6 +523,16 @@ function reconnect_loop(game: Game) {
 
 function register_local_api_handler<T extends Local_Api_Request_Type>(type: T, callback: (request: Find_Local_Request<T>) => Find_Local_Response<T>) {
     local_api_handlers[type] = body => callback(body as Find_Local_Request<T>);
+}
+
+function update_current_camera_target(game: Game) {
+    if (game.state == Player_State.in_battle) {
+        current_camera_target.target = battle.camera_dummy;
+    } else if (game.state == Player_State.on_global_map) {
+        current_camera_target.target = undefined;
+    } else if (game.state == Player_State.on_adventure) {
+        current_camera_target.target = game.player.hero_unit;
+    }
 }
 
 function main() {
@@ -749,14 +760,7 @@ function game_loop() {
 
     fork(() => {
         while(true) {
-            if (game.state == Player_State.in_battle) {
-                current_camera_target.target = battle.camera_dummy;
-            } else if (game.state == Player_State.on_global_map) {
-                current_camera_target.target = undefined;
-            } else if (game.state == Player_State.on_adventure) {
-                current_camera_target.target = game.player.hero_unit;
-            }
-
+            update_current_camera_target(game);
             wait_one_frame();
         }
     });
