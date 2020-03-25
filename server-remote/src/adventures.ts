@@ -28,27 +28,29 @@ type Adventure_Room = {
     entities: Adventure_Entity_Definition[]
 }
 
+type File_Entity_Base = {
+    position: [number, number]
+    facing: [number, number]
+}
+
 type Adventure_File = {
     rooms: Array<{
         id: number
         entrance: [number, number]
-        enemies?: Array<{
+        enemies?: Array<File_Entity_Base & {
             type: string
-            position: [number, number]
-            facing: [number, number]
             creeps: string[]
             battleground: number
         }>
-        items?: Array<{
+        items?: Array<File_Entity_Base & {
             type: string
-            position: [number, number]
-            facing: [number, number]
             item_id: string
         }>
-        other_entities?: Array<{
+        gold_bags?: Array<File_Entity_Base & {
+            amount: number
+        }>
+        other_entities?: Array<File_Entity_Base & {
             type: string
-            position: [number, number]
-            facing: [number, number]
         }>
     }>
 }
@@ -167,6 +169,19 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
 
     const rooms: Adventure_Room[] = [];
 
+    function read_base(source: File_Entity_Base) {
+        return {
+            spawn_position: {
+                x: source.position[0],
+                y: source.position[1]
+            },
+            spawn_facing: {
+                x: source.facing[0],
+                y: source.facing[1]
+            }
+        };
+    }
+
     for (const source_room of adventure.rooms) {
         const entrance = {
             x: source_room.entrance[0],
@@ -197,17 +212,10 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             }
 
             entities.push({
+                ...read_base(source_enemy),
                 type: Adventure_Entity_Type.enemy,
                 npc_type: npc_type,
                 battleground: source_enemy.battleground as Battleground_Id,
-                spawn_position: {
-                    x: source_enemy.position[0],
-                    y: source_enemy.position[1]
-                },
-                spawn_facing: {
-                    x: source_enemy.facing[0],
-                    y: source_enemy.facing[1]
-                },
                 creeps: creeps
             })
         }
@@ -220,17 +228,6 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
                 return;
             }
 
-            const base = {
-                spawn_position: {
-                    x: source_entity.position[0],
-                    y: source_entity.position[1]
-                },
-                spawn_facing: {
-                    x: source_entity.facing[0],
-                    y: source_entity.facing[1]
-                }
-            };
-
             switch (item_type) {
                 case Adventure_Item_Type.consumable: {
                     const item_id = try_string_to_enum_value(source_entity.item_id, enum_names_to_values<Adventure_Consumable_Item_Id>());
@@ -240,7 +237,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
                     }
 
                     entities.push({
-                        ...base,
+                        ...read_base(source_entity),
                         type: Adventure_Entity_Type.item_on_the_ground,
                         item: { type: item_type, id: item_id }
                     });
@@ -256,7 +253,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
                     }
 
                     entities.push({
-                        ...base,
+                        ...read_base(source_entity),
                         type: Adventure_Entity_Type.item_on_the_ground,
                         item: { type: item_type, id: item_id }
                     });
@@ -266,6 +263,14 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
 
                 default: unreachable(item_type);
             }
+        }
+
+        for (const source_bag of source_room.gold_bags || []) {
+            entities.push({
+                ...read_base(source_bag),
+                type: Adventure_Entity_Type.gold_bag,
+                amount: source_bag.amount
+            });
         }
 
         for (const source_entity of source_room.other_entities || []) {
@@ -279,27 +284,16 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             switch (entity_type) {
                 case Adventure_Entity_Type.shrine:
                 case Adventure_Entity_Type.lost_creep: {
-                    const base = {
-                        spawn_position: {
-                            x: source_entity.position[0],
-                            y: source_entity.position[1]
-                        },
-                        spawn_facing: {
-                            x: source_entity.facing[0],
-                            y: source_entity.facing[1]
-                        }
-                    };
-
                     const to_entity = (): Adventure_Entity_Definition => {
                         switch (entity_type) {
                             case Adventure_Entity_Type.lost_creep: return {
                                 type: entity_type,
-                                ...base
+                                ...read_base(source_entity),
                             };
 
                             case Adventure_Entity_Type.shrine: return {
                                 type: entity_type,
-                                ...base
+                                ...read_base(source_entity),
                             };
                         }
                     };
@@ -322,19 +316,30 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
 }
 
 function persist_adventure_to_file_system(adventure: Adventure) {
+    function non_empty_or_none<T>(source: T[]): T[] | undefined {
+        return source.length == 0 ? undefined : source;
+    }
+
     const file: Adventure_File = {
         rooms: adventure.rooms.map(room => {
-            const enemies: Adventure_File["rooms"][0]["enemies"] = [];
-            const other_entities: Adventure_File["rooms"][0]["other_entities"] = [];
-            const items: Adventure_File["rooms"][0]["items"] = [];
+            type File_Room = Adventure_File["rooms"][0];
+
+            const enemies: File_Room["enemies"] = [];
+            const other_entities: File_Room["other_entities"] = [];
+            const gold_bags: File_Room["gold_bags"] = [];
+            const items: File_Room["items"] = [];
 
             for (const entity of room.entities) {
+                const base: File_Entity_Base = {
+                    position: [entity.spawn_position.x, entity.spawn_position.y],
+                    facing: [entity.spawn_facing.x, entity.spawn_facing.y],
+                };
+
                 switch (entity.type) {
                     case Adventure_Entity_Type.enemy: {
                         enemies.push({
+                            ...base,
                             type: enum_to_string(entity.npc_type),
-                            position: [entity.spawn_position.x, entity.spawn_position.y],
-                            facing: [entity.spawn_facing.x, entity.spawn_facing.y],
                             creeps: entity.creeps.map(type => enum_to_string<Creep_Type>(type)),
                             battleground: entity.battleground
                         });
@@ -351,33 +356,44 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                         };
 
                         items.push({
+                            ...base,
                             type: enum_to_string(entity.item.type),
-                            position: [entity.spawn_position.x, entity.spawn_position.y],
-                            facing: [entity.spawn_facing.x, entity.spawn_facing.y],
                             item_id: item_id()
                         });
 
                         break;
                     }
 
-                    default: {
-                        other_entities.push({
-                            type: enum_to_string(entity.type),
-                            position: [entity.spawn_position.x, entity.spawn_position.y],
-                            facing: [entity.spawn_facing.x, entity.spawn_facing.y],
+                    case Adventure_Entity_Type.gold_bag: {
+                        gold_bags.push({
+                            ...base,
+                            amount: entity.amount
                         });
 
                         break;
                     }
+
+                    case Adventure_Entity_Type.lost_creep:
+                    case Adventure_Entity_Type.shrine: {
+                        other_entities.push({
+                            ...base,
+                            type: enum_to_string(entity.type)
+                        });
+
+                        break;
+                    }
+
+                    default: unreachable(entity);
                 }
             }
 
             return {
                 id: room.id,
                 entrance: [room.entrance_location.x, room.entrance_location.y],
-                enemies: enemies,
-                items: items,
-                other_entities: other_entities
+                enemies: non_empty_or_none(enemies),
+                items: non_empty_or_none(items),
+                gold_bags: non_empty_or_none(gold_bags),
+                other_entities: non_empty_or_none(other_entities)
             };
         })
     };

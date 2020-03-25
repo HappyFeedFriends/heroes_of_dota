@@ -1,4 +1,6 @@
-import {run_tests, test_battle} from "./test_framework";
+import {do_assert, run_tests, test_battle} from "./test_framework";
+import {load_all_adventures} from "./adventures";
+import {load_all_battlegrounds} from "./battleground";
 
 function test_player_can_spawn_hero_from_hand() {
     const battle = test_battle();
@@ -349,7 +351,21 @@ function test_shaker_fissure_expires_correctly() {
         .grid_free_at(xy(5, 1));
 }
 
+function test_load_all_adventures() {
+    const ok = load_all_adventures();
+
+    do_assert(0, ok, "Expected adventure loading to succeed");
+}
+
+function test_load_all_battlegrounds() {
+    const ok = load_all_battlegrounds();
+
+    do_assert(0, ok, "Expected battleground loading to succeed");
+}
+
 run_tests([
+    test_load_all_adventures,
+    test_load_all_battlegrounds,
     test_player_can_spawn_hero_from_hand,
     test_player_cant_spawn_hero_outside_deployment_zone,
     test_player_can_perform_a_simple_move_command,

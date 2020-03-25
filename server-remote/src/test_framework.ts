@@ -24,7 +24,7 @@ export function test_battle() {
     return new Test_Battle();
 }
 
-function do_assert(index: number, condition: boolean, message: string): asserts condition {
+export function do_assert(index: number, condition: boolean, message: string): asserts condition {
     if (!condition) {
         throw `Assert chain #${index} failed. ${message}`;
     }
