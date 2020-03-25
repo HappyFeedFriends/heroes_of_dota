@@ -2549,5 +2549,15 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
 
             break;
         }
+
+        case "win": {
+            for (const loser of battle.players) {
+                if (loser != battle_player) {
+                    surrender_player_forces(battle, loser);
+                }
+            }
+
+            break;
+        }
     }
 }
