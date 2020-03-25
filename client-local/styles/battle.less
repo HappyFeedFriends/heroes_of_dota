@@ -467,7 +467,7 @@
       background-color: #000000ee;
 
       &.show_full_stats {
-        width: 65px;
+        width: 70px;
 
         .container {
           horizontal-align: right;
@@ -479,6 +479,10 @@
 
         .value_label {
           text-align: right;
+        }
+
+        #armor_container, #armor_container .stat_icon {
+          visibility: visible;
         }
       }
 
@@ -523,7 +527,7 @@
       }
 
       #health_icon {
-        background-image: @icon-armor;
+        background-image: @icon-health;
       }
     }
 
@@ -556,6 +560,23 @@
 
       #attack_icon {
         background-image: @icon-attack-damage;
+      }
+    }
+
+    #armor_container {
+      visibility: collapse;
+      horizontal-align: right;
+      margin-bottom: 3px;
+
+      #armor_label {
+        text-align: right;
+        margin-left: 3px;
+        margin-right: 3px;
+        text-shadow: 0px 0px 2px 1.0 rgb(134, 153, 162);
+      }
+
+      #armor_icon {
+        background-image: @icon-armor;
       }
     }
 

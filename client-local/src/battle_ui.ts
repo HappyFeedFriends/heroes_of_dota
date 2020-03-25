@@ -98,10 +98,11 @@ type UI_Unit_Data_Base = {
     id: Unit_Id
     hidden: boolean
 
-    stat_bar_panel: Panel,
+    stat_bar_panel: Panel
 
     stat_health: Stat_Indicator
     stat_attack: Stat_Indicator
+    stat_armor: Stat_Indicator
     stat_move_points: Stat_Indicator
     stat_max_move_points: Stat_Indicator
     stat_max_health: Stat_Indicator
@@ -1137,12 +1138,21 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
     }
 
     function create_attack_indicator(): Stat_Indicator {
-        const attack_container = $.CreatePanel("Panel", top_level, "attack_container");
-        const attack_label = $.CreatePanel("Label", attack_container, "attack_label");
-        $.CreatePanel("Panel", attack_container, "attack_icon").AddClass("stat_icon");
-        attack_container.AddClass("container");
+        const container = $.CreatePanel("Panel", top_level, "attack_container");
+        const label = $.CreatePanel("Label", container, "attack_label");
+        $.CreatePanel("Panel", container, "attack_icon").AddClass("stat_icon");
+        container.AddClass("container");
 
-        return stat_indicator(attack_label, get_attack_damage);
+        return stat_indicator(label, get_attack_damage);
+    }
+
+    function create_armor_indicator(): Stat_Indicator {
+        const container = $.CreatePanel("Panel", top_level, "armor_container");
+        const label = $.CreatePanel("Label", container, "armor_label");
+        $.CreatePanel("Panel", container, "armor_icon").AddClass("stat_icon");
+        container.AddClass("container");
+
+        return stat_indicator(label, get_armor);
     }
 
     function create_modifier_container(): Panel {
@@ -1190,11 +1200,13 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
         const [ health, max_health ] = create_health_indicator();
         const [ move_points, max_move_points ] = create_move_points_indicator();
         const attack = create_attack_indicator();
+        const armor = create_armor_indicator();
         const modifiers = create_modifier_container();
 
         return {
             stat_health: health,
             stat_attack: attack,
+            stat_armor: armor,
             stat_move_points: move_points,
             stat_max_move_points: max_move_points,
             stat_max_health: max_health,
@@ -2043,6 +2055,7 @@ function try_update_stat_bar_display(ui_data: UI_Unit_Data, force = false) {
         }
     };
 
+    try_update_stat_indicator(ui_data.stat_armor);
     try_update_stat_indicator(ui_data.stat_attack);
     try_update_stat_indicator(ui_data.stat_health);
     try_update_stat_indicator(ui_data.stat_max_health);
