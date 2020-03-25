@@ -586,5 +586,5 @@ export function make_test_battle() {
     return make_battle_record(0 as Battle_Id, id_generator, new Random(Math.random), [
         test_player(),
         test_player()
-    ], { x: 10, y: 10 }, { x: 0, y: 0, z: 0 });
+    ], { x: 10, y: 10 }, { x: 0, y: 0, z: 0 }, Battleground_Theme.forest);
 }

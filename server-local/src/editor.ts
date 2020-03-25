@@ -2,6 +2,8 @@ type Editor_State = {
     map_revealed: boolean
     camera_dummy: CDOTA_BaseNPC
     battleground_entities: Indexed_Entities
+    theme: Battleground_Theme
+    auto_tree_id: Tree_Id
 }
 
 type Editor_Battleground_Entity = Battleground_Spawn & {
@@ -10,7 +12,7 @@ type Editor_Battleground_Entity = Battleground_Spawn & {
 
 type Indexed_Entities = Record<number, Record<number, Editor_Battleground_Entity>>
 
-function update_editor_battleground(editor: Editor_State, origin: Vector, spawns: Battleground_Spawn[]) {
+function update_editor_battleground(editor: Editor_State, origin: Vector, theme: Battleground_Theme, spawns: Battleground_Spawn[]) {
     function set_entity_at(index: Indexed_Entities, xy: XY, spawn: Editor_Battleground_Entity) {
         let by_x = index[xy.x];
 
@@ -57,14 +59,14 @@ function update_editor_battleground(editor: Editor_State, origin: Vector, spawns
 
             case Spawn_Type.tree: return {
                 ...spawn,
-                handle: create_world_handle_for_tree(origin, 0, 0 as Tree_Id, spawn.at)
+                handle: create_world_handle_for_tree(origin, theme, 0, editor.auto_tree_id++ as Tree_Id, spawn.at)
             };
         }
     }
 
     function entities_are_essentially_the_same(left: Battleground_Spawn, right: Battleground_Spawn) {
         switch (left.type) {
-            case Spawn_Type.tree: return left.type == right.type;
+            case Spawn_Type.tree: return theme == editor.theme && left.type == right.type;
             case Spawn_Type.rune: return left.type == right.type;
             case Spawn_Type.monster: return left.type == right.type;
             case Spawn_Type.shop: {
@@ -112,6 +114,7 @@ function update_editor_battleground(editor: Editor_State, origin: Vector, spawns
         }
     }
 
+    editor.theme = theme;
     editor.battleground_entities = new_index;
 }
 
@@ -307,7 +310,7 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
         case Editor_Action_Type.submit_battleground: {
             const origin = Vector(event.origin.x, event.origin.y, event.origin.z);
 
-            update_editor_battleground(editor, origin, from_client_array(event.spawns));
+            update_editor_battleground(editor, origin, event.theme, from_client_array(event.spawns));
 
             break;
         }
@@ -337,7 +340,9 @@ function subscribe_to_editor_events(game: Game) {
     const state: Editor_State =  {
         map_revealed: false,
         camera_dummy: camera_entity,
-        battleground_entities: []
+        battleground_entities: [],
+        theme: Battleground_Theme.forest,
+        auto_tree_id: 0 as Tree_Id
     };
 
     on_custom_event_async(To_Server_Event_Type.editor_action, event => perform_editor_action(game, state, event));

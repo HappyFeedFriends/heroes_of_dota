@@ -98,6 +98,7 @@ type Local_Api_Request = {
     response: {
         name: string
         origin: World_Origin
+        theme: Battleground_Theme
     }[]
 } | {
     type: Local_Api_Request_Type.get_ground_z
@@ -343,6 +344,7 @@ type Editor_Action = {
 } | {
     type: Editor_Action_Type.submit_battleground
     origin: World_Origin
+    theme: Battleground_Theme
     spawns: Battleground_Spawn[]
 } | {
     type: Editor_Action_Type.playtest_battleground

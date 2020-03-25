@@ -344,6 +344,7 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                 battle_id: battle.id,
                 battle_player_id: player.online.battle_player.id,
                 random_seed: battle.random_seed,
+                battleground_theme: battle.theme,
                 participants: battle.players.map(player => ({
                     id: player.id,
                     deployment_zone: player.deployment_zone,
@@ -1343,7 +1344,7 @@ function register_dev_handlers() {
     });
 
     register_api_handler(Api_Request_Type.editor_create_battleground, req => {
-        const created = make_new_battleground(req.world_origin);
+        const created = make_new_battleground(req.world_origin, req.theme);
 
         return make_ok({
             id: created.id,

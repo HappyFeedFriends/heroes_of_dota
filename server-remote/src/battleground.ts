@@ -1,11 +1,13 @@
 import {readdirSync, readFileSync, writeFileSync, unlinkSync} from "fs";
 import {try_string_to_enum_value} from "./common";
 
-type Persistent_Battleground =  Battleground & {
+type Persistent_Battleground = Battleground & {
     id: Battleground_Id
 }
 
 type Battleground_File = {
+    theme: string
+
     world_origin: {
         x: number
         y: number
@@ -91,11 +93,12 @@ export function get_all_battlegrounds() {
     return battlegrounds;
 }
 
-export function make_new_battleground(world_origin: World_Origin): Persistent_Battleground {
+export function make_new_battleground(world_origin: World_Origin, theme: Battleground_Theme): Persistent_Battleground {
     const id = fetch_new_battleground_id();
     const bg = {
         id: id,
         world_origin: world_origin,
+        theme: theme,
         grid_size: { x: 10, y: 10 },
         deployment_zones: [],
         spawns: []
@@ -177,6 +180,7 @@ export function load_all_battlegrounds(): boolean {
 
 function battleground_to_file_object(battleground: Battleground) {
     const file: Battleground_File = {
+        theme: enum_to_string(battleground.theme),
         world_origin: copy<Battleground_File["world_origin"]>(battleground.world_origin),
         grid_size: copy<Battleground_File["grid_size"]>(battleground.grid_size),
         deployment_zones: battleground.deployment_zones.map(zone => ({
@@ -258,6 +262,13 @@ function load_battleground_from_file(file_path: string, battleground: Battlegrou
     const shop_types = enum_names_to_values<Shop_Type>();
     const item_ids = enum_names_to_values<Item_Id>();
 
+    const theme = try_string_to_enum_value(battleground.theme, enum_names_to_values<Battleground_Theme>());
+
+    if (theme == undefined) {
+        console.error(`Unrecognized battleground theme '${battleground.theme}' while parsing ${file_path}`);
+        return;
+    }
+
     for (const monster of battleground.monsters) {
         spawns.push({
             type: Spawn_Type.monster,
@@ -329,6 +340,7 @@ function load_battleground_from_file(file_path: string, battleground: Battlegrou
     }
 
     return {
+        theme: theme,
         world_origin: battleground.world_origin,
         grid_size: battleground.grid_size,
         deployment_zones: battleground.deployment_zones.map(zone => ({

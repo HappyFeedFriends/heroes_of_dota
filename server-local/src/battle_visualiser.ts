@@ -1,5 +1,6 @@
 type Battle = {
     id: Battle_Id
+    theme: Battleground_Theme
     this_player_id: Battle_Player_Id
     random_seed: number
     participants: Battle_Participant_Info[]
@@ -393,24 +394,70 @@ function create_world_handle_for_shop(world_origin: Vector, type: Shop_Type, at:
     return handle;
 }
 
-function create_world_handle_for_tree(world_origin: Vector, seed: number, tree_id: Tree_Id, at: XY): CBaseEntity {
-    const models = [
-        "models/props_tree/cypress/tree_cypress010.vmdl",
-        "models/props_tree/cypress/tree_cypress008.vmdl"
-    ];
+function create_world_handle_for_tree(world_origin: Vector, theme: Battleground_Theme, seed: number, tree_id: Tree_Id, at: XY): CBaseEntity {
+    type Tree_Preset = {
+        models: string[]
+        color_provider?: (seed: number, tree_id: Tree_Id) => [number, number, number],
+        skin: number
+    }
 
-    const r_variance = ((seed + tree_id) * 2) % 20 - 10;
-    const g_variance = ((seed + tree_id) * 3) % 20 - 10;
-    const random_model = models[(seed + tree_id) % models.length];
+    function varying_color(base: [number, number, number], seed: number, id: Tree_Id): [number, number, number] {
+        const r_variance = ((seed + id) * 2) % 20 - 10;
+        const g_variance = ((seed + id) * 3) % 20 - 10;
+
+        return [base[0] + r_variance, base[1] + g_variance, base[2]];
+    }
+
+    function tree_preset_by_theme(theme: Battleground_Theme): Tree_Preset {
+        switch (theme) {
+            case Battleground_Theme.forest: return {
+                models: [
+                    "models/props_tree/tree_pine_01.vmdl",
+                    "models/props_tree/tree_pine_02.vmdl",
+                    "models/props_tree/tree_pine_03b.vmdl"
+                ],
+                skin: 0,
+                color_provider: (seed, id) => varying_color([180, 190, 200], seed, id)
+            };
+
+            case Battleground_Theme.forest_dead: return {
+                models: [
+                    "models/props_tree/dire_tree004.vmdl",
+                    "models/props_tree/dire_tree004b.vmdl",
+                    "models/props_tree/dire_tree007.vmdl",
+                    "models/props_tree/dire_tree008.vmdl"
+                ],
+                skin: 0
+            };
+
+            case Battleground_Theme.garden: return {
+                models: [
+                    "models/props_tree/cypress/tree_cypress010.vmdl",
+                    "models/props_tree/cypress/tree_cypress008.vmdl"
+                ],
+                skin: 0,
+                color_provider: (seed, id) => varying_color([80, 90, 30], seed, id)
+            }
+        }
+    }
+
+    const preset = tree_preset_by_theme(theme);
+    const random_model = preset.models[(seed + tree_id) % preset.models.length];
 
     const entity = SpawnEntityFromTableSynchronous("prop_dynamic", {
         origin: battle_position_to_world_position_center(world_origin, at),
         model: random_model
-    }) as CBaseModelEntity;
+    }) as CBaseAnimating;
 
     const angle = (seed + tree_id) % 16 * (360 / 16) * (Math.PI / 180);
     entity.SetForwardVector(Vector(Math.cos(angle), Math.sin(angle)));
-    entity.SetRenderColor(80 + r_variance, 90 + g_variance, 30);
+    entity.SetSkin(preset.skin);
+    entity.SetBodygroupByName("default", 1);
+
+    if (preset.color_provider) {
+        const color = preset.color_provider(seed, tree_id);
+        entity.SetRenderColor(color[0], color[1], color[2]);
+    }
 
     return entity;
 }
@@ -3076,7 +3123,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
         }
 
         case Delta_Type.tree_spawn: {
-            const tree_handle = create_world_handle_for_tree(battle.world_origin, battle.random_seed, delta.tree_id, delta.at_position);
+            const tree_handle = create_world_handle_for_tree(battle.world_origin, battle.theme, battle.random_seed, delta.tree_id, delta.at_position);
             const tree = {
                 id: delta.tree_id,
                 handle: tree_handle,
@@ -3476,10 +3523,11 @@ function clean_battle_world_handles(battle: Battle) {
     battle.timed_effect_visuals = [];
 }
 
-function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC) {
+function reinitialize_battle(world_origin: Vector, theme: Battleground_Theme, camera_entity: CDOTA_BaseNPC) {
     battle = {
         id: -1 as Battle_Id,
         this_player_id: -1 as Battle_Player_Id,
+        theme: theme,
         random_seed: 0,
         deltas: [],
         players: [],
@@ -3583,7 +3631,7 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
 
     battle.trees = snapshot.trees.map(tree => ({
         id: tree.id,
-        handle: create_world_handle_for_tree(battle.world_origin, battle.random_seed, tree.id, tree.position),
+        handle: create_world_handle_for_tree(battle.world_origin, battle.theme, battle.random_seed, tree.id, tree.position),
         position: tree.position
     }));
 

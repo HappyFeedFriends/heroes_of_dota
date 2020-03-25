@@ -9,6 +9,7 @@ export type Battle_Record = Battle & {
     random_seed: number
     monster_targets: Map<Monster, Unit>
     world_origin: World_Origin
+    theme: Battleground_Theme
 }
 
 export type Battle_Participant = {
@@ -2226,7 +2227,8 @@ export function make_battle_record(battle_id: Battle_Id,
                                    random: Random,
                                    players: Battle_Player[],
                                    grid_size: XY,
-                                   world_origin: World_Origin): Battle_Record {
+                                   world_origin: World_Origin,
+                                   theme: Battleground_Theme): Battle_Record {
     const battle: Battle_Record = {
         ...make_battle(players, grid_size.x, grid_size.y),
         id: battle_id,
@@ -2235,6 +2237,7 @@ export function make_battle_record(battle_id: Battle_Id,
         random_seed: random.int_range(0, 65536),
         monster_targets: new Map(),
         world_origin: world_origin,
+        theme: theme,
         receive_event: on_battle_event
     };
 
@@ -2243,14 +2246,14 @@ export function make_battle_record(battle_id: Battle_Id,
     return battle;
 }
 
-export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, random: Random, participants: Battle_Participant[], battleground: Battleground): Battle_Record {
+export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, random: Random, participants: Battle_Participant[], bg: Battleground): Battle_Record {
     const battle_players: Battle_Player[] = [];
     const battle_player_and_participant_pairs: [Battle_Player, Battle_Participant][] = [];
 
     for (const participant of participants) {
         const battle_player = make_battle_player({
             id: id_generator() as Battle_Player_Id,
-            deployment_zone: participant == participants[0] ? battleground.deployment_zones[0] : battleground.deployment_zones[1],
+            deployment_zone: participant == participants[0] ? bg.deployment_zones[0] : bg.deployment_zones[1],
             map_entity: participant.map_entity
         });
 
@@ -2258,7 +2261,7 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
         battle_players.push(battle_player);
     }
 
-    const battle = make_battle_record(battle_id, id_generator, random, battle_players, battleground.grid_size, battleground.world_origin);
+    const battle = make_battle_record(battle_id, id_generator, random, battle_players, bg.grid_size, bg.world_origin, bg.theme);
 
     function get_starting_gold(player: Battle_Player): Delta_Gold_Change {
         return {
@@ -2268,7 +2271,7 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
         }
     }
 
-    for (const delta of battleground_spawns_to_spawn_deltas(id_generator, random, battleground.spawns)) {
+    for (const delta of battleground_spawns_to_spawn_deltas(id_generator, random, bg.spawns)) {
         submit_battle_delta(battle, delta);
     }
 

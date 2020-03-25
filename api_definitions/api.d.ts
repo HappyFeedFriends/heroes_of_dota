@@ -63,6 +63,12 @@ declare const enum Npc_Type {
     spider = 1
 }
 
+declare const enum Battleground_Theme {
+    forest = 0,
+    forest_dead = 1,
+    garden = 2
+}
+
 type Player_Id = number & { _player_id_brand: any };
 type Npc_Id = number & { _npc_id_brand: any };
 type Battle_Id = number & { _battle_id_brand: any };
@@ -111,6 +117,7 @@ type Player_State_In_Battle = {
     }
     participants: Battle_Participant_Info[]
     battle_world_origin: World_Origin
+    battleground_theme: Battleground_Theme
 }
 
 type Player_State_Data =

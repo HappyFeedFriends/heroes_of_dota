@@ -362,7 +362,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         battle.camera_dummy.SetDayTimeVisionRange(0);
 
         clean_battle_world_handles(battle);
-        reinitialize_battle(battle.world_origin, battle.camera_dummy);
+        reinitialize_battle(battle.world_origin, battle.theme, battle.camera_dummy);
     }
 
     if (next_state.state == Player_State.on_global_map) {
@@ -375,7 +375,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         const origin = next_state.battle_world_origin;
 
         clean_battle_world_handles(battle);
-        reinitialize_battle(Vector(origin.x, origin.y, origin.z), battle.camera_dummy);
+        reinitialize_battle(Vector(origin.x, origin.y, origin.z), next_state.battleground_theme, battle.camera_dummy);
 
         battle.id = next_state.battle_id;
         battle.random_seed = next_state.random_seed;
@@ -573,7 +573,7 @@ function game_loop() {
 
     const camera_entity = create_battle_camera_entity();
 
-    reinitialize_battle(Vector(), camera_entity);
+    reinitialize_battle(Vector(), Battleground_Theme.forest, camera_entity);
 
     on_player_connected_async(id => player_id = id);
 
@@ -673,18 +673,19 @@ function game_loop() {
         subscribe_to_editor_events(game);
 
         register_local_api_handler(Local_Api_Request_Type.list_battle_locations, () => {
-            function entity_to_battle_location(name: string, entity_name: string) {
+            function entity_to_battle_location(name: string, entity_name: string, theme: Battleground_Theme) {
                 const origin = Entities.FindByName(undefined, entity_name).GetAbsOrigin();
 
                 return {
                     name: name,
+                    theme: theme,
                     origin: { x: origin.x, y: origin.y, z: origin.z }
                 }
             }
 
             return [
-                entity_to_battle_location("Forest 1", "bg_forest_1"),
-                entity_to_battle_location("Forest 2", "bg_forest_2")
+                entity_to_battle_location("Forest 1", "bg_forest_1", Battleground_Theme.forest),
+                entity_to_battle_location("Forest 2", "bg_forest_2", Battleground_Theme.forest)
             ]
         });
 

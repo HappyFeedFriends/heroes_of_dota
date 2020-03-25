@@ -53,6 +53,7 @@ type Adventure_Editor = {
 
 type Battleground_Editor = {
     current_id: Battleground_Id
+    theme: Battleground_Theme
     type: Editor_Type.battleground
     cells: Editor_Cell[][]
     grid_world_origin: {
@@ -1438,6 +1439,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
     const new_editor: Battleground_Editor = {
         type: Editor_Type.battleground,
         current_id: id,
+        theme: battleground.theme,
         cells: fill_battleground_editor_cells(battleground.world_origin, grid_w, grid_h),
         grid_size: xy(grid_w, grid_h),
         spawns: [],
@@ -1557,16 +1559,16 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         return button;
     }
 
-    const label = $.CreatePanel("Label", toolbar_buttons, "");
-    label.text = `Battleground #${id}`;
+    $.CreatePanel("Label", toolbar_buttons, "").text = `Battleground #${id}`;
 
     dropdown_opening_button("New", async close_dropdown => {
         const locations = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
 
         for (const location of from_server_array(locations)) {
-            dropdown_button(location.name, async () => {
+            dropdown_button(`${location.name} (${enum_to_string(location.theme)})`, async () => {
                 const response = await async_api_request(Api_Request_Type.editor_create_battleground, {
-                    world_origin: location.origin
+                    world_origin: location.origin,
+                    theme: location.theme
                 });
 
                 cleanup_current_editor();
@@ -1624,6 +1626,33 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         }
 
         dropdown_button("Cancel", () => close_dropdown());
+    });
+
+    dropdown_opening_button("Select theme", async close_dropdown => {
+        const themes = enum_names_to_values<Battleground_Theme>();
+        const theme_buttons: [Battleground_Theme, Panel][] = [];
+
+        function update_button_styles() {
+            for (let [button_theme, button] of theme_buttons) {
+                button.SetHasClass("active", button_theme == new_editor.theme);
+            }
+        }
+
+        for (const [name, theme] of themes) {
+            const button = dropdown_button(snake_case_to_capitalized_words(name), () => {
+                new_editor.theme = theme;
+
+                submit_battleground_state_to_server(new_editor);
+                submit_editor_battleground_for_repaint(new_editor);
+                update_button_styles();
+            });
+
+            theme_buttons.push([theme, button]);
+        }
+
+        dropdown_button("Cancel", () => close_dropdown());
+
+        update_button_styles();
     });
 
     if (enemy) {
@@ -1700,6 +1729,7 @@ function cleanup_current_editor() {
             dispatch_editor_action({
                 type: Editor_Action_Type.submit_battleground,
                 origin: editor.grid_world_origin,
+                theme: editor.theme,
                 spawns: []
             });
 
@@ -1768,6 +1798,7 @@ function submit_battleground_state_to_server(editor: Battleground_Editor) {
         id: editor.current_id,
         battleground: {
             world_origin: editor.grid_world_origin,
+            theme: editor.theme,
             grid_size: editor.grid_size,
             deployment_zones: editor.deployment_zones,
             spawns: flattened_spawns
@@ -1782,7 +1813,8 @@ function submit_editor_battleground_for_repaint(editor: Battleground_Editor) {
     dispatch_editor_action({
         type: Editor_Action_Type.submit_battleground,
         origin: editor.grid_world_origin,
-        spawns: flattened_spawns
+        spawns: flattened_spawns,
+        theme: editor.theme
     });
 }
 

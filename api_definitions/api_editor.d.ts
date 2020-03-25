@@ -31,6 +31,7 @@ type Editor_Handlers = {
     type: Api_Request_Type.editor_create_battleground
     request: {
         world_origin: World_Origin
+        theme: Battleground_Theme
     }
     response: {
         id: Battleground_Id
@@ -146,6 +147,7 @@ type Battleground_Spawn = {
 }
 
 type Battleground = {
+    theme: Battleground_Theme
     world_origin: World_Origin
     grid_size: XY
     deployment_zones: Deployment_Zone[]
