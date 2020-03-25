@@ -1630,12 +1630,6 @@ export function start_server(dev: boolean, seed: number) {
 
     random_seed = seed;
 
-    const game_html = static_file("dist/game.html");
-    const battle_sim = static_file("dist/battle_sim.js");
-    const web_main = static_file("dist/web_main.js");
-
-    setInterval(check_and_disconnect_offline_players, 1000);
-
     {
         const ok = load_all_battlegrounds();
 
@@ -1643,7 +1637,7 @@ export function start_server(dev: boolean, seed: number) {
             console.log("Battlegrounds loaded");
         } else {
             console.error("Unable to load battlegrounds");
-            return;
+            process.exit(-1);
         }
     }
 
@@ -1654,9 +1648,15 @@ export function start_server(dev: boolean, seed: number) {
             console.log("Adventures loaded");
         } else {
             console.error("Unable to load adventures");
-            return;
+            process.exit(-1);
         }
     }
+
+    const game_html = static_file("dist/game.html");
+    const battle_sim = static_file("dist/battle_sim.js");
+    const web_main = static_file("dist/web_main.js");
+
+    setInterval(check_and_disconnect_offline_players, 1000);
 
     if (dev_mode){
         register_dev_handlers();
