@@ -460,6 +460,14 @@ function set_camera_location_on_unit_blocking(player_id: PlayerID, target: CDOTA
     suppress_camera_change = false;
 }
 
+function editor_set_camera_location_to_point_blocking(player_id: PlayerID, at: Vector) {
+    const camera_entity = CreateUnitByName("npc_dummy_unit", at, false, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
+    camera_entity.AddNewModifier(camera_entity, undefined, "Modifier_Dummy", {});
+    wait_one_frame();
+    set_camera_location_on_unit_blocking(player_id, camera_entity);
+    camera_entity.RemoveSelf();
+}
+
 function set_camera_override(target: CDOTA_BaseNPC | undefined, time: number) {
     editor_override_camera_target = { target: target };
     reset_camera_override_at = GameRules.GetGameTime() + time;
@@ -702,7 +710,7 @@ function game_loop() {
 
         register_local_api_handler(Local_Api_Request_Type.get_ground_z, req => {
             return { z: GetGroundHeight(Vector(req.x, req.y), undefined) };
-        })
+        });
     }
 
     fork(() => submit_adventure_movement_loop(game));

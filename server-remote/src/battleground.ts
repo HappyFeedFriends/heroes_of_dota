@@ -6,6 +6,7 @@ type Persistent_Battleground = Battleground & {
 }
 
 type Battleground_File = {
+    name: string
     theme: string
 
     world_origin: {
@@ -93,9 +94,10 @@ export function get_all_battlegrounds() {
     return battlegrounds;
 }
 
-export function make_new_battleground(world_origin: World_Origin, theme: Battleground_Theme): Persistent_Battleground {
+export function make_new_battleground(name: string, world_origin: World_Origin, theme: Battleground_Theme): Persistent_Battleground {
     const id = fetch_new_battleground_id();
     const bg = {
+        name: name,
         id: id,
         world_origin: world_origin,
         theme: theme,
@@ -180,6 +182,7 @@ export function load_all_battlegrounds(): boolean {
 
 function battleground_to_file_object(battleground: Battleground) {
     const file: Battleground_File = {
+        name: battleground.name,
         theme: enum_to_string(battleground.theme),
         world_origin: copy<Battleground_File["world_origin"]>(battleground.world_origin),
         grid_size: copy<Battleground_File["grid_size"]>(battleground.grid_size),
@@ -340,6 +343,7 @@ function load_battleground_from_file(file_path: string, battleground: Battlegrou
     }
 
     return {
+        name: battleground.name,
         theme: theme,
         world_origin: battleground.world_origin,
         grid_size: battleground.grid_size,

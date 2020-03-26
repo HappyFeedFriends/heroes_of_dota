@@ -153,6 +153,12 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
             break;
         }
 
+        case Editor_Action_Type.move_camera: {
+            editor_set_camera_location_to_point_blocking(game.player.player_id, Vector(event.to.x, event.to.y, event.to.z));
+
+            break;
+        }
+
         case Editor_Action_Type.delete_entity: {
             const index = find_entity_index_by_id(event.entity_id);
             if (index == -1) break;

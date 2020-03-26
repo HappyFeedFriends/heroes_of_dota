@@ -1344,7 +1344,7 @@ function register_dev_handlers() {
     });
 
     register_api_handler(Api_Request_Type.editor_create_battleground, req => {
-        const created = make_new_battleground(req.world_origin, req.theme);
+        const created = make_new_battleground(req.name, req.world_origin, req.theme);
 
         return make_ok({
             id: created.id,
@@ -1397,6 +1397,7 @@ function register_dev_handlers() {
     register_api_handler(Api_Request_Type.editor_list_battlegrounds, req => {
         const battlegrounds = get_all_battlegrounds().map(bg => ({
             id: bg.id,
+            name: bg.name,
             size: {
                 x: bg.grid_size.x,
                 y: bg.grid_size.y

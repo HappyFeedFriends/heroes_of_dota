@@ -7,7 +7,6 @@
             ],
             "enemies": [
                 {
-                    "type": "spider",
                     "position": [
                         -13493.653320313,
                         8863.71875
@@ -16,17 +15,31 @@
                         0.19509035348892,
                         -0.98078525066376
                     ],
+                    "type": "spider",
                     "creeps": [
-                        "spider_matriarch",
+                        "small_spider",
                         "small_spider",
                         "small_spider"
                     ],
-                    "battleground": 0
+                    "battleground": 1
+                }
+            ],
+            "items": [
+                {
+                    "position": [
+                        -12904.049804688,
+                        9002.919921875
+                    ],
+                    "facing": [
+                        1,
+                        0
+                    ],
+                    "type": "wearable",
+                    "item_id": "iron_branch"
                 }
             ],
             "other_entities": [
                 {
-                    "type": "lost_creep",
                     "position": [
                         -13653.481445313,
                         8150.3916015625
@@ -34,7 +47,19 @@
                     "facing": [
                         0.69675379991531,
                         -0.71731036901474
-                    ]
+                    ],
+                    "type": "lost_creep"
+                },
+                {
+                    "position": [
+                        -14281.401367188,
+                        9255.0078125
+                    ],
+                    "facing": [
+                        0.89865899085999,
+                        -0.43864798545837
+                    ],
+                    "type": "shrine"
                 }
             ]
         }

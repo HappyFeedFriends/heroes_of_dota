@@ -180,6 +180,10 @@ export function find_adventure_entity_by_world_index(index: EntityId): Physical_
     return entities.find(entity => entity.world_entity_id == index);
 }
 
+export function find_adventure_entity_by_id(id: Adventure_Entity_Id): Physical_Adventure_Entity | undefined {
+    return entities.find(entity => entity.adventure_entity_id == id);
+}
+
 hide_adventure_tooltip();
 
 function default_inventory_drag_state(): Inventory_Drag_State {

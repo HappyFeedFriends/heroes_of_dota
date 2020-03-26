@@ -9,7 +9,7 @@ import {
     get_access_token
 } from "./interop";
 
-import {find_adventure_entity_by_world_index} from "./adventure_ui";
+import {find_adventure_entity_by_id, find_adventure_entity_by_world_index} from "./adventure_ui";
 
 const editor_root = $("#editor_ui");
 const buttons_root = editor_root.FindChildTraverse("editor_buttons");
@@ -49,11 +49,13 @@ type Adventure_Editor = {
     selection: Adventure_Editor_Selection
     camera_height_index: number
     room_entrance_location: XY | undefined
+    last_camera_position: XYZ
 }
 
 type Battleground_Editor = {
     current_id: Battleground_Id
     theme: Battleground_Theme
+    battleground_name: string
     type: Editor_Type.battleground
     cells: Editor_Cell[][]
     grid_world_origin: {
@@ -172,7 +174,8 @@ const adventure_editor: Adventure_Editor = {
     type: Editor_Type.adventure,
     selection: { selected: false },
     camera_height_index: 4,
-    room_entrance_location: undefined
+    room_entrance_location: undefined,
+    last_camera_position: xyz(0, 0, 0)
 };
 
 function text_button(parent: Panel, css_class: string, text: string, action: (button: Panel) => void) {
@@ -290,13 +293,14 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, id: Adven
     }
 }
 
-function adventure_editor_select_entity(editor: Adventure_Editor, world_id: EntityId, entity: Physical_Adventure_Entity) {
+function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physical_Adventure_Entity) {
     if (editor.selection.selected) {
         drop_adventure_editor_selection(editor);
     }
 
     const id = entity.adventure_entity_id;
     const data = entity.data;
+    const world_id = entity.world_entity_id;
 
     function create_delete_button() {
         entity_button("Delete", () => {
@@ -349,7 +353,7 @@ function adventure_editor_select_entity(editor: Adventure_Editor, world_id: Enti
         selection_label.text = `Selected: ${name}`;
 
         create_adventure_enemy_menu_buttons(editor, id, name, data.battleground, data.creeps, () => {
-            adventure_editor_select_entity(editor, world_id, entity);
+            adventure_editor_select_entity(editor, entity);
         });
 
         create_delete_button();
@@ -801,16 +805,13 @@ export function battleground_editor_filter_mouse_click(editor: Battleground_Edit
     if (brush.type == Battleground_Brush_Type.deployment && cell && brush.selection.active && GameUI.IsShiftDown()) {
         const click  = cell.position;
         const selection = brush.selection;
-
-        // TODO annoying but we have to ignore the error for now
-        //@ts-ignore
-        function set_facing(facing: XY) {
+        const set_facing = (facing: XY) => {
             selection.facing = facing;
 
             destroy_fx(selection.facing_particle);
 
             selection.facing_particle = make_zone_facing_particle(editor, selection.min, selection.max, facing);
-        }
+        };
 
         if (click.x < selection.min.x) {
             set_facing(xy(-1, 0));
@@ -1093,7 +1094,7 @@ export function adventure_editor_filter_mouse_click(editor: Adventure_Editor, ev
             const entity_data = find_adventure_entity_by_world_index(entity_under_cursor);
 
             if (entity_data) {
-                adventure_editor_select_entity(editor, entity_under_cursor, entity_data);
+                adventure_editor_select_entity(editor, entity_data);
             }
         } else {
             drop_adventure_editor_selection(editor);
@@ -1334,6 +1335,12 @@ function periodically_update_editor_camera_state() {
                 }
             });
 
+            const camera_position = Game.ScreenXYToWorld(Game.GetScreenWidth() / 2, Game.GetScreenHeight() / 2);
+
+            if (camera_position) {
+                editor.last_camera_position = xyz(...camera_position);
+            }
+
             break;
         }
 
@@ -1440,6 +1447,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         type: Editor_Type.battleground,
         current_id: id,
         theme: battleground.theme,
+        battleground_name: battleground.name,
         cells: fill_battleground_editor_cells(battleground.world_origin, grid_w, grid_h),
         grid_size: xy(grid_w, grid_h),
         spawns: [],
@@ -1561,12 +1569,21 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
 
     $.CreatePanel("Label", toolbar_buttons, "").text = `Battleground #${id}`;
 
+    const name_input = $.CreatePanel("TextEntry", toolbar_buttons, "name_input");
+    name_input.text = battleground.name;
+    name_input.SetPanelEvent(PanelEvent.ON_TEXT_ENTRY_CHANGE, () => {
+        new_editor.battleground_name = name_input.text;
+
+        submit_battleground_state_to_server(new_editor);
+    });
+
     dropdown_opening_button("New", async close_dropdown => {
         const locations = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
 
         for (const location of from_server_array(locations)) {
             dropdown_button(`${location.name} (${enum_to_string(location.theme)})`, async () => {
                 const response = await async_api_request(Api_Request_Type.editor_create_battleground, {
+                    name: "New battleground",
                     world_origin: location.origin,
                     theme: location.theme
                 });
@@ -1590,7 +1607,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         const response = await async_api_request(Api_Request_Type.editor_list_battlegrounds, {});
 
         for (const bg of response.battlegrounds) {
-            dropdown_button(`#${bg.id} (${bg.size.x}x${bg.size.y})`, () => {
+            dropdown_button(`${bg.name} (#${bg.id}, ${bg.size.x}x${bg.size.y})`, () => {
                 cleanup_current_editor();
                 load_battleground_editor(bg.id, enemy);
             });
@@ -1689,11 +1706,20 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
             });
         }
 
-        // TODO doesn't work properly because of tech issuse
-        //      https://trello.com/c/4ZAJpnlH/239-tech-remake-all-adventure-editor-requests-to-accept-adventure-room-id
         toolbar_button("Back to adventure", () => {
             cleanup_current_editor();
             enter_adventure_editor();
+            update_state_from_editor_mode(current_state, editor);
+            dispatch_editor_action({
+                type: Editor_Action_Type.move_camera,
+                to: adventure_editor.last_camera_position
+            });
+
+            const entity = find_adventure_entity_by_id(enemy.id);
+
+            if (entity) {
+                adventure_editor_select_entity(adventure_editor, entity);
+            }
         });
     }
 
@@ -1797,6 +1823,7 @@ function submit_battleground_state_to_server(editor: Battleground_Editor) {
     api_request(Api_Request_Type.editor_submit_battleground, {
         id: editor.current_id,
         battleground: {
+            name: editor.battleground_name,
             world_origin: editor.grid_world_origin,
             theme: editor.theme,
             grid_size: editor.grid_size,

@@ -296,7 +296,8 @@ declare const enum Editor_Action_Type {
     exit_adventure = 8,
     submit_battleground = 9,
     playtest_battleground = 10,
-    edit_item_data = 11
+    edit_item_data = 11,
+    move_camera = 12
 }
 
 type Editor_Action = {
@@ -313,6 +314,9 @@ type Editor_Action = {
         world_origin: World_Origin
         grid_size: XY
     }
+} | {
+    type: Editor_Action_Type.move_camera
+    to: World_Origin
 } | {
     type: Editor_Action_Type.set_entity_position
     entity_id: Adventure_Entity_Id
