@@ -1,5 +1,6 @@
 type Adventure_Room_Id = number & { _adventure_room_id_brand: any };
 type Adventure_Entity_Id = number & { _adventure_entity_id_brand: any };
+type Adventure_Party_Entity_Id = number & { _adventure_party_entity_id_brand: any };
 type Ongoing_Adventure_Id = number & { _ongoing_adventure_id_brand: any };
 
 declare const enum Adventure_Id {
@@ -32,10 +33,9 @@ declare const enum Adventure_Party_Change_Type {
 
 declare const enum Adventure_Party_Action_Type {
     fetch = 0,
-    drag_bag_item_on_hero = 1,
-    drag_hero_item_on_hero = 2,
-    drag_hero_item_on_bag = 3,
-    use_consumable = 4
+    drag_item_on_hero = 1,
+    drag_item_on_bag = 2,
+    use_consumable = 3
 }
 
 declare const enum Adventure_Item_Container_Type {
@@ -239,21 +239,15 @@ type Adventure_Item_Container = {
 type Adventure_Party_Action = { current_head: number } & ({
     type: Adventure_Party_Action_Type.fetch
 } | {
-    type: Adventure_Party_Action_Type.drag_bag_item_on_hero
-    bag_slot: number
+    type: Adventure_Party_Action_Type.drag_item_on_hero
+    item_entity: Adventure_Party_Entity_Id
     party_slot: number
 } | {
-    type: Adventure_Party_Action_Type.drag_hero_item_on_hero
-    source_hero_slot: number
-    source_hero_item_slot: number
-    target_hero_slot: number
-} | {
-    type: Adventure_Party_Action_Type.drag_hero_item_on_bag
-    source_hero_slot: number
-    source_hero_item_slot: number
+    type: Adventure_Party_Action_Type.drag_item_on_bag
+    item_entity: Adventure_Party_Entity_Id
 } | {
     type: Adventure_Party_Action_Type.use_consumable
-    bag_slot: number
+    item_entity: Adventure_Party_Entity_Id
     party_slot: number
 })
 
@@ -271,11 +265,13 @@ type Adventure_Item = Adventure_Consumable_Item | Adventure_Wearable_Item
 
 type Adventure_Consumable_Item = {
     type: Adventure_Item_Type.consumable
+    entity_id: Adventure_Party_Entity_Id
     item_id: Adventure_Consumable_Item_Id
 }
 
 type Adventure_Wearable_Item = {
     type: Adventure_Item_Type.wearable
+    entity_id: Adventure_Party_Entity_Id
     item_id: Adventure_Wearable_Item_Id
     modifier: Modifier
 }

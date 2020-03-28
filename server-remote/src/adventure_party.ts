@@ -1,5 +1,6 @@
 export type Map_Player_Party = Party_Snapshot & {
     changes: Adventure_Party_Change[]
+    id_generator: () => Adventure_Party_Entity_Id
     links: {
         heroes: Hero_Slot_To_Unit[]
         creeps: Creep_Slot_To_Unit[]
@@ -129,10 +130,15 @@ export function change_party_set_currency(amount: number): Adventure_Party_Chang
     }
 }
 
-export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_Id): Adventure_Item {
+export function adventure_wearable_item_id_to_item(party: Map_Player_Party, id: Adventure_Wearable_Item_Id): Adventure_Item {
+    const base = {
+        type: Adventure_Item_Type.wearable,
+        entity_id: party.id_generator()
+    } as const;
+
     switch (id) {
         case Adventure_Wearable_Item_Id.boots_of_travel: return {
-            type: Adventure_Item_Type.wearable,
+            ...base,
             item_id: id,
             modifier: {
                 id: Modifier_Id.move_speed,
@@ -141,7 +147,7 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
         };
 
         case Adventure_Wearable_Item_Id.assault_cuirass: return {
-            type: Adventure_Item_Type.wearable,
+            ...base,
             item_id: id,
             modifier: {
                 id: Modifier_Id.armor,
@@ -150,7 +156,7 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
         };
 
         case Adventure_Wearable_Item_Id.divine_rapier: return {
-            type: Adventure_Item_Type.wearable,
+            ...base,
             item_id: id,
             modifier: {
                 id: Modifier_Id.attack_damage,
@@ -159,7 +165,7 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
         };
 
         case Adventure_Wearable_Item_Id.mask_of_madness: return {
-            type: Adventure_Item_Type.wearable,
+            ...base,
             item_id: id,
             modifier: {
                 id: Modifier_Id.item_mask_of_madness,
@@ -168,7 +174,7 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
         };
 
         case Adventure_Wearable_Item_Id.boots_of_speed: return {
-            type: Adventure_Item_Type.wearable,
+            ...base,
             item_id: id,
             modifier: {
                 id: Modifier_Id.move_speed,
@@ -177,7 +183,7 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
         };
 
         case Adventure_Wearable_Item_Id.blades_of_attack: return {
-            type: Adventure_Item_Type.wearable,
+            ...base,
             item_id: id,
             modifier: {
                 id: Modifier_Id.attack_damage,
@@ -186,7 +192,7 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
         };
 
         case Adventure_Wearable_Item_Id.belt_of_strength: return {
-            type: Adventure_Item_Type.wearable,
+            ...base,
             item_id: id,
             modifier: {
                 id: Modifier_Id.health,
@@ -195,7 +201,7 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
         };
 
         case Adventure_Wearable_Item_Id.chainmail: return {
-            type: Adventure_Item_Type.wearable,
+            ...base,
             item_id: id,
             modifier: {
                 id: Modifier_Id.armor,
@@ -204,7 +210,7 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
         };
 
         case Adventure_Wearable_Item_Id.basher: return {
-            type: Adventure_Item_Type.wearable,
+            ...base,
             item_id: id,
             modifier: {
                 id: Modifier_Id.item_basher
@@ -212,7 +218,7 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
         };
 
         case Adventure_Wearable_Item_Id.iron_branch: return {
-            type: Adventure_Item_Type.wearable,
+            ...base,
             item_id: id,
             modifier: {
                 id: Modifier_Id.item_iron_branch,
@@ -225,20 +231,25 @@ export function adventure_wearable_item_id_to_item(id: Adventure_Wearable_Item_I
     }
 }
 
-export function adventure_consumable_item_id_to_item(id: Adventure_Consumable_Item_Id): Adventure_Item {
+export function adventure_consumable_item_id_to_item(party: Map_Player_Party, id: Adventure_Consumable_Item_Id): Adventure_Item {
+    const base = {
+        type: Adventure_Item_Type.consumable,
+        entity_id: party.id_generator()
+    } as const;
+
     switch (id) {
         case Adventure_Consumable_Item_Id.enchanted_mango: return {
-            type: Adventure_Item_Type.consumable,
-            item_id: id
+            ...base,
+            item_id: id,
         };
 
         case Adventure_Consumable_Item_Id.tome_of_knowledge: return {
-            type: Adventure_Item_Type.consumable,
+            ...base,
             item_id: id
         };
 
         case Adventure_Consumable_Item_Id.healing_salve: return {
-            type: Adventure_Item_Type.consumable,
+            ...base,
             item_id: id
         };
     }

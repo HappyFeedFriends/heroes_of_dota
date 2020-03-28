@@ -32,7 +32,7 @@ const adventure_ui = {
     ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
 };
 
-const enum Drag_Source_Type {
+const enum Drag_Source {
     bag,
     hero
 }
@@ -59,15 +59,6 @@ type Inventory_Drag_State = {
     dragged_panel: Panel
     item: Adventure_Item
     source: Drag_Source
-}
-
-type Drag_Source = {
-    type: Drag_Source_Type.bag
-    bag_slot: number
-} | {
-    type: Drag_Source_Type.hero
-    hero_slot: number
-    inventory_slot: number
 }
 
 type Entity_Name_UI = {
@@ -216,48 +207,6 @@ function fill_adventure_base_slot_ui(container: Panel): Base_Slot_UI {
     }
 }
 
-function extract_original_slot(ui_slot: Adventure_Party_Slot_UI): Adventure_Party_Slot {
-    switch (ui_slot.type) {
-        case Adventure_Party_Slot_Type.creep: {
-            return {
-                type: ui_slot.type,
-                creep: ui_slot.creep,
-                health: ui_slot.health
-            }
-        }
-
-        case Adventure_Party_Slot_Type.hero: {
-            return {
-                type: ui_slot.type,
-                hero: ui_slot.hero,
-                items: ui_slot.items.map(item => item.item),
-                base_health: ui_slot.base_health
-            }
-        }
-
-        case Adventure_Party_Slot_Type.spell: {
-            return {
-                type: ui_slot.type,
-                spell: ui_slot.spell
-            }
-        }
-
-        case Adventure_Party_Slot_Type.empty: {
-            return {
-                type: ui_slot.type,
-            }
-        }
-    }
-}
-
-function extract_party_snapshot(): Party_Snapshot {
-    return {
-        currency: party.currency,
-        slots: party.slots.map(extract_original_slot),
-        bag: party.bag.items.map(item => item.item)
-    };
-}
-
 function compute_hero_display_health(items: Inventory_Item_UI[], base_hp: number) {
     const hp_bonus = compute_adventure_hero_inventory_field_bonus(items.map(item => item.item), Modifier_Field.health_bonus);
 
@@ -355,10 +304,7 @@ function add_bag_item(item: Adventure_Item, slot_index = party.bag.items.length)
         panel: item_panel
     };
 
-    register_slot_drag_events(item_panel, item, () => ({
-        type: Drag_Source_Type.bag,
-        bag_slot: slot.slot
-    }));
+    register_slot_drag_events(item_panel, item, Drag_Source.bag);
 
     party.bag.items[slot_index] = slot;
 
@@ -388,7 +334,7 @@ function set_drag_state(state: Inventory_Drag_State) {
     }
 }
 
-function register_slot_drag_events(slot: Panel, item: Adventure_Item, drag_source_source: () => Drag_Source) {
+function register_slot_drag_events(slot: Panel, item: Adventure_Item, source: Drag_Source) {
     const image = get_adventure_item_icon(item);
 
     // This fixes a bug, where if a draggable panel is clicked on
@@ -411,7 +357,7 @@ function register_slot_drag_events(slot: Panel, item: Adventure_Item, drag_sourc
             dragging: true,
             item: item,
             dragged_panel: dragged_panel,
-            source: drag_source_source()
+            source: source
         });
 
         slot.AddClass("being_dragged");
@@ -448,11 +394,7 @@ function update_hero_inventory_item_ui(ui: Inventory_Item_UI, hero_slot_index: n
 
         const image = get_adventure_item_icon(item_in_slot);
         safely_set_panel_background_image(item_panel, image);
-        register_slot_drag_events(item_panel, item_in_slot, () => ({
-            type: Drag_Source_Type.hero,
-            hero_slot: hero_slot_index,
-            inventory_slot: inventory_slot_index
-        }));
+        register_slot_drag_events(item_panel, item_in_slot, Drag_Source.hero);
     }
 }
 
@@ -468,7 +410,7 @@ function update_drag_and_drop_styles(for_panel: Panel, dragging_onto_that_panel:
 
 function register_bag_drop_events(bag_panel: Panel) {
     $.RegisterEventHandler("DragEnter", bag_panel, () => {
-        if (party.drag_state.dragging && party.drag_state.source.type == Drag_Source_Type.hero) {
+        if (party.drag_state.dragging && party.drag_state.source == Drag_Source.hero) {
             update_drag_and_drop_styles(bag_panel, true);
         }
 
@@ -476,7 +418,7 @@ function register_bag_drop_events(bag_panel: Panel) {
     });
 
     $.RegisterEventHandler("DragLeave", bag_panel, () => {
-        if (party.drag_state.dragging && party.drag_state.source.type == Drag_Source_Type.hero) {
+        if (party.drag_state.dragging && party.drag_state.source == Drag_Source.hero) {
             update_drag_and_drop_styles(bag_panel, false);
         }
 
@@ -486,13 +428,12 @@ function register_bag_drop_events(bag_panel: Panel) {
     $.RegisterEventHandler("DragDrop", bag_panel, () => {
         const drag_state = party.drag_state;
 
-        if (drag_state.dragging && drag_state.source.type == Drag_Source_Type.hero) {
+        if (drag_state.dragging && drag_state.source == Drag_Source.hero) {
             const head_before = party.current_head;
 
             perform_adventure_party_action({
-                type: Adventure_Party_Action_Type.drag_hero_item_on_bag,
-                source_hero_slot: drag_state.source.hero_slot,
-                source_hero_item_slot: drag_state.source.inventory_slot,
+                type: Adventure_Party_Action_Type.drag_item_on_bag,
+                item_entity: drag_state.item.entity_id,
                 current_head: head_before
             })
         }
@@ -594,40 +535,20 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
 
         const head_before = party.current_head;
 
-        switch (drag_state.source.type) {
-            case Drag_Source_Type.hero: {
-                perform_adventure_party_action({
-                    type: Adventure_Party_Action_Type.drag_hero_item_on_hero,
-                    source_hero_slot: drag_state.source.hero_slot,
-                    source_hero_item_slot: drag_state.source.inventory_slot,
-                    target_hero_slot: slot_index,
-                    current_head: head_before
-                });
-
-                break;
-            }
-
-            case Drag_Source_Type.bag: {
-                if (drag_state.item.type == Adventure_Item_Type.wearable) {
-                    perform_adventure_party_action({
-                        type: Adventure_Party_Action_Type.drag_bag_item_on_hero,
-                        bag_slot: drag_state.source.bag_slot,
-                        party_slot: slot_index,
-                        current_head: head_before
-                    });
-                } else {
-                    perform_adventure_party_action({
-                        type: Adventure_Party_Action_Type.use_consumable,
-                        bag_slot: drag_state.source.bag_slot,
-                        party_slot: slot_index,
-                        current_head: head_before
-                    });
-                }
-
-                break;
-            }
-
-            default: unreachable(drag_state.source);
+        if (drag_state.item.type == Adventure_Item_Type.wearable) {
+            perform_adventure_party_action({
+                type: Adventure_Party_Action_Type.drag_item_on_hero,
+                item_entity: drag_state.item.entity_id,
+                party_slot: slot_index,
+                current_head: head_before
+            });
+        } else {
+            perform_adventure_party_action({
+                type: Adventure_Party_Action_Type.use_consumable,
+                item_entity: drag_state.item.entity_id,
+                party_slot: slot_index,
+                current_head: head_before
+            });
         }
     });
 
@@ -957,9 +878,15 @@ function restore_ui_state_from_party_state() {
 }
 
 function perform_adventure_party_action(action: Adventure_Party_Action) {
+    const predicted_local_state = copy_snapshot(party.base_snapshot);
+
+    for (const change of party.changes) {
+        collapse_party_change(predicted_local_state, change);
+    }
+
     let predicted_changes = 0;
 
-    consume_adventure_party_action(extract_party_snapshot(), action, change => {
+    consume_adventure_party_action(predicted_local_state, action, change => {
         // There are cases where the game crashes without that schedule, presumably because of DnD
         // Might be so deleting panels can't happen during drag and drop or whatever
         $.Schedule(0, () => {
@@ -971,7 +898,6 @@ function perform_adventure_party_action(action: Adventure_Party_Action) {
     });
 
     api_request(Api_Request_Type.act_on_adventure_party, {
-        type: Adventure_Party_Action_Type.drag_hero_item_on_hero,
         access_token: get_access_token(),
         ...action,
     }, response => {

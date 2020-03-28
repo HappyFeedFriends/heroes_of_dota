@@ -21,10 +21,40 @@ function compute_adventure_hero_inventory_field_bonus(inventory: Adventure_Hero_
 // TODO This is wack, because we change the snapshot we pass on server when consuming changes, but not on the client
 //      this function could be made pure, if it doesn't cause any problems
 function consume_adventure_party_action(party: Party_Snapshot, action: Adventure_Party_Action, change_consumer: (change: Adventure_Party_Change) => void) {
+    function find_item_by_entity_id(id: Adventure_Party_Entity_Id): [Adventure_Item_Container, Adventure_Item] | undefined {
+        const index_in_bag = party.bag.findIndex(item => item.entity_id == id);
+        if (index_in_bag != -1) {
+            const item = party.bag[index_in_bag];
+
+            return [{
+                type: Adventure_Item_Container_Type.bag,
+                bag_slot_index: index_in_bag
+            }, item]
+        }
+
+        for (let slot_index = 0; slot_index < party.slots.length; slot_index++) {
+            const slot = party.slots[slot_index];
+            if (slot.type == Adventure_Party_Slot_Type.hero) {
+                for (let item_index = 0; item_index < Adventure_Constants.max_hero_items; item_index++) {
+                    const item = slot.items[item_index];
+                    if (item && item.entity_id == id) {
+                        return [{
+                            type: Adventure_Item_Container_Type.hero,
+                            item_slot_index: item_index,
+                            hero_slot_index: slot_index
+                        }, item]
+                    }
+                }
+            }
+        }
+    }
+
     switch (action.type) {
-        case Adventure_Party_Action_Type.drag_bag_item_on_hero: {
-            const item = party.bag[action.bag_slot];
-            if (!item) break;
+        case Adventure_Party_Action_Type.drag_item_on_hero: {
+            const result = find_item_by_entity_id(action.item_entity);
+            if (!result) break;
+
+            const [container, item] = result;
             if (item.type != Adventure_Item_Type.wearable) break;
 
             const slot = party.slots[action.party_slot];
@@ -37,10 +67,7 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
                 if (!item_slot) {
                     change_consumer({
                         type: Adventure_Party_Change_Type.move_item,
-                        source: {
-                            type: Adventure_Item_Container_Type.bag,
-                            bag_slot_index: action.bag_slot
-                        },
+                        source: container,
                         target: {
                             type: Adventure_Item_Container_Type.hero,
                             hero_slot_index: action.party_slot,
@@ -55,58 +82,15 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
             break;
         }
 
-        case Adventure_Party_Action_Type.drag_hero_item_on_hero: {
-            const source_hero = party.slots[action.source_hero_slot];
-            if (!source_hero) break;
-            if (source_hero.type != Adventure_Party_Slot_Type.hero) break;
+        case Adventure_Party_Action_Type.drag_item_on_bag: {
+            const result = find_item_by_entity_id(action.item_entity);
+            if (!result) break;
 
-            const source_item = source_hero.items[action.source_hero_item_slot];
-            if (!source_item) break;
-
-            const target_hero = party.slots[action.target_hero_slot];
-            if (!target_hero) break;
-            if (target_hero.type != Adventure_Party_Slot_Type.hero) break;
-
-            for (let item_index = 0; item_index < Adventure_Constants.max_hero_items; item_index++) {
-                const item_slot = target_hero.items[item_index];
-
-                if (!item_slot) {
-                    change_consumer({
-                        type: Adventure_Party_Change_Type.move_item,
-                        source: {
-                            type: Adventure_Item_Container_Type.hero,
-                            hero_slot_index: action.source_hero_slot,
-                            item_slot_index: action.source_hero_item_slot
-                        },
-                        target: {
-                            type: Adventure_Item_Container_Type.hero,
-                            hero_slot_index: action.target_hero_slot,
-                            item_slot_index: item_index
-                        }
-                    });
-
-                    break;
-                }
-            }
-
-            break;
-        }
-
-        case Adventure_Party_Action_Type.drag_hero_item_on_bag: {
-            const source_hero = party.slots[action.source_hero_slot];
-            if (!source_hero) break;
-            if (source_hero.type != Adventure_Party_Slot_Type.hero) break;
-
-            const source_item = source_hero.items[action.source_hero_item_slot];
-            if (!source_item) break;
+            const [container] = result;
 
             change_consumer({
                 type: Adventure_Party_Change_Type.move_item,
-                source: {
-                    type: Adventure_Item_Container_Type.hero,
-                    hero_slot_index: action.source_hero_slot,
-                    item_slot_index: action.source_hero_item_slot
-                },
+                source: container,
                 target: {
                     type: Adventure_Item_Container_Type.bag,
                     bag_slot_index: party.bag.length // Insert into a new slot at the end
@@ -121,13 +105,16 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
             if (!target) break;
             if (target.type != Adventure_Party_Slot_Type.hero) break;
 
-            const item = party.bag[action.bag_slot];
-            if (!item) break;
+            const result = find_item_by_entity_id(action.item_entity);
+            if (!result) break;
+
+            const [container, item] = result;
+            if (container.type != Adventure_Item_Container_Type.bag) break;
             if (item.type != Adventure_Item_Type.consumable) break;
 
             change_consumer({
                 type: Adventure_Party_Change_Type.remove_bag_item,
-                slot_index: action.bag_slot
+                slot_index: container.bag_slot_index
             });
 
             switch (item.item_id) {

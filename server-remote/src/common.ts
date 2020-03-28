@@ -3,6 +3,8 @@ export interface XY {
     y: number;
 }
 
+export type Id_Generator = () => number;
+
 export function xy(x: number, y: number): XY {
     return { x: x, y: y };
 }

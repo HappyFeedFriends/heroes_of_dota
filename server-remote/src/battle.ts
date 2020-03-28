@@ -1,5 +1,4 @@
-import {Id_Generator} from "./server";
-import {XY} from "./common";
+import {XY, Id_Generator} from "./common";
 import {Random} from "./random";
 
 export type Battle_Record = Battle & {

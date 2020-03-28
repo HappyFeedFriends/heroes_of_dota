@@ -5,6 +5,7 @@ import {performance} from "perf_hooks"
 
 import {
     XY,
+    Id_Generator,
     xy,
     unreachable
 } from "./common";
@@ -142,8 +143,6 @@ type Card_Collection = {
     heroes: Collection_Hero_Card[]
     spells: Collection_Spell_Card[]
 }
-
-export type Id_Generator = () => number;
 
 let dev_mode = false;
 
@@ -1110,6 +1109,7 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
             slots: [],
             changes: [],
             bag: [],
+            id_generator: typed_sequential_id_generator<Adventure_Party_Entity_Id>(),
             links: {
                 heroes: [],
                 creeps: [],
@@ -1269,14 +1269,14 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                 case Party_Event_Type.add_item: {
                     switch (event.item.type) {
                         case Adventure_Item_Type.consumable: {
-                            const item = adventure_consumable_item_id_to_item(event.item.id);
+                            const item = adventure_consumable_item_id_to_item(party, event.item.id);
                             push_party_change(party, change_party_add_item(item));
 
                             break;
                         }
 
                         case Adventure_Item_Type.wearable: {
-                            const item = adventure_wearable_item_id_to_item(event.item.id);
+                            const item = adventure_wearable_item_id_to_item(party, event.item.id);
                             push_party_change(party, change_party_add_item(item));
 
                             break;
@@ -1524,11 +1524,11 @@ function register_dev_handlers() {
                     const consumables = parse_enum_query(parts[1], enum_names_to_values<Adventure_Consumable_Item_Id>());
 
                     for (const id of wearables) {
-                        push_party_change(party, change_party_add_item(adventure_wearable_item_id_to_item(id)));
+                        push_party_change(party, change_party_add_item(adventure_wearable_item_id_to_item(party, id)));
                     }
 
                     for (const id of consumables) {
-                        push_party_change(party, change_party_add_item(adventure_consumable_item_id_to_item(id)));
+                        push_party_change(party, change_party_add_item(adventure_consumable_item_id_to_item(party, id)));
                     }
 
                     break;
