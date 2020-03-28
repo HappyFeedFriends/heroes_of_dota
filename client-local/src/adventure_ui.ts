@@ -1,6 +1,5 @@
 import {
     subscribe_to_custom_event,
-    subscribe_to_net_table_key,
     get_access_token,
     api_request,
     async_api_request,
@@ -911,7 +910,7 @@ function copy_snapshot(snapshot: Party_Snapshot) {
 }
 
 function merge_adventure_party_changes(head_before_merge: number, changes: Adventure_Party_Change[]) {
-    $.Msg(`Received ${changes.length} party changes, inserting after ${head_before_merge}`);
+    log(`\tReceived ${changes.length} party changes, inserting after ${head_before_merge}`);
 
     let merge_conflict = false;
 
@@ -922,43 +921,71 @@ function merge_adventure_party_changes(head_before_merge: number, changes: Adven
         const existing_change = party.changes[change_location];
         const new_change = changes[index];
 
-        $.Msg(`#${head_before_merge + index}: ${enum_to_string(new_change.type)}`);
+        log(`\t#${head_before_merge + index}: ${enum_to_string(new_change.type)}: ${JSON.stringify(new_change)}`);
 
         if (!merge_conflict && existing_change && !changes_equal(existing_change, new_change)) {
             merge_conflict = true;
 
-            $.Msg(`Detected merge conflict at change ${head_before_merge + index}`);
+            log(`\tDetected merge conflict at change ${head_before_merge + index}`);
         }
 
         party.changes[change_location] = new_change;
     }
 
     party.current_head = head_before_merge + changes.length;
+    party.changes.length = party.current_head - party.base_head;
 
     if (merge_conflict) {
-        const snapshot = copy_snapshot(party.base_snapshot);
+        restore_ui_state_from_party_state();
 
-        for (const change of party.changes) {
-            collapse_party_change(snapshot, change);
-        }
-
-        reinitialize_adventure_ui(party.slots.length);
-        fill_ui_from_snapshot(snapshot);
-
-        party.currently_playing_change_index = party.changes.length;
-
-        $.Msg(`State restored from snapshot after merge conflict`);
+        log(`\tState restored from snapshot after merge conflict`);
     }
 }
 
+function restore_ui_state_from_party_state() {
+    const snapshot = copy_snapshot(party.base_snapshot);
+
+    for (const change of party.changes) {
+        collapse_party_change(snapshot, change);
+    }
+
+    reinitialize_adventure_ui(party.slots.length);
+    fill_ui_from_snapshot(snapshot);
+
+    party.currently_playing_change_index = party.changes.length;
+    party.currently_playing_a_change = false;
+}
+
 function perform_adventure_party_action(action: Adventure_Party_Action) {
-    consume_adventure_party_action(extract_party_snapshot(), action, change => merge_adventure_party_changes(party.current_head, [ change ]));
+    let predicted_changes = 0;
+
+    consume_adventure_party_action(extract_party_snapshot(), action, change => {
+        // There are cases where the game crashes without that schedule, presumably because of DnD
+        // Might be so deleting panels can't happen during drag and drop or whatever
+        $.Schedule(0, () => {
+            log(`Merging local changes after ${party.current_head}`);
+            merge_adventure_party_changes(party.current_head, [change]);
+
+            predicted_changes++;
+        })
+    });
 
     api_request(Api_Request_Type.act_on_adventure_party, {
         type: Adventure_Party_Action_Type.drag_hero_item_on_hero,
         access_token: get_access_token(),
         ...action,
-    }, response => accept_adventure_party_response(response));
+    }, response => {
+        log(`Merging remote changes`);
+
+        accept_adventure_party_response(response);
+
+        // The number of changes doesn't match so it's definitely a conflict
+        if (!response.snapshot && response.changes.length < predicted_changes) {
+            log(`\tChange number mismatch, restoring from snapshot`);
+
+            restore_ui_state_from_party_state();
+        }
+    });
 }
 
 export function try_adventure_cheat(text: string) {
@@ -1047,7 +1074,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
     }
 
     function get_and_remove_item_from_slot(source: Adventure_Item_Container): Adventure_Item | undefined {
-        $.Msg(`Remove from ${enum_to_string(source.type)}`);
+        log(`Remove from ${enum_to_string(source.type)}`);
 
         switch (source.type) {
             case Adventure_Item_Container_Type.bag: {
@@ -1280,6 +1307,8 @@ function periodically_update_party_ui() {
 
     if (current_change) {
         if (!party.currently_playing_a_change) {
+            log(`Playing change #${party.currently_playing_change_index}`);
+
             party.currently_playing_a_change = true;
             party.next_change_promise = play_adventure_party_change(current_change);
         }
@@ -1314,7 +1343,7 @@ function restore_from_snapshot(snapshot: Party_Snapshot, origin_head: number) {
     reset_party_state();
     reinitialize_adventure_ui(snapshot.slots.length);
 
-    $.Msg(`Restoring head ${origin_head} from snapshot`);
+    log(`Restoring head ${origin_head} from snapshot`);
 
     fill_ui_from_snapshot(snapshot);
 
@@ -1391,45 +1420,43 @@ function periodically_update_entity_ui() {
 periodically_update_entity_ui();
 periodically_update_party_ui();
 
-subscribe_to_net_table_key<Game_Net_Table>("main", "game", async data => {
-    if (data.state == Player_State.on_adventure) {
-        const reinitialize_ui = adventure_ui.ongoing_adventure_id != data.ongoing_adventure_id;
-        const head_before_merge = reinitialize_ui ? 0 : party.current_head;
+export async function enter_adventure_ui(data: Game_Net_Table_On_Adventure) {
+    const reinitialize_ui = adventure_ui.ongoing_adventure_id != data.ongoing_adventure_id;
+    const head_before_merge = reinitialize_ui ? 0 : party.current_head;
 
+    if (reinitialize_ui) {
+        reinitialize_adventure_ui(data.num_party_slots);
+    }
+
+    const result = await async_api_request(Api_Request_Type.act_on_adventure_party, {
+        type: Adventure_Party_Action_Type.fetch,
+        access_token: get_access_token(),
+        current_head: head_before_merge
+    });
+
+    if (result.snapshot) {
+        restore_from_snapshot(result.content, result.origin_head);
+    } else {
+        // A safety net in case things are still happening with the old UI
         if (reinitialize_ui) {
             reinitialize_adventure_ui(data.num_party_slots);
+            reset_party_state();
         }
 
-        const result = await async_api_request(Api_Request_Type.act_on_adventure_party, {
-            type: Adventure_Party_Action_Type.fetch,
-            access_token: get_access_token(),
-            current_head: head_before_merge
-        });
+        merge_adventure_party_changes(head_before_merge, result.changes);
+    }
 
-        if (result.snapshot) {
-            restore_from_snapshot(result.content, result.origin_head);
-        } else {
-            // A safety net in case things are still happening with the old UI
-            if (reinitialize_ui) {
-                reinitialize_adventure_ui(data.num_party_slots);
-                reset_party_state();
-            }
+    adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
 
-            merge_adventure_party_changes(head_before_merge, result.changes);
-        }
+    entities.length = 0;
+    entities.push(...from_server_array(data.entities));
 
-        adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
-
-        entities.length = 0;
-        entities.push(...from_server_array(data.entities));
-
-        for (const entity of entities) {
-            if (entity.data.type == Adventure_Entity_Type.enemy) {
-                entity.data.creeps = from_server_array(entity.data.creeps);
-            }
+    for (const entity of entities) {
+        if (entity.data.type == Adventure_Entity_Type.enemy) {
+            entity.data.creeps = from_server_array(entity.data.creeps);
         }
     }
-});
+}
 
 subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, event => {
     // TODO it's weird that we even send that for enemies

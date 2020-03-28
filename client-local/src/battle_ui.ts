@@ -552,78 +552,74 @@ function on_battle_event(battle: UI_Battle, event: Battle_Event) {
     }
 }
 
-export function battle_process_state_transition(from: Player_State, new_state: Game_Net_Table) {
-    $.Msg(`Transition from ${from} to ${new_state.state}`);
+export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
+    const new_data = new_state.battle;
+    const base = make_battle(from_server_array(new_data.participants).map(make_battle_player), new_data.grid_size.width, new_data.grid_size.height);
+    const this_player = find_player_by_id(base, new_state.battle.battle_player_id);
 
-    if (from == Player_State.in_battle) {
-        for (const cell of battle.grid.cells) {
-            Particles.DestroyParticleEffect(cell.associated_particle, true);
-            Particles.ReleaseParticleIndex(cell.associated_particle);
+    if (!this_player) {
+        $.Msg("Error: not participating in this battle");
+        return;
+    }
+
+    battle = {
+        ...base,
+        id: new_data.id,
+        this_player: this_player,
+        cell_index_to_unit: [],
+        cell_index_to_rune: [],
+        entity_id_to_unit_data: {},
+        entity_id_to_rune_id: {},
+        entity_id_to_shop_id: {},
+        unit_id_to_facing: {},
+        shop_id_to_facing: {},
+        outline_particles: [],
+        shop_range_outline_particles: [],
+        zone_highlight_particles: [],
+        grid: {
+            world_origin: new_data.world_origin,
+            size: base.grid.size,
+            cells: []
+        },
+        receive_event: on_battle_event as (battle: Battle, event: Battle_Event) => void // TODO poorly typed
+    };
+
+    set_selection({
+        type: Selection_Type.none
+    });
+
+    ui_shop_data = [];
+
+    for (let x = 0; x < battle.grid.size.x; x++) {
+        for (let y = 0; y < battle.grid.size.y; y++) {
+            const center = battle_position_to_world_position_center(battle.grid.world_origin, xy(x, y));
+            const particle = create_cell_particle_at(center);
+
+            battle.grid.cells.push({
+                position: xy(x, y),
+                occupants: 0,
+                cost: 1,
+                associated_particle: particle
+            });
+
+            register_particle_for_reload(particle);
         }
     }
 
-    if (new_state.state == Player_State.in_battle) {
-        const new_data = new_state.battle;
-        const base = make_battle(from_server_array(new_data.participants).map(make_battle_player), new_data.grid_size.width, new_data.grid_size.height);
-        const this_player = find_player_by_id(base, new_state.battle.battle_player_id);
+    update_grid_visuals();
+    clear_control_panel();
+    clear_hand_state();
 
-        if (!this_player) {
-            $.Msg("Error: not participating in this battle");
-            return;
-        }
+    $("#shop_panels_container").RemoveAndDeleteChildren();
+    $("#stat_bar_container").RemoveAndDeleteChildren();
 
-        battle = {
-            ...base,
-            id: new_data.id,
-            this_player: this_player,
-            cell_index_to_unit: [],
-            cell_index_to_rune: [],
-            entity_id_to_unit_data: {},
-            entity_id_to_rune_id: {},
-            entity_id_to_shop_id: {},
-            unit_id_to_facing: {},
-            shop_id_to_facing: {},
-            outline_particles: [],
-            shop_range_outline_particles: [],
-            zone_highlight_particles: [],
-            grid: {
-                world_origin: new_data.world_origin,
-                size: base.grid.size,
-                cells: []
-            },
-            receive_event: on_battle_event as (battle: Battle, event: Battle_Event) => void // TODO poorly typed
-        };
+    request_battle_deltas();
+}
 
-        set_selection({
-            type: Selection_Type.none
-        });
-
-        ui_shop_data = [];
-
-        for (let x = 0; x < battle.grid.size.x; x++) {
-            for (let y = 0; y < battle.grid.size.y; y++) {
-                const center = battle_position_to_world_position_center(battle.grid.world_origin, xy(x, y));
-                const particle = create_cell_particle_at(center);
-
-                battle.grid.cells.push({
-                    position: xy(x, y),
-                    occupants: 0,
-                    cost: 1,
-                    associated_particle: particle
-                });
-
-                register_particle_for_reload(particle);
-            }
-        }
-
-        update_grid_visuals();
-        clear_control_panel();
-        clear_hand_state();
-
-        $("#shop_panels_container").RemoveAndDeleteChildren();
-        $("#stat_bar_container").RemoveAndDeleteChildren();
-
-        request_battle_deltas();
+export function exit_battle_ui() {
+    for (const cell of battle.grid.cells) {
+        Particles.DestroyParticleEffect(cell.associated_particle, true);
+        Particles.ReleaseParticleIndex(cell.associated_particle);
     }
 }
 

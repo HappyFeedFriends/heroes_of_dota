@@ -169,3 +169,7 @@ function clean_up_particles_after_reload() {
         storage.temporary_particles = [];
     }
 }
+
+function log(message: string) {
+    $.Msg(`[${Game.Time().toFixed(2)}] ${message}`);
+}
