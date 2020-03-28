@@ -119,7 +119,6 @@ type Base_Slot_UI = {
 
 type Inventory_Item_UI = {
     item: Adventure_Wearable_Item | undefined
-    slot_index: number
     panel: Panel
     drop_layer: Panel
 }

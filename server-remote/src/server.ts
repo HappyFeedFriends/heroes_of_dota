@@ -1292,6 +1292,8 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                     for (const [index, slot] of party.slots.entries()) {
                         switch (slot.type) {
                             case Adventure_Party_Slot_Type.hero: {
+                                if (is_party_hero_dead(slot)) break;
+
                                 const max_health = hero_definition_by_type(slot.hero).health;
                                 const change = change_party_change_health(index, max_health, Adventure_Health_Change_Reason.shrine);
 
@@ -1301,6 +1303,8 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                             }
 
                             case Adventure_Party_Slot_Type.creep: {
+                                if (is_party_creep_dead(slot)) break;
+
                                 const max_health = creep_definition_by_type(slot.creep).health;
                                 const change = change_party_change_health(index, max_health, Adventure_Health_Change_Reason.shrine);
 

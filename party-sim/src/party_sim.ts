@@ -18,6 +18,16 @@ function compute_adventure_hero_inventory_field_bonus(inventory: Adventure_Hero_
     return bonus;
 }
 
+function is_party_hero_dead(slot: Find_By_Type<Adventure_Party_Slot, Adventure_Party_Slot_Type.hero>) {
+    const health_bonus = compute_adventure_hero_inventory_field_bonus(slot.items, Modifier_Field.health_bonus);
+    const actual_health = slot.base_health + health_bonus;
+    return actual_health <= 0;
+}
+
+function is_party_creep_dead(slot: Find_By_Type<Adventure_Party_Slot, Adventure_Party_Slot_Type.creep>) {
+    return slot.health == 0;
+}
+
 // TODO This is wack, because we change the snapshot we pass on server when consuming changes, but not on the client
 //      this function could be made pure, if it doesn't cause any problems
 function consume_adventure_party_action(party: Party_Snapshot, action: Adventure_Party_Action, change_consumer: (change: Adventure_Party_Change) => void) {
@@ -60,6 +70,7 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
             const slot = party.slots[action.party_slot];
             if (!slot) break;
             if (slot.type != Adventure_Party_Slot_Type.hero) break;
+            if (is_party_hero_dead(slot)) break;
 
             for (let index = 0; index < Adventure_Constants.max_hero_items; index++) {
                 const item_slot = slot.items[index];
@@ -104,6 +115,7 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
             const target = party.slots[action.party_slot];
             if (!target) break;
             if (target.type != Adventure_Party_Slot_Type.hero) break;
+            if (is_party_hero_dead(target)) break;
 
             const result = find_item_by_entity_id(action.item_entity);
             if (!result) break;
