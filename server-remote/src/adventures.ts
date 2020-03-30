@@ -49,6 +49,9 @@ type Adventure_File = {
         gold_bags?: Array<File_Entity_Base & {
             amount: number
         }>
+        merchants?: Array<File_Entity_Base & {
+            model: string
+        }>
         other_entities?: Array<File_Entity_Base & {
             type: string
         }>
@@ -73,14 +76,18 @@ type Party_Event = {
 
 type Entity_Interaction_Result = {
     party_events: Party_Event[]
-    updated_entity: Adventure_Entity_State
+    updated_entity: Adventure_Entity
 }
 
 export type Ongoing_Adventure = {
     id: Ongoing_Adventure_Id
     adventure: Adventure
     current_room: Adventure_Room
-    entities: Adventure_Entity[]
+    entities: Adventure_Entity_With_Definition[]
+}
+
+type Adventure_Entity_With_Definition = Adventure_Entity & {
+    definition: Adventure_Entity_Definition
 }
 
 const adventures: Adventure[] = [];
@@ -100,12 +107,70 @@ function room(id: number, type: Adventure_Room_Type, entrance: XY, entities: Adv
     }
 }
 
-function adventure_entity_from_definition(id: Adventure_Entity_Id, definition: Adventure_Entity_Definition): Adventure_Entity {
-    return {
-        id: id,
-        definition: definition,
-        alive: true
-    };
+function adventure_entity_from_definition(id: Adventure_Entity_Id, definition: Adventure_Entity_Definition): Adventure_Entity_With_Definition {
+    switch (definition.type) {
+        case Adventure_Entity_Type.enemy: return {
+            ...definition,
+            definition: definition,
+            type: definition.type,
+            id: id,
+            alive: true
+        };
+
+        case Adventure_Entity_Type.lost_creep: return {
+            ...definition,
+            definition: definition,
+            type: definition.type,
+            id: id,
+            alive: true
+        };
+
+        case Adventure_Entity_Type.shrine: return {
+            ...definition,
+            definition: definition,
+            type: definition.type,
+            id: id,
+            alive: true
+        };
+
+        case Adventure_Entity_Type.item_on_the_ground: return {
+            ...definition,
+            definition: definition,
+            type: definition.type,
+            id: id,
+            alive: true
+        };
+
+        case Adventure_Entity_Type.gold_bag: return {
+            ...definition,
+            definition: definition,
+            type: definition.type,
+            id: id,
+            alive: true
+        };
+
+        case Adventure_Entity_Type.merchant: return {
+            ...definition,
+            definition: definition,
+            type: definition.type,
+            id: id,
+            assortment: {
+                heroes: [ Hero_Type.earthshaker ],
+                creeps: [ Creep_Type.lane_creep ],
+                spells: [ Spell_Id.town_portal_scroll ],
+                consumables: [
+                    Adventure_Consumable_Item_Id.tome_of_knowledge,
+                    Adventure_Consumable_Item_Id.enchanted_mango,
+                    Adventure_Consumable_Item_Id.healing_salve
+                ],
+                wearables: [
+                    Adventure_Wearable_Item_Id.boots_of_speed,
+                    Adventure_Wearable_Item_Id.belt_of_strength,
+                    Adventure_Wearable_Item_Id.chainmail
+                ]
+            }
+        };
+    }
 }
 
 export function adventure_by_id(adventure_id: Adventure_Id): Adventure | undefined {
@@ -116,7 +181,7 @@ export function room_by_id(adventure: Adventure, room_id: Adventure_Room_Id): Ad
     return adventure.rooms.find(room => room.id == room_id);
 }
 
-export function create_room_entities(room: Adventure_Room): Adventure_Entity[] {
+export function create_room_entities(room: Adventure_Room): Adventure_Entity_With_Definition[] {
     return room.entities.map(enemy => adventure_entity_from_definition(get_next_entity_id(), enemy));
 }
 
@@ -273,6 +338,21 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             });
         }
 
+        for (const source of source_room.merchants || []) {
+            const model = try_string_to_enum_value(source.model, enum_names_to_values<Adventure_Merchant_Model>());
+
+            if (model == undefined) {
+                console.error(`Model type ${source.model} not found while parsing ${file_path}`);
+                return;
+            }
+
+            entities.push({
+                ...read_base(source),
+                type: Adventure_Entity_Type.merchant,
+                model: model
+            });
+        }
+
         for (const source_entity of source_room.other_entities || []) {
             const entity_type = try_string_to_enum_value(source_entity.type, entities_enum);
 
@@ -328,6 +408,7 @@ function persist_adventure_to_file_system(adventure: Adventure) {
             const other_entities: File_Room["other_entities"] = [];
             const gold_bags: File_Room["gold_bags"] = [];
             const items: File_Room["items"] = [];
+            const merchants: File_Room["merchants"] = [];
 
             for (const entity of room.entities) {
                 const base: File_Entity_Base = {
@@ -373,6 +454,15 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                         break;
                     }
 
+                    case Adventure_Entity_Type.merchant: {
+                        merchants.push({
+                            ...base,
+                            model: enum_to_string(entity.model)
+                        });
+
+                        break;
+                    }
+
                     case Adventure_Entity_Type.lost_creep:
                     case Adventure_Entity_Type.shrine: {
                         other_entities.push({
@@ -393,6 +483,7 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                 enemies: non_empty_or_none(enemies),
                 items: non_empty_or_none(items),
                 gold_bags: non_empty_or_none(gold_bags),
+                merchants: non_empty_or_none(merchants),
                 other_entities: non_empty_or_none(other_entities)
             };
         })
@@ -408,10 +499,11 @@ function persist_adventure_to_file_system(adventure: Adventure) {
 export function interact_with_entity(adventure: Ongoing_Adventure, entity_id: Adventure_Entity_Id): Entity_Interaction_Result | undefined {
     const entity = adventure.entities.find(entity => entity.id == entity_id);
     if (!entity) return;
+    if (entity.type == Adventure_Entity_Type.merchant) return;
     if (!entity.alive) return;
 
     const generate_event = (): Party_Event | undefined => {
-        switch (entity.definition.type) {
+        switch (entity.type) {
             case Adventure_Entity_Type.lost_creep: return {
                 type: Party_Event_Type.add_creep,
                 creep: Creep_Type.lane_creep
@@ -423,12 +515,12 @@ export function interact_with_entity(adventure: Ongoing_Adventure, entity_id: Ad
 
             case Adventure_Entity_Type.item_on_the_ground: return {
                 type: Party_Event_Type.add_item,
-                item: entity.definition.item
+                item: entity.item
             };
 
             case Adventure_Entity_Type.gold_bag: return {
                 type: Party_Event_Type.add_currency,
-                amount: entity.definition.amount
+                amount: entity.amount
             }
         }
     };
@@ -439,10 +531,7 @@ export function interact_with_entity(adventure: Ongoing_Adventure, entity_id: Ad
         entity.alive = false;
 
         return {
-            updated_entity: {
-                id: entity.id,
-                alive: entity.alive
-            },
+            updated_entity: entity,
             party_events: [ event ]
         }
     }
@@ -509,6 +598,7 @@ export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventur
         case Adventure_Editor_Action_Type.set_enemy_battleground: {
             const enemy = ongoing.entities.find(entity => entity.id == action.entity_id);
             if (!enemy) return;
+            if (enemy.type != Adventure_Entity_Type.enemy) return;
             if (enemy.definition.type != Adventure_Entity_Type.enemy) return;
 
             enemy.definition.battleground = action.battleground;
@@ -519,6 +609,7 @@ export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventur
         case Adventure_Editor_Action_Type.set_item_data: {
             const item = ongoing.entities.find(entity => entity.id == action.entity_id);
             if (!item) return;
+            if (item.type != Adventure_Entity_Type.item_on_the_ground) return;
             if (item.definition.type != Adventure_Entity_Type.item_on_the_ground) return;
 
             item.definition.item = action.item;

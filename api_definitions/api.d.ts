@@ -29,7 +29,6 @@ declare const enum Api_Request_Type {
     start_adventure = 200,
     enter_adventure_room = 201,
     exit_adventure = 202,
-    query_adventure_entity_states = 203,
     start_adventure_enemy_fight = 204,
     submit_adventure_player_movement = 205,
     interact_with_adventure_entity = 206,

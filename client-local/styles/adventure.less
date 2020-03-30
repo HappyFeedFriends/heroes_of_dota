@@ -23,6 +23,8 @@
   }
 }
 
+@currency-gold: url("s2r://panorama/images/hud/reborn/gold_small_psd.vtex");
+
 #adventure_ui {
   width: 100%;
   height: 100%;
@@ -64,7 +66,7 @@
               background-size: 100% auto;
               background-position: center center;
               background-repeat: no-repeat no-repeat;
-              background-image: url("s2r://panorama/images/hud/reborn/gold_small_psd.vtex");
+              background-image: @currency-gold;
             }
 
             #currency_remaining {
@@ -331,31 +333,58 @@
     }
   }
 
-  #adventure_popup {
+  #adventure_popup_base {
+    #ui_window();
+
     align: center center;
-    width: 500px;
-    box-shadow: #151515 0 0 16px 0;
 
     background-color: #4e6180;
     background-image: url("s2r://panorama/images/backgrounds/dashboard_vignette_png.vtex");
     background-size: 100% 100%;
+  }
 
-    #ui_window();
+  .adventure_popup_header {
+    horizontal-align: center;
+    color: gradient( linear, 0% 0%, 0% 100%, from(#fff7f4), to(rgb(198, 198, 197)) );
+    font-family: @font-title;
+    font-size: 40px;
+    text-align: center;
+    margin: 30px;
+    text-shadow: 0px 0px 8px 3 black;
+  }
+
+  .adventure_popup_button {
+    height: 44px;
+    border-radius: 2px;
+    box-shadow: #151515 0 0 6px 0;
+    border: 1px solid black;
+  }
+
+  #button_gradient(@from, @to) {
+    background-color: gradient(linear, 0% 0%, 0% 100%, from(@from), to(@to));
+
+    &:hover {
+      background-color: gradient(linear, 0% 0%, 0% 100%, from(lighten(@from, 10%)), to(lighten(@to, 10%)));
+    }
+
+    &:active {
+      background-color: gradient(linear, 0% 0%, 0% 100%, from(darken(@from, 5%)), to(darken(@to, 5%)));
+
+      #icon {
+        transform: translateY(1px);
+      }
+    }
+  }
+
+  #adventure_popup {
+    width: 500px;
+
+    #adventure_popup_base();
 
     #adventure_popup_content {
       flow-children: down;
       align: center center;
       margin-bottom: 100px;
-
-      #adventure_popup_header {
-        horizontal-align: center;
-        color: gradient( linear, 0% 0%, 0% 100%, from(#fff7f4), to(rgb(198, 198, 197)) );
-        font-family: @font-title;
-        font-size: 40px;
-        text-align: center;
-        margin: 30px;
-        text-shadow: 0px 0px 8px 3 black;
-      }
 
       #adventure_popup_text {
         horizontal-align: center;
@@ -405,22 +434,6 @@
         background-size: 100% 100%;
       }
 
-      #button_gradient(@from, @to) {
-        background-color: gradient(linear, 0% 0%, 0% 100%, from(@from), to(@to));
-
-        &:hover {
-          background-color: gradient(linear, 0% 0%, 0% 100%, from(lighten(@from, 10%)), to(lighten(@to, 10%)));
-        }
-
-        &:active {
-          background-color: gradient(linear, 0% 0%, 0% 100%, from(darken(@from, 5%)), to(darken(@to, 5%)));
-
-          #icon {
-            transform: translateY(1px);
-          }
-        }
-      }
-
       #adventure_popup_yes {
         #button_gradient(#60862d, #3d5f1c);
       }
@@ -438,13 +451,109 @@
         img-shadow: 0px 1px 0px 1 rgba(0, 0, 0, 0.69);
       }
 
-      Button {
+      .adventure_popup_button {
         margin: 12px;
         width: 120px;
-        height: 44px;
+      }
+    }
+  }
+
+  #adventure_merchant_popup {
+    #adventure_popup_base();
+
+    width: 900px;
+    height: 600px;
+
+    #adventure_merchant_popup_content {
+      align: center center;
+      flow-children: down;
+
+      .purchase_overlay {
+        background-color: #ffff0008;
+        width: 100%;
+        height: 100%;
         border-radius: 2px;
-        box-shadow: #151515 0 0 6px 0;
-        border: 1px solid black;
+        visibility: collapse;
+      }
+
+      .entity_cost {
+        flow-children: right;
+        align: center center;
+
+        #icon {
+          width: 32px;
+          height: 32px;
+          background-size: 100% auto;
+          background-position: center center;
+          background-repeat: no-repeat no-repeat;
+          background-image: @currency-gold;
+          margin-right: 6px;
+        }
+
+        #cost {
+          color: white;
+          font-family: @font-regular;
+          font-size: 24px;
+          align: center center;
+          text-align: center;
+          text-shadow: 0px 0px 3px 3 black;
+        }
+      }
+
+      #adventure_merchant_popup_cards {
+        flow-children: right;
+        align: center center;
+
+        .card_with_cost_wrapper {
+          &:hover .purchase_overlay {
+            visibility: visible;
+          }
+
+          #card_with_cost {
+            margin: 20px;
+            flow-children: down;
+          }
+        }
+      }
+
+      #adventure_merchant_popup_items {
+        align: center center;
+        flow-children: right;
+
+        .item_with_cost_wrapper {
+          &:hover .purchase_overlay {
+            visibility: visible;
+          }
+
+          #item_with_cost {
+            flow-children: down;
+            margin: 10px;
+
+            #item_icon {
+              width: 96px;
+              height: 64px;
+              box-shadow: #151515 0 0 6px 0;
+            }
+          }
+        }
+      }
+    }
+
+    #adventure_merchant_popup_leave {
+      padding-left: 30px;
+      padding-right: 30px;
+      margin-bottom: 30px;
+
+      align: center bottom;
+
+      #button_gradient(#60862d, #3d5f1c);
+
+      Label {
+        color: white;
+        font-size: 24px;
+        align: center center;
+        text-align: center;
+        font-family: @font-regular;
       }
     }
   }

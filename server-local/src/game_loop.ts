@@ -250,45 +250,12 @@ function game_net_table(game: Game): Game_Net_Table {
         }
 
         case Player_State.on_adventure: {
-            const physical_entity = (entity: Adventure_Materialized_Entity): Physical_Adventure_Entity | undefined => {
-                switch (entity.type) {
-                    case Adventure_Entity_Type.shrine: {
-                        return {
-                            adventure_entity_id: entity.id,
-                            world_entity_id: entity.handle.entindex(),
-                            data: entity.definition
-                        }
-                    }
-
-                    default: {
-                        if (!entity.alive) return;
-
-                        return {
-                            adventure_entity_id: entity.id,
-                            world_entity_id: entity.handle.entindex(),
-                            data: entity.definition
-                        }
-                    }
-                }
-            };
-
-            const physical_entities: Physical_Adventure_Entity[] = [];
-
-            for (const entity of game.adventure.entities) {
-                const physical = physical_entity(entity);
-
-                if (physical) {
-                    physical_entities.push(physical);
-                }
-            }
-
             return {
                 state: game.state,
                 id: game.player.remote_id,
                 token: game.token,
                 ongoing_adventure_id: game.adventure.ongoing_adventure_id,
-                num_party_slots: game.adventure.num_party_slots,
-                entities: physical_entities
+                num_party_slots: game.adventure.num_party_slots
             };
         }
 
@@ -422,12 +389,14 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         }];
 
         for (const entity of next_state.entities) {
-            print("Create entity: ", enum_to_string(entity.definition.type), " alive ", entity.alive);
+            print(`Create entity: ${enum_to_string(entity.type)}`);
             game.adventure.entities.push(create_adventure_entity(entity));
         }
 
         game.adventure.ongoing_adventure_id = next_state.ongoing_adventure_id;
         game.adventure.num_party_slots = next_state.num_party_slots;
+
+        update_adventure_net_table(game.adventure);
     }
 
     game.state = next_state.state;

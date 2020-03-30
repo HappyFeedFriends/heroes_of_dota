@@ -57,8 +57,7 @@ type To_Client_Event = {
 } | {
     type: To_Client_Event_Type.adventure_display_entity_popup
     payload: {
-        entity_id: Adventure_Entity_Id
-        entity: Adventure_Entity_Definition
+        entity: Adventure_Entity
     }
 } | {
     type: To_Client_Event_Type.grid_highlight_targeted_ability
@@ -161,8 +160,7 @@ type Visualizer_Player_Data = {
 
 type Physical_Adventure_Entity = {
     world_entity_id: number
-    adventure_entity_id: Adventure_Entity_Id
-    data: Adventure_Entity_Definition_Data
+    base: Adventure_Entity
 }
 
 type Modifier_Data = {
@@ -187,7 +185,6 @@ type Game_Net_Table_On_Adventure = Player_Net_Table_Base & {
     state: Player_State.on_adventure
     ongoing_adventure_id: Ongoing_Adventure_Id
     num_party_slots: number
-    entities: Physical_Adventure_Entity[]
 }
 
 type Game_Net_Table_In_Battle = Player_Net_Table_Base & {
@@ -218,6 +215,10 @@ type Game_Net_Table =
     Game_Net_Table_On_Adventure |
     Game_Net_Table_In_Battle |
     Game_Net_Table_Not_Logged_In
+
+type Adventure_Net_Table = {
+    entities: Physical_Adventure_Entity[]
+}
 
 type Player_Snapshot = {
     id: Battle_Player_Id

@@ -638,7 +638,7 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
             if (defeated_entity != winner_entity && defeated_entity.type == Map_Entity_Type.adventure_enemy) {
                 const defeated_adventure_entity = adventure.entities.find(adventure_entity => adventure_entity.id == defeated_entity.entity_id);
 
-                if (defeated_adventure_entity && defeated_adventure_entity.definition.type == Adventure_Entity_Type.enemy) {
+                if (defeated_adventure_entity && defeated_adventure_entity.type == Adventure_Entity_Type.enemy) {
                     defeated_adventure_entity.alive = false;
                 }
             }

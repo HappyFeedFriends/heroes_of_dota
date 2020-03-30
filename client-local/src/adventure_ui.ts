@@ -3,7 +3,8 @@ import {
     get_access_token,
     api_request,
     async_api_request,
-    fire_event
+    fire_event,
+    subscribe_to_net_table_key
 } from "./interop";
 
 import {
@@ -25,9 +26,16 @@ const adventure_ui = {
         header: adventure_ui_root.FindChildTraverse("adventure_popup_header") as LabelPanel,
         text: adventure_ui_root.FindChildTraverse("adventure_popup_text") as LabelPanel,
         content: adventure_ui_root.FindChildTraverse("adventure_popup_inner_content"),
-        background: adventure_ui_root.FindChildTraverse("window_background"),
+        background: adventure_ui_root.FindChildTraverse("adventure_popup_background"),
         button_yes: adventure_ui_root.FindChildTraverse("adventure_popup_yes"),
         button_no: adventure_ui_root.FindChildTraverse("adventure_popup_no")
+    },
+    merchant_popup: {
+        window: adventure_ui_root.FindChildTraverse("adventure_merchant_popup"),
+        background: adventure_ui_root.FindChildTraverse("adventure_merchant_popup_background"),
+        cards: adventure_ui_root.FindChildTraverse("adventure_merchant_popup_cards"),
+        items: adventure_ui_root.FindChildTraverse("adventure_merchant_popup_items"),
+        button_leave: adventure_ui_root.FindChildTraverse("adventure_merchant_popup_leave")
     },
     ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
 };
@@ -170,7 +178,7 @@ export function find_adventure_entity_by_world_index(index: EntityId): Physical_
 }
 
 export function find_adventure_entity_by_id(id: Adventure_Entity_Id): Physical_Adventure_Entity | undefined {
-    return entities.find(entity => entity.adventure_entity_id == id);
+    return entities.find(entity => entity.base.id == id);
 }
 
 hide_adventure_tooltip();
@@ -663,7 +671,7 @@ function set_adventure_party_slot(slot_index: number, slot: Adventure_Party_Slot
     return new_slot;
 }
 
-function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
+function fill_entity_popup_content(entity: Adventure_Entity) {
     const popup = adventure_ui.popup;
 
     switch (entity.type) {
@@ -721,6 +729,10 @@ function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
             break;
         }
 
+        case Adventure_Entity_Type.merchant: {
+            break;
+        }
+
         case Adventure_Entity_Type.enemy: {
             break;
         }
@@ -729,8 +741,118 @@ function fill_adventure_popup_content(entity: Adventure_Entity_Definition) {
     }
 }
 
-function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_Entity_Definition) {
+function fixup_merchant_server_data(merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
+    merchant.assortment.consumables = from_server_array(merchant.assortment.consumables);
+    merchant.assortment.wearables = from_server_array(merchant.assortment.wearables);
+    merchant.assortment.heroes = from_server_array(merchant.assortment.heroes);
+    merchant.assortment.spells = from_server_array(merchant.assortment.spells);
+    merchant.assortment.creeps = from_server_array(merchant.assortment.creeps);
+}
+
+function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
+    const popup = adventure_ui.merchant_popup;
+
+    function hide_popup() {
+        popup.window.SetHasClass("visible", false);
+        popup.background.SetHasClass("visible", false);
+    }
+
+    popup.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
+
+    popup.window.SetHasClass("visible", true);
+    popup.background.SetHasClass("visible", true);
+
+    popup.cards.RemoveAndDeleteChildren();
+    popup.items.RemoveAndDeleteChildren();
+
+    function cost_container(parent: Panel, cost: number) {
+        const cost_container = $.CreatePanel("Panel", parent, "");
+        cost_container.AddClass("entity_cost");
+
+        $.CreatePanel("Panel", cost_container, "icon");
+
+        const label = $.CreatePanel("Label", cost_container, "cost");
+        label.text = cost.toString(10);
+    }
+
+    function card_container(type: string) {
+        const wrapper = $.CreatePanel("Panel", popup.cards, "");
+        wrapper.AddClass("card_with_cost_wrapper");
+
+        const card_with_cost = $.CreatePanel("Panel", wrapper, "card_with_cost");
+
+        const purchase_overlay = $.CreatePanel("Panel", wrapper, "");
+        purchase_overlay.AddClass("purchase_overlay");
+
+        const card_container = create_card_container_ui(card_with_cost, false);
+        card_container.AddClass(type);
+        card_container.AddClass("no_hover");
+
+        cost_container(card_with_cost, Math.ceil(Math.random() * 10) * 10);
+
+        return card_container;
+    }
+
+    function item_container(icon: string) {
+        const wrapper = $.CreatePanel("Panel", popup.items, "");
+        wrapper.AddClass("item_with_cost_wrapper");
+
+        const item_with_cost = $.CreatePanel("Panel", wrapper, "item_with_cost");
+
+        const purchase_overlay = $.CreatePanel("Panel", wrapper, "");
+        purchase_overlay.AddClass("purchase_overlay");
+
+        const item = $.CreatePanel("Image", item_with_cost, "item_icon");
+        item.SetImage(icon);
+        item.SetScaling(ScalingFunction.STRETCH_TO_COVER_PRESERVE_ASPECT);
+
+        cost_container(item_with_cost, Math.ceil(Math.random() * 5) * 10);
+    }
+
+    for (const hero of merchant.assortment.heroes) {
+        const def = hero_definition_by_type(hero);
+        const container = card_container("hero");
+        create_hero_card_ui_base(container, hero, def.health, def.attack_damage, def.move_points);
+    }
+
+    for (const creep of merchant.assortment.creeps) {
+        const def = creep_definition_by_type(creep);
+        const container = card_container("creep");
+        create_unit_card_ui_base(container, get_creep_name(creep), get_creep_card_art(creep), def.health, def.attack_damage, def.move_points);
+    }
+
+    for (const spell of merchant.assortment.spells) {
+        const def = spell_definition_by_id(spell);
+        const container = card_container("spell");
+        create_spell_card_ui_base(container, spell, get_spell_text(def));
+    }
+
+    for (const item of merchant.assortment.consumables) {
+        item_container(get_adventure_consumable_item_icon(item));
+    }
+
+    for (const item of merchant.assortment.wearables) {
+        item_container(get_adventure_wearable_item_icon(item));
+    }
+
+    popup.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        hide_popup();
+    });
+
+    popup.button_leave.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        Game.EmitSound("click_simple");
+
+        hide_popup();
+    });
+}
+
+function show_entity_popup(entity: Adventure_Entity) {
     const popup = adventure_ui.popup;
+
+    function hide_popup() {
+        popup.window.SetHasClass("visible", false);
+        popup.background.SetHasClass("visible", false);
+    }
 
     popup.window.SetHasClass("visible", true);
     popup.background.SetHasClass("visible", true);
@@ -739,7 +861,7 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
     popup.text.text = "";
     popup.content.RemoveAndDeleteChildren();
 
-    fill_adventure_popup_content(entity);
+    fill_entity_popup_content(entity);
 
     popup.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
 
@@ -747,21 +869,21 @@ function show_adventure_popup(entity_id: Adventure_Entity_Id, entity: Adventure_
         Game.EmitSound("adventure_popup_ok");
 
         fire_event(To_Server_Event_Type.adventure_interact_with_entity, {
-            entity_id: entity_id,
+            entity_id: entity.id,
             current_head: party.current_head
         });
 
-        hide_adventure_popup();
+        hide_popup();
     });
 
     popup.button_no.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
         Game.EmitSound("click_simple");
 
-        hide_adventure_popup();
+        hide_popup();
     });
 
     popup.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-        hide_adventure_popup();
+        hide_popup();
     });
 
     Game.EmitSound("adventure_popup_open");
@@ -921,11 +1043,6 @@ export function try_adventure_cheat(text: string) {
         cheat: text,
         current_head: head
     }, response => merge_adventure_party_changes(head, response.party_updates));
-}
-
-function hide_adventure_popup() {
-    adventure_ui.popup.window.SetHasClass("visible", false);
-    adventure_ui.popup.background.SetHasClass("visible", false);
 }
 
 export function adventure_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
@@ -1176,7 +1293,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                 case Adventure_Party_Slot_Type.hero: {
                     const old_health = slot.ui.stat_health.displayed_value;
                     const new_health = compute_hero_display_health(slot.items, change.health);
-                    const period = health_change_animation_period(change.reason)
+                    const period = health_change_animation_period(change.reason);
 
                     if (change.reason == Adventure_Health_Change_Reason.healing_salve) {
                         emit_sound("healing_salve");
@@ -1299,18 +1416,19 @@ function periodically_update_entity_ui() {
             case Adventure_Entity_Type.lost_creep: return 180;
             case Adventure_Entity_Type.item_on_the_ground: return 120;
             case Adventure_Entity_Type.shrine: return 300;
+            case Adventure_Entity_Type.merchant: return 300;
         }
     }
 
     const now = Game.Time();
 
-    for (const entity of entities) {
-        if (entity.world_entity_id == entity_under_cursor) {
+    for (const live of entities) {
+        if (live.world_entity_id == entity_under_cursor) {
             entity_found = true;
 
-            entity_name.label.text = get_adventure_entity_name(entity.data);
+            entity_name.label.text = get_adventure_entity_name(live.base);
             entity_name.last_followed_at = now;
-            entity_name.following = entity;
+            entity_name.following = live;
 
             break;
         }
@@ -1328,7 +1446,7 @@ function periodically_update_entity_ui() {
         const entity_origin = Entities.GetAbsOrigin(entity_name.following.world_entity_id);
         if (!entity_origin) return;
 
-        const panel_world_origin = xyz(entity_origin[0], entity_origin[1], entity_origin[2] + entity_type_to_z_offset(entity_name.following.data.type));
+        const panel_world_origin = xyz(entity_origin[0], entity_origin[1], entity_origin[2] + entity_type_to_z_offset(entity_name.following.base.type));
 
         const screen_x = Game.WorldToScreenX(panel_world_origin.x, panel_world_origin.y, panel_world_origin.z);
         const screen_y = Game.WorldToScreenY(panel_world_origin.x, panel_world_origin.y, panel_world_origin.z);
@@ -1372,21 +1490,35 @@ export async function enter_adventure_ui(data: Game_Net_Table_On_Adventure) {
     }
 
     adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
+}
 
+subscribe_to_net_table_key<Adventure_Net_Table>("adventure", "table", table => {
     entities.length = 0;
-    entities.push(...from_server_array(data.entities));
+    entities.push(...from_server_array(table.entities));
 
+    // Array fixup
     for (const entity of entities) {
-        if (entity.data.type == Adventure_Entity_Type.enemy) {
-            entity.data.creeps = from_server_array(entity.data.creeps);
+        if (entity.base.type == Adventure_Entity_Type.enemy) {
+            entity.base.creeps = from_server_array(entity.base.creeps);
+        }
+
+        if (entity.base.type == Adventure_Entity_Type.merchant) {
+            fixup_merchant_server_data(entity.base);
         }
     }
-}
+});
 
 subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, event => {
     // TODO it's weird that we even send that for enemies
-    if (event.entity.type != Adventure_Entity_Type.enemy) {
-        show_adventure_popup(event.entity_id, event.entity);
+    if (event.entity.type == Adventure_Entity_Type.enemy) {
+        return;
+    }
+
+    if (event.entity.type == Adventure_Entity_Type.merchant) {
+        fixup_merchant_server_data(event.entity);
+        show_merchant_popup(event.entity);
+    } else {
+        show_entity_popup(event.entity);
     }
 });
 

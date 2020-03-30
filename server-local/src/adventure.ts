@@ -5,12 +5,11 @@ const enum Adventure_Creep_State {
     sit_down
 }
 
-type Adventure_Entity_Base = {
-    id: Adventure_Entity_Id
-    definition: Adventure_Entity_Definition
+type Adventure_World_Entity_Base = {
+    base: Adventure_Entity
 }
 
-type Adventure_Materialized_Enemy = Adventure_Entity_Base & { type: Adventure_Entity_Type.enemy } & ({
+type Adventure_World_Enemy = Adventure_World_Entity_Base & { type: Adventure_Entity_Type.enemy } & ({
     alive: true
     handle: CDOTA_BaseNPC
     npc_type: Npc_Type
@@ -22,7 +21,7 @@ type Adventure_Materialized_Enemy = Adventure_Entity_Base & { type: Adventure_En
     alive: false
 })
 
-type Adventure_Materialized_Lost_Creep = Adventure_Entity_Base & { type: Adventure_Entity_Type.lost_creep } & ({
+type Adventure_World_Lost_Creep = Adventure_World_Entity_Base & { type: Adventure_Entity_Type.lost_creep } & ({
     alive: true
     handle: CDOTA_BaseNPC
     state: Adventure_Creep_State
@@ -31,7 +30,7 @@ type Adventure_Materialized_Lost_Creep = Adventure_Entity_Base & { type: Adventu
     alive: false
 })
 
-type Adventure_Materialized_Shrine = Adventure_Entity_Base & { type: Adventure_Entity_Type.shrine } & ({
+type Adventure_World_Shrine = Adventure_World_Entity_Base & { type: Adventure_Entity_Type.shrine } & ({
     alive: true
     handle: CDOTA_BaseNPC
     obstruction: CBaseEntity
@@ -42,30 +41,37 @@ type Adventure_Materialized_Shrine = Adventure_Entity_Base & { type: Adventure_E
     obstruction: CBaseEntity
 })
 
-type Adventure_Materialized_Item_On_The_Ground = Adventure_Entity_Base & { type: Adventure_Entity_Type.item_on_the_ground} & ({
+type Adventure_World_Item_On_The_Ground = Adventure_World_Entity_Base & { type: Adventure_Entity_Type.item_on_the_ground } & ({
     alive: true
     handle: CDOTA_BaseNPC
 } | {
     alive: false
 })
 
-type Adventure_Materialized_Gold_Bag = Adventure_Entity_Base & { type: Adventure_Entity_Type.gold_bag} & ({
+type Adventure_World_Gold_Bag = Adventure_World_Entity_Base & { type: Adventure_Entity_Type.gold_bag } & ({
     alive: true
     handle: CDOTA_BaseNPC
 } | {
     alive: false
 })
 
-type Adventure_Materialized_Entity =
-    Adventure_Materialized_Enemy |
-    Adventure_Materialized_Lost_Creep |
-    Adventure_Materialized_Shrine |
-    Adventure_Materialized_Item_On_The_Ground |
-    Adventure_Materialized_Gold_Bag
+type Adventure_World_Merchant = Adventure_World_Entity_Base & { type: Adventure_Entity_Type.merchant } & ({
+    handle: CDOTA_BaseNPC
+    started_waving_at: number
+    just_saw_player: boolean
+})
+
+type Adventure_World_Entity =
+    Adventure_World_Enemy |
+    Adventure_World_Lost_Creep |
+    Adventure_World_Shrine |
+    Adventure_World_Item_On_The_Ground |
+    Adventure_World_Gold_Bag |
+    Adventure_World_Merchant
 
 type Adventure_State = {
-    entities: Adventure_Materialized_Entity[]
-    current_right_click_target?: Adventure_Materialized_Entity
+    entities: Adventure_World_Entity[]
+    current_right_click_target?: Adventure_World_Entity
     ongoing_adventure_id: Ongoing_Adventure_Id
     num_party_slots: number
 }
@@ -96,32 +102,29 @@ function adventure_item_to_model(item: Adventure_Item_Entity) {
     }
 }
 
-function create_adventure_entity(entity: Adventure_Entity): Adventure_Materialized_Entity {
-    const data = entity.definition;
+function create_adventure_entity(entity: Adventure_Entity): Adventure_World_Entity {
     const base = {
         id: entity.id,
-        spawn_facing: data.spawn_facing,
-        spawn_position: data.spawn_position,
-        definition: entity.definition
+        base: entity
     } as const;
 
     function create_adventure_unit(model: string, scale: number) {
-        return create_map_unit_with_model(data.spawn_position, data.spawn_facing, model, scale);
+        return create_map_unit_with_model(entity.spawn_position, entity.spawn_facing, model, scale);
     }
 
-    switch (data.type) {
+    switch (entity.type) {
         case Adventure_Entity_Type.enemy: {
-            if (!entity.alive) return { ...base, type: data.type, alive: false };
+            if (!entity.alive) return { ...base, type: entity.type, alive: false };
 
-            const definition = get_npc_definition(data.npc_type);
+            const definition = get_npc_definition(entity.npc_type);
             const unit = create_adventure_unit(definition.model, definition.scale);
 
             return {
                 ...base,
-                type: data.type,
+                type: entity.type,
                 alive: true,
                 handle: unit,
-                npc_type: data.npc_type,
+                npc_type: entity.npc_type,
                 has_noticed_player: false,
                 noticed_particle: undefined,
                 issued_movement_order_at: 0,
@@ -130,45 +133,68 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
         }
 
         case Adventure_Entity_Type.item_on_the_ground: {
-            if (!entity.alive) return { ...base, type: data.type, alive: false };
+            if (!entity.alive) return { ...base, type: entity.type, alive: false };
 
-            const model = adventure_item_to_model(data.item);
+            const model = adventure_item_to_model(entity.item);
             const unit = create_adventure_unit(model, 1.0);
 
             return {
                 ...base,
-                type: data.type,
+                type: entity.type,
                 alive: true,
                 handle: unit
             };
         }
 
         case Adventure_Entity_Type.gold_bag: {
-            if (!entity.alive) return { ...base, type: data.type, alive: false };
+            if (!entity.alive) return { ...base, type: entity.type, alive: false };
 
             const unit = create_adventure_unit("models/props_gameplay/gold_bag.vmdl", 1.0);
 
             return {
                 ...base,
-                type: data.type,
+                type: entity.type,
                 alive: true,
                 handle: unit
             };
         }
 
         case Adventure_Entity_Type.lost_creep: {
-            if (!entity.alive) return { ...base, type: data.type, alive: false };
+            if (!entity.alive) return { ...base, type: entity.type, alive: false };
 
             const [model, scale] = creep_type_to_model_and_scale(Creep_Type.lane_creep);
             const unit = create_adventure_unit(model, scale);
 
             return {
                 ...base,
-                type: data.type,
+                type: entity.type,
                 alive: true,
                 handle: unit,
                 state: Adventure_Creep_State.stand,
                 state_entered_at: GameRules.GetGameTime()
+            }
+        }
+
+        case Adventure_Entity_Type.merchant: {
+            function merchant_model_path(model: Adventure_Merchant_Model): string {
+                switch (model) {
+                    case Adventure_Merchant_Model.normal: return "models/heroes/shopkeeper/shopkeeper.vmdl";
+                    case Adventure_Merchant_Model.dire: return "models/heroes/shopkeeper_dire/shopkeeper_dire.vmdl";
+                    case Adventure_Merchant_Model.meepo: return "models/props_gameplay/npc/shopkeeper_the_lost_meepo/shopkeeper_the_lost_meepo.vmdl";
+                    case Adventure_Merchant_Model.smith: return "models/props_gameplay/shopkeeper_fountain/shopkeeper_fountain.vmdl";
+                }
+            }
+
+            const model = merchant_model_path(entity.model);
+            const unit = create_adventure_unit(model, 1.0);
+
+            return {
+                ...base,
+                type: entity.type,
+                alive: true,
+                handle: unit,
+                started_waving_at: 0,
+                just_saw_player: false
             }
         }
 
@@ -207,12 +233,12 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_Materializ
     }
 }
 
-function update_adventure_enemy(game: Game, enemy: Adventure_Materialized_Enemy) {
+function update_adventure_enemy(game: Game, enemy: Adventure_World_Enemy) {
     if (!enemy.alive) return;
 
     const player_handle = game.player.hero_unit;
     const enemy_handle = enemy.handle;
-    const enemy_spawn_location = Vector(enemy.definition.spawn_position.x, enemy.definition.spawn_position.y);
+    const enemy_spawn_location = Vector(enemy.base.spawn_position.x, enemy.base.spawn_position.y);
     const enemy_actual_location = enemy_handle.GetAbsOrigin();
     const player_location = player_handle.GetAbsOrigin();
     const player_can_see_enemy = player_handle.CanEntityBeSeenByMyTeam(enemy_handle);
@@ -248,7 +274,7 @@ function update_adventure_enemy(game: Game, enemy: Adventure_Materialized_Enemy)
                 });
 
                 const new_state = api_request(Api_Request_Type.start_adventure_enemy_fight, {
-                    enemy_entity_id: enemy.id,
+                    enemy_entity_id: enemy.base.id,
                     access_token: game.token,
                     dedicated_server_key: get_dedicated_server_key()
                 });
@@ -285,7 +311,7 @@ function update_adventure_enemy(game: Game, enemy: Adventure_Materialized_Enemy)
                 enemy.issued_movement_order_at = now;
             }
         } else {
-            const desired_facing = Vector(enemy.definition.spawn_facing.x, enemy.definition.spawn_facing.y);
+            const desired_facing = Vector(enemy.base.spawn_facing.x, enemy.base.spawn_facing.y);
             const actual_facing = enemy_handle.GetForwardVector();
 
             if (desired_facing.Dot(actual_facing) < 0.95) {
@@ -295,12 +321,32 @@ function update_adventure_enemy(game: Game, enemy: Adventure_Materialized_Enemy)
     }
 }
 
-function update_lost_creep(game: Game, creep: Adventure_Materialized_Lost_Creep) {
+function update_merchant(game: Game, merchant: Adventure_World_Merchant) {
+    const player_handle = game.player.hero_unit;
+    const player_location = player_handle.GetAbsOrigin();
+    const spawn_location = Vector(merchant.base.spawn_position.x, merchant.base.spawn_position.y);
+    const distance_to_player = (spawn_location - player_location as Vector).Length2D();
+    const now = GameRules.GetGameTime();
+
+    if (distance_to_player <= 700) {
+        if (!merchant.just_saw_player && now - merchant.started_waving_at >= 5.0) {
+            merchant.started_waving_at = now;
+
+            add_activity_override(merchant, GameActivity_t.ACT_DOTA_TAUNT, 3.0);
+        }
+
+        merchant.just_saw_player = true;
+    } else {
+        merchant.just_saw_player = false;
+    }
+}
+
+function update_lost_creep(game: Game, creep: Adventure_World_Lost_Creep) {
     if (!creep.alive) return;
 
     const player_handle = game.player.hero_unit;
-    const spawn_location = Vector(creep.definition.spawn_position.x, creep.definition.spawn_position.y);
-    const spawn_facing = Vector(creep.definition.spawn_facing.x, creep.definition.spawn_facing.y);
+    const spawn_location = Vector(creep.base.spawn_position.x, creep.base.spawn_position.y);
+    const spawn_facing = Vector(creep.base.spawn_facing.x, creep.base.spawn_facing.y);
     const player_location = player_handle.GetAbsOrigin();
     const player_can_see_creep = player_handle.CanEntityBeSeenByMyTeam(creep.handle);
     const from_creep_to_player = (spawn_location - player_location as Vector).Length2D();
@@ -363,8 +409,14 @@ function update_lost_creep(game: Game, creep: Adventure_Materialized_Lost_Creep)
     }
 }
 function process_player_adventure_order(game: Game, order: ExecuteOrderEvent): boolean {
-    function try_find_entity_by_unit<T extends Entity_With_Movement>(query: CBaseEntity): Adventure_Materialized_Entity | undefined {
-        return array_find(game.adventure.entities, entity => entity.alive && entity.handle == query);
+    function try_find_entity_by_unit<T extends Entity_With_Movement>(query: CBaseEntity): Adventure_World_Entity | undefined {
+        return array_find(game.adventure.entities, entity => {
+            if (entity.type == Adventure_Entity_Type.merchant) {
+                return entity.handle == query;
+            }
+
+            return entity.alive && entity.handle == query;
+        });
     }
 
     for (let index in order.units) {
@@ -396,7 +448,7 @@ function adventure_update_loop(game: Game) {
         wait_until(() => game.state == Player_State.on_adventure);
 
         const right_click_target = game.adventure.current_right_click_target;
-        if (right_click_target && right_click_target.alive) {
+        if (right_click_target && (right_click_target.type == Adventure_Entity_Type.merchant || right_click_target.alive)) {
             const delta = right_click_target.handle.GetAbsOrigin() - game.player.hero_unit.GetAbsOrigin() as Vector;
 
             if (!game.player.hero_unit.IsMoving() && delta.Length2D() <= 300) {
@@ -407,15 +459,12 @@ function adventure_update_loop(game: Game) {
                 game.player.hero_unit.FaceTowards(right_click_target.handle.GetAbsOrigin());
 
                 fire_event(To_Client_Event_Type.adventure_display_entity_popup, {
-                    entity_id: right_click_target.id,
-                    entity: right_click_target.definition
+                    entity: right_click_target.base
                 });
             }
         }
 
         for (const entity of game.adventure.entities) {
-            if (!entity.alive) continue;
-
             switch (entity.type) {
                 case Adventure_Entity_Type.enemy: {
                     update_adventure_enemy(game, entity);
@@ -424,6 +473,11 @@ function adventure_update_loop(game: Game) {
 
                 case Adventure_Entity_Type.lost_creep: {
                     update_lost_creep(game, entity);
+                    break;
+                }
+
+                case Adventure_Entity_Type.merchant: {
+                    update_merchant(game, entity);
                     break;
                 }
             }
@@ -449,11 +503,16 @@ function submit_adventure_movement_loop(game: Game) {
 }
 
 function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_Id, current_head: number) {
-    const entity_index = array_find_index(game.adventure.entities, entity => entity.id == entity_id);
+    const entity_index = array_find_index(game.adventure.entities, entity => entity.base.id == entity_id);
     if (entity_index == -1) return;
 
     const entity = game.adventure.entities[entity_index];
+    if (entity.type == Adventure_Entity_Type.merchant) return;
     if (!entity.alive) return;
+
+    const entity_world_position = entity.handle.GetAbsOrigin();
+    const distance_to_player = (game.player.hero_unit.GetAbsOrigin() - entity_world_position as Vector).Length2D();
+    if (distance_to_player > 500) return;
 
     const state_update = api_request(Api_Request_Type.interact_with_adventure_entity, {
         target_entity_id: entity_id,
@@ -474,7 +533,7 @@ function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_
                 .release();
         }
 
-        game.adventure.entities[entity_index] = transition_entity_state(entity, state_update.updated_entity);
+        game.adventure.entities[entity_index] = update_entity_state(entity, state_update.updated_entity);
 
         fire_event(To_Client_Event_Type.adventure_receive_party_changes, {
             changes: state_update.party_updates,
@@ -494,18 +553,22 @@ function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_
             });
         }
 
-        update_game_net_table(game);
+        update_adventure_net_table(game.adventure);
     }
 }
 
-function transition_entity_state(from: Adventure_Materialized_Entity, to: Adventure_Entity_State): Adventure_Materialized_Entity {
+function update_entity_state(from: Adventure_World_Entity, to: Adventure_Entity): Adventure_World_Entity {
+    if (from.type == Adventure_Entity_Type.merchant) {
+        return from;
+    }
+
+    if (to.type == Adventure_Entity_Type.merchant) {
+        return create_adventure_entity(to);
+    }
+
     if (!from.alive) {
         cleanup_adventure_entity(from);
-
-        return create_adventure_entity({
-            ...to,
-            definition: from.definition
-        });
+        return create_adventure_entity(to);
     }
 
     // from.alive == true here
@@ -514,9 +577,8 @@ function transition_entity_state(from: Adventure_Materialized_Entity, to: Advent
     }
 
     const base = {
-        id: from.id,
         handle: from.handle,
-        definition: from.definition
+        base: from.base
     };
 
     switch (from.type) {
@@ -580,7 +642,7 @@ function transition_entity_state(from: Adventure_Materialized_Entity, to: Advent
     }
 }
 
-function cleanup_adventure_entity(entity: Adventure_Materialized_Entity) {
+function cleanup_adventure_entity(entity: Adventure_World_Entity) {
     switch (entity.type) {
         case Adventure_Entity_Type.lost_creep: {
             if (entity.alive) {
@@ -625,6 +687,11 @@ function cleanup_adventure_entity(entity: Adventure_Materialized_Entity) {
             break;
         }
 
+        case Adventure_Entity_Type.merchant: {
+            entity.handle.RemoveSelf();
+            break;
+        }
+
         default: unreachable(entity);
     }
 }
@@ -636,4 +703,43 @@ function cleanup_adventure(adventure: Adventure_State) {
 
     adventure.entities = [];
     delete adventure.current_right_click_target;
+}
+
+function update_adventure_net_table(adventure: Adventure_State) {
+    const physical_entity = (entity: Adventure_World_Entity): Physical_Adventure_Entity | undefined => {
+        switch (entity.type) {
+            case Adventure_Entity_Type.merchant:
+            case Adventure_Entity_Type.shrine: {
+                return {
+                    world_entity_id: entity.handle.entindex(),
+                    base: entity.base
+                }
+            }
+
+            default: {
+                if (!entity.alive) return;
+
+                return {
+                    world_entity_id: entity.handle.entindex(),
+                    base: entity.base
+                }
+            }
+        }
+    };
+
+    const physical_entities: Physical_Adventure_Entity[] = [];
+
+    for (const entity of adventure.entities) {
+        const physical = physical_entity(entity);
+
+        if (physical) {
+            physical_entities.push(physical);
+        }
+    }
+
+    const table: Adventure_Net_Table = {
+        entities: physical_entities
+    };
+
+    CustomNetTables.SetTableValue("adventure", "table", table);
 }

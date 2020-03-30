@@ -98,7 +98,8 @@ type Adventure_Editor_Selection = {
         Adventure_Entity_Type.lost_creep |
         Adventure_Entity_Type.shrine |
         Adventure_Entity_Type.item_on_the_ground |
-        Adventure_Entity_Type.gold_bag
+        Adventure_Entity_Type.gold_bag |
+        Adventure_Entity_Type.merchant
     id: Adventure_Entity_Id
     entity: EntityId
     particle: ParticleId
@@ -230,7 +231,9 @@ function dropdown_button(text: string, action: () => void) {
     return text_button(entity_buttons_dropdown, "editor_entity_dropdown_button", text, action);
 }
 
-function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, id: Adventure_Entity_Id, name: string, battleground: Battleground_Id, creeps: Creep_Type[], reselect: () => void) {
+function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: Physical_Adventure_Entity, enemy: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.enemy>, name: string) {
+    const { creeps, id, battleground } = enemy;
+
     entity_button(`Battleground: #${battleground}`, () => {
         load_battleground_editor(battleground, {
             current_battleground_id: battleground,
@@ -275,7 +278,7 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, id: Adven
                         entity_id: id,
                         creeps: creeps,
                         access_token: get_access_token()
-                    }, reselect);
+                    }, () => adventure_editor_select_entity(editor, entity));
                 });
             }
 
@@ -287,7 +290,7 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, id: Adven
                     entity_id: id,
                     creeps: creeps,
                     access_token: get_access_token()
-                }, reselect);
+                }, () => adventure_editor_select_entity(editor, entity));
             });
         });
     }
@@ -298,45 +301,44 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
         drop_adventure_editor_selection(editor);
     }
 
-    const id = entity.adventure_entity_id;
-    const data = entity.data;
+    const base = entity.base;
     const world_id = entity.world_entity_id;
 
     function create_delete_button() {
         entity_button("Delete", () => {
             dispatch_editor_action({
                 type: Editor_Action_Type.delete_entity,
-                entity_id: id
+                entity_id: base.id
             })
         }, "editor_entity_delete_button");
     }
 
     function entity_name() {
-        switch (data.type) {
+        switch (base.type) {
             case Adventure_Entity_Type.enemy: {
-                return enum_to_string(data.npc_type);
+                return enum_to_string(base.npc_type);
             }
 
             case Adventure_Entity_Type.item_on_the_ground: {
-                switch (data.item.type) {
-                    case Adventure_Item_Type.consumable: return snake_case_to_capitalized_words(enum_to_string(data.item.id));
-                    case Adventure_Item_Type.wearable: return snake_case_to_capitalized_words(enum_to_string(data.item.id));
+                switch (base.item.type) {
+                    case Adventure_Item_Type.consumable: return snake_case_to_capitalized_words(enum_to_string(base.item.id));
+                    case Adventure_Item_Type.wearable: return snake_case_to_capitalized_words(enum_to_string(base.item.id));
                 }
 
                 break;
             }
 
             case Adventure_Entity_Type.gold_bag: {
-                return `${data.amount} gold`;
+                return `${base.amount} gold`;
             }
 
-            default: return snake_case_to_capitalized_words(enum_to_string(data.type));
+            default: return snake_case_to_capitalized_words(enum_to_string(base.type));
         }
     }
 
-    const name = `${entity_name()} (#${id})`;
+    const name = `${entity_name()} (#${base.id})`;
 
-    if (data.type == Adventure_Entity_Type.enemy) {
+    if (base.type == Adventure_Entity_Type.enemy) {
         const fx = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_OVERHEAD_FOLLOW, world_id);
 
         register_particle_for_reload(fx);
@@ -344,7 +346,7 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
         editor.selection = {
             selected: true,
             type: Adventure_Entity_Type.enemy,
-            id: id,
+            id: base.id,
             entity: world_id,
             particle: fx
         };
@@ -352,9 +354,7 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
         const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
         selection_label.text = `Selected: ${name}`;
 
-        create_adventure_enemy_menu_buttons(editor, id, name, data.battleground, data.creeps, () => {
-            adventure_editor_select_entity(editor, entity);
-        });
+        create_adventure_enemy_menu_buttons(editor, entity, base, name);
 
         create_delete_button();
     } else {
@@ -367,8 +367,8 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
 
         editor.selection = {
             selected: true,
-            type: data.type,
-            id: id,
+            type: base.type,
+            id: base.id,
             entity: world_id,
             particle: fx
         };
@@ -926,7 +926,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
 
     function item_creation_buttons() {
         prepare_context_menu();
-        context_menu_button("Back", () => standard_buttons());
+        context_menu_button("Back", standard_buttons);
 
         const wrapper = $.CreatePanel("Panel", context_menu, "context_menu_item_wrapper");
         const item_container = $.CreatePanel("Panel", wrapper, "context_menu_item_container");
@@ -976,7 +976,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
 
     function enemy_creation_buttons() {
         prepare_context_menu();
-        context_menu_button("Back", () => standard_buttons());
+        context_menu_button("Back", standard_buttons);
 
         for (const [npc_name, npc_type] of enum_names_to_values<Npc_Type>()) {
             context_menu_button(`Create ${npc_name}`, () => {
@@ -997,7 +997,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
 
     function entity_creation_buttons() {
         prepare_context_menu();
-        context_menu_button("Back", () => standard_buttons());
+        context_menu_button("Back", standard_buttons);
 
         function entity_button(name: string, entity: Adventure_Entity_Definition_Data) {
             context_menu_button(snake_case_to_capitalized_words(name), () => {
@@ -1019,11 +1019,13 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         entity_button(enum_to_string(Adventure_Entity_Type.shrine), {
             type: Adventure_Entity_Type.shrine
         });
+
+        context_menu_button(snake_case_to_capitalized_words(enum_to_string(Adventure_Entity_Type.merchant)), merchant_buttons);
     }
 
     function gold_bag_buttons(amount: number) {
         prepare_context_menu();
-        context_menu_button("Back", () => standard_buttons());
+        context_menu_button("Back", standard_buttons);
         context_menu_button(`${amount} gold`, () => {
             dispatch_editor_action({
                 type: Editor_Action_Type.create_entity,
@@ -1039,6 +1041,25 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         for (const change of [5, 2, 1, -1, -2, -5]) {
             context_menu_button(`${change > 0 ? "+" : ""}${change}`, () => {
                 gold_bag_buttons(amount + change);
+            });
+        }
+    }
+
+    function merchant_buttons() {
+        prepare_context_menu();
+        context_menu_button("Back", entity_creation_buttons);
+
+        for (const [name, model] of enum_names_to_values<Adventure_Merchant_Model>()) {
+            context_menu_button(snake_case_to_capitalized_words(name), () => {
+                dispatch_editor_action({
+                    type: Editor_Action_Type.create_entity,
+                    definition: {
+                        type: Adventure_Entity_Type.merchant,
+                        model: model,
+                        spawn_position: click,
+                        spawn_facing: xy(1, 0),
+                    }
+                })
             });
         }
     }

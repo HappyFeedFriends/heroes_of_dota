@@ -97,5 +97,6 @@ function get_adventure_entity_name(entity: Adventure_Entity_Definition_Data): st
         case Adventure_Entity_Type.shrine: return "Shrine";
         case Adventure_Entity_Type.gold_bag: return "Bag of Gold";
         case Adventure_Entity_Type.item_on_the_ground: return "Item";
+        case Adventure_Entity_Type.merchant: return "Merchant";
     }
 }

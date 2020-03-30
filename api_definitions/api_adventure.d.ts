@@ -12,7 +12,8 @@ declare const enum Adventure_Entity_Type {
     lost_creep = 1,
     shrine = 2,
     item_on_the_ground = 3,
-    gold_bag = 4
+    gold_bag = 4,
+    merchant = 5
 }
 
 declare const enum Adventure_Party_Slot_Type {
@@ -77,6 +78,13 @@ declare const enum Adventure_Health_Change_Reason {
     shrine = 2
 }
 
+declare const enum Adventure_Merchant_Model {
+    smith = 0,
+    meepo = 1,
+    normal = 2,
+    dire = 3
+}
+
 type Adventure_Handlers = {
     type: Api_Request_Type.start_adventure
     request: {
@@ -93,12 +101,6 @@ type Adventure_Handlers = {
     type: Api_Request_Type.exit_adventure
     request: {} & With_Token & With_Private_Key
     response: Player_State_Data
-} | {
-    type: Api_Request_Type.query_adventure_entity_states
-    request: {} & With_Token & With_Private_Key
-    response: {
-        states: Adventure_Entity_State[]
-    }
 } | {
     type: Api_Request_Type.start_adventure_enemy_fight
     request: {
@@ -123,7 +125,7 @@ type Adventure_Handlers = {
     } & With_Token & With_Private_Key
     response: {
         party_updates: Adventure_Party_Change[]
-        updated_entity: Adventure_Entity_State
+        updated_entity: Adventure_Entity
     }
 } | {
     type: Api_Request_Type.act_on_adventure_party
@@ -138,10 +140,6 @@ type Adventure_Handlers = {
     response: {
         party_updates: Adventure_Party_Change[]
     }
-}
-
-type Adventure_Entity = Adventure_Entity_State & {
-    definition: Adventure_Entity_Definition
 }
 
 type Adventure_Entity_Definition_Base = {
@@ -170,7 +168,10 @@ type Adventure_Entity_Definition_Data = {
 } | {
     type: Adventure_Entity_Type.gold_bag
     amount: number
-};
+} | {
+    type: Adventure_Entity_Type.merchant
+    model: Adventure_Merchant_Model
+}
 
 type Adventure_Entity_Definition = Adventure_Entity_Definition_Base & Adventure_Entity_Definition_Data
 
@@ -182,10 +183,41 @@ type Adventure_Item_Entity = {
     id: Adventure_Wearable_Item_Id
 }
 
-type Adventure_Entity_State = {
+type Adventure_Entity_Base = Adventure_Entity_Definition_Base & {
     id: Adventure_Entity_Id
-    alive: boolean
 }
+
+type Adventure_Entity = Adventure_Entity_Base & ({
+    type: Adventure_Entity_Type.enemy
+    npc_type: Npc_Type
+    creeps: Creep_Type[]
+    battleground: Battleground_Id
+    alive: boolean
+} | {
+    type: Adventure_Entity_Type.lost_creep
+    alive: boolean
+} | {
+    type: Adventure_Entity_Type.shrine
+    alive: boolean
+} | {
+    type: Adventure_Entity_Type.item_on_the_ground
+    item: Adventure_Item_Entity
+    alive: boolean
+} | {
+    type: Adventure_Entity_Type.gold_bag
+    amount: number
+    alive: boolean
+} | {
+    type: Adventure_Entity_Type.merchant
+    model: Adventure_Merchant_Model
+    assortment: {
+        heroes: Hero_Type[]
+        creeps: Creep_Type[]
+        spells: Spell_Id[]
+        wearables: Adventure_Wearable_Item_Id[]
+        consumables: Adventure_Consumable_Item_Id[]
+    }
+})
 
 type Adventure_Party_Slot = {
     type: Adventure_Party_Slot_Type.empty

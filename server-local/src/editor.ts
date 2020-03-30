@@ -120,11 +120,11 @@ function update_editor_battleground(editor: Editor_State, origin: Vector, theme:
 
 function perform_editor_action(game: Game, editor: Editor_State, event: Editor_Action) {
     function find_entity_by_id(id: Adventure_Entity_Id) {
-        return array_find(game.adventure.entities, entity => entity.id == id);
+        return array_find(game.adventure.entities, entity => entity.base.id == id);
     }
 
     function find_entity_index_by_id(id: Adventure_Entity_Id) {
-        return array_find_index(game.adventure.entities, entity => entity.id == id);
+        return array_find_index(game.adventure.entities, entity => entity.base.id == id);
     }
 
     switch (event.type) {
@@ -171,7 +171,7 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
 
             api_request(Api_Request_Type.editor_action, {
                 type: Adventure_Editor_Action_Type.delete_entity,
-                entity_id: entity.id,
+                entity_id: entity.base.id,
                 access_token: game.token
             });
 
@@ -187,7 +187,7 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
             if (created_entity) {
                 game.adventure.entities.push(create_adventure_entity(created_entity));
 
-                update_game_net_table(game);
+                update_adventure_net_table(game.adventure);
             }
 
             break;
@@ -197,7 +197,7 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
             const entity = find_entity_by_id(event.entity_id);
             if (!entity) break;
 
-            entity.definition.spawn_position = event.position;
+            entity.base.spawn_position = event.position;
 
             switch (entity.type) {
                 case Adventure_Entity_Type.shrine: {
@@ -209,9 +209,9 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
                 }
 
                 default: {
-                    if (!entity.alive) break;
-
-                    FindClearSpaceForUnit(entity.handle, Vector(event.position.x, event.position.y), true);
+                    if (entity.type == Adventure_Entity_Type.merchant || entity.alive) {
+                        FindClearSpaceForUnit(entity.handle, Vector(event.position.x, event.position.y), true);
+                    }
 
                     break;
                 }
@@ -219,7 +219,7 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
 
             api_request(Api_Request_Type.editor_action, {
                 type: Adventure_Editor_Action_Type.set_entity_position,
-                entity_id: entity.id,
+                entity_id: entity.base.id,
                 new_position: event.position,
                 access_token: game.token
             });
@@ -231,7 +231,7 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
             const entity = find_entity_by_id(event.entity_id);
             if (!entity) break;
 
-            entity.definition.spawn_facing = event.facing;
+            entity.base.spawn_facing = event.facing;
 
             function set_unit_facing_fast(handle: CDOTA_BaseNPC, facing: XY) {
                 // SetForwardVector + FaceTowards achieves both fast and correct rotation
@@ -246,16 +246,17 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
                 }
 
                 default: {
-                    if (!entity.alive) break;
+                    if (entity.type == Adventure_Entity_Type.merchant || entity.alive) {
+                        set_unit_facing_fast(entity.handle, event.facing);
+                    }
 
-                    set_unit_facing_fast(entity.handle, event.facing);
                     break;
                 }
             }
 
             api_request(Api_Request_Type.editor_action, {
                 type: Adventure_Editor_Action_Type.set_entity_facing,
-                entity_id: entity.id,
+                entity_id: entity.base.id,
                 new_facing: event.facing,
                 access_token: game.token
             });
@@ -273,7 +274,7 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
 
             api_request(Api_Request_Type.editor_action, {
                 type: Adventure_Editor_Action_Type.set_item_data,
-                entity_id: entity.id,
+                entity_id: entity.base.id,
                 item: event.item,
                 access_token: game.token
             });
