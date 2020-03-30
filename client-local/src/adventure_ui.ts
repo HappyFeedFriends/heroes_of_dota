@@ -700,19 +700,14 @@ function fill_entity_popup_content(entity: Adventure_Entity) {
         }
 
         case Adventure_Entity_Type.item_on_the_ground: {
-            const item_name = ((): string => {
-                switch (entity.item.type) {
-                    case Adventure_Item_Type.consumable: return get_adventure_consumable_item_name(entity.item.id);
-                    case Adventure_Item_Type.wearable: return get_adventure_wearable_item_name(entity.item.id);
-                }
-            })();
+            const item_name = get_adventure_item_name(entity.item);
 
             popup.header.text = "Item found";
             popup.text.text = snake_case_to_capitalized_words(item_name);
 
             const icon = $.CreatePanel("Image", popup.content, "");
             icon.AddClass("item_icon");
-            icon.SetImage(get_adventure_item_entity_icon(entity.item));
+            icon.SetImage(get_adventure_item_icon(entity.item));
             icon.SetScaling(ScalingFunction.STRETCH_TO_COVER_PRESERVE_ASPECT);
 
             break;
@@ -742,11 +737,8 @@ function fill_entity_popup_content(entity: Adventure_Entity) {
 }
 
 function fixup_merchant_server_data(merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
-    merchant.assortment.consumables = from_server_array(merchant.assortment.consumables);
-    merchant.assortment.wearables = from_server_array(merchant.assortment.wearables);
-    merchant.assortment.heroes = from_server_array(merchant.assortment.heroes);
-    merchant.assortment.spells = from_server_array(merchant.assortment.spells);
-    merchant.assortment.creeps = from_server_array(merchant.assortment.creeps);
+    merchant.assortment.cards = from_server_array(merchant.assortment.cards);
+    merchant.assortment.items = from_server_array(merchant.assortment.items);
 }
 
 function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
@@ -775,7 +767,7 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
         label.text = cost.toString(10);
     }
 
-    function card_container(type: string) {
+    function card_container(type: string, cost: number) {
         const wrapper = $.CreatePanel("Panel", popup.cards, "");
         wrapper.AddClass("card_with_cost_wrapper");
 
@@ -788,12 +780,12 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
         card_container.AddClass(type);
         card_container.AddClass("no_hover");
 
-        cost_container(card_with_cost, Math.ceil(Math.random() * 10) * 10);
+        cost_container(card_with_cost, cost);
 
         return card_container;
     }
 
-    function item_container(icon: string) {
+    function item_container(icon: string, cost: number) {
         const wrapper = $.CreatePanel("Panel", popup.items, "");
         wrapper.AddClass("item_with_cost_wrapper");
 
@@ -806,33 +798,44 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
         item.SetImage(icon);
         item.SetScaling(ScalingFunction.STRETCH_TO_COVER_PRESERVE_ASPECT);
 
-        cost_container(item_with_cost, Math.ceil(Math.random() * 5) * 10);
+        cost_container(item_with_cost, cost);
     }
 
-    for (const hero of merchant.assortment.heroes) {
-        const def = hero_definition_by_type(hero);
-        const container = card_container("hero");
-        create_hero_card_ui_base(container, hero, def.health, def.attack_damage, def.move_points);
+    for (const card of merchant.assortment.cards) {
+        switch (card.type) {
+            case Adventure_Merchant_Card_Type.hero: {
+                const hero = card.hero;
+                const def = hero_definition_by_type(hero);
+                const container = card_container("hero", card.cost);
+                create_hero_card_ui_base(container, hero, def.health, def.attack_damage, def.move_points);
+
+                break;
+            }
+
+            case Adventure_Merchant_Card_Type.spell: {
+                const spell = card.spell;
+                const def = spell_definition_by_id(spell);
+                const container = card_container("spell", card.cost);
+                create_spell_card_ui_base(container, spell, get_spell_text(def));
+
+                break;
+            }
+
+            case Adventure_Merchant_Card_Type.creep: {
+                const creep = card.creep;
+                const def = creep_definition_by_type(creep);
+                const container = card_container("creep", card.cost);
+                create_unit_card_ui_base(container, get_creep_name(creep), get_creep_card_art(creep), def.health, def.attack_damage, def.move_points);
+
+                break;
+            }
+
+            default: unreachable(card);
+        }
     }
 
-    for (const creep of merchant.assortment.creeps) {
-        const def = creep_definition_by_type(creep);
-        const container = card_container("creep");
-        create_unit_card_ui_base(container, get_creep_name(creep), get_creep_card_art(creep), def.health, def.attack_damage, def.move_points);
-    }
-
-    for (const spell of merchant.assortment.spells) {
-        const def = spell_definition_by_id(spell);
-        const container = card_container("spell");
-        create_spell_card_ui_base(container, spell, get_spell_text(def));
-    }
-
-    for (const item of merchant.assortment.consumables) {
-        item_container(get_adventure_consumable_item_icon(item));
-    }
-
-    for (const item of merchant.assortment.wearables) {
-        item_container(get_adventure_wearable_item_icon(item));
+    for (const item of merchant.assortment.items) {
+        item_container(get_adventure_item_icon(item.data), item.cost);
     }
 
     popup.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
@@ -1422,13 +1425,13 @@ function periodically_update_entity_ui() {
 
     const now = Game.Time();
 
-    for (const live of entities) {
-        if (live.world_entity_id == entity_under_cursor) {
+    for (const entity of entities) {
+        if (entity.world_entity_id == entity_under_cursor) {
             entity_found = true;
 
-            entity_name.label.text = get_adventure_entity_name(live.base);
+            entity_name.label.text = get_adventure_entity_name(entity.base);
             entity_name.last_followed_at = now;
-            entity_name.following = live;
+            entity_name.following = entity;
 
             break;
         }

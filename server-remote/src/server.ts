@@ -1109,7 +1109,6 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
             slots: [],
             changes: [],
             bag: [],
-            id_generator: typed_sequential_id_generator<Adventure_Party_Entity_Id>(),
             links: {
                 heroes: [],
                 creeps: [],
@@ -1141,13 +1140,16 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
                 id: ongoing_adventure_id_generator(),
                 adventure: adventure,
                 current_room: starting_room,
-                entities: starting_room.type == Adventure_Room_Type.combat ? create_room_entities(starting_room) : [],
+                entities: [],
+                next_item_id: typed_sequential_id_generator<Adventure_Item_Entity_Id>(),
             },
             current_location: starting_room.entrance_location,
             movement_history: [],
             previous_global_map_location: player.online.current_location,
             party: party
         };
+
+        player.online.ongoing_adventure.entities = create_room_entities(player.online.ongoing_adventure, starting_room);
 
         return player_to_player_state_object(player);
     });
@@ -1168,7 +1170,7 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         if (!room) return;
 
         ongoing_adventure.current_room = room;
-        ongoing_adventure.entities = room.type == Adventure_Room_Type.combat ? create_room_entities(room) : [];
+        ongoing_adventure.entities = create_room_entities(ongoing_adventure, room);
 
         player.online.movement_history = [];
         player.online.current_location = room.entrance_location;
@@ -1267,24 +1269,7 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                 }
 
                 case Party_Event_Type.add_item: {
-                    switch (event.item.type) {
-                        case Adventure_Item_Type.consumable: {
-                            const item = adventure_consumable_item_id_to_item(party, event.item.id);
-                            push_party_change(party, change_party_add_item(item));
-
-                            break;
-                        }
-
-                        case Adventure_Item_Type.wearable: {
-                            const item = adventure_wearable_item_id_to_item(party, event.item.id);
-                            push_party_change(party, change_party_add_item(item));
-
-                            break;
-                        }
-
-                        default: unreachable(event.item);
-                    }
-
+                    push_party_change(party, change_party_add_item(event.item));
                     break;
                 }
 
@@ -1528,11 +1513,13 @@ function register_dev_handlers() {
                     const consumables = parse_enum_query(parts[1], enum_names_to_values<Adventure_Consumable_Item_Id>());
 
                     for (const id of wearables) {
-                        push_party_change(party, change_party_add_item(adventure_wearable_item_id_to_item(party, id)));
+                        const entity_id = player.online.ongoing_adventure.next_item_id();
+                        push_party_change(party, change_party_add_item(adventure_wearable_item_id_to_item(entity_id, id)));
                     }
 
                     for (const id of consumables) {
-                        push_party_change(party, change_party_add_item(adventure_consumable_item_id_to_item(party, id)));
+                        const entity_id = player.online.ongoing_adventure.next_item_id();
+                        push_party_change(party, change_party_add_item(adventure_consumable_item_id_to_item(entity_id, id)));
                     }
 
                     break;

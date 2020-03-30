@@ -31,7 +31,7 @@ function is_party_creep_dead(slot: Find_By_Type<Adventure_Party_Slot, Adventure_
 // TODO This is wack, because we change the snapshot we pass on server when consuming changes, but not on the client
 //      this function could be made pure, if it doesn't cause any problems
 function consume_adventure_party_action(party: Party_Snapshot, action: Adventure_Party_Action, change_consumer: (change: Adventure_Party_Change) => void) {
-    function find_item_by_entity_id(id: Adventure_Party_Entity_Id): [Adventure_Item_Container, Adventure_Item] | undefined {
+    function find_item_by_entity_id(id: Adventure_Item_Entity_Id): [Adventure_Item_Container, Adventure_Item] | undefined {
         const index_in_bag = party.bag.findIndex(item => item.entity_id == id);
         if (index_in_bag != -1) {
             const item = party.bag[index_in_bag];

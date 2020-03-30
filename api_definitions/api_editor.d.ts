@@ -5,7 +5,8 @@ declare const enum Adventure_Editor_Action_Type {
     set_entrance = 3,
     edit_enemy_deck = 4,
     set_enemy_battleground = 5,
-    set_item_data = 6
+    set_item_data = 6,
+    set_merchant_assortment = 7
 }
 
 type Editor_Handlers = {
@@ -120,7 +121,11 @@ type Adventure_Editor_Action = {
 } | {
     type: Adventure_Editor_Action_Type.set_item_data
     entity_id: Adventure_Entity_Id
-    item: Adventure_Item_Entity
+    item: Adventure_Item_Definition
+} | {
+    type: Adventure_Editor_Action_Type.set_merchant_assortment
+    entity_id: Adventure_Entity_Id
+    assortment: Adventure_Merchant_Assortment
 }
 
 declare const enum Spawn_Type {

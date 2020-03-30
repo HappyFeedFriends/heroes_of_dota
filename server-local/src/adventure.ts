@@ -95,10 +95,10 @@ function adventure_consumable_item_id_to_model(id: Adventure_Consumable_Item_Id)
     return "models/props_gameplay/neutral_box.vmdl";
 }
 
-function adventure_item_to_model(item: Adventure_Item_Entity) {
+function adventure_item_to_model(item: Adventure_Item) {
     switch (item.type) {
-        case Adventure_Item_Type.wearable: return adventure_wearable_item_id_to_model(item.id);
-        case Adventure_Item_Type.consumable: return adventure_consumable_item_id_to_model(item.id);
+        case Adventure_Item_Type.wearable: return adventure_wearable_item_id_to_model(item.item_id);
+        case Adventure_Item_Type.consumable: return adventure_consumable_item_id_to_model(item.item_id);
     }
 }
 

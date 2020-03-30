@@ -358,5 +358,5 @@ type Editor_Action = {
 } | {
     type: Editor_Action_Type.edit_item_data
     entity_id: Adventure_Entity_Id
-    item: Adventure_Item_Entity
+    item: Adventure_Item_Definition
 }

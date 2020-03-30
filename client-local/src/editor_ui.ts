@@ -320,12 +320,7 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
             }
 
             case Adventure_Entity_Type.item_on_the_ground: {
-                switch (base.item.type) {
-                    case Adventure_Item_Type.consumable: return snake_case_to_capitalized_words(enum_to_string(base.item.id));
-                    case Adventure_Item_Type.wearable: return snake_case_to_capitalized_words(enum_to_string(base.item.id));
-                }
-
-                break;
+                return get_adventure_item_name(base.item);
             }
 
             case Adventure_Entity_Type.gold_bag: {
@@ -931,7 +926,19 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         const wrapper = $.CreatePanel("Panel", context_menu, "context_menu_item_wrapper");
         const item_container = $.CreatePanel("Panel", wrapper, "context_menu_item_container");
 
-        function item_button(name: string, item: Adventure_Item_Entity) {
+        function get_adventure_item_definition_icon(item: Adventure_Item_Definition): string {
+            switch (item.type) {
+                case Adventure_Item_Type.wearable: {
+                    return get_adventure_wearable_item_icon(item.id);
+                }
+
+                case Adventure_Item_Type.consumable: {
+                    return get_adventure_consumable_item_icon(item.id);
+                }
+            }
+        }
+
+        function item_button(name: string, item: Adventure_Item_Definition) {
             const button = $.CreatePanel("Button", item_container, "");
             button.AddClass("item");
             button.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
@@ -956,7 +963,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
                 });
             });
 
-            safely_set_panel_background_image(button, get_adventure_item_entity_icon(item));
+            safely_set_panel_background_image(button, get_adventure_item_definition_icon(item));
         }
 
         for (const [name, id] of enum_names_to_values<Adventure_Wearable_Item_Id>()) {
@@ -999,25 +1006,26 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         prepare_context_menu();
         context_menu_button("Back", standard_buttons);
 
-        function entity_button(name: string, entity: Adventure_Entity_Definition_Data) {
+        const base = {
+            spawn_position: click,
+            spawn_facing: xy(1, 0),
+        };
+
+        function entity_button(name: string, definition: Adventure_Entity_Definition) {
             context_menu_button(snake_case_to_capitalized_words(name), () => {
                 dispatch_editor_action({
                     type: Editor_Action_Type.create_entity,
-                    definition: {
-                        ...entity,
-                        spawn_position: click,
-                        spawn_facing: xy(1, 0),
-                    }
+                    definition: definition
                 })
             });
         }
 
         entity_button(enum_to_string(Adventure_Entity_Type.lost_creep), {
-            type: Adventure_Entity_Type.lost_creep
+            type: Adventure_Entity_Type.lost_creep, ...base
         });
 
         entity_button(enum_to_string(Adventure_Entity_Type.shrine), {
-            type: Adventure_Entity_Type.shrine
+            type: Adventure_Entity_Type.shrine, ...base
         });
 
         context_menu_button(snake_case_to_capitalized_words(enum_to_string(Adventure_Entity_Type.merchant)), merchant_buttons);
@@ -1058,6 +1066,12 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
                         model: model,
                         spawn_position: click,
                         spawn_facing: xy(1, 0),
+                        assortment: {
+                            items: [],
+                            creeps: [],
+                            heroes: [],
+                            spells: []
+                        },
                     }
                 })
             });

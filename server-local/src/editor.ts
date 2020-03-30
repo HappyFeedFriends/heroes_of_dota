@@ -269,9 +269,6 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
             if (!entity) break;
             if (entity.type != Adventure_Entity_Type.item_on_the_ground) break;
 
-
-
-
             api_request(Api_Request_Type.editor_action, {
                 type: Adventure_Editor_Action_Type.set_item_data,
                 entity_id: entity.base.id,

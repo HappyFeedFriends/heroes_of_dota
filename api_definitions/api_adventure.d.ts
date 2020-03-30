@@ -1,6 +1,6 @@
 type Adventure_Room_Id = number & { _adventure_room_id_brand: any };
 type Adventure_Entity_Id = number & { _adventure_entity_id_brand: any };
-type Adventure_Party_Entity_Id = number & { _adventure_party_entity_id_brand: any };
+type Adventure_Item_Entity_Id = number & { _adventure_item_entity_id_brand: any };
 type Ongoing_Adventure_Id = number & { _ongoing_adventure_id_brand: any };
 
 declare const enum Adventure_Id {
@@ -85,6 +85,12 @@ declare const enum Adventure_Merchant_Model {
     dire = 3
 }
 
+declare const enum Adventure_Merchant_Card_Type {
+    hero = 0,
+    spell = 1,
+    creep = 2
+}
+
 type Adventure_Handlers = {
     type: Api_Request_Type.start_adventure
     request: {
@@ -153,7 +159,7 @@ type Adventure_Entity_Definition_Base = {
     }
 }
 
-type Adventure_Entity_Definition_Data = {
+type Adventure_Entity_Definition = Adventure_Entity_Definition_Base & ({
     type: Adventure_Entity_Type.enemy
     npc_type: Npc_Type
     creeps: Creep_Type[]
@@ -164,18 +170,17 @@ type Adventure_Entity_Definition_Data = {
     type: Adventure_Entity_Type.shrine
 } | {
     type: Adventure_Entity_Type.item_on_the_ground
-    item: Adventure_Item_Entity
+    item: Adventure_Item_Definition
 } | {
     type: Adventure_Entity_Type.gold_bag
     amount: number
 } | {
     type: Adventure_Entity_Type.merchant
     model: Adventure_Merchant_Model
-}
+    assortment: Adventure_Merchant_Assortment
+})
 
-type Adventure_Entity_Definition = Adventure_Entity_Definition_Base & Adventure_Entity_Definition_Data
-
-type Adventure_Item_Entity = {
+type Adventure_Item_Definition = {
     type: Adventure_Item_Type.consumable
     id: Adventure_Consumable_Item_Id
 } | {
@@ -201,7 +206,7 @@ type Adventure_Entity = Adventure_Entity_Base & ({
     alive: boolean
 } | {
     type: Adventure_Entity_Type.item_on_the_ground
-    item: Adventure_Item_Entity
+    item: Adventure_Item
     alive: boolean
 } | {
     type: Adventure_Entity_Type.gold_bag
@@ -211,13 +216,37 @@ type Adventure_Entity = Adventure_Entity_Base & ({
     type: Adventure_Entity_Type.merchant
     model: Adventure_Merchant_Model
     assortment: {
-        heroes: Hero_Type[]
-        creeps: Creep_Type[]
-        spells: Spell_Id[]
-        wearables: Adventure_Wearable_Item_Id[]
-        consumables: Adventure_Consumable_Item_Id[]
+        cards: Adventure_Merchant_Card[]
+        items: Adventure_Merchant_Item[]
     }
 })
+
+type Adventure_Merchant_Entry_Base = {
+    sold_out: boolean
+    cost: number
+}
+
+type Adventure_Merchant_Card = Adventure_Merchant_Entry_Base & ({
+    type: Adventure_Merchant_Card_Type.hero
+    hero: Hero_Type
+} | {
+    type: Adventure_Merchant_Card_Type.creep
+    creep: Creep_Type
+} | {
+    type: Adventure_Merchant_Card_Type.spell
+    spell: Spell_Id
+})
+
+type Adventure_Merchant_Item = Adventure_Merchant_Entry_Base & {
+    data: Adventure_Item
+}
+
+type Adventure_Merchant_Assortment = {
+    heroes: Hero_Type[]
+    creeps: Creep_Type[]
+    spells: Spell_Id[]
+    items: Adventure_Item_Definition[]
+}
 
 type Adventure_Party_Slot = {
     type: Adventure_Party_Slot_Type.empty
@@ -272,14 +301,14 @@ type Adventure_Party_Action = { current_head: number } & ({
     type: Adventure_Party_Action_Type.fetch
 } | {
     type: Adventure_Party_Action_Type.drag_item_on_hero
-    item_entity: Adventure_Party_Entity_Id
+    item_entity: Adventure_Item_Entity_Id
     party_slot: number
 } | {
     type: Adventure_Party_Action_Type.drag_item_on_bag
-    item_entity: Adventure_Party_Entity_Id
+    item_entity: Adventure_Item_Entity_Id
 } | {
     type: Adventure_Party_Action_Type.use_consumable
-    item_entity: Adventure_Party_Entity_Id
+    item_entity: Adventure_Item_Entity_Id
     party_slot: number
 })
 
@@ -297,13 +326,13 @@ type Adventure_Item = Adventure_Consumable_Item | Adventure_Wearable_Item
 
 type Adventure_Consumable_Item = {
     type: Adventure_Item_Type.consumable
-    entity_id: Adventure_Party_Entity_Id
+    entity_id: Adventure_Item_Entity_Id
     item_id: Adventure_Consumable_Item_Id
 }
 
 type Adventure_Wearable_Item = {
     type: Adventure_Item_Type.wearable
-    entity_id: Adventure_Party_Entity_Id
+    entity_id: Adventure_Item_Entity_Id
     item_id: Adventure_Wearable_Item_Id
     modifier: Modifier
 }
