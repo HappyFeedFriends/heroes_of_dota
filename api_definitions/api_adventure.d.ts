@@ -177,7 +177,7 @@ type Adventure_Entity_Definition = Adventure_Entity_Definition_Base & ({
 } | {
     type: Adventure_Entity_Type.merchant
     model: Adventure_Merchant_Model
-    assortment: Adventure_Merchant_Assortment
+    stock: Adventure_Merchant_Stock_Definition
 })
 
 type Adventure_Item_Definition = {
@@ -215,11 +215,13 @@ type Adventure_Entity = Adventure_Entity_Base & ({
 } | {
     type: Adventure_Entity_Type.merchant
     model: Adventure_Merchant_Model
-    assortment: {
-        cards: Adventure_Merchant_Card[]
-        items: Adventure_Merchant_Item[]
-    }
+    stock: Adventure_Merchant_Stock
 })
+
+type Adventure_Merchant_Stock = {
+    cards: Adventure_Merchant_Card[]
+    items: Adventure_Merchant_Item[]
+}
 
 type Adventure_Merchant_Entry_Base = {
     sold_out: boolean
@@ -241,7 +243,7 @@ type Adventure_Merchant_Item = Adventure_Merchant_Entry_Base & {
     data: Adventure_Item
 }
 
-type Adventure_Merchant_Assortment = {
+type Adventure_Merchant_Stock_Definition = {
     heroes: Hero_Type[]
     creeps: Creep_Type[]
     spells: Spell_Id[]

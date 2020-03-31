@@ -78,7 +78,7 @@ function get_creep_card_art(creep_type: Creep_Type) {
     }
 }
 
-function get_full_unit_icon_path(type: Hero_Type): string {
+function get_full_hero_icon_path(type: Hero_Type): string {
     return `file://{images}/heroes/npc_dota_hero_${get_hero_dota_name(type)}.png`;
 }
 

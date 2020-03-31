@@ -1,6 +1,7 @@
 import {readFileSync, writeFileSync, readdirSync} from "fs";
 import {try_string_to_enum_value, unreachable} from "./common";
 import {adventure_consumable_item_id_to_item, adventure_wearable_item_id_to_item} from "./adventure_party";
+import {Entry_With_Weight, Random} from "./random";
 
 const storage_dir_path = "src/adventures";
 
@@ -93,6 +94,7 @@ export type Ongoing_Adventure = {
     current_room: Adventure_Room
     entities: Adventure_Entity_With_Definition[]
     next_item_id: () => Adventure_Item_Entity_Id
+    random: Random
 }
 
 type Adventure_Entity_With_Definition = Adventure_Entity & {
@@ -179,75 +181,92 @@ function create_adventure_entity_from_definition(ongoing: Ongoing_Adventure, def
         };
 
         case Adventure_Entity_Type.merchant: {
-            function hero_card(hero: Hero_Type, cost: number): Adventure_Merchant_Card {
-                return {
-                    type: Adventure_Merchant_Card_Type.hero,
-                    hero: hero,
-                    sold_out: false,
-                    cost: cost
-                };
-            }
-
-            function spell_card(spell: Spell_Id, cost: number): Adventure_Merchant_Card {
-                return {
-                    type: Adventure_Merchant_Card_Type.spell,
-                    spell: spell,
-                    sold_out: false,
-                    cost: cost
-                };
-            }
-
-            function creep_card(creep: Creep_Type, cost: number): Adventure_Merchant_Card {
-                return {
-                    type: Adventure_Merchant_Card_Type.creep,
-                    creep: creep,
-                    sold_out: false,
-                    cost: cost
-                };
-            }
-
-            function consumable_item(id: Adventure_Consumable_Item_Id, cost: number): Adventure_Merchant_Item {
-                return {
-                    data: adventure_consumable_item_id_to_item(ongoing.next_item_id(), id),
-                    cost: cost,
-                    sold_out: false
-                }
-            }
-
-            function wearable_item(id: Adventure_Wearable_Item_Id, cost: number): Adventure_Merchant_Item {
-                return {
-                    data: adventure_wearable_item_id_to_item(ongoing.next_item_id(), id),
-                    cost: cost,
-                    sold_out: false
-                }
-            }
-
-            const assortment = definition.assortment;
-
-            const items = assortment.items.map(item => {
-                switch (item.type) {
-                    case Adventure_Item_Type.consumable: return consumable_item(item.id, consumable_item_cost(item.id))
-                    case Adventure_Item_Type.wearable: return wearable_item(item.id, wearable_item_cost(item.id))
-                }
-            });
-
-            const cards = [
-                ...assortment.heroes.map(hero => hero_card(hero, merchant_hero_cost(hero))),
-                ...assortment.creeps.map(creep => creep_card(creep, merchant_creep_cost(creep))),
-                ...assortment.spells.map(spell => spell_card(spell, merchant_spell_cost(spell)))
-            ];
-
             return {
                 ...definition,
                 definition: definition,
                 type: definition.type,
                 id: id,
-                assortment: {
-                    items: items,
-                    cards: cards
-                }
+                stock: populate_merchant_stock(ongoing, definition.stock)
             };
         }
+    }
+}
+
+function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventure_Merchant_Stock_Definition): Adventure_Merchant_Stock {
+    function hero_card(hero: Hero_Type, cost: number): Adventure_Merchant_Card {
+        return {
+            type: Adventure_Merchant_Card_Type.hero,
+            hero: hero,
+            sold_out: false,
+            cost: cost
+        };
+    }
+
+    function spell_card(spell: Spell_Id, cost: number): Adventure_Merchant_Card {
+        return {
+            type: Adventure_Merchant_Card_Type.spell,
+            spell: spell,
+            sold_out: false,
+            cost: cost
+        };
+    }
+
+    function creep_card(creep: Creep_Type, cost: number): Adventure_Merchant_Card {
+        return {
+            type: Adventure_Merchant_Card_Type.creep,
+            creep: creep,
+            sold_out: false,
+            cost: cost
+        };
+    }
+
+    function consumable_item(id: Adventure_Consumable_Item_Id, cost: number): Adventure_Merchant_Item {
+        return {
+            data: adventure_consumable_item_id_to_item(ongoing.next_item_id(), id),
+            cost: cost,
+            sold_out: false
+        }
+    }
+
+    function wearable_item(id: Adventure_Wearable_Item_Id, cost: number): Adventure_Merchant_Item {
+        return {
+            data: adventure_wearable_item_id_to_item(ongoing.next_item_id(), id),
+            cost: cost,
+            sold_out: false
+        }
+    }
+
+    const item_entries = definition.items.map(item => {
+        switch (item.type) {
+            case Adventure_Item_Type.consumable: return consumable_item(item.id, consumable_item_cost(item.id))
+            case Adventure_Item_Type.wearable: return wearable_item(item.id, wearable_item_cost(item.id))
+        }
+    });
+
+    const card_entries: Entry_With_Weight<Adventure_Merchant_Card>[] = [
+        ...definition.heroes.map(hero => hero_card(hero, merchant_hero_cost(hero))),
+        ...definition.creeps.map(creep => creep_card(creep, merchant_creep_cost(creep))),
+        ...definition.spells.map(spell => spell_card(spell, merchant_spell_cost(spell)))
+    ].map(card => {
+        function card_weight() {
+            switch (card.type) {
+                case Adventure_Merchant_Card_Type.spell: return 3;
+                case Adventure_Merchant_Card_Type.creep: return 2;
+                case Adventure_Merchant_Card_Type.hero: return 1;
+            }
+        }
+
+        return {
+            element: card,
+            weight: card_weight()
+        }
+    });
+
+    const cards = ongoing.random.pick_n_weighted_mutable(card_entries, 3);
+    const items = ongoing.random.pick_n_mutable(item_entries, 6);
+
+    return {
+        cards, items
     }
 }
 
@@ -513,7 +532,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
                 ...read_base(source),
                 type: Adventure_Entity_Type.merchant,
                 model: model,
-                assortment: {
+                stock: {
                     items,
                     creeps,
                     heroes,
@@ -626,7 +645,7 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                     case Adventure_Entity_Type.merchant: {
                         const merchant_items: { type: string, item_id: string }[] = [];
 
-                        for (const item of entity.assortment.items) {
+                        for (const item of entity.stock.items) {
                             switch (item.type) {
                                 case Adventure_Item_Type.consumable: {
                                     merchant_items.push({
@@ -654,9 +673,9 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                             ...base,
                             model: enum_to_string(entity.model),
                             items: merchant_items,
-                            creeps: entity.assortment.creeps.map(creep => enum_to_string(creep)),
-                            heroes: entity.assortment.heroes.map(hero => enum_to_string(hero)),
-                            spells: entity.assortment.spells.map(spell => enum_to_string(spell))
+                            creeps: entity.stock.creeps.map(creep => enum_to_string(creep)),
+                            heroes: entity.stock.heroes.map(hero => enum_to_string(hero)),
+                            spells: entity.stock.spells.map(spell => enum_to_string(spell))
                         });
 
                         break;
@@ -816,13 +835,13 @@ export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventur
             break;
         }
 
-        case Adventure_Editor_Action_Type.set_merchant_assortment: {
+        case Adventure_Editor_Action_Type.set_merchant_stock: {
             const merchant = ongoing.entities.find(entity => entity.id == action.entity_id);
             if (!merchant) return;
             if (merchant.type != Adventure_Entity_Type.merchant) return;
             if (merchant.definition.type != Adventure_Entity_Type.merchant) return;
 
-            merchant.definition.assortment = action.assortment;
+            merchant.definition.stock = action.stock;
 
             break;
         }

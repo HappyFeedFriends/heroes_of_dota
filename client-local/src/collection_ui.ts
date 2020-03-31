@@ -218,7 +218,7 @@ function create_deck_card_panel_from_card(card: Collection_Card): Panel {
 }
 
 function create_deck_hero_card_panel(hero: Hero_Type) {
-    const panel = create_deck_card_panel("hero", get_hero_name(hero), get_full_unit_icon_path(hero), panel => ({
+    const panel = create_deck_card_panel("hero", get_hero_name(hero), get_full_hero_icon_path(hero), panel => ({
         type: hero,
         panel: panel
     }), deck_ui.heroes);

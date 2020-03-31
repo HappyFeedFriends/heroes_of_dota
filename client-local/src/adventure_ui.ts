@@ -737,8 +737,8 @@ function fill_entity_popup_content(entity: Adventure_Entity) {
 }
 
 function fixup_merchant_server_data(merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
-    merchant.assortment.cards = from_server_array(merchant.assortment.cards);
-    merchant.assortment.items = from_server_array(merchant.assortment.items);
+    merchant.stock.cards = from_server_array(merchant.stock.cards);
+    merchant.stock.items = from_server_array(merchant.stock.items);
 }
 
 function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
@@ -801,7 +801,7 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
         cost_container(item_with_cost, cost);
     }
 
-    for (const card of merchant.assortment.cards) {
+    for (const card of merchant.stock.cards) {
         switch (card.type) {
             case Adventure_Merchant_Card_Type.hero: {
                 const hero = card.hero;
@@ -834,7 +834,7 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
         }
     }
 
-    for (const item of merchant.assortment.items) {
+    for (const item of merchant.stock.items) {
         item_container(get_adventure_item_icon(item.data), item.cost);
     }
 

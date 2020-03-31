@@ -231,6 +231,33 @@ function dropdown_button(text: string, action: () => void) {
     return text_button(entity_buttons_dropdown, "editor_entity_dropdown_button", text, action);
 }
 
+type Entity_Menu = {
+    highlighted_button?: Panel
+}
+
+function entity_menu_dropdown_button(menu: Entity_Menu, text: string, action: (parent: Panel) => void) {
+    entity_button(text, button => {
+        entity_buttons_dropdown.RemoveAndDeleteChildren();
+
+        if (menu.highlighted_button) {
+            menu.highlighted_button.RemoveClass("selected");
+        }
+
+        if (menu.highlighted_button != button) {
+            menu.highlighted_button = button;
+            menu.highlighted_button.AddClass("selected");
+
+            action(entity_buttons_dropdown);
+        } else {
+            menu.highlighted_button = undefined;
+        }
+    });
+}
+
+function entity_menu(): Entity_Menu {
+    return {};
+}
+
 function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: Physical_Adventure_Entity, enemy: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.enemy>, name: string) {
     const { creeps, id, battleground } = enemy;
 
@@ -242,33 +269,13 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: P
         })
     });
 
+    const menu = entity_menu();
+
     for (let index = 0; index < creeps.length + 1; index++) {
         const creep = creeps[index];
         const text = index < creeps.length ? enum_to_string(creep) : "Add a creep";
 
-        entity_button(text, (button) => {
-            entity_buttons_dropdown.RemoveAndDeleteChildren();
-
-            let show_dropdown = true;
-
-            const selection = editor.selection;
-
-            if (selection.selected && selection.type == Adventure_Entity_Type.enemy) {
-                if (selection.highlighted_creep_button) {
-                    selection.highlighted_creep_button.RemoveClass("selected");
-                }
-
-                if (selection.highlighted_creep_button != button) {
-                    selection.highlighted_creep_button = button;
-                    selection.highlighted_creep_button.AddClass("selected");
-                } else {
-                    selection.highlighted_creep_button = undefined;
-                    show_dropdown = false;
-                }
-            }
-
-            if (!show_dropdown) return;
-
+        entity_menu_dropdown_button(menu, text, () => {
             for (const [name, type] of enum_names_to_values<Creep_Type>()) {
                 dropdown_button(name, () => {
                     creeps[index] = type;
@@ -294,6 +301,140 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: P
             });
         });
     }
+}
+
+async function create_adventure_merchant_buttons(merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
+    const async_stock = async_api_request(Api_Request_Type.editor_get_merchant_stock, {
+        merchant: merchant.id,
+        access_token: get_access_token()
+    });
+
+    async function update_array_and_resubmit<T>(elements: T[], clicked_element: T, matcher: (a: T, b: T) => boolean) {
+        const existing_index = elements.findIndex(existing => matcher(existing, clicked_element));
+
+        if (existing_index == -1) {
+            elements.push(clicked_element);
+        } else {
+            elements.splice(existing_index, 1);
+        }
+
+        const stock = await async_stock;
+
+        api_request(Api_Request_Type.editor_action, {
+            type: Adventure_Editor_Action_Type.set_merchant_stock,
+            entity_id: merchant.id,
+            stock: stock,
+            access_token: get_access_token()
+        }, () => {});
+
+        return existing_index == -1;
+    }
+
+    function stock_updating_button<T>(button: Panel, elements: T[], associated_element: T, matcher: (a: T, b: T) => boolean) {
+        button.SetHasClass("selected", elements.some(existing => matcher(existing, associated_element)));
+        button.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, async () => {
+            const selected = await update_array_and_resubmit(elements, associated_element, matcher);
+            button.SetHasClass("selected", selected);
+        });
+    }
+
+    function item_button(container: Panel, icon: string) {
+        const item_button = $.CreatePanel("Image", container, "");
+        item_button.AddClass("item_button");
+        item_button.SetImage(icon);
+        return item_button;
+    }
+
+    function hero_button(container: Panel, hero: Hero_Type) {
+        const hero_button = $.CreatePanel("Image", container, "");
+        hero_button.AddClass("hero_button");
+        hero_button.SetImage(get_full_hero_icon_path(hero));
+        return hero_button;
+    }
+
+    function wrapping_container(parent: Panel) {
+        const container = $.CreatePanel("Panel", parent, "");
+        container.AddClass("wrapping_container");
+        return container;
+    }
+
+    const menu = entity_menu();
+
+    entity_menu_dropdown_button(menu, "Heroes", async parent => {
+        const stock = await async_stock;
+        const container = wrapping_container(parent);
+
+        for (const hero of enum_values<Hero_Type>()) {
+            const button = hero_button(container, hero);
+            stock_updating_button(button, stock.heroes, hero, (a, b) => a == b);
+        }
+    });
+
+    entity_menu_dropdown_button(menu, "Creeps", async () => {
+        const stock = await async_stock;
+
+        for (const creep of enum_values<Creep_Type>()) {
+            const button = dropdown_button(get_creep_name(creep), () => {});
+            stock_updating_button(button, stock.creeps, creep, (a, b) => a == b);
+        }
+    });
+
+    entity_menu_dropdown_button(menu, "Spells", async () => {
+        const stock = await async_stock;
+
+        for (const spell of enum_values<Spell_Id>()) {
+            const button = dropdown_button(get_spell_name(spell), () => {});
+            stock_updating_button(button, stock.spells, spell, (a, b) => a == b);
+        }
+    });
+
+    entity_menu_dropdown_button(menu, "Items", async parent => {
+        const stock = await async_stock;
+        const all_items: Adventure_Item_Definition[] = [];
+
+        for (const id of enum_values<Adventure_Consumable_Item_Id>()) {
+            all_items.push({ type: Adventure_Item_Type.consumable, id: id });
+        }
+
+        for (const id of enum_values<Adventure_Wearable_Item_Id>()) {
+            all_items.push({ type: Adventure_Item_Type.wearable, id: id });
+        }
+
+        const container = wrapping_container(parent);
+
+        for (const item of all_items) {
+            const button = item_button(container, get_adventure_item_definition_icon(item));
+            stock_updating_button(button, stock.items, item, (a, b) => a.type == b.type && a.id == b.id);
+        }
+    });
+
+    entity_menu_dropdown_button(menu, "Current stock", async parent => {
+        const stock = merchant.stock;
+
+        const hero_container = wrapping_container(parent);
+        for (const card of stock.cards) {
+            if (card.type == Adventure_Merchant_Card_Type.hero) {
+                hero_button(hero_container, card.hero);
+            }
+        }
+
+        for (const card of stock.cards) {
+            if (card.type == Adventure_Merchant_Card_Type.creep) {
+                dropdown_button(get_creep_name(card.creep), () => {});
+            }
+        }
+
+        for (const card of stock.cards) {
+            if (card.type == Adventure_Merchant_Card_Type.spell) {
+                dropdown_button(get_spell_name(card.spell), () => {});
+            }
+        }
+
+        const item_container = wrapping_container(parent);
+        for (const item of stock.items) {
+            item_button(item_container, get_adventure_item_icon(item.data));
+        }
+    });
 }
 
 function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physical_Adventure_Entity) {
@@ -332,12 +473,13 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
     }
 
     const name = `${entity_name()} (#${base.id})`;
+    const fx = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_OVERHEAD_FOLLOW, world_id);
+    register_particle_for_reload(fx);
+
+    const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
+    selection_label.text = `Selected: ${name}`;
 
     if (base.type == Adventure_Entity_Type.enemy) {
-        const fx = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_OVERHEAD_FOLLOW, world_id);
-
-        register_particle_for_reload(fx);
-
         editor.selection = {
             selected: true,
             type: Adventure_Entity_Type.enemy,
@@ -346,20 +488,8 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
             particle: fx
         };
 
-        const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
-        selection_label.text = `Selected: ${name}`;
-
         create_adventure_enemy_menu_buttons(editor, entity, base, name);
-
-        create_delete_button();
     } else {
-        const fx = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_OVERHEAD_FOLLOW, world_id);
-
-        register_particle_for_reload(fx);
-
-        const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
-        selection_label.text = `Selected: ${name}`;
-
         editor.selection = {
             selected: true,
             type: base.type,
@@ -368,8 +498,12 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
             particle: fx
         };
 
-        create_delete_button();
+        if (base.type == Adventure_Entity_Type.merchant) {
+            create_adventure_merchant_buttons(base);
+        }
     }
+
+    create_delete_button();
 }
 
 function hide_editor_context_menu() {
@@ -874,6 +1008,18 @@ export function battleground_editor_filter_mouse_click(editor: Battleground_Edit
     }
 }
 
+function get_adventure_item_definition_icon(item: Adventure_Item_Definition): string {
+    switch (item.type) {
+        case Adventure_Item_Type.wearable: {
+            return get_adventure_wearable_item_icon(item.id);
+        }
+
+        case Adventure_Item_Type.consumable: {
+            return get_adventure_consumable_item_icon(item.id);
+        }
+    }
+}
+
 function adventure_editor_show_context_menu(editor: Adventure_Editor, click_world_position: XYZ) {
     const click = xy(click_world_position.x, click_world_position.y);
 
@@ -925,18 +1071,6 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
 
         const wrapper = $.CreatePanel("Panel", context_menu, "context_menu_item_wrapper");
         const item_container = $.CreatePanel("Panel", wrapper, "context_menu_item_container");
-
-        function get_adventure_item_definition_icon(item: Adventure_Item_Definition): string {
-            switch (item.type) {
-                case Adventure_Item_Type.wearable: {
-                    return get_adventure_wearable_item_icon(item.id);
-                }
-
-                case Adventure_Item_Type.consumable: {
-                    return get_adventure_consumable_item_icon(item.id);
-                }
-            }
-        }
 
         function item_button(name: string, item: Adventure_Item_Definition) {
             const button = $.CreatePanel("Button", item_container, "");
@@ -1066,7 +1200,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
                         model: model,
                         spawn_position: click,
                         spawn_facing: xy(1, 0),
-                        assortment: {
+                        stock: {
                             items: [],
                             creeps: [],
                             heroes: [],

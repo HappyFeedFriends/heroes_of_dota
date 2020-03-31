@@ -1,5 +1,10 @@
 export type Random_Number_Algorithm = () => number;
 
+export type Entry_With_Weight<T> = {
+    element: T
+    weight: number
+}
+
 export class Random {
     generator: Random_Number_Algorithm;
 
@@ -40,6 +45,39 @@ export class Random {
 
             if (array.length == 0) {
                 return result;
+            }
+        }
+
+        return result;
+    }
+
+    pick_n_weighted_mutable<T>(entries: Entry_With_Weight<T>[], n: number): T[] {
+        const sum = entries.reduce((prev, curr) => prev + curr.weight, 0);
+        const result: T[] = [];
+
+        for (; n > 0; n--) {
+            const selected = Math.random() * sum;
+
+            let total = 0;
+            let chosen: Entry_With_Weight<T> | undefined = undefined;
+
+            for (let index = 0; index < entries.length; index++) {
+                const entry = entries[index];
+                total += entry.weight;
+
+                if (selected <= total) {
+                    chosen = entry;
+                    entries.splice(index, 1);
+                    break;
+                }
+            }
+
+            if (!chosen) {
+                chosen = entries.pop();
+            }
+
+            if (chosen) {
+                result.push(chosen.element);
             }
         }
 

@@ -1776,7 +1776,7 @@ function add_spawned_hero_to_control_panel(hero: Hero) {
     const portrait = $.CreatePanel("Panel", content_container, "hero_portrait");
     const abilities = $.CreatePanel("Panel", content_container, "ability_row");
 
-    safely_set_panel_background_image(portrait, get_full_unit_icon_path(hero.type));
+    safely_set_panel_background_image(portrait, get_full_hero_icon_path(hero.type));
 
     const indicators = $.CreatePanel("Panel", portrait, "indicators");
     const health = create_indicator(indicators, "health_indicator", hero.health);
@@ -1865,7 +1865,7 @@ function select_unit_ability(unit: Unit, ability: Ability) {
     if (!entity_data) return;
 
     if (unit.supertype == Unit_Supertype.hero) {
-        safely_set_panel_background_image(current_targeted_ability_ui.FindChild("hero"), get_full_unit_icon_path(unit.type));
+        safely_set_panel_background_image(current_targeted_ability_ui.FindChild("hero"), get_full_hero_icon_path(unit.type));
     } else {
         safely_set_panel_background_image(current_targeted_ability_ui.FindChild("hero"), "");
     }

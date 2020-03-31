@@ -1142,6 +1142,7 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
                 current_room: starting_room,
                 entities: [],
                 next_item_id: typed_sequential_id_generator<Adventure_Item_Entity_Id>(),
+                random: random
             },
             current_location: starting_room.entrance_location,
             movement_history: [],
@@ -1458,6 +1459,19 @@ function register_dev_handlers() {
             if (player.online.state != Player_State.on_adventure) return;
 
             return editor_create_entity(player.online.ongoing_adventure, req.definition);
+        });
+    });
+
+    register_api_handler(Api_Request_Type.editor_get_merchant_stock, req => {
+        return with_player_in_request(req, player => {
+            if (player.online.state != Player_State.on_adventure) return;
+
+            const merchant = player.online.ongoing_adventure.entities.find(entity => entity.id == req.merchant);
+
+            if (!merchant) return;
+            if (merchant.definition.type != Adventure_Entity_Type.merchant) return;
+
+            return merchant.definition.stock;
         });
     });
 
