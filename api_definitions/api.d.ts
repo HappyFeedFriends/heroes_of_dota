@@ -49,7 +49,8 @@ declare const enum Api_Request_Type {
     editor_delete_battleground = 1008,
     editor_duplicate_battleground = 1009,
     editor_playtest_battleground = 1010,
-    editor_get_merchant_stock = 1011
+    editor_get_merchant_stock = 1011,
+    editor_reroll_merchant_stock = 1012
 }
 
 declare const enum Map_Entity_Type {

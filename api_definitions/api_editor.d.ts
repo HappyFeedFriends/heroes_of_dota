@@ -6,7 +6,8 @@ declare const enum Adventure_Editor_Action_Type {
     edit_enemy_deck = 4,
     set_enemy_battleground = 5,
     set_item_data = 6,
-    set_merchant_stock = 7
+    set_merchant_stock = 7,
+    reroll_merchant_stock = 8
 }
 
 type Editor_Handlers = {
@@ -91,6 +92,12 @@ type Editor_Handlers = {
         merchant: Adventure_Entity_Id
     } & With_Token
     response: Adventure_Merchant_Stock_Definition
+} | {
+    type: Api_Request_Type.editor_reroll_merchant_stock
+    request: {
+        merchant: Adventure_Entity_Id
+    } & With_Token
+    response: Adventure_Merchant_Stock
 }
 
 type Adventure_Editor_Action = {
@@ -132,6 +139,9 @@ type Adventure_Editor_Action = {
     type: Adventure_Editor_Action_Type.set_merchant_stock
     entity_id: Adventure_Entity_Id
     stock: Adventure_Merchant_Stock_Definition
+} | {
+    type: Adventure_Editor_Action_Type.reroll_merchant_stock
+    entity_id: Adventure_Entity_Id
 }
 
 declare const enum Spawn_Type {

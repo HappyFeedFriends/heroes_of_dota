@@ -1475,6 +1475,24 @@ function register_dev_handlers() {
         });
     });
 
+    register_api_handler(Api_Request_Type.editor_reroll_merchant_stock, req => {
+        return with_player_in_request(req, player => {
+            if (player.online.state != Player_State.on_adventure) return;
+
+            const merchant = player.online.ongoing_adventure.entities.find(entity => entity.id == req.merchant);
+
+            if (!merchant) return;
+            if (merchant.type != Adventure_Entity_Type.merchant) return;
+
+            apply_editor_action(player.online.ongoing_adventure, {
+                type: Adventure_Editor_Action_Type.reroll_merchant_stock,
+                entity_id: merchant.id
+            });
+
+            return merchant.stock;
+        });
+    });
+
     register_api_handler(Api_Request_Type.adventure_party_cheat, req => {
         return with_player_in_request(req, player => {
             if (player.online.state != Player_State.on_adventure) return;

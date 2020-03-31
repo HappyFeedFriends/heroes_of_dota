@@ -680,6 +680,32 @@ function game_loop() {
         register_local_api_handler(Local_Api_Request_Type.get_ground_z, req => {
             return { z: GetGroundHeight(Vector(req.x, req.y), undefined) };
         });
+
+        register_local_api_handler(Local_Api_Request_Type.reroll_merchant_stock, req => {
+            const entity = game.adventure.entities.find(entity => entity.base.id == req.merchant);
+            if (!entity || entity.base.type != Adventure_Entity_Type.merchant) return {
+                cards: [],
+                items: []
+            };
+
+            const new_stock = api_request(Api_Request_Type.editor_reroll_merchant_stock, {
+                merchant: req.merchant,
+                access_token: game.token
+            });
+
+            if (new_stock) {
+                entity.base.stock = new_stock;
+
+                update_adventure_net_table(game.adventure);
+
+                return new_stock
+            }
+
+            return {
+                cards: [],
+                items: []
+            };
+        })
     }
 
     fork(() => submit_adventure_movement_loop(game));

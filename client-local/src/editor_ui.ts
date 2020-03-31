@@ -236,7 +236,7 @@ type Entity_Menu = {
 }
 
 function entity_menu_dropdown_button(menu: Entity_Menu, text: string, action: (parent: Panel) => void) {
-    entity_button(text, button => {
+    return entity_button(text, button => {
         entity_buttons_dropdown.RemoveAndDeleteChildren();
 
         if (menu.highlighted_button) {
@@ -303,7 +303,7 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: P
     }
 }
 
-async function create_adventure_merchant_buttons(merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
+async function create_adventure_merchant_buttons(editor: Adventure_Editor, entity: Physical_Adventure_Entity, merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
     const async_stock = async_api_request(Api_Request_Type.editor_get_merchant_stock, {
         merchant: merchant.id,
         access_token: get_access_token()
@@ -408,7 +408,7 @@ async function create_adventure_merchant_buttons(merchant: Find_By_Type<Adventur
         }
     });
 
-    entity_menu_dropdown_button(menu, "Current stock", async parent => {
+    function fill_current_stock_ui(parent: Panel) {
         const stock = merchant.stock;
 
         const hero_container = wrapping_container(parent);
@@ -433,6 +433,22 @@ async function create_adventure_merchant_buttons(merchant: Find_By_Type<Adventur
         const item_container = wrapping_container(parent);
         for (const item of stock.items) {
             item_button(item_container, get_adventure_item_icon(item.data));
+        }
+    }
+
+    const current_stock_button = entity_menu_dropdown_button(menu, "Current stock", fill_current_stock_ui);
+
+    entity_button("Reroll stock", async () => {
+        const new_stock = await async_local_api_request(Local_Api_Request_Type.reroll_merchant_stock, { merchant: merchant.id });
+
+        merchant.stock = {
+            cards: from_server_array(new_stock.cards),
+            items: from_server_array(new_stock.items)
+        };
+
+        if (menu.highlighted_button == current_stock_button) {
+            entity_buttons_dropdown.RemoveAndDeleteChildren();
+            fill_current_stock_ui(entity_buttons_dropdown);
         }
     });
 }
@@ -499,7 +515,7 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
         };
 
         if (base.type == Adventure_Entity_Type.merchant) {
-            create_adventure_merchant_buttons(base);
+            create_adventure_merchant_buttons(editor, entity, base);
         }
     }
 

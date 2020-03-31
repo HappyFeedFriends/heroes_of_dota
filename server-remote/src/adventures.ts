@@ -263,7 +263,7 @@ function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventu
     });
 
     const cards = ongoing.random.pick_n_weighted_mutable(card_entries, 3);
-    const items = ongoing.random.pick_n_mutable(item_entries, 6);
+    const items = ongoing.random.pick_n_mutable(item_entries, 4);
 
     return {
         cards, items
@@ -842,6 +842,17 @@ export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventur
             if (merchant.definition.type != Adventure_Entity_Type.merchant) return;
 
             merchant.definition.stock = action.stock;
+
+            break;
+        }
+
+        case Adventure_Editor_Action_Type.reroll_merchant_stock: {
+            const merchant = ongoing.entities.find(entity => entity.id == action.entity_id);
+            if (!merchant) return;
+            if (merchant.type != Adventure_Entity_Type.merchant) return;
+            if (merchant.definition.type != Adventure_Entity_Type.merchant) return;
+
+            merchant.stock = populate_merchant_stock(ongoing, merchant.definition.stock);
 
             break;
         }

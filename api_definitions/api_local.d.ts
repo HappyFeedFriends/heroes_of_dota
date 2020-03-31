@@ -1,6 +1,7 @@
 declare const enum Local_Api_Request_Type {
     list_battle_locations = 0,
-    get_ground_z = 1
+    get_ground_z = 1,
+    reroll_merchant_stock = 2
 }
 
 declare const enum To_Server_Event_Type {
@@ -109,6 +110,13 @@ type Local_Api_Request = {
     response: {
         z: number
     }
+} | {
+    type: Local_Api_Request_Type.reroll_merchant_stock
+    request: {
+        merchant: Adventure_Entity_Id
+    }
+
+    response: Adventure_Merchant_Stock
 }
 
 type Local_Api_Request_Packet = {
@@ -298,7 +306,8 @@ declare const enum Editor_Action_Type {
     submit_battleground = 9,
     playtest_battleground = 10,
     edit_item_data = 11,
-    move_camera = 12
+    move_camera = 12,
+    reroll_merchant_stock = 13
 }
 
 type Editor_Action = {
