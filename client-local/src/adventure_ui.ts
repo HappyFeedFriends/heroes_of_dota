@@ -126,7 +126,7 @@ type Base_Slot_UI = {
 }
 
 type Inventory_Item_UI = {
-    item: Adventure_Wearable_Item | undefined
+    item: Adventure_Equipment_Item | undefined
     panel: Panel
     drop_layer: Panel
 }
@@ -177,7 +177,7 @@ export function find_adventure_entity_by_world_index(index: EntityId): Physical_
     return entities.find(entity => entity.world_entity_id == index);
 }
 
-export function find_adventure_entity_by_id(id: Adventure_Entity_Id): Physical_Adventure_Entity | undefined {
+export function find_adventure_entity_by_id(id: Adventure_World_Entity_Id): Physical_Adventure_Entity | undefined {
     return entities.find(entity => entity.base.id == id);
 }
 
@@ -386,7 +386,7 @@ function register_slot_drag_events(slot: Panel, item: Adventure_Item, source: Dr
     });
 }
 
-function update_hero_inventory_item_ui(ui: Inventory_Item_UI, hero_slot_index: number, inventory_slot_index: number, item_in_slot: Adventure_Wearable_Item | undefined) {
+function update_hero_inventory_item_ui(ui: Inventory_Item_UI, hero_slot_index: number, inventory_slot_index: number, item_in_slot: Adventure_Equipment_Item | undefined) {
     const item_panel = ui.panel;
 
     ui.item = item_in_slot;
@@ -542,7 +542,7 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
 
         const head_before = party.current_head;
 
-        if (drag_state.item.type == Adventure_Item_Type.wearable) {
+        if (drag_state.item.type == Adventure_Item_Type.equipment) {
             perform_adventure_party_action({
                 type: Adventure_Party_Action_Type.drag_item_on_hero,
                 item_entity: drag_state.item.entity_id,
@@ -736,12 +736,12 @@ function fill_entity_popup_content(entity: Adventure_Entity) {
     }
 }
 
-function fixup_merchant_server_data(merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
+function fixup_merchant_server_data(merchant: Adventure_Merchant) {
     merchant.stock.cards = from_server_array(merchant.stock.cards);
     merchant.stock.items = from_server_array(merchant.stock.items);
 }
 
-function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
+function show_merchant_popup(merchant: Adventure_Merchant) {
     const popup = adventure_ui.merchant_popup;
 
     function hide_popup() {
@@ -767,7 +767,7 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
         label.text = cost.toString(10);
     }
 
-    function card_container(type: string, cost: number) {
+    function purchasable_card(type: string, cost: number): { root: Panel, card_container: Panel } {
         const wrapper = $.CreatePanel("Panel", popup.cards, "");
         wrapper.AddClass("card_with_cost_wrapper");
 
@@ -782,10 +782,13 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
 
         cost_container(card_with_cost, cost);
 
-        return card_container;
+        return {
+            root: wrapper,
+            card_container: card_container
+        };
     }
 
-    function item_container(icon: string, cost: number) {
+    function purchasable_item(icon: string, cost: number) {
         const wrapper = $.CreatePanel("Panel", popup.items, "");
         wrapper.AddClass("item_with_cost_wrapper");
 
@@ -799,6 +802,21 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
         item.SetScaling(ScalingFunction.STRETCH_TO_COVER_PRESERVE_ASPECT);
 
         cost_container(item_with_cost, cost);
+
+        return wrapper;
+    }
+
+    function register_purchase_handler(panel: Panel, purchase_id: Adventure_Party_Entity_Id) {
+        const action = () => {
+            fire_event(To_Server_Event_Type.adventure_purchase_merchant_item, {
+                merchant_id: merchant.id,
+                purchase_id: purchase_id,
+                current_head: party.current_head
+            })
+        };
+
+        panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, action);
+        panel.SetPanelEvent(PanelEvent.ON_RIGHT_CLICK, action);
     }
 
     for (const card of merchant.stock.cards) {
@@ -806,8 +824,9 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
             case Adventure_Merchant_Card_Type.hero: {
                 const hero = card.hero;
                 const def = hero_definition_by_type(hero);
-                const container = card_container("hero", card.cost);
-                create_hero_card_ui_base(container, hero, def.health, def.attack_damage, def.move_points);
+                const { root, card_container } = purchasable_card("hero", card.cost);
+                create_hero_card_ui_base(card_container, hero, def.health, def.attack_damage, def.move_points);
+                register_purchase_handler(root, card.entity_id);
 
                 break;
             }
@@ -815,8 +834,9 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
             case Adventure_Merchant_Card_Type.spell: {
                 const spell = card.spell;
                 const def = spell_definition_by_id(spell);
-                const container = card_container("spell", card.cost);
-                create_spell_card_ui_base(container, spell, get_spell_text(def));
+                const { root, card_container } = purchasable_card("spell", card.cost);
+                create_spell_card_ui_base(card_container, spell, get_spell_text(def));
+                register_purchase_handler(root, card.entity_id);
 
                 break;
             }
@@ -824,8 +844,9 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
             case Adventure_Merchant_Card_Type.creep: {
                 const creep = card.creep;
                 const def = creep_definition_by_type(creep);
-                const container = card_container("creep", card.cost);
-                create_unit_card_ui_base(container, get_creep_name(creep), get_creep_card_art(creep), def.health, def.attack_damage, def.move_points);
+                const { root, card_container } = purchasable_card("creep", card.cost);
+                create_unit_card_ui_base(card_container, get_creep_name(creep), get_creep_card_art(creep), def.health, def.attack_damage, def.move_points);
+                register_purchase_handler(root, card.entity_id);
 
                 break;
             }
@@ -835,7 +856,8 @@ function show_merchant_popup(merchant: Find_By_Type<Adventure_Entity, Adventure_
     }
 
     for (const item of merchant.stock.items) {
-        item_container(get_adventure_item_icon(item.data), item.cost);
+        const container = purchasable_item(get_adventure_item_icon(item.data), item.cost);
+        register_purchase_handler(container, item.entity_id);
     }
 
     popup.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
@@ -1165,7 +1187,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                 const hero_slot = party.slots[target.hero_slot_index];
                 if (!hero_slot) return;
                 if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
-                if (item.type != Adventure_Item_Type.wearable) return;
+                if (item.type != Adventure_Item_Type.equipment) return;
 
                 const item_panel = hero_slot.items[target.item_slot_index];
                 if (!item_panel) return;

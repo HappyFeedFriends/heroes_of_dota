@@ -76,11 +76,11 @@ type Adventure_State = {
     num_party_slots: number
 }
 
-function adventure_wearable_item_id_to_model(id: Adventure_Wearable_Item_Id): string {
+function adventure_equipment_item_id_to_model(id: Adventure_Equipment_Item_Id): string {
     switch (id) {
-        case Adventure_Wearable_Item_Id.divine_rapier: return "models/props_gameplay/divine_rapier.vmdl";
-        case Adventure_Wearable_Item_Id.boots_of_speed: return "models/props_gameplay/boots_of_speed.vmdl";
-        case Adventure_Wearable_Item_Id.iron_branch: return "models/props_gameplay/branch.vmdl";
+        case Adventure_Equipment_Item_Id.divine_rapier: return "models/props_gameplay/divine_rapier.vmdl";
+        case Adventure_Equipment_Item_Id.boots_of_speed: return "models/props_gameplay/boots_of_speed.vmdl";
+        case Adventure_Equipment_Item_Id.iron_branch: return "models/props_gameplay/branch.vmdl";
     }
 
     return "models/props_gameplay/neutral_box.vmdl";
@@ -97,7 +97,7 @@ function adventure_consumable_item_id_to_model(id: Adventure_Consumable_Item_Id)
 
 function adventure_item_to_model(item: Adventure_Item) {
     switch (item.type) {
-        case Adventure_Item_Type.wearable: return adventure_wearable_item_id_to_model(item.item_id);
+        case Adventure_Item_Type.equipment: return adventure_equipment_item_id_to_model(item.item_id);
         case Adventure_Item_Type.consumable: return adventure_consumable_item_id_to_model(item.item_id);
     }
 }
@@ -502,17 +502,48 @@ function submit_adventure_movement_loop(game: Game) {
     }
 }
 
-function adventure_interact_with_entity(game: Game, entity_id: Adventure_Entity_Id, current_head: number) {
+function handle_in_interactive_distance(player: Main_Player, handle: CDOTA_BaseNPC) {
+    const entity_world_position = handle.GetAbsOrigin();
+    const distance_to_player = (player.hero_unit.GetAbsOrigin() - entity_world_position as Vector).Length2D();
+    return distance_to_player <= 500;
+}
+
+function adventure_try_purchase_merchant_item(game: Game, merchant_id: Adventure_World_Entity_Id, purchase_id: Adventure_Party_Entity_Id, current_head: number) {
+    const entity_index = array_find_index(game.adventure.entities, entity => entity.base.id == merchant_id);
+    if (entity_index == -1) return;
+
+    const entity = game.adventure.entities[entity_index];
+    if (entity.type != Adventure_Entity_Type.merchant) return;
+    if (!handle_in_interactive_distance(game.player, entity.handle)) return;
+
+    const purchase = api_request(Api_Request_Type.purchase_merchant_item, {
+        current_head: current_head,
+        merchant_id: merchant_id,
+        purchase_id: purchase_id,
+        access_token: game.token,
+        dedicated_server_key: get_dedicated_server_key()
+    });
+
+    if (!purchase) return;
+
+    game.adventure.entities[entity_index] = update_entity_state(entity, purchase.updated_entity);
+
+    fire_event(To_Client_Event_Type.adventure_receive_party_changes, {
+        changes: purchase.party_updates,
+        current_head: current_head
+    });
+
+    update_adventure_net_table(game.adventure);
+}
+
+function adventure_interact_with_entity(game: Game, entity_id: Adventure_World_Entity_Id, current_head: number) {
     const entity_index = array_find_index(game.adventure.entities, entity => entity.base.id == entity_id);
     if (entity_index == -1) return;
 
     const entity = game.adventure.entities[entity_index];
     if (entity.type == Adventure_Entity_Type.merchant) return;
     if (!entity.alive) return;
-
-    const entity_world_position = entity.handle.GetAbsOrigin();
-    const distance_to_player = (game.player.hero_unit.GetAbsOrigin() - entity_world_position as Vector).Length2D();
-    if (distance_to_player > 500) return;
+    if (!handle_in_interactive_distance(game.player, entity.handle)) return;
 
     const state_update = api_request(Api_Request_Type.interact_with_adventure_entity, {
         target_entity_id: entity_id,

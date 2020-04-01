@@ -32,13 +32,16 @@ import {
     Adventure_Room_Type,
     Party_Event_Type,
     Ongoing_Adventure,
+    Purchase_Type,
     load_all_adventures,
     adventure_by_id,
     room_by_id,
     create_room_entities,
     interact_with_entity,
     apply_editor_action,
-    editor_create_entity
+    editor_create_entity,
+    find_available_purchase_by_id,
+    mark_available_purchase_as_sold_out
 } from "./adventures";
 
 import {
@@ -53,7 +56,7 @@ import {
     find_empty_party_slot_index,
     change_party_add_item,
     act_on_adventure_party,
-    adventure_wearable_item_id_to_item,
+    adventure_equipment_item_id_to_item,
     adventure_consumable_item_id_to_item
 } from "./adventure_party";
 
@@ -115,7 +118,7 @@ type Map_Player_State = {
     state: Player_State.not_logged_in
 } | Map_Player_On_Adventure
 
-export type Map_Player_On_Adventure = {
+type Map_Player_On_Adventure = {
     state: Player_State.on_adventure
     ongoing_adventure: Ongoing_Adventure
     current_location: XY
@@ -266,6 +269,14 @@ function action_on_player_to_result<N>(result: Do_With_Player_Result<N>): Reques
 
 function with_player_in_request<T>(req: With_Token, do_what: (player: Map_Player, login: Map_Player_Login) => T | undefined): Request_Result<T> {
     return action_on_player_to_result(try_do_with_player(req.access_token, do_what))
+}
+
+function with_player_on_adventure<T>(req: With_Token, do_what: (player: Map_Player, state: Map_Player_On_Adventure) => T | undefined) {
+    return action_on_player_to_result(try_do_with_player(req.access_token, player => {
+        if (player.online.state != Player_State.on_adventure) return;
+
+        return do_what(player, player.online);
+    }))
 }
 
 function player_by_id(player_id: Player_Id) {
@@ -480,7 +491,7 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                     const modifiers: Adventure_Item_Modifier[] = [];
 
                     for (const item of slot.items) {
-                        if (item && item.type == Adventure_Item_Type.wearable) {
+                        if (item && item.type == Adventure_Item_Type.equipment) {
                             modifiers.push({
                                 item: item.item_id,
                                 modifier: item.modifier
@@ -552,7 +563,7 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
 
 type Adventure_Enemy_Definition = Find_By_Type<Adventure_Entity_Definition, Adventure_Entity_Type.enemy>;
 
-function adventure_enemy_to_battle_participant(next_id: Id_Generator, id: Adventure_Entity_Id, definition: Adventure_Enemy_Definition): Battle_Participant {
+function adventure_enemy_to_battle_participant(next_id: Id_Generator, id: Adventure_World_Entity_Id, definition: Adventure_Enemy_Definition): Battle_Participant {
     return {
         map_entity: {
             type: Map_Entity_Type.adventure_enemy,
@@ -790,11 +801,9 @@ register_api_handler(Api_Request_Type.submit_adventure_player_movement, req => {
         return make_error(403);
     }
 
-    return with_player_in_request(req, player => {
-        if (player.online.state != Player_State.on_adventure) return;
-
-        player.online.current_location = req.current_location;
-        player.online.movement_history = req.movement_history;
+    return with_player_on_adventure(req, (player, state) => {
+        state.current_location = req.current_location;
+        state.movement_history = req.movement_history;
 
         return {};
     });
@@ -815,6 +824,7 @@ register_api_handler(Api_Request_Type.query_entity_movement, req => {
             const player_movement: Player_Movement_Data[] = [];
 
             if (adventure.current_room.type == Adventure_Room_Type.rest) {
+                // @Performance
                 for (const player of players) {
                     if (player != requesting_player && can_player(player, Right.submit_movement)) {
                         if (player.online.state != Player_State.on_adventure) continue;
@@ -1141,7 +1151,7 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
                 adventure: adventure,
                 current_room: starting_room,
                 entities: [],
-                next_item_id: typed_sequential_id_generator<Adventure_Item_Entity_Id>(),
+                next_party_entity_id: typed_sequential_id_generator<Adventure_Party_Entity_Id>(),
                 random: random
             },
             current_location: starting_room.entrance_location,
@@ -1161,11 +1171,10 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         return make_error(403);
     }
 
-    return with_player_in_request(req, player => {
+    return with_player_on_adventure(req, (player, state) => {
         if (!can_player(player, Right.enter_adventure_room)) return;
-        if (player.online.state != Player_State.on_adventure) return;
 
-        const ongoing_adventure = player.online.ongoing_adventure;
+        const ongoing_adventure = state.ongoing_adventure;
         const room = room_by_id(ongoing_adventure.adventure, req.room_id);
 
         if (!room) return;
@@ -1173,8 +1182,8 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         ongoing_adventure.current_room = room;
         ongoing_adventure.entities = create_room_entities(ongoing_adventure, room);
 
-        player.online.movement_history = [];
-        player.online.current_location = room.entrance_location;
+        state.movement_history = [];
+        state.current_location = room.entrance_location;
 
         return {};
     });
@@ -1185,10 +1194,8 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
         return make_error(403);
     }
 
-    return with_player_in_request(req, player => {
-        if (player.online.state != Player_State.on_adventure) return;
-
-        const entity = player.online.ongoing_adventure.entities.find(entity => entity.id == req.enemy_entity_id);
+    return with_player_on_adventure(req, (player, state) => {
+        const entity = state.ongoing_adventure.entities.find(entity => entity.id == req.enemy_entity_id);
 
         if (!entity) return;
         if (entity.definition.type != Adventure_Entity_Type.enemy) return;
@@ -1202,7 +1209,7 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
         const id_generator = sequential_id_generator();
 
         const battle = start_battle(battle_id_generator(), id_generator, random, [
-            player_to_adventure_battle_participant(id_generator, player.id, player.online),
+            player_to_adventure_battle_participant(id_generator, player.id, state),
             adventure_enemy_to_battle_participant(id_generator, entity.id, entity.definition)
         ], battleground);
 
@@ -1215,10 +1222,8 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
 });
 
 register_api_handler(Api_Request_Type.act_on_adventure_party, req => {
-    return with_player_in_request(req, player => {
-        if (player.online.state != Player_State.on_adventure) return;
-
-        return act_on_adventure_party(player.online.party, req);
+    return with_player_on_adventure(req, (player, state) => {
+        return act_on_adventure_party(state.party, req);
     });
 });
 
@@ -1227,12 +1232,10 @@ register_api_handler(Api_Request_Type.exit_adventure, req => {
         return make_error(403);
     }
 
-    return with_player_in_request(req, player => {
-        if (player.online.state != Player_State.on_adventure) return;
-
+    return with_player_on_adventure(req, (player, state) => {
         player.online = {
             state: Player_State.on_global_map,
-            current_location: player.online.previous_global_map_location,
+            current_location: state.previous_global_map_location,
             movement_history: []
         };
 
@@ -1241,13 +1244,11 @@ register_api_handler(Api_Request_Type.exit_adventure, req => {
 });
 
 register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
-    return with_player_in_request(req, player => {
-        if (player.online.state != Player_State.on_adventure) return;
-
-        const result = interact_with_entity(player.online.ongoing_adventure, req.target_entity_id);
+    return with_player_on_adventure(req, (player, state) => {
+        const result = interact_with_entity(state.ongoing_adventure, req.target_entity_id);
         if (!result) return;
 
-        const party = player.online.party;
+        const party = state.party;
 
         for (const event of result.party_events) {
             switch (event.type) {
@@ -1328,6 +1329,70 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
     });
 });
 
+register_api_handler(Api_Request_Type.purchase_merchant_item, req => {
+    validate_dedicated_server_key(req.dedicated_server_key);
+
+    return with_player_on_adventure(req, (player, state) => {
+        const party = state.party;
+        const available = find_available_purchase_by_id(state.ongoing_adventure, req.merchant_id, req.purchase_id);
+        if (!available) {
+            return;
+        }
+
+        switch (available.found.type) {
+            case Purchase_Type.card: {
+                const free_slot = find_empty_party_slot_index(party);
+                if (free_slot == -1) return;
+
+                const card = available.found.card;
+                if (card.cost > party.currency) return;
+
+                switch (card.type) {
+                    case Adventure_Merchant_Card_Type.hero: {
+                        push_party_change(party, change_party_add_hero(free_slot, card.hero));
+                        break;
+                    }
+
+                    case Adventure_Merchant_Card_Type.creep: {
+                        push_party_change(party, change_party_add_creep(free_slot, card.creep));
+                        break;
+                    }
+
+                    case Adventure_Merchant_Card_Type.spell: {
+                        push_party_change(party, change_party_add_spell(free_slot, card.spell));
+                        break;
+                    }
+
+                    default: unreachable(card);
+                }
+
+                push_party_change(party, change_party_set_currency(party.currency - card.cost));
+
+                break;
+            }
+
+            case Purchase_Type.item: {
+                const item = available.found.item;
+                if (item.cost > party.currency) return;
+
+                push_party_change(party, change_party_add_item(item.data));
+                push_party_change(party, change_party_set_currency(party.currency - item.cost));
+
+                break;
+            }
+
+            default: unreachable(available.found);
+        }
+
+        mark_available_purchase_as_sold_out(available.merchant, req.purchase_id);
+
+        return {
+            party_updates: party.changes.slice(req.current_head),
+            updated_entity: available.merchant
+        }
+    });
+});
+
 function register_dev_handlers() {
     register_api_handler(Api_Request_Type.get_debug_ai_data, req => {
         return make_ok(get_debug_ai_data());
@@ -1400,10 +1465,8 @@ function register_dev_handlers() {
     });
 
     register_api_handler(Api_Request_Type.editor_playtest_battleground, req => {
-        return with_player_in_request(req, player => {
-            if (player.online.state != Player_State.on_adventure) return;
-
-            const entity = player.online.ongoing_adventure.entities.find(entity => entity.id == req.enemy);
+        return with_player_on_adventure(req, (player, state) => {
+            const entity = state.ongoing_adventure.entities.find(entity => entity.id == req.enemy);
 
             if (!entity) return;
             if (entity.definition.type != Adventure_Entity_Type.enemy) return;
@@ -1417,7 +1480,7 @@ function register_dev_handlers() {
             const id_generator = sequential_id_generator();
 
             const battle = start_battle(battle_id_generator(), id_generator, random, [
-                player_to_adventure_battle_participant(id_generator, player.id, player.online),
+                player_to_adventure_battle_participant(id_generator, player.id, state),
                 adventure_enemy_to_battle_participant(id_generator, entity.id, entity.definition)
             ], battleground);
 
@@ -1430,20 +1493,16 @@ function register_dev_handlers() {
     });
 
     register_api_handler(Api_Request_Type.editor_action, req => {
-        return with_player_in_request(req, player => {
-            if (player.online.state != Player_State.on_adventure) return;
-
-            apply_editor_action(player.online.ongoing_adventure, req);
+        return with_player_on_adventure(req, (player, state) => {
+            apply_editor_action(state.ongoing_adventure, req);
 
             return {};
         });
     });
 
     register_api_handler(Api_Request_Type.editor_get_room_details, req => {
-        return with_player_in_request(req, player => {
-            if (player.online.state != Player_State.on_adventure) return;
-
-            const current_room = player.online.ongoing_adventure.current_room;
+        return with_player_on_adventure(req, (player, state) => {
+            const current_room = state.ongoing_adventure.current_room;
 
             return {
                 entrance_location: {
@@ -1455,18 +1514,14 @@ function register_dev_handlers() {
     });
 
     register_api_handler(Api_Request_Type.editor_create_entity, req => {
-        return with_player_in_request(req, player => {
-            if (player.online.state != Player_State.on_adventure) return;
-
-            return editor_create_entity(player.online.ongoing_adventure, req.definition);
+        return with_player_on_adventure(req, (player, state) => {
+            return editor_create_entity(state.ongoing_adventure, req.definition);
         });
     });
 
     register_api_handler(Api_Request_Type.editor_get_merchant_stock, req => {
-        return with_player_in_request(req, player => {
-            if (player.online.state != Player_State.on_adventure) return;
-
-            const merchant = player.online.ongoing_adventure.entities.find(entity => entity.id == req.merchant);
+        return with_player_on_adventure(req, (player, state) => {
+            const merchant = state.ongoing_adventure.entities.find(entity => entity.id == req.merchant);
 
             if (!merchant) return;
             if (merchant.definition.type != Adventure_Entity_Type.merchant) return;
@@ -1476,15 +1531,13 @@ function register_dev_handlers() {
     });
 
     register_api_handler(Api_Request_Type.editor_reroll_merchant_stock, req => {
-        return with_player_in_request(req, player => {
-            if (player.online.state != Player_State.on_adventure) return;
-
-            const merchant = player.online.ongoing_adventure.entities.find(entity => entity.id == req.merchant);
+        return with_player_on_adventure(req, (player, state) => {
+            const merchant = state.ongoing_adventure.entities.find(entity => entity.id == req.merchant);
 
             if (!merchant) return;
             if (merchant.type != Adventure_Entity_Type.merchant) return;
 
-            apply_editor_action(player.online.ongoing_adventure, {
+            apply_editor_action(state.ongoing_adventure, {
                 type: Adventure_Editor_Action_Type.reroll_merchant_stock,
                 entity_id: merchant.id
             });
@@ -1494,9 +1547,7 @@ function register_dev_handlers() {
     });
 
     register_api_handler(Api_Request_Type.adventure_party_cheat, req => {
-        return with_player_in_request(req, player => {
-            if (player.online.state != Player_State.on_adventure) return;
-
+        return with_player_on_adventure(req, (player, state) => {
             function parse_enum_query<T extends number>(query: string, enum_data: [string, T][]): T[] {
                 return enum_data
                     .filter(([name]) => {
@@ -1511,7 +1562,7 @@ function register_dev_handlers() {
             }
 
             const parts = req.cheat.split(" ");
-            const party = player.online.party;
+            const party = state.party;
 
             function changes_from_cheat<T extends number>(from_enum: [string, T][], changer: (slot: number, value: T) => Adventure_Party_Change) {
                 const elements = parse_enum_query(parts[1], from_enum);
@@ -1541,16 +1592,16 @@ function register_dev_handlers() {
                 }
 
                 case "item": {
-                    const wearables = parse_enum_query(parts[1], enum_names_to_values<Adventure_Wearable_Item_Id>());
+                    const equipment = parse_enum_query(parts[1], enum_names_to_values<Adventure_Equipment_Item_Id>());
                     const consumables = parse_enum_query(parts[1], enum_names_to_values<Adventure_Consumable_Item_Id>());
 
-                    for (const id of wearables) {
-                        const entity_id = player.online.ongoing_adventure.next_item_id();
-                        push_party_change(party, change_party_add_item(adventure_wearable_item_id_to_item(entity_id, id)));
+                    for (const id of equipment) {
+                        const entity_id = state.ongoing_adventure.next_party_entity_id();
+                        push_party_change(party, change_party_add_item(adventure_equipment_item_id_to_item(entity_id, id)));
                     }
 
                     for (const id of consumables) {
-                        const entity_id = player.online.ongoing_adventure.next_item_id();
+                        const entity_id = state.ongoing_adventure.next_party_entity_id();
                         push_party_change(party, change_party_add_item(adventure_consumable_item_id_to_item(entity_id, id)));
                     }
 
@@ -1574,15 +1625,23 @@ function register_dev_handlers() {
                     for (let index = 1; index < parts.length; index++) {
                         const slot = parseInt(parts[index]) - 1;
 
-                        push_party_change(player.online.party, change_party_empty_slot(slot));
+                        push_party_change(party, change_party_empty_slot(slot));
                     }
+
+                    break;
+                }
+
+                case "gold": {
+                    const gold = parseInt(parts[1]);
+
+                    push_party_change(party, change_party_set_currency(party.currency + gold));
 
                     break;
                 }
             }
 
             return {
-                party_updates: player.online.party.changes.slice(req.current_head)
+                party_updates: party.changes.slice(req.current_head)
             }
         });
     });

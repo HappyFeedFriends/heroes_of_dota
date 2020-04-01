@@ -19,7 +19,7 @@ export type Battle_Participant = {
 }
 
 export type Adventure_Item_Modifier = {
-    item: Adventure_Wearable_Item_Id
+    item: Adventure_Equipment_Item_Id
     modifier: Modifier
 }
 

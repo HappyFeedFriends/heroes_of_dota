@@ -405,7 +405,7 @@ type Battle_Participant_Map_Entity = {
     npc_type: Npc_Type
 } | {
     type: Map_Entity_Type.adventure_enemy
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
     npc_type: Npc_Type
 }
 
@@ -556,7 +556,7 @@ type Delta_Adventure_Items_Applied = {
     unit_id: Unit_Id
     final_health: number
     modifiers: Array<Modifier_Application & {
-        source_item: Adventure_Wearable_Item_Id
+        source_item: Adventure_Equipment_Item_Id
     }>
 }
 

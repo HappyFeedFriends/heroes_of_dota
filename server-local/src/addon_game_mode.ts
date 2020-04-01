@@ -37,8 +37,8 @@ function Precache(context: CScriptPrecacheContext) {
         precache_model_and_log([definition.model, definition.scale]);
     }
 
-    for (const id of enum_values<Adventure_Wearable_Item_Id>()) {
-        precache_model_and_log([adventure_wearable_item_id_to_model(id), 1]);
+    for (const id of enum_values<Adventure_Equipment_Item_Id>()) {
+        precache_model_and_log([adventure_equipment_item_id_to_model(id), 1]);
     }
 
     for (const id of enum_values<Adventure_Consumable_Item_Id>()) {

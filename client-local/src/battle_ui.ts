@@ -1628,7 +1628,7 @@ function get_modifier_icon(applied: Applied_Modifier): string {
     }
 
     if (applied.source.type == Source_Type.adventure_item) {
-        return get_adventure_wearable_item_icon(applied.source.item_id);
+        return get_adventure_equipment_item_icon(applied.source.item_id);
     }
 
     if (applied.source.type == Source_Type.modifier) {

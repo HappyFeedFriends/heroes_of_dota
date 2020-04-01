@@ -655,6 +655,12 @@ function game_loop() {
         }
     });
 
+    on_custom_event_async(To_Server_Event_Type.adventure_purchase_merchant_item, event => {
+        if (game.state == Player_State.on_adventure) {
+            adventure_try_purchase_merchant_item(game, event.merchant_id, event.purchase_id, event.current_head);
+        }
+    });
+
     if (IsInToolsMode()) {
         SendToServerConsole("r_farz 10000");
 

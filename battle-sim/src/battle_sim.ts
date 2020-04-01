@@ -31,7 +31,7 @@ type Source_Modifier = {
 
 type Source_Adventure_Item = {
     type: Source_Type.adventure_item
-    item_id: Adventure_Wearable_Item_Id
+    item_id: Adventure_Equipment_Item_Id
 }
 
 type Source = Source_None | Source_Unit | Source_Item | Source_Player | Source_Modifier | Source_Adventure_Item
@@ -459,7 +459,7 @@ function modifier_source(applied: Applied_Modifier): Source {
     }
 }
 
-function adventure_item_source(item_id: Adventure_Wearable_Item_Id): Source {
+function adventure_item_source(item_id: Adventure_Equipment_Item_Id): Source {
     return {
         type: Source_Type.adventure_item,
         item_id: item_id

@@ -31,7 +31,7 @@ function is_party_creep_dead(slot: Find_By_Type<Adventure_Party_Slot, Adventure_
 // TODO This is wack, because we change the snapshot we pass on server when consuming changes, but not on the client
 //      this function could be made pure, if it doesn't cause any problems
 function consume_adventure_party_action(party: Party_Snapshot, action: Adventure_Party_Action, change_consumer: (change: Adventure_Party_Change) => void) {
-    function find_item_by_entity_id(id: Adventure_Item_Entity_Id): [Adventure_Item_Container, Adventure_Item] | undefined {
+    function find_item_by_entity_id(id: Adventure_Party_Entity_Id): [Adventure_Item_Container, Adventure_Item] | undefined {
         const index_in_bag = party.bag.findIndex(item => item.entity_id == id);
         if (index_in_bag != -1) {
             const item = party.bag[index_in_bag];
@@ -65,7 +65,7 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
             if (!result) break;
 
             const [container, item] = result;
-            if (item.type != Adventure_Item_Type.wearable) break;
+            if (item.type != Adventure_Item_Type.equipment) break;
 
             const slot = party.slots[action.party_slot];
             if (!slot) break;
@@ -259,7 +259,7 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
                         const hero_slot = party.slots[target.hero_slot_index];
                         if (!hero_slot) return;
                         if (hero_slot.type != Adventure_Party_Slot_Type.hero) return;
-                        if (item.type != Adventure_Item_Type.wearable) return;
+                        if (item.type != Adventure_Item_Type.equipment) return;
 
                         hero_slot.items[target.item_slot_index] = item;
 

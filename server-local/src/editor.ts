@@ -119,11 +119,11 @@ function update_editor_battleground(editor: Editor_State, origin: Vector, theme:
 }
 
 function perform_editor_action(game: Game, editor: Editor_State, event: Editor_Action) {
-    function find_entity_by_id(id: Adventure_Entity_Id) {
+    function find_entity_by_id(id: Adventure_World_Entity_Id) {
         return array_find(game.adventure.entities, entity => entity.base.id == id);
     }
 
-    function find_entity_index_by_id(id: Adventure_Entity_Id) {
+    function find_entity_index_by_id(id: Adventure_World_Entity_Id) {
         return array_find_index(game.adventure.entities, entity => entity.base.id == id);
     }
 

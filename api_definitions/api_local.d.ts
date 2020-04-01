@@ -8,7 +8,8 @@ declare const enum To_Server_Event_Type {
     adventure_interact_with_entity = 0,
     put_deltas = 1,
     fast_forward = 2,
-    editor_action = 3
+    editor_action = 3,
+    adventure_purchase_merchant_item = 4
 }
 
 declare const enum To_Client_Event_Type {
@@ -31,7 +32,14 @@ declare const enum Prefixes {
 type To_Server_Event = {
     type: To_Server_Event_Type.adventure_interact_with_entity
     payload: {
-        entity_id: Adventure_Entity_Id
+        entity_id: Adventure_World_Entity_Id
+        current_head: number
+    }
+} | {
+    type: To_Server_Event_Type.adventure_purchase_merchant_item
+    payload: {
+        merchant_id: Adventure_World_Entity_Id
+        purchase_id: Adventure_Party_Entity_Id
         current_head: number
     }
 } | {
@@ -113,7 +121,7 @@ type Local_Api_Request = {
 } | {
     type: Local_Api_Request_Type.reroll_merchant_stock
     request: {
-        merchant: Adventure_Entity_Id
+        merchant: Adventure_World_Entity_Id
     }
 
     response: Adventure_Merchant_Stock
@@ -329,21 +337,21 @@ type Editor_Action = {
     to: World_Origin
 } | {
     type: Editor_Action_Type.set_entity_position
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
     position: {
         x: number
         y: number
     }
 } | {
     type: Editor_Action_Type.set_entity_facing
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
     facing: {
         x: number
         y: number
     }
 } | {
     type: Editor_Action_Type.delete_entity
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
 } | {
     type: Editor_Action_Type.create_entity
     definition: Adventure_Entity_Definition
@@ -363,9 +371,9 @@ type Editor_Action = {
 } | {
     type: Editor_Action_Type.playtest_battleground
     battleground: Battleground_Id
-    enemy: Adventure_Entity_Id
+    enemy: Adventure_World_Entity_Id
 } | {
     type: Editor_Action_Type.edit_item_data
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
     item: Adventure_Item_Definition
 }

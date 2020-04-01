@@ -1,6 +1,6 @@
 import {readFileSync, writeFileSync, readdirSync} from "fs";
 import {try_string_to_enum_value, unreachable} from "./common";
-import {adventure_consumable_item_id_to_item, adventure_wearable_item_id_to_item} from "./adventure_party";
+import {adventure_consumable_item_id_to_item, adventure_equipment_item_id_to_item} from "./adventure_party";
 import {Entry_With_Weight, Random} from "./random";
 
 const storage_dir_path = "src/adventures";
@@ -16,6 +16,11 @@ export const enum Party_Event_Type {
     activate_shrine,
     add_item,
     add_currency
+}
+
+export const enum Purchase_Type {
+    card,
+    item
 }
 
 export type Adventure = {
@@ -83,6 +88,29 @@ type Party_Event = {
     amount: number
 }
 
+type Merchant_Purchase = {
+    type: Purchase_Type.item
+    item: Adventure_Merchant_Item
+    updated_merchant: Adventure_Entity
+} | {
+    type: Purchase_Type.card
+    card: Adventure_Merchant_Card
+    updated_merchant: Adventure_Entity
+}
+
+type Purchase_Search_Result = {
+    merchant: Adventure_Merchant
+    found: Available_Purchase
+}
+
+type Available_Purchase = {
+    type: Purchase_Type.item
+    item: Adventure_Merchant_Item
+} | {
+    type: Purchase_Type.card
+    card: Adventure_Merchant_Card
+}
+
 type Entity_Interaction_Result = {
     party_events: Party_Event[]
     updated_entity: Adventure_Entity
@@ -93,7 +121,7 @@ export type Ongoing_Adventure = {
     adventure: Adventure
     current_room: Adventure_Room
     entities: Adventure_Entity_With_Definition[]
-    next_item_id: () => Adventure_Item_Entity_Id
+    next_party_entity_id: () => Adventure_Party_Entity_Id
     random: Random
 }
 
@@ -105,8 +133,8 @@ const adventures: Adventure[] = [];
 
 let entity_id_auto_increment = 0;
 
-function get_next_entity_id(): Adventure_Entity_Id {
-    return entity_id_auto_increment++ as Adventure_Entity_Id;
+function get_next_entity_id(): Adventure_World_Entity_Id {
+    return entity_id_auto_increment++ as Adventure_World_Entity_Id;
 }
 
 function room(id: number, type: Adventure_Room_Type, entrance: XY, entities: Adventure_Entity_Definition[]): Adventure_Room {
@@ -156,16 +184,16 @@ function create_adventure_entity_from_definition(ongoing: Ongoing_Adventure, def
             };
 
             switch (definition.item.type) {
-                case Adventure_Item_Type.wearable: return {
+                case Adventure_Item_Type.equipment: return {
                     ...base,
                     type: definition.type,
-                    item: adventure_wearable_item_id_to_item(ongoing.next_item_id(), definition.item.id)
+                    item: adventure_equipment_item_id_to_item(ongoing.next_party_entity_id(), definition.item.id)
                 };
 
                 case Adventure_Item_Type.consumable: return {
                     ...base,
                     type: definition.type,
-                    item: adventure_consumable_item_id_to_item(ongoing.next_item_id(), definition.item.id)
+                    item: adventure_consumable_item_id_to_item(ongoing.next_party_entity_id(), definition.item.id)
                 };
             }
 
@@ -196,6 +224,7 @@ function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventu
     function hero_card(hero: Hero_Type, cost: number): Adventure_Merchant_Card {
         return {
             type: Adventure_Merchant_Card_Type.hero,
+            entity_id: ongoing.next_party_entity_id(),
             hero: hero,
             sold_out: false,
             cost: cost
@@ -205,6 +234,7 @@ function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventu
     function spell_card(spell: Spell_Id, cost: number): Adventure_Merchant_Card {
         return {
             type: Adventure_Merchant_Card_Type.spell,
+            entity_id: ongoing.next_party_entity_id(),
             spell: spell,
             sold_out: false,
             cost: cost
@@ -214,6 +244,7 @@ function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventu
     function creep_card(creep: Creep_Type, cost: number): Adventure_Merchant_Card {
         return {
             type: Adventure_Merchant_Card_Type.creep,
+            entity_id: ongoing.next_party_entity_id(),
             creep: creep,
             sold_out: false,
             cost: cost
@@ -222,15 +253,17 @@ function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventu
 
     function consumable_item(id: Adventure_Consumable_Item_Id, cost: number): Adventure_Merchant_Item {
         return {
-            data: adventure_consumable_item_id_to_item(ongoing.next_item_id(), id),
+            data: adventure_consumable_item_id_to_item(ongoing.next_party_entity_id(), id),
+            entity_id: ongoing.next_party_entity_id(),
             cost: cost,
             sold_out: false
         }
     }
 
-    function wearable_item(id: Adventure_Wearable_Item_Id, cost: number): Adventure_Merchant_Item {
+    function equipment_item(id: Adventure_Equipment_Item_Id, cost: number): Adventure_Merchant_Item {
         return {
-            data: adventure_wearable_item_id_to_item(ongoing.next_item_id(), id),
+            data: adventure_equipment_item_id_to_item(ongoing.next_party_entity_id(), id),
+            entity_id: ongoing.next_party_entity_id(),
             cost: cost,
             sold_out: false
         }
@@ -239,7 +272,7 @@ function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventu
     const item_entries = definition.items.map(item => {
         switch (item.type) {
             case Adventure_Item_Type.consumable: return consumable_item(item.id, consumable_item_cost(item.id))
-            case Adventure_Item_Type.wearable: return wearable_item(item.id, wearable_item_cost(item.id))
+            case Adventure_Item_Type.equipment: return equipment_item(item.id, equipment_item_cost(item.id))
         }
     });
 
@@ -270,18 +303,18 @@ function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventu
     }
 }
 
-function wearable_item_cost(id: Adventure_Wearable_Item_Id) {
+function equipment_item_cost(id: Adventure_Equipment_Item_Id) {
     switch (id) {
-        case Adventure_Wearable_Item_Id.boots_of_travel: return 10;
-        case Adventure_Wearable_Item_Id.assault_cuirass: return 10;
-        case Adventure_Wearable_Item_Id.divine_rapier: return 10;
-        case Adventure_Wearable_Item_Id.mask_of_madness: return 10;
-        case Adventure_Wearable_Item_Id.boots_of_speed: return 10;
-        case Adventure_Wearable_Item_Id.blades_of_attack: return 10;
-        case Adventure_Wearable_Item_Id.belt_of_strength: return 10;
-        case Adventure_Wearable_Item_Id.chainmail: return 10;
-        case Adventure_Wearable_Item_Id.basher: return 10;
-        case Adventure_Wearable_Item_Id.iron_branch: return 10;
+        case Adventure_Equipment_Item_Id.boots_of_travel: return 10;
+        case Adventure_Equipment_Item_Id.assault_cuirass: return 10;
+        case Adventure_Equipment_Item_Id.divine_rapier: return 10;
+        case Adventure_Equipment_Item_Id.mask_of_madness: return 10;
+        case Adventure_Equipment_Item_Id.boots_of_speed: return 10;
+        case Adventure_Equipment_Item_Id.blades_of_attack: return 10;
+        case Adventure_Equipment_Item_Id.belt_of_strength: return 10;
+        case Adventure_Equipment_Item_Id.chainmail: return 10;
+        case Adventure_Equipment_Item_Id.basher: return 10;
+        case Adventure_Equipment_Item_Id.iron_branch: return 10;
     }
 }
 
@@ -377,8 +410,8 @@ function try_read_item(item_type_string: string, item_id_string: string, file_pa
             return { type: item_type, id: item_id } as const;
         }
 
-        case Adventure_Item_Type.wearable: {
-            const item_id = try_string_to_enum_value(item_id_string, enum_names_to_values<Adventure_Wearable_Item_Id>());
+        case Adventure_Item_Type.equipment: {
+            const item_id = try_string_to_enum_value(item_id_string, enum_names_to_values<Adventure_Equipment_Item_Id>());
             if (item_id == undefined) {
                 console.error(`Item id ${item_id_string} not found while parsing ${file_path}`);
                 return;
@@ -619,7 +652,7 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                     case Adventure_Entity_Type.item_on_the_ground: {
                         const item_id = () => {
                             switch (entity.item.type) {
-                                case Adventure_Item_Type.wearable: return enum_to_string(entity.item.id);
+                                case Adventure_Item_Type.equipment: return enum_to_string(entity.item.id);
                                 case Adventure_Item_Type.consumable: return enum_to_string(entity.item.id);
                             }
                         };
@@ -656,9 +689,9 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                                     break;
                                 }
 
-                                case Adventure_Item_Type.wearable: {
+                                case Adventure_Item_Type.equipment: {
                                     merchant_items.push({
-                                        type: enum_to_string(Adventure_Item_Type.wearable),
+                                        type: enum_to_string(Adventure_Item_Type.equipment),
                                         item_id: enum_to_string(item.id)
                                     });
 
@@ -714,7 +747,64 @@ function persist_adventure_to_file_system(adventure: Adventure) {
     writeFileSync(path, JSON.stringify(file, (key, value) => value, "    "));
 }
 
-export function interact_with_entity(adventure: Ongoing_Adventure, entity_id: Adventure_Entity_Id): Entity_Interaction_Result | undefined {
+function find_available_purchase_in_merchant(merchant: Adventure_Merchant, purchase_id: Adventure_Party_Entity_Id): Available_Purchase | undefined {
+    const card = merchant.stock.cards.find(card => card.entity_id == purchase_id);
+    if (card) {
+        if (!card.sold_out) {
+            return {
+                type: Purchase_Type.card,
+                card: card,
+            };
+        }
+
+        return;
+    }
+
+    const item = merchant.stock.items.find(item => item.entity_id == purchase_id);
+    if (item) {
+        if (!item.sold_out) {
+            return {
+                type: Purchase_Type.item,
+                item: item,
+            };
+        }
+
+        return;
+    }
+}
+
+export function find_available_purchase_by_id(adventure: Ongoing_Adventure, merchant_id: Adventure_World_Entity_Id, purchase_id: Adventure_Party_Entity_Id): Purchase_Search_Result | undefined {
+    const merchant = adventure.entities.find(entity => entity.id == merchant_id);
+    if (!merchant) return;
+    if (merchant.type != Adventure_Entity_Type.merchant) return;
+
+    const available = find_available_purchase_in_merchant(merchant, purchase_id);
+    if (!available) return;
+
+    return {
+        merchant: merchant,
+        found: available
+    }
+}
+
+export function mark_available_purchase_as_sold_out(merchant: Adventure_Merchant, purchase_id: Adventure_Party_Entity_Id) {
+    const available = find_available_purchase_in_merchant(merchant, purchase_id);
+    if (!available) return;
+
+    switch (available.type) {
+        case Purchase_Type.item: {
+            available.item.sold_out = true;
+            break;
+        }
+
+        case Purchase_Type.card: {
+            available.card.sold_out = true;
+            break;
+        }
+    }
+}
+
+export function interact_with_entity(adventure: Ongoing_Adventure, entity_id: Adventure_World_Entity_Id): Entity_Interaction_Result | undefined {
     const entity = adventure.entities.find(entity => entity.id == entity_id);
     if (!entity) return;
     if (entity.type == Adventure_Entity_Type.merchant) return;

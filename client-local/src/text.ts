@@ -68,18 +68,18 @@ function get_item_name(item: Item_Id): string {
 }
 
 function get_adventure_item_name(item: Adventure_Item): string {
-    function get_adventure_wearable_item_name(id: Adventure_Wearable_Item_Id): string {
+    function get_adventure_equipment_item_name(id: Adventure_Equipment_Item_Id): string {
         switch (id) {
-            case Adventure_Wearable_Item_Id.boots_of_travel: return get_item_name(Item_Id.boots_of_travel);
-            case Adventure_Wearable_Item_Id.assault_cuirass: return get_item_name(Item_Id.assault_cuirass);
-            case Adventure_Wearable_Item_Id.divine_rapier: return get_item_name(Item_Id.divine_rapier);
-            case Adventure_Wearable_Item_Id.mask_of_madness: return get_item_name(Item_Id.mask_of_madness);
-            case Adventure_Wearable_Item_Id.boots_of_speed: return get_item_name(Item_Id.boots_of_speed);
-            case Adventure_Wearable_Item_Id.blades_of_attack: return get_item_name(Item_Id.blades_of_attack);
-            case Adventure_Wearable_Item_Id.belt_of_strength: return get_item_name(Item_Id.belt_of_strength);
-            case Adventure_Wearable_Item_Id.chainmail: return get_item_name(Item_Id.chainmail);
-            case Adventure_Wearable_Item_Id.basher: return get_item_name(Item_Id.basher);
-            case Adventure_Wearable_Item_Id.iron_branch: return get_item_name(Item_Id.iron_branch);
+            case Adventure_Equipment_Item_Id.boots_of_travel: return get_item_name(Item_Id.boots_of_travel);
+            case Adventure_Equipment_Item_Id.assault_cuirass: return get_item_name(Item_Id.assault_cuirass);
+            case Adventure_Equipment_Item_Id.divine_rapier: return get_item_name(Item_Id.divine_rapier);
+            case Adventure_Equipment_Item_Id.mask_of_madness: return get_item_name(Item_Id.mask_of_madness);
+            case Adventure_Equipment_Item_Id.boots_of_speed: return get_item_name(Item_Id.boots_of_speed);
+            case Adventure_Equipment_Item_Id.blades_of_attack: return get_item_name(Item_Id.blades_of_attack);
+            case Adventure_Equipment_Item_Id.belt_of_strength: return get_item_name(Item_Id.belt_of_strength);
+            case Adventure_Equipment_Item_Id.chainmail: return get_item_name(Item_Id.chainmail);
+            case Adventure_Equipment_Item_Id.basher: return get_item_name(Item_Id.basher);
+            case Adventure_Equipment_Item_Id.iron_branch: return get_item_name(Item_Id.iron_branch);
         }
     }
 
@@ -92,7 +92,7 @@ function get_adventure_item_name(item: Adventure_Item): string {
     }
 
     switch (item.type) {
-        case Adventure_Item_Type.wearable: return get_adventure_wearable_item_name(item.item_id);
+        case Adventure_Item_Type.equipment: return get_adventure_equipment_item_name(item.item_id);
         case Adventure_Item_Type.consumable: return get_adventure_consumable_item_name(item.item_id);
     }
 }

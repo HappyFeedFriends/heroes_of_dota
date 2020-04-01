@@ -82,20 +82,20 @@ type Editor_Handlers = {
 } | {
     type: Api_Request_Type.editor_playtest_battleground
     request: {
-        enemy: Adventure_Entity_Id
+        enemy: Adventure_World_Entity_Id
         battleground: Battleground_Id
     } & With_Token
     response: Player_State_Data
 } | {
     type: Api_Request_Type.editor_get_merchant_stock
     request: {
-        merchant: Adventure_Entity_Id
+        merchant: Adventure_World_Entity_Id
     } & With_Token
     response: Adventure_Merchant_Stock_Definition
 } | {
     type: Api_Request_Type.editor_reroll_merchant_stock
     request: {
-        merchant: Adventure_Entity_Id
+        merchant: Adventure_World_Entity_Id
     } & With_Token
     response: Adventure_Merchant_Stock
 }
@@ -108,40 +108,40 @@ type Adventure_Editor_Action = {
     }
 } | {
     type: Adventure_Editor_Action_Type.delete_entity
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
 } | {
     type: Adventure_Editor_Action_Type.set_entity_position
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
     new_position: {
         x: number
         y: number
     }
 } | {
     type: Adventure_Editor_Action_Type.set_entity_facing
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
     new_facing: {
         x: number
         y: number
     }
 } | {
     type: Adventure_Editor_Action_Type.edit_enemy_deck
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
     creeps: Creep_Type[]
 } | {
     type: Adventure_Editor_Action_Type.set_enemy_battleground
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
     battleground: Battleground_Id
 } | {
     type: Adventure_Editor_Action_Type.set_item_data
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
     item: Adventure_Item_Definition
 } | {
     type: Adventure_Editor_Action_Type.set_merchant_stock
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
     stock: Adventure_Merchant_Stock_Definition
 } | {
     type: Adventure_Editor_Action_Type.reroll_merchant_stock
-    entity_id: Adventure_Entity_Id
+    entity_id: Adventure_World_Entity_Id
 }
 
 declare const enum Spawn_Type {

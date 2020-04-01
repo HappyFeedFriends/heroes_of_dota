@@ -72,7 +72,7 @@ type Battleground_Editor = {
 }
 
 type Editor_Enemy_Battleground_Data = {
-    id: Adventure_Entity_Id
+    id: Adventure_World_Entity_Id
     name: string
     current_battleground_id: Battleground_Id
 }
@@ -87,7 +87,7 @@ type Adventure_Editor_Selection = {
     selected: false
 } | {
     selected: true
-    id: Adventure_Entity_Id
+    id: Adventure_World_Entity_Id
     type: Adventure_Entity_Type.enemy
     entity: EntityId
     particle: ParticleId
@@ -100,7 +100,7 @@ type Adventure_Editor_Selection = {
         Adventure_Entity_Type.item_on_the_ground |
         Adventure_Entity_Type.gold_bag |
         Adventure_Entity_Type.merchant
-    id: Adventure_Entity_Id
+    id: Adventure_World_Entity_Id
     entity: EntityId
     particle: ParticleId
 }
@@ -303,7 +303,7 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: P
     }
 }
 
-async function create_adventure_merchant_buttons(editor: Adventure_Editor, entity: Physical_Adventure_Entity, merchant: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>) {
+async function create_adventure_merchant_buttons(editor: Adventure_Editor, entity: Physical_Adventure_Entity, merchant: Adventure_Merchant) {
     const async_stock = async_api_request(Api_Request_Type.editor_get_merchant_stock, {
         merchant: merchant.id,
         access_token: get_access_token()
@@ -396,8 +396,8 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
             all_items.push({ type: Adventure_Item_Type.consumable, id: id });
         }
 
-        for (const id of enum_values<Adventure_Wearable_Item_Id>()) {
-            all_items.push({ type: Adventure_Item_Type.wearable, id: id });
+        for (const id of enum_values<Adventure_Equipment_Item_Id>()) {
+            all_items.push({ type: Adventure_Item_Type.equipment, id: id });
         }
 
         const container = wrapping_container(parent);
@@ -1026,8 +1026,8 @@ export function battleground_editor_filter_mouse_click(editor: Battleground_Edit
 
 function get_adventure_item_definition_icon(item: Adventure_Item_Definition): string {
     switch (item.type) {
-        case Adventure_Item_Type.wearable: {
-            return get_adventure_wearable_item_icon(item.id);
+        case Adventure_Item_Type.equipment: {
+            return get_adventure_equipment_item_icon(item.id);
         }
 
         case Adventure_Item_Type.consumable: {
@@ -1116,9 +1116,9 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
             safely_set_panel_background_image(button, get_adventure_item_definition_icon(item));
         }
 
-        for (const [name, id] of enum_names_to_values<Adventure_Wearable_Item_Id>()) {
+        for (const [name, id] of enum_names_to_values<Adventure_Equipment_Item_Id>()) {
             item_button(name, {
-                type: Adventure_Item_Type.wearable,
+                type: Adventure_Item_Type.equipment,
                 id: id
             });
         }

@@ -129,14 +129,14 @@ export function change_party_set_currency(amount: number): Adventure_Party_Chang
     }
 }
 
-export function adventure_wearable_item_id_to_item(entity_id: Adventure_Item_Entity_Id, item_id: Adventure_Wearable_Item_Id): Adventure_Item {
+export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_Entity_Id, item_id: Adventure_Equipment_Item_Id): Adventure_Item {
     const base = {
-        type: Adventure_Item_Type.wearable,
+        type: Adventure_Item_Type.equipment,
         entity_id: entity_id
     } as const;
 
     switch (item_id) {
-        case Adventure_Wearable_Item_Id.boots_of_travel: return {
+        case Adventure_Equipment_Item_Id.boots_of_travel: return {
             ...base,
             item_id: item_id,
             modifier: {
@@ -145,7 +145,7 @@ export function adventure_wearable_item_id_to_item(entity_id: Adventure_Item_Ent
             }
         };
 
-        case Adventure_Wearable_Item_Id.assault_cuirass: return {
+        case Adventure_Equipment_Item_Id.assault_cuirass: return {
             ...base,
             item_id: item_id,
             modifier: {
@@ -154,7 +154,7 @@ export function adventure_wearable_item_id_to_item(entity_id: Adventure_Item_Ent
             }
         };
 
-        case Adventure_Wearable_Item_Id.divine_rapier: return {
+        case Adventure_Equipment_Item_Id.divine_rapier: return {
             ...base,
             item_id: item_id,
             modifier: {
@@ -163,7 +163,7 @@ export function adventure_wearable_item_id_to_item(entity_id: Adventure_Item_Ent
             }
         };
 
-        case Adventure_Wearable_Item_Id.mask_of_madness: return {
+        case Adventure_Equipment_Item_Id.mask_of_madness: return {
             ...base,
             item_id: item_id,
             modifier: {
@@ -172,7 +172,7 @@ export function adventure_wearable_item_id_to_item(entity_id: Adventure_Item_Ent
             }
         };
 
-        case Adventure_Wearable_Item_Id.boots_of_speed: return {
+        case Adventure_Equipment_Item_Id.boots_of_speed: return {
             ...base,
             item_id: item_id,
             modifier: {
@@ -181,7 +181,7 @@ export function adventure_wearable_item_id_to_item(entity_id: Adventure_Item_Ent
             }
         };
 
-        case Adventure_Wearable_Item_Id.blades_of_attack: return {
+        case Adventure_Equipment_Item_Id.blades_of_attack: return {
             ...base,
             item_id: item_id,
             modifier: {
@@ -190,7 +190,7 @@ export function adventure_wearable_item_id_to_item(entity_id: Adventure_Item_Ent
             }
         };
 
-        case Adventure_Wearable_Item_Id.belt_of_strength: return {
+        case Adventure_Equipment_Item_Id.belt_of_strength: return {
             ...base,
             item_id: item_id,
             modifier: {
@@ -199,7 +199,7 @@ export function adventure_wearable_item_id_to_item(entity_id: Adventure_Item_Ent
             }
         };
 
-        case Adventure_Wearable_Item_Id.chainmail: return {
+        case Adventure_Equipment_Item_Id.chainmail: return {
             ...base,
             item_id: item_id,
             modifier: {
@@ -208,7 +208,7 @@ export function adventure_wearable_item_id_to_item(entity_id: Adventure_Item_Ent
             }
         };
 
-        case Adventure_Wearable_Item_Id.basher: return {
+        case Adventure_Equipment_Item_Id.basher: return {
             ...base,
             item_id: item_id,
             modifier: {
@@ -216,7 +216,7 @@ export function adventure_wearable_item_id_to_item(entity_id: Adventure_Item_Ent
             }
         };
 
-        case Adventure_Wearable_Item_Id.iron_branch: return {
+        case Adventure_Equipment_Item_Id.iron_branch: return {
             ...base,
             item_id: item_id,
             modifier: {
@@ -230,7 +230,7 @@ export function adventure_wearable_item_id_to_item(entity_id: Adventure_Item_Ent
     }
 }
 
-export function adventure_consumable_item_id_to_item(entity_id: Adventure_Item_Entity_Id, item_id: Adventure_Consumable_Item_Id): Adventure_Item {
+export function adventure_consumable_item_id_to_item(entity_id: Adventure_Party_Entity_Id, item_id: Adventure_Consumable_Item_Id): Adventure_Item {
     const base = {
         type: Adventure_Item_Type.consumable,
         entity_id: entity_id

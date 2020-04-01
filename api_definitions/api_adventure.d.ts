@@ -1,6 +1,6 @@
 type Adventure_Room_Id = number & { _adventure_room_id_brand: any };
-type Adventure_Entity_Id = number & { _adventure_entity_id_brand: any };
-type Adventure_Item_Entity_Id = number & { _adventure_item_entity_id_brand: any };
+type Adventure_World_Entity_Id = number & { _adventure_world_entity_id_brand: any };
+type Adventure_Party_Entity_Id = number & { _adventure_party_entity_id_brand: any };
 type Ongoing_Adventure_Id = number & { _ongoing_adventure_id_brand: any };
 
 declare const enum Adventure_Id {
@@ -45,11 +45,11 @@ declare const enum Adventure_Item_Container_Type {
 }
 
 declare const enum Adventure_Item_Type {
-    wearable = 0,
+    equipment = 0,
     consumable = 1
 }
 
-declare const enum Adventure_Wearable_Item_Id {
+declare const enum Adventure_Equipment_Item_Id {
     boots_of_travel = 0,
     assault_cuirass = 1,
     divine_rapier = 2,
@@ -110,7 +110,7 @@ type Adventure_Handlers = {
 } | {
     type: Api_Request_Type.start_adventure_enemy_fight
     request: {
-        enemy_entity_id: Adventure_Entity_Id
+        enemy_entity_id: Adventure_World_Entity_Id
     } & With_Token & With_Private_Key
     response: Player_State_Data
 } | {
@@ -126,7 +126,7 @@ type Adventure_Handlers = {
 } | {
     type: Api_Request_Type.interact_with_adventure_entity
     request: {
-        target_entity_id: Adventure_Entity_Id
+        target_entity_id: Adventure_World_Entity_Id
         current_head: number
     } & With_Token & With_Private_Key
     response: {
@@ -137,6 +137,17 @@ type Adventure_Handlers = {
     type: Api_Request_Type.act_on_adventure_party
     request: Adventure_Party_Action & With_Token
     response: Adventure_Party_Response
+} | {
+    type: Api_Request_Type.purchase_merchant_item
+    request: {
+        current_head: number
+        merchant_id: Adventure_World_Entity_Id
+        purchase_id: Adventure_Party_Entity_Id
+    } & With_Token & With_Private_Key
+    response: {
+        party_updates: Adventure_Party_Change[]
+        updated_entity: Adventure_Entity
+    }
 } | {
     type: Api_Request_Type.adventure_party_cheat
     request: {
@@ -184,12 +195,12 @@ type Adventure_Item_Definition = {
     type: Adventure_Item_Type.consumable
     id: Adventure_Consumable_Item_Id
 } | {
-    type: Adventure_Item_Type.wearable
-    id: Adventure_Wearable_Item_Id
+    type: Adventure_Item_Type.equipment
+    id: Adventure_Equipment_Item_Id
 }
 
 type Adventure_Entity_Base = Adventure_Entity_Definition_Base & {
-    id: Adventure_Entity_Id
+    id: Adventure_World_Entity_Id
 }
 
 type Adventure_Entity = Adventure_Entity_Base & ({
@@ -218,12 +229,15 @@ type Adventure_Entity = Adventure_Entity_Base & ({
     stock: Adventure_Merchant_Stock
 })
 
+type Adventure_Merchant = Find_By_Type<Adventure_Entity, Adventure_Entity_Type.merchant>
+
 type Adventure_Merchant_Stock = {
     cards: Adventure_Merchant_Card[]
     items: Adventure_Merchant_Item[]
 }
 
 type Adventure_Merchant_Entry_Base = {
+    entity_id: Adventure_Party_Entity_Id
     sold_out: boolean
     cost: number
 }
@@ -303,14 +317,14 @@ type Adventure_Party_Action = { current_head: number } & ({
     type: Adventure_Party_Action_Type.fetch
 } | {
     type: Adventure_Party_Action_Type.drag_item_on_hero
-    item_entity: Adventure_Item_Entity_Id
+    item_entity: Adventure_Party_Entity_Id
     party_slot: number
 } | {
     type: Adventure_Party_Action_Type.drag_item_on_bag
-    item_entity: Adventure_Item_Entity_Id
+    item_entity: Adventure_Party_Entity_Id
 } | {
     type: Adventure_Party_Action_Type.use_consumable
-    item_entity: Adventure_Item_Entity_Id
+    item_entity: Adventure_Party_Entity_Id
     party_slot: number
 })
 
@@ -324,22 +338,22 @@ type Adventure_Party_Response = {
     apply_to_head: number
 }
 
-type Adventure_Item = Adventure_Consumable_Item | Adventure_Wearable_Item
+type Adventure_Item = Adventure_Consumable_Item | Adventure_Equipment_Item
 
 type Adventure_Consumable_Item = {
     type: Adventure_Item_Type.consumable
-    entity_id: Adventure_Item_Entity_Id
+    entity_id: Adventure_Party_Entity_Id
     item_id: Adventure_Consumable_Item_Id
 }
 
-type Adventure_Wearable_Item = {
-    type: Adventure_Item_Type.wearable
-    entity_id: Adventure_Item_Entity_Id
-    item_id: Adventure_Wearable_Item_Id
+type Adventure_Equipment_Item = {
+    type: Adventure_Item_Type.equipment
+    entity_id: Adventure_Party_Entity_Id
+    item_id: Adventure_Equipment_Item_Id
     modifier: Modifier
 }
 
-type Adventure_Hero_Inventory = Array<Adventure_Wearable_Item | undefined> // Sparse array
+type Adventure_Hero_Inventory = Array<Adventure_Equipment_Item | undefined> // Sparse array
 
 type Party_Snapshot = {
     currency: number

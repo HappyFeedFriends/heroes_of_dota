@@ -33,6 +33,7 @@ declare const enum Api_Request_Type {
     submit_adventure_player_movement = 205,
     interact_with_adventure_entity = 206,
     act_on_adventure_party = 207,
+    purchase_merchant_item = 208,
 
     battle_cheat = 50,
     map_cheat = 51,
