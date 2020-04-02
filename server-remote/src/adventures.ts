@@ -18,11 +18,6 @@ export const enum Party_Event_Type {
     add_currency
 }
 
-export const enum Purchase_Type {
-    card,
-    item
-}
-
 export type Adventure = {
     id: Adventure_Id
     rooms: Adventure_Room[]
@@ -88,27 +83,9 @@ type Party_Event = {
     amount: number
 }
 
-type Merchant_Purchase = {
-    type: Purchase_Type.item
-    item: Adventure_Merchant_Item
-    updated_merchant: Adventure_Entity
-} | {
-    type: Purchase_Type.card
-    card: Adventure_Merchant_Card
-    updated_merchant: Adventure_Entity
-}
-
 type Purchase_Search_Result = {
     merchant: Adventure_Merchant
     found: Available_Purchase
-}
-
-type Available_Purchase = {
-    type: Purchase_Type.item
-    item: Adventure_Merchant_Item
-} | {
-    type: Purchase_Type.card
-    card: Adventure_Merchant_Card
 }
 
 type Entity_Interaction_Result = {
@@ -745,32 +722,6 @@ function persist_adventure_to_file_system(adventure: Adventure) {
     console.log(`Saving ${path}`);
 
     writeFileSync(path, JSON.stringify(file, (key, value) => value, "    "));
-}
-
-function find_available_purchase_in_merchant(merchant: Adventure_Merchant, purchase_id: Adventure_Party_Entity_Id): Available_Purchase | undefined {
-    const card = merchant.stock.cards.find(card => card.entity_id == purchase_id);
-    if (card) {
-        if (!card.sold_out) {
-            return {
-                type: Purchase_Type.card,
-                card: card,
-            };
-        }
-
-        return;
-    }
-
-    const item = merchant.stock.items.find(item => item.entity_id == purchase_id);
-    if (item) {
-        if (!item.sold_out) {
-            return {
-                type: Purchase_Type.item,
-                item: item,
-            };
-        }
-
-        return;
-    }
 }
 
 export function find_available_purchase_by_id(adventure: Ongoing_Adventure, merchant_id: Adventure_World_Entity_Id, purchase_id: Adventure_Party_Entity_Id): Purchase_Search_Result | undefined {

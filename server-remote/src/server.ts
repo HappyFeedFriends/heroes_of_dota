@@ -32,7 +32,6 @@ import {
     Adventure_Room_Type,
     Party_Event_Type,
     Ongoing_Adventure,
-    Purchase_Type,
     load_all_adventures,
     adventure_by_id,
     room_by_id,
@@ -47,14 +46,6 @@ import {
 import {
     Map_Player_Party,
     push_party_change,
-    change_party_add_creep,
-    change_party_add_hero,
-    change_party_add_spell,
-    change_party_change_health,
-    change_party_empty_slot,
-    change_party_set_currency,
-    find_empty_party_slot_index,
-    change_party_add_item,
     act_on_adventure_party,
     adventure_equipment_item_id_to_item,
     adventure_consumable_item_id_to_item
@@ -1349,24 +1340,24 @@ register_api_handler(Api_Request_Type.purchase_merchant_item, req => {
 
                 switch (card.type) {
                     case Adventure_Merchant_Card_Type.hero: {
-                        push_party_change(party, change_party_add_hero(free_slot, card.hero));
+                        push_party_change(party, change_party_add_hero(free_slot, card.hero, Adventure_Acquire_Reason.purchase));
                         break;
                     }
 
                     case Adventure_Merchant_Card_Type.creep: {
-                        push_party_change(party, change_party_add_creep(free_slot, card.creep));
+                        push_party_change(party, change_party_add_creep(free_slot, card.creep, Adventure_Acquire_Reason.purchase));
                         break;
                     }
 
                     case Adventure_Merchant_Card_Type.spell: {
-                        push_party_change(party, change_party_add_spell(free_slot, card.spell));
+                        push_party_change(party, change_party_add_spell(free_slot, card.spell, Adventure_Acquire_Reason.purchase));
                         break;
                     }
 
                     default: unreachable(card);
                 }
 
-                push_party_change(party, change_party_set_currency(party.currency - card.cost));
+                push_party_change(party, change_party_set_currency(party.currency - card.cost, true));
 
                 break;
             }
@@ -1376,7 +1367,7 @@ register_api_handler(Api_Request_Type.purchase_merchant_item, req => {
                 if (item.cost > party.currency) return;
 
                 push_party_change(party, change_party_add_item(item.data));
-                push_party_change(party, change_party_set_currency(party.currency - item.cost));
+                push_party_change(party, change_party_set_currency(party.currency - item.cost, true));
 
                 break;
             }

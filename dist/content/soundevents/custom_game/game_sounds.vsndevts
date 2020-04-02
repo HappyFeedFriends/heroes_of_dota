@@ -258,18 +258,19 @@
     adventure_popup_open = {
         type = "dota_src1_2d"
         vsnd_files = "sounds/ui/ui_message_popup_slow_01.vsnd"
-        volume  = 0.3
+        volume = 0.3
     }
 
     adventure_popup_ok = {
         type = "dota_src1_2d"
         vsnd_files = "sounds/ui/npe_objective_complete.vsnd"
-        volume  = 0.3
+        volume = 0.3
     }
 
     click_simple = {
         type = "dota_src1_2d"
         vsnd_files = "sounds/ui/buttonclick.vsnd"
+        volume = 0.3
     }
 
     gold_increment = {
@@ -279,5 +280,20 @@
             "sounds/npc/courier/lockjaw/lockjaw_run_gold_02.vsnd",
             "sounds/npc/courier/lockjaw/lockjaw_run_gold_03.vsnd"
         ]
+    }
+
+    merchant_buy = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/ui/buy.vsnd"
+    }
+
+    merchant_open = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/ui/shop_available.vsnd"
+    }
+
+    popup_slide_down = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/ui/shop_slide_down.vsnd"
     }
 }

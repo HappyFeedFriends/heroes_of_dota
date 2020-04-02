@@ -526,7 +526,7 @@ function adventure_try_purchase_merchant_item(game: Game, merchant_id: Adventure
 
     if (!purchase) return;
 
-    game.adventure.entities[entity_index] = update_entity_state(entity, purchase.updated_entity);
+    game.adventure.entities[entity_index].base = purchase.updated_entity;
 
     fire_event(To_Client_Event_Type.adventure_receive_party_changes, {
         changes: purchase.party_updates,

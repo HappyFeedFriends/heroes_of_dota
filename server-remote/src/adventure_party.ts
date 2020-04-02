@@ -24,10 +24,6 @@ type Spell_Slot_To_Card = {
     card: Card_Id
 }
 
-export function find_empty_party_slot_index(party: Map_Player_Party): number {
-    return party.slots.findIndex(slot => slot.type == Adventure_Party_Slot_Type.empty);
-}
-
 export function act_on_adventure_party(party: Map_Player_Party, action: Adventure_Party_Action): Adventure_Party_Response {
     consume_adventure_party_action(party, action, change => push_party_change(party, change));
 
@@ -60,73 +56,6 @@ export function push_party_change(party: Map_Player_Party, change: Adventure_Par
     party.changes.push(change);
 
     return change;
-}
-
-export function change_party_empty_slot(slot: number): Adventure_Party_Change {
-    return {
-        type: Adventure_Party_Change_Type.set_slot,
-        slot_index: slot,
-        slot: { type: Adventure_Party_Slot_Type.empty }
-    }
-}
-
-export function change_party_add_hero(slot: number, hero: Hero_Type): Adventure_Party_Change {
-    return {
-        type: Adventure_Party_Change_Type.set_slot,
-        slot_index: slot,
-        slot: {
-            type: Adventure_Party_Slot_Type.hero,
-            hero: hero,
-            base_health: hero_definition_by_type(hero).health,
-            items: []
-        }
-    }
-}
-
-export function change_party_add_creep(slot: number, creep: Creep_Type): Adventure_Party_Change {
-    return {
-        type: Adventure_Party_Change_Type.set_slot,
-        slot_index: slot,
-        slot: {
-            type: Adventure_Party_Slot_Type.creep,
-            creep: creep,
-            health: creep_definition_by_type(creep).health
-        }
-    }
-}
-
-export function change_party_add_spell(slot: number, spell: Spell_Id): Adventure_Party_Change {
-    return {
-        type: Adventure_Party_Change_Type.set_slot,
-        slot_index: slot,
-        slot: {
-            type: Adventure_Party_Slot_Type.spell,
-            spell: spell
-        }
-    }
-}
-
-export function change_party_change_health(slot: number, health: number, reason: Adventure_Health_Change_Reason): Adventure_Party_Change {
-    return {
-        type: Adventure_Party_Change_Type.set_health,
-        slot_index: slot,
-        health: health,
-        reason: reason
-    }
-}
-
-export function change_party_add_item(item: Adventure_Item): Adventure_Party_Change {
-    return {
-        type: Adventure_Party_Change_Type.add_item_to_bag,
-        item: item
-    }
-}
-
-export function change_party_set_currency(amount: number): Adventure_Party_Change {
-    return {
-        type: Adventure_Party_Change_Type.set_currency_amount,
-        amount: amount
-    }
 }
 
 export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_Entity_Id, item_id: Adventure_Equipment_Item_Id): Adventure_Item {

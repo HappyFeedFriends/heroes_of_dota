@@ -151,6 +151,11 @@ function show_generic_error(error: string) {
     GameEvents.SendEventClientSide("dota_hud_error_message", { reason: 80, message: error });
 }
 
+function animate_immediately(panel: Panel, css_class: string) {
+    panel.RemoveClass(css_class);
+    panel.AddClass(css_class);
+}
+
 function clean_up_particles_after_reload() {
     if (!Game.IsInToolsMode()) {
         return;

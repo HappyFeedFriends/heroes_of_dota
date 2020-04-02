@@ -189,15 +189,12 @@ function show_ability_use_error_ui(caster: Unit, ability_id: Ability_Id, error: 
 
     if (error.kind == Ability_Use_Error.silenced) {
         const row = control_panel.hero_rows.find(row => row.unit_id == caster.id);
-
         if (!row) return;
 
         const button = row.ability_buttons.find(button => button.ability == ability_id);
-
         if (!button) return;
 
-        button.overlay.RemoveClass("animate_silence_try");
-        button.overlay.AddClass("animate_silence_try");
+        animate_immediately(button.overlay, "animate_silence_try");
     }
 }
 

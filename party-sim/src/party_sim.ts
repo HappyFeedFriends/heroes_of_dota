@@ -1,3 +1,16 @@
+const enum Purchase_Type {
+    card,
+    item
+}
+
+type Available_Purchase = {
+    type: Purchase_Type.item
+    item: Adventure_Merchant_Item
+} | {
+    type: Purchase_Type.card
+    card: Adventure_Merchant_Card
+}
+
 function compute_adventure_hero_inventory_field_bonus(inventory: Adventure_Hero_Inventory, field: Modifier_Field) {
     let bonus = 0;
 
@@ -16,6 +29,158 @@ function compute_adventure_hero_inventory_field_bonus(inventory: Adventure_Hero_
     }
 
     return bonus;
+}
+
+function find_available_purchase_in_merchant(merchant: Adventure_Merchant, purchase_id: Adventure_Party_Entity_Id): Available_Purchase | undefined {
+    const card = merchant.stock.cards.find(card => card.entity_id == purchase_id);
+    if (card) {
+        if (!card.sold_out) {
+            return {
+                type: Purchase_Type.card,
+                card: card,
+            };
+        }
+
+        return;
+    }
+
+    const item = merchant.stock.items.find(item => item.entity_id == purchase_id);
+    if (item) {
+        if (!item.sold_out) {
+            return {
+                type: Purchase_Type.item,
+                item: item,
+            };
+        }
+
+        return;
+    }
+}
+
+function find_empty_party_slot_index(party: Party_Snapshot): number {
+    return party.slots.findIndex(slot => slot.type == Adventure_Party_Slot_Type.empty);
+}
+
+function change_party_empty_slot(slot: number): Adventure_Party_Change {
+    return {
+        type: Adventure_Party_Change_Type.set_slot,
+        slot_index: slot,
+        slot: { type: Adventure_Party_Slot_Type.empty },
+        reason: Adventure_Acquire_Reason.none
+    }
+}
+
+function change_party_add_hero(slot: number, hero: Hero_Type, reason = Adventure_Acquire_Reason.none): Adventure_Party_Change {
+    return {
+        type: Adventure_Party_Change_Type.set_slot,
+        slot_index: slot,
+        slot: {
+            type: Adventure_Party_Slot_Type.hero,
+            hero: hero,
+            base_health: hero_definition_by_type(hero).health,
+            items: []
+        },
+        reason: reason
+    }
+}
+
+function change_party_add_creep(slot: number, creep: Creep_Type, reason = Adventure_Acquire_Reason.none): Adventure_Party_Change {
+    return {
+        type: Adventure_Party_Change_Type.set_slot,
+        slot_index: slot,
+        slot: {
+            type: Adventure_Party_Slot_Type.creep,
+            creep: creep,
+            health: creep_definition_by_type(creep).health
+        },
+        reason: reason
+    }
+}
+
+function change_party_add_spell(slot: number, spell: Spell_Id, reason = Adventure_Acquire_Reason.none): Adventure_Party_Change {
+    return {
+        type: Adventure_Party_Change_Type.set_slot,
+        slot_index: slot,
+        slot: {
+            type: Adventure_Party_Slot_Type.spell,
+            spell: spell
+        },
+        reason: reason
+    }
+}
+
+function change_party_change_health(slot: number, health: number, reason: Adventure_Health_Change_Reason): Adventure_Party_Change {
+    return {
+        type: Adventure_Party_Change_Type.set_health,
+        slot_index: slot,
+        health: health,
+        reason: reason
+    }
+}
+
+function change_party_add_item(item: Adventure_Item, reason = Adventure_Acquire_Reason.none): Adventure_Party_Change {
+    return {
+        type: Adventure_Party_Change_Type.add_item_to_bag,
+        item: item,
+        reason: reason
+    }
+}
+
+function change_party_set_currency(amount: number, from_purchase = false): Adventure_Party_Change {
+    return {
+        type: Adventure_Party_Change_Type.set_currency_amount,
+        amount: amount,
+        from_purchase: from_purchase
+    }
+}
+
+function available_purchase_to_party_changes(party: Party_Snapshot, available: Available_Purchase) {
+    switch (available.type) {
+        case Purchase_Type.card: {
+            const free_slot = find_empty_party_slot_index(party);
+            if (free_slot == -1) return;
+
+            const card = available.card;
+            if (card.cost > party.currency) return;
+
+            const result: Adventure_Party_Change[] = [];
+
+            switch (card.type) {
+                case Adventure_Merchant_Card_Type.hero: {
+                    result.push(change_party_add_hero(free_slot, card.hero, Adventure_Acquire_Reason.purchase));
+                    break;
+                }
+
+                case Adventure_Merchant_Card_Type.creep: {
+                    result.push(change_party_add_creep(free_slot, card.creep, Adventure_Acquire_Reason.purchase));
+                    break;
+                }
+
+                case Adventure_Merchant_Card_Type.spell: {
+                    result.push(change_party_add_spell(free_slot, card.spell, Adventure_Acquire_Reason.purchase));
+                    break;
+                }
+
+                default: unreachable(card);
+            }
+
+            result.push(change_party_set_currency(party.currency - card.cost, true));
+
+            return result;
+        }
+
+        case Purchase_Type.item: {
+            const item = available.item;
+            if (item.cost > party.currency) return;
+
+            return [
+                change_party_add_item(item.data),
+                change_party_set_currency(party.currency - item.cost, true)
+            ];
+        }
+
+        default: unreachable(available);
+    }
 }
 
 function is_party_hero_dead(slot: Find_By_Type<Adventure_Party_Slot, Adventure_Party_Slot_Type.hero>) {

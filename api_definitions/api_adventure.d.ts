@@ -78,6 +78,11 @@ declare const enum Adventure_Health_Change_Reason {
     shrine = 2
 }
 
+declare const enum Adventure_Acquire_Reason {
+    none = 0,
+    purchase = 1,
+}
+
 declare const enum Adventure_Merchant_Model {
     smith = 0,
     meepo = 1,
@@ -284,6 +289,7 @@ type Adventure_Party_Change = {
     type: Adventure_Party_Change_Type.set_slot
     slot: Adventure_Party_Slot
     slot_index: number
+    reason: Adventure_Acquire_Reason
 } | {
     type: Adventure_Party_Change_Type.set_health
     slot_index: number
@@ -292,6 +298,7 @@ type Adventure_Party_Change = {
 } | {
     type: Adventure_Party_Change_Type.add_item_to_bag
     item: Adventure_Item
+    reason: Adventure_Acquire_Reason
 } | {
     type: Adventure_Party_Change_Type.move_item
     source: Adventure_Item_Container
@@ -302,6 +309,7 @@ type Adventure_Party_Change = {
 } | {
     type: Adventure_Party_Change_Type.set_currency_amount
     amount: number
+    from_purchase: boolean
 }
 
 type Adventure_Item_Container = {

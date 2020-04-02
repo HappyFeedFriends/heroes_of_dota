@@ -142,6 +142,22 @@ type Bag_Item_UI = {
     panel: Panel
 }
 
+type Purchasable = {
+    sold_out: boolean
+    cost: number
+    entity_id: Adventure_Party_Entity_Id
+}
+
+type Merchant_Popup = {
+    visible: boolean
+    purchasable_elements: Purchasable_Element[]
+}
+
+type Purchasable_Element = {
+    root: Panel
+    purchasable: Purchasable
+}
+
 const party: Party_UI = {
     currency: 0,
     bag: {
@@ -169,6 +185,11 @@ const entity_name: Entity_Name_UI = {
     last_followed_at: 0,
     previous_screen_x: 0,
     previous_screen_y: 0
+};
+
+const merchant_popup: Merchant_Popup = {
+    visible: false,
+    purchasable_elements: []
 };
 
 const entities: Physical_Adventure_Entity[] = [];
@@ -645,8 +666,15 @@ function reinitialize_adventure_ui(slots: number) {
 
     party.slots = [];
 
+    party.base_snapshot.slots = [];
+    party.base_snapshot.currency = 0;
+    party.base_snapshot.bag = [];
+
     for (; slots > 0; slots--) {
         party.slots.push(create_adventure_empty_slot(card_container));
+        party.base_snapshot.slots.push({
+            type: Adventure_Party_Slot_Type.empty
+        });
     }
 }
 
@@ -741,21 +769,46 @@ function fixup_merchant_server_data(merchant: Adventure_Merchant) {
     merchant.stock.items = from_server_array(merchant.stock.items);
 }
 
-function show_merchant_popup(merchant: Adventure_Merchant) {
-    const popup = adventure_ui.merchant_popup;
+function update_merchant_popup_elements(popup: Merchant_Popup) {
+    const state = compute_finalized_local_party_state();
+
+    for (const element of popup.purchasable_elements) {
+        const purchasable = element.purchasable;
+
+        element.root.SetHasClass("sold_out", purchasable.sold_out);
+        element.root.SetHasClass("enough_gold", state.currency >= purchasable.cost);
+        element.root.enabled = !purchasable.sold_out;
+    }
+}
+
+function show_merchant_popup(popup: Merchant_Popup) {
+    const ui = adventure_ui.merchant_popup;
+
+    ui.window.SetHasClass("visible", true);
+    ui.background.SetHasClass("visible", true);
+
+    popup.visible = true;
+
+    Game.EmitSound("merchant_open");
+}
+
+function fill_merchant_popup(popup: Merchant_Popup, merchant: Adventure_Merchant) {
+    const ui = adventure_ui.merchant_popup;
 
     function hide_popup() {
-        popup.window.SetHasClass("visible", false);
-        popup.background.SetHasClass("visible", false);
+        ui.window.SetHasClass("visible", false);
+        ui.background.SetHasClass("visible", false);
+
+        Game.EmitSound("popup_slide_down");
+
+        popup.purchasable_elements = [];
+        popup.visible = false;
     }
 
-    popup.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
+    ui.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
 
-    popup.window.SetHasClass("visible", true);
-    popup.background.SetHasClass("visible", true);
-
-    popup.cards.RemoveAndDeleteChildren();
-    popup.items.RemoveAndDeleteChildren();
+    ui.cards.RemoveAndDeleteChildren();
+    ui.items.RemoveAndDeleteChildren();
 
     function cost_container(parent: Panel, cost: number) {
         const cost_container = $.CreatePanel("Panel", parent, "");
@@ -767,30 +820,10 @@ function show_merchant_popup(merchant: Adventure_Merchant) {
         label.text = cost.toString(10);
     }
 
-    function purchasable_card(type: string, cost: number): { root: Panel, card_container: Panel } {
-        const wrapper = $.CreatePanel("Panel", popup.cards, "");
-        wrapper.AddClass("card_with_cost_wrapper");
-
-        const card_with_cost = $.CreatePanel("Panel", wrapper, "card_with_cost");
-
-        const purchase_overlay = $.CreatePanel("Panel", wrapper, "");
-        purchase_overlay.AddClass("purchase_overlay");
-
-        const card_container = create_card_container_ui(card_with_cost, false);
-        card_container.AddClass(type);
-        card_container.AddClass("no_hover");
-
-        cost_container(card_with_cost, cost);
-
-        return {
-            root: wrapper,
-            card_container: card_container
-        };
-    }
-
     function purchasable_item(icon: string, cost: number) {
-        const wrapper = $.CreatePanel("Panel", popup.items, "");
+        const wrapper = $.CreatePanel("Panel", ui.items, "");
         wrapper.AddClass("item_with_cost_wrapper");
+        wrapper.AddClass("purchasable_wrapper");
 
         const item_with_cost = $.CreatePanel("Panel", wrapper, "item_with_cost");
 
@@ -806,65 +839,135 @@ function show_merchant_popup(merchant: Adventure_Merchant) {
         return wrapper;
     }
 
-    function register_purchase_handler(panel: Panel, purchase_id: Adventure_Party_Entity_Id) {
+    function register_purchase_handler(panel: Panel, purchasable: Purchasable) {
         const action = () => {
+            const local_state = compute_finalized_local_party_state();
+
+            if (purchasable.sold_out) return show_generic_error("Sold out");
+            if (purchasable.cost > local_state.currency) {
+                show_generic_error("Not enough gold");
+                animate_immediately(adventure_ui.currency_label, "animate_damage");
+                return;
+            }
+
+            const available = find_available_purchase_in_merchant(merchant, purchasable.entity_id);
+            if (!available) return;
+
+            if (available.type == Purchase_Type.card && find_empty_party_slot_index(local_state) == -1) {
+                return show_generic_error("Party is full");
+            }
+
+            const changes = available_purchase_to_party_changes(local_state, available);
+            if (!changes) return;
+
+            log(`Purchased ${enum_to_string(available.type)}`);
+
+            purchasable.sold_out = true;
+
+            const head_before = party.current_head;
+
+            log(`Merging local changes after ${head_before}`);
+            merge_adventure_party_changes(head_before, changes);
+            update_merchant_popup_elements(popup);
+
+            Game.EmitSound("merchant_buy");
+
             fire_event(To_Server_Event_Type.adventure_purchase_merchant_item, {
                 merchant_id: merchant.id,
-                purchase_id: purchase_id,
-                current_head: party.current_head
-            })
+                purchase_id: purchasable.entity_id,
+                current_head: head_before
+            });
         };
 
         panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, action);
         panel.SetPanelEvent(PanelEvent.ON_RIGHT_CLICK, action);
     }
 
-    for (const card of merchant.stock.cards) {
+    function purchasable_card(card: Adventure_Merchant_Card) {
+        function card_ui(type: string, cost: number): { root: Panel, card_container: Panel } {
+            const wrapper = $.CreatePanel("Panel", ui.cards, "");
+            wrapper.AddClass("card_with_cost_wrapper");
+            wrapper.AddClass("purchasable_wrapper");
+
+            const card_with_cost = $.CreatePanel("Panel", wrapper, "card_with_cost");
+
+            const purchase_overlay = $.CreatePanel("Panel", wrapper, "");
+            purchase_overlay.AddClass("purchase_overlay");
+
+            const card_container = create_card_container_ui(card_with_cost, false);
+            card_container.AddClass(type);
+            card_container.AddClass("no_hover");
+
+            cost_container(card_with_cost, cost);
+
+            return {
+                root: wrapper,
+                card_container: card_container
+            };
+        }
+
         switch (card.type) {
             case Adventure_Merchant_Card_Type.hero: {
-                const hero = card.hero;
-                const def = hero_definition_by_type(hero);
-                const { root, card_container } = purchasable_card("hero", card.cost);
-                create_hero_card_ui_base(card_container, hero, def.health, def.attack_damage, def.move_points);
-                register_purchase_handler(root, card.entity_id);
-
-                break;
+                const def = hero_definition_by_type(card.hero);
+                const { root, card_container } = card_ui("hero", card.cost);
+                create_hero_card_ui_base(card_container, card.hero, def.health, def.attack_damage, def.move_points);
+                return root;
             }
 
             case Adventure_Merchant_Card_Type.spell: {
-                const spell = card.spell;
-                const def = spell_definition_by_id(spell);
-                const { root, card_container } = purchasable_card("spell", card.cost);
-                create_spell_card_ui_base(card_container, spell, get_spell_text(def));
-                register_purchase_handler(root, card.entity_id);
-
-                break;
+                const def = spell_definition_by_id(card.spell);
+                const { root, card_container } = card_ui("spell", card.cost);
+                create_spell_card_ui_base(card_container, card.spell, get_spell_text(def));
+                return root;
             }
 
             case Adventure_Merchant_Card_Type.creep: {
                 const creep = card.creep;
                 const def = creep_definition_by_type(creep);
-                const { root, card_container } = purchasable_card("creep", card.cost);
+                const { root, card_container } = card_ui("creep", card.cost);
                 create_unit_card_ui_base(card_container, get_creep_name(creep), get_creep_card_art(creep), def.health, def.attack_damage, def.move_points);
-                register_purchase_handler(root, card.entity_id);
-
-                break;
+                return root;
             }
 
             default: unreachable(card);
         }
     }
 
-    for (const item of merchant.stock.items) {
-        const container = purchasable_item(get_adventure_item_icon(item.data), item.cost);
-        register_purchase_handler(container, item.entity_id);
+    function compare_entries(a: Purchasable, b: Purchasable) {
+        if (a.cost == b.cost) {
+            return a.entity_id - b.entity_id;
+        }
+
+        return a.cost - b.cost;
     }
 
-    popup.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+    popup.purchasable_elements = [];
+
+    for (const card of merchant.stock.cards.sort(compare_entries)) {
+        const element = purchasable_card(card);
+        register_purchase_handler(element, card);
+
+        popup.purchasable_elements.push({
+            root: element,
+            purchasable: card
+        });
+    }
+
+    for (const item of merchant.stock.items.sort(compare_entries)) {
+        const container = purchasable_item(get_adventure_item_icon(item.data), item.cost);
+        register_purchase_handler(container, item);
+
+        popup.purchasable_elements.push({
+            root: container,
+            purchasable: item
+        });
+    }
+
+    ui.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
         hide_popup();
     });
 
-    popup.button_leave.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+    ui.button_leave.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
         Game.EmitSound("click_simple");
 
         hide_popup();
@@ -877,6 +980,8 @@ function show_entity_popup(entity: Adventure_Entity) {
     function hide_popup() {
         popup.window.SetHasClass("visible", false);
         popup.background.SetHasClass("visible", false);
+
+        Game.EmitSound("popup_slide_down");
     }
 
     popup.window.SetHasClass("visible", true);
@@ -929,16 +1034,17 @@ function changes_equal(left: Adventure_Party_Change, right: Adventure_Party_Chan
             const left_value = left[key];
             const right_value = right[key];
 
-            if (typeof left_value != typeof right_value) {
-                return false;
-            }
+            // if (typeof left_value != typeof right_value) {
+            //     return false;
+            // }
 
-            if (typeof left_value == "object") {
+            if (typeof left_value == "object" && typeof right_value == "object") {
                 const children_equal = objects_equal(left_value, right_value);
                 if (!children_equal) {
                     return false;
                 }
-            } else if (left_value !== right_value) {
+            // Non-strict comparison here due to panorama sending ints as strings and bools as ints...
+            } else if (left_value != right_value) {
                 return false;
             }
         }
@@ -1000,6 +1106,11 @@ function merge_adventure_party_changes(head_before_merge: number, changes: Adven
     }
 
     party.current_head = head_before_merge + changes.length;
+
+    if (party.changes.length > party.current_head - party.base_head) {
+        merge_conflict = true;
+    }
+
     party.changes.length = party.current_head - party.base_head;
 
     if (merge_conflict) {
@@ -1007,14 +1118,24 @@ function merge_adventure_party_changes(head_before_merge: number, changes: Adven
 
         log(`\tState restored from snapshot after merge conflict`);
     }
+
+    if (merchant_popup.visible) {
+        update_merchant_popup_elements(merchant_popup);
+    }
 }
 
-function restore_ui_state_from_party_state() {
+function compute_finalized_local_party_state() {
     const snapshot = copy_snapshot(party.base_snapshot);
 
     for (const change of party.changes) {
         collapse_party_change(snapshot, change);
     }
+
+    return snapshot;
+}
+
+function restore_ui_state_from_party_state() {
+    const snapshot = compute_finalized_local_party_state();
 
     reinitialize_adventure_ui(party.slots.length);
     fill_ui_from_snapshot(snapshot);
@@ -1024,12 +1145,7 @@ function restore_ui_state_from_party_state() {
 }
 
 function perform_adventure_party_action(action: Adventure_Party_Action) {
-    const predicted_local_state = copy_snapshot(party.base_snapshot);
-
-    for (const change of party.changes) {
-        collapse_party_change(predicted_local_state, change);
-    }
-
+    const predicted_local_state = compute_finalized_local_party_state();
     let predicted_changes = 0;
 
     consume_adventure_party_action(predicted_local_state, action, change => {
@@ -1253,20 +1369,30 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
 
             party.currency = change.amount;
 
-            return animate_integer(start_at, change.amount, 0.05, value => {
-                adventure_ui.currency_label.text = value.toString(10);
+            if (change.from_purchase) {
+                adventure_ui.currency_label.text = change.amount.toString(10);
+            } else {
+                return animate_integer(start_at, change.amount, 0.04, value => {
+                    adventure_ui.currency_label.text = value.toString(10);
 
-                if (direction == 1) {
-                    Game.EmitSound("gold_increment");
-                }
-            });
+                    if (direction == 1) {
+                        Game.EmitSound("gold_increment");
+                    }
+                });
+            }
+
+            break;
         }
 
         case Adventure_Party_Change_Type.set_slot: {
             const new_slot = set_adventure_party_slot(change.slot_index, change.slot);
             flash_panel(new_slot.container);
 
-            return fixed_duration(0.2);
+            if (change.reason == Adventure_Acquire_Reason.purchase) {
+                return proceed;
+            } else {
+                return fixed_duration(0.2);
+            }
         }
 
         case Adventure_Party_Change_Type.add_item_to_bag: {
@@ -1388,7 +1514,9 @@ function periodically_update_party_ui() {
 }
 
 function reset_party_state() {
+    party.currently_playing_a_change = false;
     party.currently_playing_change_index = 0;
+    party.next_change_promise = () => false;
     party.changes = [];
     party.current_head = 0;
     party.base_head = 0;
@@ -1541,13 +1669,16 @@ subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, e
 
     if (event.entity.type == Adventure_Entity_Type.merchant) {
         fixup_merchant_server_data(event.entity);
-        show_merchant_popup(event.entity);
+        fill_merchant_popup(merchant_popup, event.entity);
+        show_merchant_popup(merchant_popup);
+        update_merchant_popup_elements(merchant_popup);
     } else {
         show_entity_popup(event.entity);
     }
 });
 
 subscribe_to_custom_event(To_Client_Event_Type.adventure_receive_party_changes, event => {
+    log(`Merging remote changes from event`);
     merge_adventure_party_changes(event.current_head, from_server_array(event.changes));
 });
 

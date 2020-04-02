@@ -470,6 +470,8 @@
 
       .purchase_overlay {
         background-color: #ffff0008;
+        transition-property: background-color;
+        transition-duration: 0.05s;
         width: 100%;
         height: 100%;
         border-radius: 2px;
@@ -500,13 +502,28 @@
         }
       }
 
+      .purchasable_wrapper {
+        &:hover:not(.sold_out) .purchase_overlay {
+          visibility: visible;
+        }
+
+        &:active .purchase_overlay {
+          background-color: #ffff0033;
+        }
+
+        &.sold_out {
+          saturation: 0.2;
+          wash-color: gray;
+        }
+      }
+
       #adventure_merchant_popup_cards {
         flow-children: right;
         align: center center;
 
         .card_with_cost_wrapper {
-          &:hover .purchase_overlay {
-            visibility: visible;
+          &.enough_gold:not(.sold_out) .card {
+            border: 1px solid #ffff59;
           }
 
           #card_with_cost {
@@ -521,8 +538,8 @@
         flow-children: right;
 
         .item_with_cost_wrapper {
-          &:hover .purchase_overlay {
-            visibility: visible;
+          &.enough_gold:not(.sold_out) #item_icon {
+            border: 1px solid #ffff59;
           }
 
           #item_with_cost {
