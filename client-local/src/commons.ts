@@ -178,3 +178,24 @@ function clean_up_particles_after_reload() {
 function log(message: string) {
     $.Msg(`[${Game.Time().toFixed(2)}] ${message}`);
 }
+
+function dot_product(a: XY, b: XY) {
+    return a.x * b.x + a.y * b.y;
+}
+
+function cross_product(a: XY, b: XY) {
+    return (a.x * b.y) - (a.y * b.x);
+}
+
+function sub(a: XY, b: XY) {
+    return xy(a.x - b.x, a.y - b.y);
+}
+
+function len(a: XY) {
+    return Math.sqrt(a.x * a.x + a.y * a.y);
+}
+
+function norm(a: XY) {
+    const l = len(a);
+    return xy(a.x / l, a.y / l);
+}

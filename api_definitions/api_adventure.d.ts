@@ -368,3 +368,7 @@ type Party_Snapshot = {
     slots: Adventure_Party_Slot[]
     bag: Adventure_Item[]
 }
+
+type Camera_Restriction_Zone = {
+    points: XY[]
+}

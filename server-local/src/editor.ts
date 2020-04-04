@@ -333,6 +333,14 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
             break;
         }
 
+        case Editor_Action_Type.set_camera_restriction_zones: {
+            game.adventure.camera_restriction_zones = from_client_array(event.zones).map(zone => ({
+                points: from_client_array(zone.points)
+            }));
+
+            break;
+        }
+
         default: unreachable(event);
     }
 }

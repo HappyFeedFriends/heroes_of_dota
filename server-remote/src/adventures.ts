@@ -28,6 +28,7 @@ type Adventure_Room = {
     id: Adventure_Room_Id
     entrance_location: XY
     entities: Adventure_Entity_Definition[]
+    camera_restriction_zones: Camera_Restriction_Zone[]
 }
 
 type File_Entity_Base = {
@@ -63,6 +64,12 @@ type Adventure_File = {
         }>
         other_entities?: Array<File_Entity_Base & {
             type: string
+        }>
+        camera_restriction_zones?: Array<{
+            points: Array<{
+                x: number
+                y: number
+            }>
         }>
     }>
 }
@@ -114,12 +121,13 @@ function get_next_entity_id(): Adventure_World_Entity_Id {
     return entity_id_auto_increment++ as Adventure_World_Entity_Id;
 }
 
-function room(id: number, type: Adventure_Room_Type, entrance: XY, entities: Adventure_Entity_Definition[]): Adventure_Room {
+function room(id: number, type: Adventure_Room_Type, entrance: XY, entities: Adventure_Entity_Definition[], zones: Camera_Restriction_Zone[]): Adventure_Room {
     return {
         id: id as Adventure_Room_Id,
         type: type,
         entrance_location: entrance,
-        entities: entities
+        entities: entities,
+        camera_restriction_zones: zones
     }
 }
 
@@ -587,7 +595,14 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             }
         }
 
-        rooms.push(room(source_room.id, Adventure_Room_Type.combat, entrance, entities));
+        const zones: Camera_Restriction_Zone[] = [];
+        for (const source_zone of source_room.camera_restriction_zones || []) {
+            zones.push({
+                points: source_zone.points
+            })
+        }
+
+        rooms.push(room(source_room.id, Adventure_Room_Type.combat, entrance, entities, zones));
     }
 
     return rooms;
@@ -607,6 +622,7 @@ function persist_adventure_to_file_system(adventure: Adventure) {
             const gold_bags: File_Room["gold_bags"] = [];
             const items: File_Room["items"] = [];
             const merchants: File_Room["merchants"] = [];
+            const camera_restriction_zones: File_Room["camera_restriction_zones"] = [];
 
             for (const entity of room.entities) {
                 const base: File_Entity_Base = {
@@ -705,6 +721,12 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                 }
             }
 
+            for (const zone of room.camera_restriction_zones) {
+                camera_restriction_zones.push({
+                    points: zone.points
+                });
+            }
+
             return {
                 id: room.id,
                 entrance: [room.entrance_location.x, room.entrance_location.y],
@@ -712,7 +734,8 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                 items: non_empty_or_none(items),
                 gold_bags: non_empty_or_none(gold_bags),
                 merchants: non_empty_or_none(merchants),
-                other_entities: non_empty_or_none(other_entities)
+                other_entities: non_empty_or_none(other_entities),
+                camera_restriction_zones: non_empty_or_none(camera_restriction_zones)
             };
         })
     };
@@ -894,6 +917,12 @@ export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventur
             if (merchant.definition.type != Adventure_Entity_Type.merchant) return;
 
             merchant.stock = populate_merchant_stock(ongoing, merchant.definition.stock);
+
+            break;
+        }
+
+        case Adventure_Editor_Action_Type.set_camera_restriction_zones: {
+            ongoing.current_room.camera_restriction_zones = action.zones;
 
             break;
         }

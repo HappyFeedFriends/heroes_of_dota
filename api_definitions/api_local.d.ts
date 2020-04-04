@@ -315,7 +315,7 @@ declare const enum Editor_Action_Type {
     playtest_battleground = 10,
     edit_item_data = 11,
     move_camera = 12,
-    reroll_merchant_stock = 13
+    set_camera_restriction_zones = 13
 }
 
 type Editor_Action = {
@@ -376,4 +376,7 @@ type Editor_Action = {
     type: Editor_Action_Type.edit_item_data
     entity_id: Adventure_World_Entity_Id
     item: Adventure_Item_Definition
+} | {
+    type: Editor_Action_Type.set_camera_restriction_zones
+    zones: Camera_Restriction_Zone[]
 }

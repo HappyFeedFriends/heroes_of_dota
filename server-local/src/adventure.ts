@@ -73,8 +73,13 @@ type Adventure_State = {
     entities: Adventure_World_Entity[]
     current_right_click_target?: Adventure_World_Entity
     ongoing_adventure_id: Ongoing_Adventure_Id
+    camera_restriction_zones: Camera_Restriction_Zone[]
+    camera_dummy: CDOTA_BaseNPC
+    last_ordered_dummy_to_move_at: number
     num_party_slots: number
 }
+
+const debug_camera = false;
 
 function adventure_equipment_item_id_to_model(id: Adventure_Equipment_Item_Id): string {
     switch (id) {
@@ -443,9 +448,119 @@ function process_player_adventure_order(game: Game, order: ExecuteOrderEvent): b
     return true;
 }
 
+function is_point_inside_zone(zone: Camera_Restriction_Zone, query: Vector) {
+    const points = zone.points.map(point => Vector(point.x, point.y));
+
+    function cross_2d(a: Vector, b: Vector) {
+        return (a.x * b.y) - (a.y * b.x);
+    }
+
+    for (let index = 0; index < points.length; index++) {
+        const this_point = points[index];
+        const next_point = points[(index + 1) % points.length];
+        const cross = cross_2d(next_point - this_point as Vector, query - next_point as Vector);
+
+        if (cross < 0) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function find_closest_point_on_zone_edge_for_point(zone: Camera_Restriction_Zone, query: Vector) {
+    const points = zone.points.map(point => Vector(point.x, point.y));
+
+    let closest_point: Vector | undefined = undefined;
+    let smallest_distance = 100_000;
+
+    for (let index = 0; index < points.length; index++) {
+        const edge_start = points[index];
+        const edge_end = points[(index + 1) % points.length];
+        const edge = edge_end - edge_start as Vector;
+        const edge_direction = edge.Normalized();
+        const segment = query - edge_start as Vector;
+        const projection = segment.Dot(edge_direction);
+
+        let projected_onto_edge: Vector;
+
+        if (projection <= 0) {
+            projected_onto_edge = edge_start;
+        } else if (projection >= edge.Length()) {
+            projected_onto_edge = edge_end;
+        } else {
+            projected_onto_edge = edge_start + edge_direction * projection as Vector
+        }
+
+        const perpendicular_length = (query - projected_onto_edge as Vector).Length();
+
+        if (perpendicular_length < smallest_distance) {
+            closest_point = projected_onto_edge;
+            smallest_distance = perpendicular_length;
+        }
+    }
+
+    return closest_point;
+}
+
+function update_adventure_camera(adventure: Adventure_State, player: Main_Player) {
+    function get_desired_camera_position() {
+        const player_position = player.hero_unit.GetAbsOrigin();
+
+        for (const zone of adventure.camera_restriction_zones) {
+            if (is_point_inside_zone(zone, player_position)) {
+                const closest = find_closest_point_on_zone_edge_for_point(zone, player_position);
+
+                if (closest) {
+                    return closest;
+                }
+            }
+        }
+
+        return player_position;
+    }
+
+    const desired_camera_position = get_desired_camera_position();
+    const camera = adventure.camera_dummy;
+    camera.SetBaseMoveSpeed(player.hero_unit.GetBaseMoveSpeed());
+
+    if (GameRules.GetGameTime() - adventure.last_ordered_dummy_to_move_at > FrameTime() * 2) {
+        camera.MoveToPosition(desired_camera_position);
+        adventure.last_ordered_dummy_to_move_at = GameRules.GetGameTime();
+    }
+
+    if (debug_camera) {
+        const center = GetGroundPosition(desired_camera_position, undefined) + Vector(0, 0, 32) as Vector;
+        DebugDrawSphere(center, Vector(255, 0, 0), 128, 64, false, FrameTime());
+    }
+
+    const actual_camera_position = camera.GetAbsOrigin();
+    if ((actual_camera_position - desired_camera_position as Vector).Length2D() > 500) {
+        camera.SetAbsOrigin(desired_camera_position);
+    }
+}
+
+function draw_zones_debug(game: Game) {
+    for (const zone of game.adventure.camera_restriction_zones) {
+        const points = zone.points.map(point => GetGroundPosition(Vector(point.x, point.y), undefined));
+
+        for (let index = 0; index < points.length; index++) {
+            const this_point = points[index];
+            const next_point = points[(index + 1) % points.length];
+            DebugDrawLine(this_point, next_point, 255, 0, 0, false, 1);
+        }
+    }
+}
+
 function adventure_update_loop(game: Game) {
     while (true) {
         wait_until(() => game.state == Player_State.on_adventure);
+
+        if (debug_camera) {
+            draw_zones_debug(game);
+        }
+
+        update_adventure_camera(game.adventure, game.player);
 
         const right_click_target = game.adventure.current_right_click_target;
         if (right_click_target && (right_click_target.type == Adventure_Entity_Type.merchant || right_click_target.alive)) {

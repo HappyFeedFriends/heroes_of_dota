@@ -373,6 +373,7 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                     y: player.online.current_location.y
                 },
                 entities: ongoing_adventure.entities,
+                camera_restriction_zones: ongoing_adventure.current_room.camera_restriction_zones
             }
         }
 
@@ -1496,6 +1497,7 @@ function register_dev_handlers() {
             const current_room = state.ongoing_adventure.current_room;
 
             return {
+                camera_restriction_zones: current_room.camera_restriction_zones,
                 entrance_location: {
                     x: current_room.entrance_location.x,
                     y: current_room.entrance_location.y

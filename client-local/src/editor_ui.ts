@@ -44,12 +44,19 @@ const enum Battleground_Brush_Type {
     deployment
 }
 
+const enum Adventure_Selection_Type {
+    none,
+    entity,
+    camera_restriction
+}
+
 type Adventure_Editor = {
     type: Editor_Type.adventure
     selection: Adventure_Editor_Selection
     camera_height_index: number
     room_entrance_location: XY | undefined
     last_camera_position: XYZ
+    camera_restriction_zones: UI_Camera_Restriction_Zone[]
 }
 
 type Battleground_Editor = {
@@ -84,24 +91,15 @@ type Editor_Cell = Cell_Like & {
 type Editor = { type: Editor_Type.none } | Adventure_Editor | Battleground_Editor
 
 type Adventure_Editor_Selection = {
-    selected: false
+    type: Adventure_Selection_Type.none
 } | {
-    selected: true
+    type: Adventure_Selection_Type.entity
     id: Adventure_World_Entity_Id
-    type: Adventure_Entity_Type.enemy
     entity: EntityId
     particle: ParticleId
-    highlighted_creep_button?: Panel
 } | {
-    selected: true
-    type:
-        Adventure_Entity_Type.lost_creep |
-        Adventure_Entity_Type.shrine |
-        Adventure_Entity_Type.item_on_the_ground |
-        Adventure_Entity_Type.gold_bag |
-        Adventure_Entity_Type.merchant
-    id: Adventure_World_Entity_Id
-    entity: EntityId
+    type: Adventure_Selection_Type.camera_restriction
+    zone: UI_Camera_Restriction_Zone
     particle: ParticleId
 }
 
@@ -167,16 +165,22 @@ type Rect_Outline = {
     left: ParticleId
 }
 
+type UI_Camera_Restriction_Zone = {
+    points: XY[]
+    particles: ParticleId[]
+}
+
 let pinned_context_menu_position = xyz(0, 0, 0);
 let context_menu_particle: ParticleId | undefined = undefined;
 export let editor: Editor = { type: Editor_Type.none };
 
 const adventure_editor: Adventure_Editor = {
     type: Editor_Type.adventure,
-    selection: { selected: false },
+    selection: { type: Adventure_Selection_Type.none },
     camera_height_index: 4,
     room_entrance_location: undefined,
-    last_camera_position: xyz(0, 0, 0)
+    last_camera_position: xyz(0, 0, 0),
+    camera_restriction_zones: []
 };
 
 function text_button(parent: Panel, css_class: string, text: string, action: (button: Panel) => void) {
@@ -197,7 +201,7 @@ function brush_button(text: string, action: () => void) {
     return text_button(brushes_root, "brush_button", text, action);
 }
 
-function dispatch_editor_action(event: Editor_Action) {
+function dispatch_local_editor_action(event: Editor_Action) {
     fire_event(To_Server_Event_Type.editor_action, event);
 }
 
@@ -210,13 +214,16 @@ function update_editor_camera_height(editor: Editor) {
 }
 
 function drop_adventure_editor_selection(editor: Adventure_Editor) {
-    if (editor.selection.selected) {
-        Particles.DestroyParticleEffect(editor.selection.particle, false);
-        Particles.ReleaseParticleIndex(editor.selection.particle);
+    if (editor.selection.type == Adventure_Selection_Type.entity) {
+        destroy_fx(editor.selection.particle);
+    }
+
+    if (editor.selection.type == Adventure_Selection_Type.camera_restriction) {
+        destroy_fx(editor.selection.particle);
     }
 
     editor.selection = {
-        selected: false
+        type: Adventure_Selection_Type.none
     };
 
     entity_buttons.RemoveAndDeleteChildren();
@@ -454,21 +461,12 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
 }
 
 function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physical_Adventure_Entity) {
-    if (editor.selection.selected) {
+    if (editor.selection.type != Adventure_Selection_Type.none) {
         drop_adventure_editor_selection(editor);
     }
 
     const base = entity.base;
     const world_id = entity.world_entity_id;
-
-    function create_delete_button() {
-        entity_button("Delete", () => {
-            dispatch_editor_action({
-                type: Editor_Action_Type.delete_entity,
-                entity_id: base.id
-            })
-        }, "editor_entity_delete_button");
-    }
 
     function entity_name() {
         switch (base.type) {
@@ -495,31 +493,25 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
     const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
     selection_label.text = `Selected: ${name}`;
 
+    editor.selection = {
+        type: Adventure_Selection_Type.entity,
+        id: base.id,
+        entity: world_id,
+        particle: fx
+    };
+
     if (base.type == Adventure_Entity_Type.enemy) {
-        editor.selection = {
-            selected: true,
-            type: Adventure_Entity_Type.enemy,
-            id: base.id,
-            entity: world_id,
-            particle: fx
-        };
-
         create_adventure_enemy_menu_buttons(editor, entity, base, name);
-    } else {
-        editor.selection = {
-            selected: true,
-            type: base.type,
-            id: base.id,
-            entity: world_id,
-            particle: fx
-        };
-
-        if (base.type == Adventure_Entity_Type.merchant) {
-            create_adventure_merchant_buttons(editor, entity, base);
-        }
+    } else if (base.type == Adventure_Entity_Type.merchant) {
+        create_adventure_merchant_buttons(editor, entity, base);
     }
 
-    create_delete_button();
+    entity_button("Delete", () => {
+        dispatch_local_editor_action({
+            type: Editor_Action_Type.delete_entity,
+            entity_id: base.id
+        })
+    }, "editor_entity_delete_button");
 }
 
 function hide_editor_context_menu() {
@@ -596,6 +588,30 @@ function make_active_drag_state(drag_from: XY): Drag_State {
         },
         start_at: drag_from
     };
+}
+
+async function camera_restriction_zone_particles(points: XY[]): Promise<ParticleId[]> {
+    return Promise.all(
+        points.map(point => async_local_api_request(Local_Api_Request_Type.get_ground_z, point).then(ground => xyz(point.x, point.y, ground.z)))
+    ).then(points => {
+        const result: ParticleId[] = [];
+
+        for (let index = 0; index < points.length; index++) {
+            const a = points[index];
+            const b = points[(index + 1) % points.length];
+
+            const fx = Particles.CreateParticle("particles/ui/highlight_rope.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
+            Particles.SetParticleControl(fx, 0, [a.x, a.y, a.z + 32]);
+            Particles.SetParticleControl(fx, 1, [b.x, b.y, b.z + 32]);
+            Particles.SetParticleControl(fx, 2, color_red);
+
+            register_particle_for_reload(fx);
+
+            result.push(fx);
+        }
+
+        return result;
+    });
 }
 
 function update_editor_cells_outline(editor: Battleground_Editor, cells: Editor_Cell[], outline: ParticleId[], color: RGB = color_green) {
@@ -1074,7 +1090,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         });
 
         context_menu_button(`Teleport here`, () => {
-            dispatch_editor_action({
+            dispatch_local_editor_action({
                 type: Editor_Action_Type.teleport,
                 position: click
             })
@@ -1102,7 +1118,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
             button.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
                 hide_editor_context_menu();
 
-                dispatch_editor_action({
+                dispatch_local_editor_action({
                     type: Editor_Action_Type.create_entity,
                     definition: {
                         type: Adventure_Entity_Type.item_on_the_ground,
@@ -1137,7 +1153,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
 
         for (const [npc_name, npc_type] of enum_names_to_values<Npc_Type>()) {
             context_menu_button(`Create ${npc_name}`, () => {
-                dispatch_editor_action({
+                dispatch_local_editor_action({
                     type: Editor_Action_Type.create_entity,
                     definition: {
                         type: Adventure_Entity_Type.enemy,
@@ -1163,7 +1179,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
 
         function entity_button(name: string, definition: Adventure_Entity_Definition) {
             context_menu_button(snake_case_to_capitalized_words(name), () => {
-                dispatch_editor_action({
+                dispatch_local_editor_action({
                     type: Editor_Action_Type.create_entity,
                     definition: definition
                 })
@@ -1179,13 +1195,33 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         });
 
         context_menu_button(snake_case_to_capitalized_words(enum_to_string(Adventure_Entity_Type.merchant)), merchant_buttons);
+
+        context_menu_button("Camera restriction zone", async () => {
+            const offset = 150;
+            const points = graham_scan([
+                xy(click_world_position.x - offset, click_world_position.y - offset),
+                xy(click_world_position.x - offset, click_world_position.y + offset),
+                xy(click_world_position.x + offset, click_world_position.y + offset),
+                xy(click_world_position.x + offset, click_world_position.y - offset),
+            ]);
+
+            const new_zone: UI_Camera_Restriction_Zone = {
+                points: points,
+                particles: await camera_restriction_zone_particles(points)
+            };
+
+            editor.camera_restriction_zones.push(new_zone);
+
+            adventure_editor_select_camera_restriction_zone(editor, new_zone);
+            submit_adventure_camera_restriction_zones_to_server(editor);
+        });
     }
 
     function gold_bag_buttons(amount: number) {
         prepare_context_menu();
         context_menu_button("Back", standard_buttons);
         context_menu_button(`${amount} gold`, () => {
-            dispatch_editor_action({
+            dispatch_local_editor_action({
                 type: Editor_Action_Type.create_entity,
                 definition: {
                     type: Adventure_Entity_Type.gold_bag,
@@ -1209,7 +1245,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
 
         for (const [name, model] of enum_names_to_values<Adventure_Merchant_Model>()) {
             context_menu_button(snake_case_to_capitalized_words(name), () => {
-                dispatch_editor_action({
+                dispatch_local_editor_action({
                     type: Editor_Action_Type.create_entity,
                     definition: {
                         type: Adventure_Entity_Type.merchant,
@@ -1228,36 +1264,154 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         }
     }
 
-    if (editor.selection.selected) {
+    const selection = editor.selection;
+
+    if (selection.type == Adventure_Selection_Type.entity) {
         prepare_context_menu();
 
         context_menu_button(`Move here`, () => {
-            if (!editor.selection.selected) return;
-
-            dispatch_editor_action({
+            dispatch_local_editor_action({
                 type: Editor_Action_Type.set_entity_position,
-                entity_id: editor.selection.id,
+                entity_id: selection.id,
                 position: xy(click_world_position.x, click_world_position.y)
             });
         });
 
         context_menu_button(`Look here`, () => {
-            if (!editor.selection.selected) return;
-
-            const position = Entities.GetAbsOrigin(editor.selection.entity);
+            const position = Entities.GetAbsOrigin(selection.entity);
             const delta = [click_world_position.x - position[0], click_world_position.y - position[1]];
             const length = Math.sqrt(delta[0] * delta[0] + delta[1] * delta[1]);
             const facing = length > 0 ? [delta[0] / length, delta[1] / length, 0] : [1, 0, 0];
 
-            dispatch_editor_action({
+            dispatch_local_editor_action({
                 type: Editor_Action_Type.set_entity_facing,
-                entity_id: editor.selection.id,
+                entity_id: selection.id,
                 facing: xy(facing[0], facing[1])
             });
         });
     } else {
         standard_buttons();
     }
+}
+
+function find_camera_restriction_zone_under_cursor(editor: Adventure_Editor, cursor: XY) {
+    to_the_next_zone:
+    for (const zone of editor.camera_restriction_zones) {
+        const points = zone.points;
+
+        for (let index = 0; index < points.length; index++) {
+            const this_point = points[index];
+            const next_point = points[(index + 1) % points.length];
+            const cross = cross_product(sub(next_point, this_point), sub(cursor, next_point));
+
+            if (cross < 0) {
+                continue to_the_next_zone;
+            }
+        }
+
+        return zone;
+    }
+}
+
+function graham_scan(points: XY[]) {
+    const reference = (() => {
+        let corner_point = points[0];
+
+        for (const point of points) {
+            if (point.y < corner_point.y) {
+                corner_point = point;
+            } else if (point.y == corner_point.y && point.x < corner_point.x) {
+                corner_point = point;
+            }
+        }
+
+        return corner_point;
+    })();
+
+    function angle_from_reference(to_what: XY) {
+        const delta = sub(to_what, reference);
+        return Math.atan2(delta.y, delta.x);
+    }
+
+    const sorted = points.sort((a, b) => {
+        const angle_to_a = angle_from_reference(a);
+        const angle_to_b = angle_from_reference(b);
+
+        if (angle_to_a == angle_to_b) {
+            const distance_to_a = len(sub(a, reference));
+            const distance_to_b = len(sub(b, reference));
+
+            return distance_to_a - distance_to_b;
+        }
+
+        return angle_to_a - angle_to_b;
+    });
+
+    const stack = [
+        reference,
+        sorted[1]
+    ];
+
+    for (let index = 2; index < sorted.length; index++) {
+        const point = sorted[index];
+
+        while (stack.length > 1) {
+            const top = stack[stack.length - 1];
+            const next_to_top = stack[stack.length - 2];
+            const cross = cross_product(sub(top, next_to_top), sub(point, top));
+
+            if (cross >= 0) {
+                break;
+            }
+
+            stack.pop();
+        }
+
+        stack.push(point);
+    }
+
+    return stack;
+}
+
+function adventure_editor_select_camera_restriction_zone(editor: Adventure_Editor, zone: UI_Camera_Restriction_Zone) {
+    if (editor.selection.type != Adventure_Selection_Type.none) {
+        drop_adventure_editor_selection(editor);
+    }
+
+    const center = xy(
+        zone.points.map(xy => xy.x).reduce((prev, curr) => prev + curr) / zone.points.length,
+        zone.points.map(xy => xy.y).reduce((prev, curr) => prev + curr) / zone.points.length,
+    );
+
+    const name = `Camera restriction zone`;
+    const fx = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_WORLDORIGIN, 0);
+    Particles.SetParticleControl(fx, 0, [center.x, center.y, 256]);
+    register_particle_for_reload(fx);
+
+    editor.selection = {
+        type: Adventure_Selection_Type.camera_restriction,
+        zone: zone,
+        particle: fx
+    };
+
+    const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
+    selection_label.text = `Selected: ${name}`;
+
+    $.CreatePanel("Label", entity_buttons, "").text = "Shift + Left click to add points";
+    $.CreatePanel("Label", entity_buttons, "").text = "Shift + Right click to remove points";
+
+    entity_button("Delete", () => {
+        const zone_index = editor.camera_restriction_zones.findIndex(other => other == zone);
+        if (zone_index != -1) {
+            for (const particle of zone.particles) {
+                destroy_fx(particle);
+            }
+
+            editor.camera_restriction_zones.splice(zone_index, 1);
+            drop_adventure_editor_selection(editor);
+            submit_adventure_camera_restriction_zones_to_server(editor);
+        }
+    }, "editor_entity_delete_button");
 }
 
 // Returns if event should be consumed or not
@@ -1272,18 +1426,78 @@ export function adventure_editor_filter_mouse_click(editor: Adventure_Editor, ev
 
     hide_editor_context_menu();
 
-    if (button == MouseButton.LEFT) {
-        const entity_under_cursor = get_entity_under_cursor(GameUI.GetCursorPosition());
+    async function update_zone_points(zone: UI_Camera_Restriction_Zone, new_points: XY[]) {
+        new_points = graham_scan(new_points);
 
+        const new_particles = await camera_restriction_zone_particles(new_points);
+
+        zone.points = new_points;
+        zone.particles.forEach(destroy_fx);
+        zone.particles = new_particles;
+
+        submit_adventure_camera_restriction_zones_to_server(editor);
+    }
+
+    if (editor.selection.type == Adventure_Selection_Type.camera_restriction && GameUI.IsShiftDown()) {
+        const cursor_world = get_screen_world_position(GameUI.GetCursorPosition());
+        if (!cursor_world) return true;
+
+        const cursor_xy = xy(cursor_world.x, cursor_world.y);
+        const selected_zone = editor.selection.zone;
+
+        if (button == MouseButton.LEFT) {
+            let new_points = [...selected_zone.points];
+            new_points.push(cursor_xy);
+
+            update_zone_points(selected_zone, new_points);
+        } else if (button == MouseButton.RIGHT) {
+            let closest_point_index = -1;
+            let smallest_distance = Number.MAX_SAFE_INTEGER;
+
+            for (let index = 0; index < selected_zone.points.length; index++) {
+                const point = selected_zone.points[index];
+                const distance = len(sub(point, cursor_xy));
+
+                if (distance < smallest_distance) {
+                    closest_point_index = index;
+                    smallest_distance = distance;
+                }
+            }
+
+            if (selected_zone.points.length > 3 && closest_point_index != -1 && smallest_distance <= 200) {
+                const new_points = [...selected_zone.points];
+                new_points.splice(closest_point_index, 1);
+
+                update_zone_points(selected_zone, new_points);
+            }
+        }
+
+        return true;
+    }
+
+    if (button == MouseButton.LEFT) {
+        const cursor = GameUI.GetCursorPosition();
+        const entity_under_cursor = get_entity_under_cursor(cursor);
         if (entity_under_cursor != undefined) {
             const entity_data = find_adventure_entity_by_world_index(entity_under_cursor);
 
             if (entity_data) {
                 adventure_editor_select_entity(editor, entity_data);
+                return true;
             }
-        } else {
-            drop_adventure_editor_selection(editor);
         }
+
+        const cursor_world = get_screen_world_position(cursor);
+        if (cursor_world) {
+            const camera_zone = find_camera_restriction_zone_under_cursor(editor, xy(cursor_world.x, cursor_world.y));
+
+            if (camera_zone) {
+                adventure_editor_select_camera_restriction_zone(editor, camera_zone);
+                return true;
+            }
+        }
+
+        drop_adventure_editor_selection(editor);
 
         return true;
     }
@@ -1462,7 +1676,7 @@ function periodically_update_editor_ui() {
     $.Schedule(1 / 200, periodically_update_editor_ui);
 
     if (editor.type == Editor_Type.adventure) {
-        if (editor.selection.selected) {
+        if (editor.selection.type == Adventure_Selection_Type.entity) {
             if (!Entities.IsValidEntity(editor.selection.entity)) {
                 drop_adventure_editor_selection(editor);
             }
@@ -1513,7 +1727,7 @@ function periodically_update_editor_camera_state() {
 
     switch (editor.type) {
         case Editor_Type.adventure: {
-            dispatch_editor_action({
+            dispatch_local_editor_action({
                 type: Editor_Action_Type.set_camera,
                 camera: {
                     free: true
@@ -1530,7 +1744,7 @@ function periodically_update_editor_camera_state() {
         }
 
         case Editor_Type.battleground: {
-            dispatch_editor_action({
+            dispatch_local_editor_action({
                 type: Editor_Action_Type.set_camera,
                 camera: {
                     free: false,
@@ -1560,7 +1774,7 @@ function update_state_from_editor_mode(state: Player_State, editor: Editor) {
 }
 
 function update_adventure_editor_buttons(editor: Adventure_Editor) {
-    editor_button("Toggle map vision", () => dispatch_editor_action({
+    editor_button("Toggle map vision", () => dispatch_local_editor_action({
         type: Editor_Action_Type.toggle_map_vision
     }));
 
@@ -1863,7 +2077,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
 
         toolbar_button(`Playtest`, () => {
             exit_editor();
-            dispatch_editor_action({
+            dispatch_local_editor_action({
                 type: Editor_Action_Type.playtest_battleground,
                 enemy: enemy.id,
                 battleground: id
@@ -1895,7 +2109,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
             cleanup_current_editor();
             enter_adventure_editor();
             update_state_from_editor_mode(current_state, editor);
-            dispatch_editor_action({
+            dispatch_local_editor_action({
                 type: Editor_Action_Type.move_camera,
                 to: adventure_editor.last_camera_position
             });
@@ -1927,9 +2141,17 @@ function enter_adventure_editor() {
 
     api_request(Api_Request_Type.editor_get_room_details, {
         access_token: get_access_token()
-    }, response => {
+    }, async response => {
         if (editor.type == Editor_Type.adventure) {
             editor.room_entrance_location = response.entrance_location;
+            editor.camera_restriction_zones = await Promise.all(response.camera_restriction_zones.map(async zone => {
+                const new_zone: UI_Camera_Restriction_Zone = {
+                    points: zone.points,
+                    particles: await camera_restriction_zone_particles(zone.points)
+                };
+
+                return new_zone;
+            }));
         }
     });
 }
@@ -1937,7 +2159,7 @@ function enter_adventure_editor() {
 function cleanup_current_editor() {
     switch (editor.type) {
         case Editor_Type.battleground: {
-            dispatch_editor_action({
+            dispatch_local_editor_action({
                 type: Editor_Action_Type.submit_battleground,
                 origin: editor.grid_world_origin,
                 theme: editor.theme,
@@ -1952,6 +2174,10 @@ function cleanup_current_editor() {
         case Editor_Type.adventure: {
             drop_adventure_editor_selection(editor);
 
+            for (const zone of editor.camera_restriction_zones) {
+                zone.particles.forEach(destroy_fx);
+            }
+
             break;
         }
     }
@@ -1964,7 +2190,7 @@ function update_editor_buttons(state: Player_State) {
 
     if (state == Player_State.on_global_map) {
         for (const [name, id] of adventures) {
-            editor_button(`Adventure: ${name}`, () => dispatch_editor_action({
+            editor_button(`Adventure: ${name}`, () => dispatch_local_editor_action({
                 type: Editor_Action_Type.start_adventure,
                 adventure: id
             }));
@@ -1993,7 +2219,7 @@ function update_editor_buttons(state: Player_State) {
         }
 
         editor_button("Back to map", () => {
-            dispatch_editor_action({
+            dispatch_local_editor_action({
                 type: Editor_Action_Type.exit_adventure
             })
         });
@@ -2022,11 +2248,26 @@ function submit_editor_battleground_for_repaint(editor: Battleground_Editor) {
     const flattened_spawns: Battleground_Spawn[] = [];
 
     for_each_editor_spawn(editor.spawns, spawn => flattened_spawns.push(spawn));
-    dispatch_editor_action({
+    dispatch_local_editor_action({
         type: Editor_Action_Type.submit_battleground,
         origin: editor.grid_world_origin,
         spawns: flattened_spawns,
         theme: editor.theme
+    });
+}
+
+function submit_adventure_camera_restriction_zones_to_server(editor: Adventure_Editor) {
+    api_request(Api_Request_Type.editor_action, {
+        type: Adventure_Editor_Action_Type.set_camera_restriction_zones,
+        zones: editor.camera_restriction_zones.map(zone => ({
+            points: zone.points
+        })),
+        access_token: get_access_token()
+    }, () => {});
+
+    dispatch_local_editor_action({
+        type: Editor_Action_Type.set_camera_restriction_zones,
+        zones: editor.camera_restriction_zones
     });
 }
 

@@ -376,8 +376,9 @@ function process_state_transition(game: Game, current_state: Player_State, next_
 
         FindClearSpaceForUnit(game.player.hero_unit, start, true);
         game.player.hero_unit.Interrupt();
+        game.adventure.camera_dummy.SetAbsOrigin(game.player.hero_unit.GetAbsOrigin());
 
-        set_camera_location_on_unit_blocking(game.player.player_id, game.player.hero_unit);
+        set_camera_location_on_unit_blocking(game.player.player_id, game.adventure.camera_dummy);
 
         game.player.current_order_x = start.x;
         game.player.current_order_y = start.y;
@@ -395,6 +396,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
 
         game.adventure.ongoing_adventure_id = next_state.ongoing_adventure_id;
         game.adventure.num_party_slots = next_state.num_party_slots;
+        game.adventure.camera_restriction_zones = next_state.camera_restriction_zones;
 
         update_adventure_net_table(game.adventure);
     }
@@ -413,7 +415,7 @@ function try_submit_state_transition(game: Game, new_state: Player_State_Data) {
     }
 }
 
-function create_battle_camera_entity() {
+function create_camera_entity() {
     const camera_entity = CreateUnitByName("npc_dummy_unit", Vector(), true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
     camera_entity.AddNewModifier(camera_entity, undefined, "Modifier_Dummy", {});
 
@@ -508,7 +510,7 @@ function update_current_camera_target(game: Game) {
     } else if (game.state == Player_State.on_global_map) {
         current_camera_target.target = undefined;
     } else if (game.state == Player_State.on_adventure) {
-        current_camera_target.target = game.player.hero_unit;
+        current_camera_target.target = game.adventure.camera_dummy;
     }
 }
 
@@ -559,7 +561,7 @@ function game_loop() {
         neutrals: {}
     };
 
-    const camera_entity = create_battle_camera_entity();
+    const camera_entity = create_camera_entity();
 
     reinitialize_battle(Vector(), Battleground_Theme.forest, camera_entity);
 
@@ -593,7 +595,10 @@ function game_loop() {
         adventure: {
             entities: [],
             ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
-            num_party_slots: 0
+            num_party_slots: 0,
+            camera_restriction_zones: [],
+            camera_dummy: create_camera_entity(),
+            last_ordered_dummy_to_move_at: 0
         }
     };
 

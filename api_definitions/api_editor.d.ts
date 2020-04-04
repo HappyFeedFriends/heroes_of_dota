@@ -7,7 +7,8 @@ declare const enum Adventure_Editor_Action_Type {
     set_enemy_battleground = 5,
     set_item_data = 6,
     set_merchant_stock = 7,
-    reroll_merchant_stock = 8
+    reroll_merchant_stock = 8,
+    set_camera_restriction_zones = 9
 }
 
 type Editor_Handlers = {
@@ -18,6 +19,7 @@ type Editor_Handlers = {
     type: Api_Request_Type.editor_get_room_details
     request: {} & With_Token
     response: {
+        camera_restriction_zones: Camera_Restriction_Zone[]
         entrance_location: {
             x: number
             y: number
@@ -142,6 +144,9 @@ type Adventure_Editor_Action = {
 } | {
     type: Adventure_Editor_Action_Type.reroll_merchant_stock
     entity_id: Adventure_World_Entity_Id
+} | {
+    type: Adventure_Editor_Action_Type.set_camera_restriction_zones
+    zones: Camera_Restriction_Zone[]
 }
 
 declare const enum Spawn_Type {

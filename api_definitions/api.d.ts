@@ -106,6 +106,7 @@ type Player_State_On_Adventure = {
         y: number
     }
     entities: Adventure_Entity[]
+    camera_restriction_zones: Camera_Restriction_Zone[]
 }
 
 type Player_State_In_Battle = {
