@@ -51,7 +51,8 @@ declare const enum Api_Request_Type {
     editor_duplicate_battleground = 1009,
     editor_playtest_battleground = 1010,
     editor_get_merchant_stock = 1011,
-    editor_reroll_merchant_stock = 1012
+    editor_reroll_merchant_stock = 1012,
+    editor_list_rooms = 1013
 }
 
 declare const enum Map_Entity_Type {
@@ -101,12 +102,11 @@ type Player_State_On_Adventure = {
     current_room_id: Adventure_Room_Id
     ongoing_adventure_id: Ongoing_Adventure_Id
     num_party_slots: number
+    room: Adventure_Room_Data
     player_position: {
         x: number
         y: number
     }
-    entities: Adventure_Entity[]
-    camera_restriction_zones: Camera_Restriction_Zone[]
 }
 
 type Player_State_In_Battle = {

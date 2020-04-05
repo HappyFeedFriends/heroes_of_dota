@@ -341,6 +341,20 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
             break;
         }
 
+        case Editor_Action_Type.enter_adventure_room: {
+            const new_room = api_request(Api_Request_Type.enter_adventure_room, {
+                room_id: event.room_id,
+                access_token: game.token,
+                dedicated_server_key: get_dedicated_server_key()
+            });
+
+            if (!new_room) break;
+
+            enter_adventure_room(game.player, game.adventure, new_room);
+
+            break;
+        }
+
         default: unreachable(event);
     }
 }

@@ -368,12 +368,15 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                 current_room_id: ongoing_adventure.current_room.id,
                 ongoing_adventure_id: ongoing_adventure.id,
                 num_party_slots: player.online.party.slots.length,
+                room: {
+                    entities: ongoing_adventure.entities,
+                    camera_restriction_zones: ongoing_adventure.current_room.camera_restriction_zones,
+                    entrance: ongoing_adventure.current_room.entrance_location
+                },
                 player_position: {
                     x: player.online.current_location.x,
                     y: player.online.current_location.y
-                },
-                entities: ongoing_adventure.entities,
-                camera_restriction_zones: ongoing_adventure.current_room.camera_restriction_zones
+                }
             }
         }
 
@@ -1171,13 +1174,19 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
 
         if (!room) return;
 
+        const entities = create_room_entities(ongoing_adventure, room);;
+
         ongoing_adventure.current_room = room;
-        ongoing_adventure.entities = create_room_entities(ongoing_adventure, room);
+        ongoing_adventure.entities = entities;
 
         state.movement_history = [];
         state.current_location = room.entrance_location;
 
-        return {};
+        return {
+            entities: entities,
+            entrance: room.entrance_location,
+            camera_restriction_zones: room.camera_restriction_zones
+        };
     });
 });
 
@@ -1497,6 +1506,8 @@ function register_dev_handlers() {
             const current_room = state.ongoing_adventure.current_room;
 
             return {
+                id: current_room.id,
+                name: current_room.name,
                 camera_restriction_zones: current_room.camera_restriction_zones,
                 entrance_location: {
                     x: current_room.entrance_location.x,
@@ -1536,6 +1547,19 @@ function register_dev_handlers() {
             });
 
             return merchant.stock;
+        });
+    });
+
+    register_api_handler(Api_Request_Type.editor_list_rooms, req => {
+        return with_player_on_adventure(req, (player, state) => {
+            const rooms = state.ongoing_adventure.adventure.rooms.map(room => ({
+                id: room.id,
+                name: room.name
+            }));
+
+            return {
+                rooms
+            }
         });
     });
 

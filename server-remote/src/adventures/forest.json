@@ -1,6 +1,8 @@
 {
     "rooms": [
         {
+            "id": 0,
+            "name": "start",
             "entrance": [
                 -13878.25,
                 6870.33447265625
@@ -62,6 +64,11 @@
                     "type": "shrine"
                 }
             ]
+        },
+        {
+            "id": 1,
+            "name": "rest",
+            "entrance": [ 0, 0 ]
         }
     ]
 }

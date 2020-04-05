@@ -54,7 +54,8 @@ type Adventure_Editor = {
     type: Editor_Type.adventure
     selection: Adventure_Editor_Selection
     camera_height_index: number
-    room_entrance_location: XY | undefined
+    room_name: string
+    room_entrance_location: XY
     last_camera_position: XYZ
     camera_restriction_zones: UI_Camera_Restriction_Zone[]
 }
@@ -76,6 +77,7 @@ type Battleground_Editor = {
     brush: Battleground_Brush
     deployment_zones: Deployment_Zone[]
     enemy_data?: Editor_Enemy_Battleground_Data
+    previous_editor?: Editor
 }
 
 type Editor_Enemy_Battleground_Data = {
@@ -174,15 +176,6 @@ let pinned_context_menu_position = xyz(0, 0, 0);
 let context_menu_particle: ParticleId | undefined = undefined;
 export let editor: Editor = { type: Editor_Type.none };
 
-const adventure_editor: Adventure_Editor = {
-    type: Editor_Type.adventure,
-    selection: { type: Adventure_Selection_Type.none },
-    camera_height_index: 4,
-    room_entrance_location: undefined,
-    last_camera_position: xyz(0, 0, 0),
-    camera_restriction_zones: []
-};
-
 function text_button(parent: Panel, css_class: string, text: string, action: (button: Panel) => void) {
     const button = $.CreatePanel("Panel", parent, "");
     button.AddClass(css_class);
@@ -273,7 +266,7 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: P
             current_battleground_id: battleground,
             id: id,
             name: name
-        })
+        }, editor)
     });
 
     const menu = entity_menu();
@@ -1080,13 +1073,9 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         context_menu_button(`Create ...`, entity_creation_buttons);
 
         context_menu_button(`Set entrance to here`, () => {
-            api_request(Api_Request_Type.editor_action, {
-                type: Adventure_Editor_Action_Type.set_entrance,
-                entrance: click,
-                access_token: get_access_token()
-            }, () => {
-                editor.room_entrance_location = click;
-            });
+            editor.room_entrance_location = click;
+
+            submit_adventure_room_details_to_server(editor);
         });
 
         context_menu_button(`Teleport here`, () => {
@@ -1213,7 +1202,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
             editor.camera_restriction_zones.push(new_zone);
 
             adventure_editor_select_camera_restriction_zone(editor, new_zone);
-            submit_adventure_camera_restriction_zones_to_server(editor);
+            submit_adventure_room_details_to_server(editor);
         });
     }
 
@@ -1409,7 +1398,7 @@ function adventure_editor_select_camera_restriction_zone(editor: Adventure_Edito
 
             editor.camera_restriction_zones.splice(zone_index, 1);
             drop_adventure_editor_selection(editor);
-            submit_adventure_camera_restriction_zones_to_server(editor);
+            submit_adventure_room_details_to_server(editor);
         }
     }, "editor_entity_delete_button");
 }
@@ -1435,7 +1424,7 @@ export function adventure_editor_filter_mouse_click(editor: Adventure_Editor, ev
         zone.particles.forEach(destroy_fx);
         zone.particles = new_particles;
 
-        submit_adventure_camera_restriction_zones_to_server(editor);
+        submit_adventure_room_details_to_server(editor);
     }
 
     if (editor.selection.type == Adventure_Selection_Type.camera_restriction && GameUI.IsShiftDown()) {
@@ -1785,10 +1774,10 @@ function update_adventure_editor_buttons(editor: Adventure_Editor) {
     });
 }
 
-async function load_battleground_editor(for_battleground: Battleground_Id, enemy?: Editor_Enemy_Battleground_Data) {
+async function load_battleground_editor(for_battleground: Battleground_Id, enemy?: Editor_Enemy_Battleground_Data, previous_editor?: Editor) {
     const response = await async_api_request(Api_Request_Type.editor_get_battleground, { id: for_battleground });
 
-    enter_battleground_editor(for_battleground, response.battleground, enemy);
+    enter_battleground_editor(for_battleground, response.battleground, enemy, previous_editor);
 }
 
 function fill_battleground_editor_cells(grid_world_origin: XYZ, w: number, h: number): Editor_Cell[][] {
@@ -1831,7 +1820,7 @@ function battleground_editor_cleanup_cells(editor: Battleground_Editor) {
     }
 }
 
-function enter_battleground_editor(id: Battleground_Id, battleground: Battleground, enemy?: Editor_Enemy_Battleground_Data) {
+function enter_battleground_editor(id: Battleground_Id, battleground: Battleground, enemy?: Editor_Enemy_Battleground_Data, previous_editor?: Editor) {
     const grid_w = battleground.grid_size.x;
     const grid_h = battleground.grid_size.y;
 
@@ -1853,7 +1842,8 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         grid_world_origin: battleground.world_origin,
         brush: default_selection_brush,
         deployment_zones: battleground.deployment_zones,
-        enemy_data: enemy
+        enemy_data: enemy,
+        previous_editor: previous_editor
     };
 
     for (const spawn of battleground.spawns) {
@@ -1988,7 +1978,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
                 });
 
                 cleanup_current_editor();
-                enter_battleground_editor(response.id, response.battleground, enemy);
+                enter_battleground_editor(response.id, response.battleground, enemy, previous_editor);
             });
         }
 
@@ -1999,7 +1989,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         const response = await async_api_request(Api_Request_Type.editor_duplicate_battleground, { id: id });
 
         cleanup_current_editor();
-        load_battleground_editor(response.new_id, enemy);
+        load_battleground_editor(response.new_id, enemy, previous_editor);
     });
 
     dropdown_opening_button("Open", async () => {
@@ -2008,7 +1998,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         for (const bg of response.battlegrounds) {
             dropdown_button(`${bg.name} (#${bg.id}, ${bg.size.x}x${bg.size.y})`, () => {
                 cleanup_current_editor();
-                load_battleground_editor(bg.id, enemy);
+                load_battleground_editor(bg.id, enemy, previous_editor);
             });
         }
     });
@@ -2022,7 +2012,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
             }
 
             cleanup_current_editor();
-            await load_battleground_editor(0 as Battleground_Id, enemy);
+            await load_battleground_editor(0 as Battleground_Id, enemy, previous_editor);
         });
 
         dropdown_button("Cancel", () => close_dropdown());
@@ -2101,29 +2091,31 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
 
             toolbar_button(`Open current`, () => {
                 cleanup_current_editor();
-                load_battleground_editor(enemy.current_battleground_id, enemy);
+                load_battleground_editor(enemy.current_battleground_id, enemy, previous_editor);
             });
         }
+    }
 
+    if (previous_editor != undefined && previous_editor.type == Editor_Type.adventure) {
         toolbar_button("Back to adventure", () => {
             cleanup_current_editor();
-            enter_adventure_editor();
-            update_state_from_editor_mode(current_state, editor);
+            set_current_editor(previous_editor);
             dispatch_local_editor_action({
                 type: Editor_Action_Type.move_camera,
-                to: adventure_editor.last_camera_position
+                to: previous_editor.last_camera_position
             });
 
-            const entity = find_adventure_entity_by_id(enemy.id);
+            if (enemy) {
+                const entity = find_adventure_entity_by_id(enemy.id);
 
-            if (entity) {
-                adventure_editor_select_entity(adventure_editor, entity);
+                if (entity) {
+                    adventure_editor_select_entity(previous_editor, entity);
+                }
             }
         });
     }
 
     submit_editor_battleground_for_repaint(new_editor);
-    update_state_from_editor_mode(current_state, editor);
 }
 
 function set_current_editor(new_editor: Editor) {
@@ -2134,26 +2126,56 @@ function set_current_editor(new_editor: Editor) {
     toolbar_buttons_dropdown.RemoveAndDeleteChildren();
 
     editor = new_editor;
+
+    update_state_from_editor_mode(current_state, new_editor);
 }
 
-function enter_adventure_editor() {
-    set_current_editor(adventure_editor);
-
-    api_request(Api_Request_Type.editor_get_room_details, {
+async function enter_adventure_editor() {
+    const room = await async_api_request(Api_Request_Type.editor_get_room_details, {
         access_token: get_access_token()
-    }, async response => {
-        if (editor.type == Editor_Type.adventure) {
-            editor.room_entrance_location = response.entrance_location;
-            editor.camera_restriction_zones = await Promise.all(response.camera_restriction_zones.map(async zone => {
-                const new_zone: UI_Camera_Restriction_Zone = {
-                    points: zone.points,
-                    particles: await camera_restriction_zone_particles(zone.points)
-                };
-
-                return new_zone;
-            }));
-        }
     });
+
+    const room_list = await async_api_request(Api_Request_Type.editor_list_rooms, {
+        access_token: get_access_token()
+    });
+
+    const new_editor: Adventure_Editor = {
+        type: Editor_Type.adventure,
+        room_name: room.name,
+        selection: { type: Adventure_Selection_Type.none },
+        camera_height_index: 4,
+        room_entrance_location: room.entrance_location,
+        last_camera_position: xyz(0, 0, 0),
+        camera_restriction_zones: await Promise.all(room.camera_restriction_zones.map(async zone => {
+            const new_zone: UI_Camera_Restriction_Zone = {
+                points: zone.points,
+                particles: await camera_restriction_zone_particles(zone.points)
+            };
+
+            return new_zone;
+        }))
+    };
+
+    set_current_editor(new_editor);
+
+    $.CreatePanel("Label", toolbar_buttons, "").text = `Room #${room.id}`;
+
+    const name_input = $.CreatePanel("TextEntry", toolbar_buttons, "name_input");
+    name_input.text = room.name;
+    name_input.SetPanelEvent(PanelEvent.ON_TEXT_ENTRY_CHANGE, () => {
+        new_editor.room_name = name_input.text;
+
+        submit_adventure_room_details_to_server(new_editor);
+    });
+
+    for (const room of room_list.rooms) {
+        toolbar_button(`Go to room ${room.name}`, () => {
+            dispatch_local_editor_action({
+                type: Editor_Action_Type.enter_adventure_room,
+                room_id: room.id
+            });
+        });
+    }
 }
 
 function cleanup_current_editor() {
@@ -2200,11 +2222,10 @@ function update_editor_buttons(state: Player_State) {
     if (editor.type != Editor_Type.none) {
         editor_button("Exit editor", () => {
             exit_editor();
-            update_state_from_editor_mode(state, editor);
         });
     } else {
         editor_button("Battleground editor", () => {
-            load_battleground_editor(0 as Battleground_Id);
+            load_battleground_editor(0 as Battleground_Id, undefined, editor);
         });
     }
 
@@ -2214,7 +2235,6 @@ function update_editor_buttons(state: Player_State) {
         } else {
             editor_button("Adventure editor", () => {
                 enter_adventure_editor();
-                update_state_from_editor_mode(state, editor);
             });
         }
 
@@ -2256,9 +2276,11 @@ function submit_editor_battleground_for_repaint(editor: Battleground_Editor) {
     });
 }
 
-function submit_adventure_camera_restriction_zones_to_server(editor: Adventure_Editor) {
+function submit_adventure_room_details_to_server(editor: Adventure_Editor) {
     api_request(Api_Request_Type.editor_action, {
-        type: Adventure_Editor_Action_Type.set_camera_restriction_zones,
+        type: Adventure_Editor_Action_Type.set_room_details,
+        name: editor.room_name,
+        entrance: editor.room_entrance_location,
         zones: editor.camera_restriction_zones.map(zone => ({
             points: zone.points
         })),

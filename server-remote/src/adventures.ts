@@ -26,6 +26,7 @@ export type Adventure = {
 type Adventure_Room = {
     type: Adventure_Room_Type
     id: Adventure_Room_Id
+    name: string
     entrance_location: XY
     entities: Adventure_Entity_Definition[]
     camera_restriction_zones: Camera_Restriction_Zone[]
@@ -39,6 +40,7 @@ type File_Entity_Base = {
 type Adventure_File = {
     rooms: Array<{
         id: number
+        name: string
         entrance: [number, number]
         enemies?: Array<File_Entity_Base & {
             type: string
@@ -119,16 +121,6 @@ let entity_id_auto_increment = 0;
 
 function get_next_entity_id(): Adventure_World_Entity_Id {
     return entity_id_auto_increment++ as Adventure_World_Entity_Id;
-}
-
-function room(id: number, type: Adventure_Room_Type, entrance: XY, entities: Adventure_Entity_Definition[], zones: Camera_Restriction_Zone[]): Adventure_Room {
-    return {
-        id: id as Adventure_Room_Id,
-        type: type,
-        entrance_location: entrance,
-        entities: entities,
-        camera_restriction_zones: zones
-    }
 }
 
 function create_adventure_entity_from_definition(ongoing: Ongoing_Adventure, definition: Adventure_Entity_Definition): Adventure_Entity_With_Definition {
@@ -602,7 +594,14 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             })
         }
 
-        rooms.push(room(source_room.id, Adventure_Room_Type.combat, entrance, entities, zones));
+        rooms.push({
+            id: source_room.id as Adventure_Room_Id,
+            name: source_room.name,
+            type: Adventure_Room_Type.combat,
+            entrance_location: entrance,
+            entities: entities,
+            camera_restriction_zones: zones
+        });
     }
 
     return rooms;
@@ -729,6 +728,7 @@ function persist_adventure_to_file_system(adventure: Adventure) {
 
             return {
                 id: room.id,
+                name: room.name,
                 entrance: [room.entrance_location.x, room.entrance_location.y],
                 enemies: non_empty_or_none(enemies),
                 items: non_empty_or_none(items),
@@ -832,8 +832,11 @@ export function editor_create_entity(ongoing: Ongoing_Adventure, definition: Adv
 
 export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventure_Editor_Action) {
     switch (action.type) {
-        case Adventure_Editor_Action_Type.set_entrance: {
+        case Adventure_Editor_Action_Type.set_room_details: {
+            ongoing.current_room.name = action.name;
             ongoing.current_room.entrance_location = action.entrance;
+            ongoing.current_room.camera_restriction_zones = action.zones;
+
             break;
         }
 
@@ -917,12 +920,6 @@ export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventur
             if (merchant.definition.type != Adventure_Entity_Type.merchant) return;
 
             merchant.stock = populate_merchant_stock(ongoing, merchant.definition.stock);
-
-            break;
-        }
-
-        case Adventure_Editor_Action_Type.set_camera_restriction_zones: {
-            ongoing.current_room.camera_restriction_zones = action.zones;
 
             break;
         }

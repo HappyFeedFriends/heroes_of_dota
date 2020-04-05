@@ -315,7 +315,8 @@ declare const enum Editor_Action_Type {
     playtest_battleground = 10,
     edit_item_data = 11,
     move_camera = 12,
-    set_camera_restriction_zones = 13
+    set_camera_restriction_zones = 13,
+    enter_adventure_room = 14
 }
 
 type Editor_Action = {
@@ -379,4 +380,7 @@ type Editor_Action = {
 } | {
     type: Editor_Action_Type.set_camera_restriction_zones
     zones: Camera_Restriction_Zone[]
+} | {
+    type: Editor_Action_Type.enter_adventure_room
+    room_id: Adventure_Room_Id
 }

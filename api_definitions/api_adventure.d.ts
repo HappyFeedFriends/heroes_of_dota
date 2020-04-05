@@ -107,7 +107,7 @@ type Adventure_Handlers = {
     request: {
         room_id: Adventure_Room_Id
     } & With_Token & With_Private_Key
-    response: {}
+    response: Adventure_Room_Data
 } | {
     type: Api_Request_Type.exit_adventure
     request: {} & With_Token & With_Private_Key
@@ -162,6 +162,12 @@ type Adventure_Handlers = {
     response: {
         party_updates: Adventure_Party_Change[]
     }
+}
+
+type Adventure_Room_Data = {
+    entrance: XY
+    entities: Adventure_Entity[]
+    camera_restriction_zones: Camera_Restriction_Zone[]
 }
 
 type Adventure_Entity_Definition_Base = {

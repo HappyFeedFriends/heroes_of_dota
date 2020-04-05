@@ -842,6 +842,34 @@ function cleanup_adventure_entity(entity: Adventure_World_Entity) {
     }
 }
 
+function enter_adventure_room(player: Main_Player, adventure: Adventure_State, room: Adventure_Room_Data) {
+    const start = Vector(room.entrance.x, room.entrance.y);
+
+    FindClearSpaceForUnit(player.hero_unit, start, true);
+    player.hero_unit.Interrupt();
+    adventure.camera_dummy.SetAbsOrigin(player.hero_unit.GetAbsOrigin());
+
+    set_camera_location_on_unit_blocking(player.player_id, adventure.camera_dummy);
+
+    player.current_order_x = start.x;
+    player.current_order_y = start.y;
+    player.movement_history = [{
+        location_x: start.x,
+        location_y: start.y,
+        order_x: start.x,
+        order_y: start.y
+    }];
+
+    for (const entity of room.entities) {
+        print(`Create entity: ${enum_to_string(entity.type)}`);
+        adventure.entities.push(create_adventure_entity(entity));
+    }
+
+    adventure.camera_restriction_zones = room.camera_restriction_zones;
+
+    update_adventure_net_table(adventure);
+}
+
 function cleanup_adventure(adventure: Adventure_State) {
     for (const entity of adventure.entities) {
         cleanup_adventure_entity(entity);

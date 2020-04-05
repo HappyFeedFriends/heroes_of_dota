@@ -372,33 +372,10 @@ function process_state_transition(game: Game, current_state: Player_State, next_
     }
 
     if (next_state.state == Player_State.on_adventure) {
-        const start = Vector(next_state.player_position.x, next_state.player_position.y);
-
-        FindClearSpaceForUnit(game.player.hero_unit, start, true);
-        game.player.hero_unit.Interrupt();
-        game.adventure.camera_dummy.SetAbsOrigin(game.player.hero_unit.GetAbsOrigin());
-
-        set_camera_location_on_unit_blocking(game.player.player_id, game.adventure.camera_dummy);
-
-        game.player.current_order_x = start.x;
-        game.player.current_order_y = start.y;
-        game.player.movement_history = [{
-            location_x: start.x,
-            location_y: start.y,
-            order_x: start.x,
-            order_y: start.y
-        }];
-
-        for (const entity of next_state.entities) {
-            print(`Create entity: ${enum_to_string(entity.type)}`);
-            game.adventure.entities.push(create_adventure_entity(entity));
-        }
-
         game.adventure.ongoing_adventure_id = next_state.ongoing_adventure_id;
         game.adventure.num_party_slots = next_state.num_party_slots;
-        game.adventure.camera_restriction_zones = next_state.camera_restriction_zones;
 
-        update_adventure_net_table(game.adventure);
+        enter_adventure_room(game.player, game.adventure, next_state.room);
     }
 
     game.state = next_state.state;
