@@ -96,6 +96,11 @@ declare const enum Adventure_Merchant_Card_Type {
     creep = 2
 }
 
+declare const enum Adventure_Room_Type {
+    combat = 0,
+    rest = 1
+}
+
 type Adventure_Handlers = {
     type: Api_Request_Type.start_adventure
     request: {

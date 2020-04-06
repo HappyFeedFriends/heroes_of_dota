@@ -19,6 +19,7 @@ type Editor_Handlers = {
     request: {} & With_Token
     response: {
         id: Adventure_Room_Id
+        type: Adventure_Room_Type
         name: string
         exits: Array<Adventure_Room_Exit & {
             name: string
@@ -117,6 +118,7 @@ type Editor_Handlers = {
 
 type Adventure_Editor_Action = {
     type: Adventure_Editor_Action_Type.set_room_details
+    room_type: Adventure_Room_Type
     name: string
     zones: Camera_Restriction_Zone[]
     exits: Adventure_Room_Exit[]

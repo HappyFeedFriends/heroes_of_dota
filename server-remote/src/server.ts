@@ -29,7 +29,6 @@ import {
 } from "./battle";
 
 import {
-    Adventure_Room_Type,
     Party_Event_Type,
     Ongoing_Adventure,
     load_all_adventures,
@@ -1509,6 +1508,7 @@ function register_dev_handlers() {
 
             return {
                 id: current_room.id,
+                type: current_room.type,
                 name: current_room.name,
                 camera_restriction_zones: current_room.camera_restriction_zones,
                 entrance_location: {

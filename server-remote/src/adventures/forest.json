@@ -2,7 +2,8 @@
     "rooms": [
         {
             "id": 0,
-            "name": "start",
+            "name": "Forest Entrance",
+            "type": "combat",
             "entrance": [
                 -13878.25,
                 6870.33447265625
@@ -162,7 +163,8 @@
         },
         {
             "id": 1,
-            "name": "rest",
+            "name": "Resting place",
+            "type": "rest",
             "entrance": [
                 -15473.046875,
                 7291.80419921875

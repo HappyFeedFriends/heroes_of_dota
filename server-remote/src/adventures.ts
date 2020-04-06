@@ -5,11 +5,6 @@ import {Entry_With_Weight, Random} from "./random";
 
 const storage_dir_path = "src/adventures";
 
-export const enum Adventure_Room_Type {
-    combat = 0,
-    rest = 1
-}
-
 export const enum Party_Event_Type {
     add_creep,
     add_spell,
@@ -42,6 +37,7 @@ type Adventure_File = {
     rooms: Array<{
         id: number
         name: string
+        type: string
         entrance: [number, number]
         enemies?: Array<File_Entity_Base & {
             type: string
@@ -425,6 +421,12 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
     }
 
     for (const source_room of adventure.rooms) {
+        const room_type = try_string_to_enum_value(source_room.type, enum_names_to_values<Adventure_Room_Type>());
+        if (room_type == undefined) {
+            console.error(`Room type ${source_room.type} not found while parsing ${file_path}`);
+            return;
+        }
+
         const entrance = {
             x: source_room.entrance[0],
             y: source_room.entrance[1]
@@ -607,7 +609,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
         rooms.push({
             id: source_room.id as Adventure_Room_Id,
             name: source_room.name,
-            type: Adventure_Room_Type.combat,
+            type: room_type,
             entrance_location: entrance,
             entities: entities,
             camera_restriction_zones: zones,
@@ -757,6 +759,7 @@ function persist_adventure_to_file_system(adventure: Adventure) {
             return {
                 id: room.id,
                 name: room.name,
+                type: enum_to_string(room.type),
                 entrance: [room.entrance_location.x, room.entrance_location.y],
                 enemies: non_empty_or_none(enemies),
                 items: non_empty_or_none(items),
@@ -862,10 +865,13 @@ export function editor_create_entity(ongoing: Ongoing_Adventure, definition: Adv
 export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventure_Editor_Action) {
     switch (action.type) {
         case Adventure_Editor_Action_Type.set_room_details: {
-            ongoing.current_room.name = action.name;
-            ongoing.current_room.entrance_location = action.entrance;
-            ongoing.current_room.camera_restriction_zones = action.zones;
-            ongoing.current_room.exits = action.exits;
+            const current_room = ongoing.current_room;
+
+            current_room.type = action.room_type;
+            current_room.name = action.name;
+            current_room.entrance_location = action.entrance;
+            current_room.camera_restriction_zones = action.zones;
+            current_room.exits = action.exits;
 
             break;
         }

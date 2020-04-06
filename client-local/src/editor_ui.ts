@@ -54,6 +54,7 @@ type Adventure_Editor = {
     type: Editor_Type.adventure
     selection: Adventure_Editor_Selection
     camera_height_index: number
+    room_type: Adventure_Room_Type
     room_name: string
     room_entrance_location: XYZ
     last_camera_position: XYZ
@@ -248,17 +249,22 @@ function entity_button(text: string, action: (button: Panel) => void, css_class:
     return text_button(entity_buttons, css_class, text, action);
 }
 
-function dropdown_button(text: string, action: () => void) {
+function entity_dropdown_button(text: string, action: () => void) {
     return text_button(entity_buttons_dropdown, "editor_entity_dropdown_button", text, action);
 }
 
-type Entity_Menu = {
+function toolbar_dropdown_button(text: string, action: () => void) {
+    return text_button(toolbar_buttons_dropdown, "toolbar_dropdown_button", text, action);
+}
+
+type Dropdown_Menu = {
+    root: Panel
     highlighted_button?: Panel
 }
 
-function entity_menu_dropdown_button(menu: Entity_Menu, text: string, action: (parent: Panel) => void) {
-    return entity_button(text, button => {
-        entity_buttons_dropdown.RemoveAndDeleteChildren();
+function dropdown_menu_action(menu: Dropdown_Menu, action: (parent: Panel, close: () => void) => void) {
+    return (button: Panel) => {
+        menu.root.RemoveAndDeleteChildren();
 
         if (menu.highlighted_button) {
             menu.highlighted_button.RemoveClass("selected");
@@ -268,15 +274,23 @@ function entity_menu_dropdown_button(menu: Entity_Menu, text: string, action: (p
             menu.highlighted_button = button;
             menu.highlighted_button.AddClass("selected");
 
-            action(entity_buttons_dropdown);
+            action(menu.root, () => {
+                menu.root.RemoveAndDeleteChildren();
+
+                if (menu.highlighted_button) {
+                    menu.highlighted_button.RemoveClass("selected");
+                }
+
+                menu.highlighted_button = undefined;
+            });
         } else {
             menu.highlighted_button = undefined;
         }
-    });
+    };
 }
 
-function entity_menu(): Entity_Menu {
-    return {};
+function dropdown_menu(root: Panel): Dropdown_Menu {
+    return { root };
 }
 
 function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: Physical_Adventure_Entity, enemy: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.enemy>, name: string) {
@@ -290,15 +304,15 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: P
         }, editor)
     });
 
-    const menu = entity_menu();
+    const menu = dropdown_menu(entity_buttons_dropdown);
 
     for (let index = 0; index < creeps.length + 1; index++) {
         const creep = creeps[index];
         const text = index < creeps.length ? enum_to_string(creep) : "Add a creep";
 
-        entity_menu_dropdown_button(menu, text, () => {
+        entity_button(text, dropdown_menu_action(menu, () => {
             for (const [name, type] of enum_names_to_values<Creep_Type>()) {
-                dropdown_button(name, () => {
+                entity_dropdown_button(name, () => {
                     creeps[index] = type;
 
                     api_request(Api_Request_Type.editor_action, {
@@ -310,7 +324,7 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: P
                 });
             }
 
-            dropdown_button("Delete", () => {
+            entity_dropdown_button("Delete", () => {
                 creeps.splice(index, 1);
 
                 api_request(Api_Request_Type.editor_action, {
@@ -320,7 +334,7 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: P
                     access_token: get_access_token()
                 }, () => adventure_editor_select_entity(editor, entity));
             });
-        });
+        }));
     }
 }
 
@@ -379,9 +393,9 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
         return container;
     }
 
-    const menu = entity_menu();
+    const menu = dropdown_menu(entity_buttons_dropdown);
 
-    entity_menu_dropdown_button(menu, "Heroes", async parent => {
+    entity_button("Heroes", dropdown_menu_action(menu, async parent => {
         const stock = await async_stock;
         const container = wrapping_container(parent);
 
@@ -389,27 +403,27 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
             const button = hero_button(container, hero);
             stock_updating_button(button, stock.heroes, hero, (a, b) => a == b);
         }
-    });
+    }));
 
-    entity_menu_dropdown_button(menu, "Creeps", async () => {
+    entity_button("Creeps", dropdown_menu_action(menu, async () => {
         const stock = await async_stock;
 
         for (const creep of enum_values<Creep_Type>()) {
-            const button = dropdown_button(get_creep_name(creep), () => {});
+            const button = entity_dropdown_button(get_creep_name(creep), () => {});
             stock_updating_button(button, stock.creeps, creep, (a, b) => a == b);
         }
-    });
+    }));
 
-    entity_menu_dropdown_button(menu, "Spells", async () => {
+    entity_button("Spells", dropdown_menu_action(menu, async () => {
         const stock = await async_stock;
 
         for (const spell of enum_values<Spell_Id>()) {
-            const button = dropdown_button(get_spell_name(spell), () => {});
+            const button = entity_dropdown_button(get_spell_name(spell), () => {});
             stock_updating_button(button, stock.spells, spell, (a, b) => a == b);
         }
-    });
+    }));
 
-    entity_menu_dropdown_button(menu, "Items", async parent => {
+    entity_button("Items", dropdown_menu_action(menu, async parent => {
         const stock = await async_stock;
         const all_items: Adventure_Item_Definition[] = [];
 
@@ -427,7 +441,7 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
             const button = item_button(container, get_adventure_item_definition_icon(item));
             stock_updating_button(button, stock.items, item, (a, b) => a.type == b.type && a.id == b.id);
         }
-    });
+    }));
 
     function fill_current_stock_ui(parent: Panel) {
         const stock = merchant.stock;
@@ -441,13 +455,13 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
 
         for (const card of stock.cards) {
             if (card.type == Adventure_Merchant_Card_Type.creep) {
-                dropdown_button(get_creep_name(card.creep), () => {});
+                entity_dropdown_button(get_creep_name(card.creep), () => {});
             }
         }
 
         for (const card of stock.cards) {
             if (card.type == Adventure_Merchant_Card_Type.spell) {
-                dropdown_button(get_spell_name(card.spell), () => {});
+                entity_dropdown_button(get_spell_name(card.spell), () => {});
             }
         }
 
@@ -457,7 +471,7 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
         }
     }
 
-    const current_stock_button = entity_menu_dropdown_button(menu, "Current stock", fill_current_stock_ui);
+    const current_stock_button = entity_button("Current stock", dropdown_menu_action(menu, fill_current_stock_ui));
 
     entity_button("Reroll stock", async () => {
         const new_stock = await async_local_api_request(Local_Api_Request_Type.reroll_merchant_stock, { merchant: merchant.id });
@@ -1963,7 +1977,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
 
     function update_brush_button_styles() {
         for (const button of buttons) {
-            button.panel.SetHasClass("active", button.brush == new_editor.brush);
+            button.panel.SetHasClass("selected", button.brush == new_editor.brush);
         }
     }
 
@@ -2016,10 +2030,6 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
 
     update_brush_button_styles();
 
-    function dropdown_button(text: string, action: () => void) {
-        return text_button(toolbar_buttons_dropdown, "toolbar_dropdown_button", text, action);
-    }
-
     async function set_enemy_battleground(enemy: Editor_Enemy_Battleground_Data, battleground: Battleground_Id) {
         await async_api_request(Api_Request_Type.editor_action, {
             type: Adventure_Editor_Action_Type.set_enemy_battleground,
@@ -2029,34 +2039,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         });
     }
 
-    let dropdown_opened_by: Panel | undefined = undefined;
-    const all_dropdown_opening_buttons: Panel[] = [];
-
-    function dropdown_opening_button(text: string, action: (close: () => void) => void) {
-        const button = toolbar_button(text, async button => {
-            toolbar_buttons_dropdown.RemoveAndDeleteChildren();
-
-            const opened = dropdown_opened_by != button;
-
-            dropdown_opened_by = opened ? button : undefined;
-
-            for (const other_button of all_dropdown_opening_buttons) {
-                other_button.SetHasClass("active", dropdown_opened_by == other_button);
-            }
-
-            if (opened) {
-                action(() => {
-                    toolbar_buttons_dropdown.RemoveAndDeleteChildren();
-                    button.SetHasClass("active", false);
-                    dropdown_opened_by = undefined;
-                });
-            }
-        });
-
-        all_dropdown_opening_buttons.push(button);
-
-        return button;
-    }
+    const menu = dropdown_menu(toolbar_buttons_dropdown);
 
     $.CreatePanel("Label", toolbar_buttons, "").text = `Battleground #${id}`;
 
@@ -2068,11 +2051,11 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         submit_battleground_state_to_server(new_editor);
     });
 
-    dropdown_opening_button("New", async close_dropdown => {
+    toolbar_button("New", dropdown_menu_action(menu, async (parent, close_dropdown) => {
         const locations = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
 
         for (const location of from_server_array(locations)) {
-            dropdown_button(`${location.name} (${enum_to_string(location.theme)})`, async () => {
+            toolbar_dropdown_button(`${location.name} (${enum_to_string(location.theme)})`, async () => {
                 const response = await async_api_request(Api_Request_Type.editor_create_battleground, {
                     name: "New battleground",
                     world_origin: location.origin,
@@ -2084,8 +2067,8 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
             });
         }
 
-        dropdown_button("Cancel", () => close_dropdown());
-    });
+        toolbar_dropdown_button("Cancel", () => close_dropdown());
+    }));
 
     toolbar_button("Duplicate", async () => {
         const response = await async_api_request(Api_Request_Type.editor_duplicate_battleground, { id: id });
@@ -2094,19 +2077,19 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         load_battleground_editor(response.new_id, enemy, previous_editor);
     });
 
-    dropdown_opening_button("Open", async () => {
+    toolbar_button("Open", dropdown_menu_action(menu, async () => {
         const response = await async_api_request(Api_Request_Type.editor_list_battlegrounds, {});
 
         for (const bg of response.battlegrounds) {
-            dropdown_button(`${bg.name} (#${bg.id}, ${bg.size.x}x${bg.size.y})`, () => {
+            toolbar_dropdown_button(`${bg.name} (#${bg.id}, ${bg.size.x}x${bg.size.y})`, () => {
                 cleanup_current_editor();
                 load_battleground_editor(bg.id, enemy, previous_editor);
             });
         }
-    });
+    }));
 
-    dropdown_opening_button("Delete", async close_dropdown => {
-        dropdown_button("Confirm", async () => {
+    toolbar_button("Delete", dropdown_menu_action(menu, async (parent, close_dropdown) => {
+        toolbar_dropdown_button("Confirm", async () => {
             await async_api_request(Api_Request_Type.editor_delete_battleground, { id: id });
 
             if (enemy) {
@@ -2117,14 +2100,14 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
             await load_battleground_editor(0 as Battleground_Id, enemy, previous_editor);
         });
 
-        dropdown_button("Cancel", () => close_dropdown());
-    });
+        toolbar_dropdown_button("Cancel", () => close_dropdown());
+    }));
 
-    dropdown_opening_button("Select location", async close_dropdown => {
+    toolbar_button("Select location", dropdown_menu_action(menu, async (parent, close_dropdown) => {
         const locations = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
 
         for (const location of from_server_array(locations)) {
-            dropdown_button(location.name, () => {
+            toolbar_dropdown_button(location.name, () => {
                 new_editor.grid_world_origin = location.origin;
 
                 battleground_editor_recreate_cells(new_editor);
@@ -2133,21 +2116,21 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
             });
         }
 
-        dropdown_button("Cancel", () => close_dropdown());
-    });
+        toolbar_dropdown_button("Cancel", () => close_dropdown());
+    }));
 
-    dropdown_opening_button("Select theme", async close_dropdown => {
+    toolbar_button("Select theme", dropdown_menu_action(menu, async (parent, close_dropdown) => {
         const themes = enum_names_to_values<Battleground_Theme>();
         const theme_buttons: [Battleground_Theme, Panel][] = [];
 
         function update_button_styles() {
             for (let [button_theme, button] of theme_buttons) {
-                button.SetHasClass("active", button_theme == new_editor.theme);
+                button.SetHasClass("selected", button_theme == new_editor.theme);
             }
         }
 
         for (const [name, theme] of themes) {
-            const button = dropdown_button(snake_case_to_capitalized_words(name), () => {
+            const button = toolbar_dropdown_button(snake_case_to_capitalized_words(name), () => {
                 new_editor.theme = theme;
 
                 submit_battleground_state_to_server(new_editor);
@@ -2158,10 +2141,10 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
             theme_buttons.push([theme, button]);
         }
 
-        dropdown_button("Cancel", () => close_dropdown());
+        toolbar_dropdown_button("Cancel", () => close_dropdown());
 
         update_button_styles();
-    });
+    }));
 
     if (enemy) {
         const label = $.CreatePanel("Label", toolbar_buttons, "");
@@ -2177,8 +2160,8 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         });
 
         if (enemy.current_battleground_id != id) {
-            const assign_button = dropdown_opening_button("Assign battleground", async close_dropdown => {
-                dropdown_button("Confirm", async () => {
+            const assign_button = toolbar_button("Assign battleground", dropdown_menu_action(menu, async (parent, close_dropdown) => {
+                toolbar_dropdown_button("Confirm", async () => {
                     await set_enemy_battleground(enemy, id);
 
                     close_dropdown();
@@ -2188,8 +2171,8 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
                     assign_button.DeleteAsync(0);
                 });
 
-                dropdown_button("Cancel", () => close_dropdown());
-            });
+                toolbar_dropdown_button("Cancel", () => close_dropdown());
+            }));
 
             toolbar_button(`Open current`, () => {
                 cleanup_current_editor();
@@ -2223,6 +2206,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
 function set_current_editor(new_editor: Editor) {
     cleanup_current_editor();
 
+    world_indicators_root.RemoveAndDeleteChildren();
     brushes_root.RemoveAndDeleteChildren();
     entity_buttons.RemoveAndDeleteChildren();
     entity_buttons_dropdown.RemoveAndDeleteChildren();
@@ -2254,6 +2238,7 @@ async function enter_adventure_editor(move_camera = false) {
 
     const new_editor: Adventure_Editor = {
         type: Editor_Type.adventure,
+        room_type: room.type,
         room_name: room.name,
         selection: { type: Adventure_Selection_Type.none },
         camera_height_index: 4,
@@ -2290,7 +2275,12 @@ async function enter_adventure_editor(move_camera = false) {
         }
     }));
 
-    $.CreatePanel("Label", toolbar_buttons, "").text = `Room #${room.id}`;
+    function editor_title() {
+        return `Room #${room.id} (${enum_to_string(new_editor.room_type)})`;;
+    }
+
+    const title = $.CreatePanel("Label", toolbar_buttons, "");
+    title.text = editor_title();
 
     const name_input = $.CreatePanel("TextEntry", toolbar_buttons, "name_input");
     name_input.text = room.name;
@@ -2300,8 +2290,25 @@ async function enter_adventure_editor(move_camera = false) {
         submit_adventure_room_details_to_server(new_editor);
     });
 
+    const menu = dropdown_menu(toolbar_buttons_dropdown);
+
+    toolbar_button("Change type", dropdown_menu_action(menu, (parent, close) => {
+        for (const [name, value] of enum_names_to_values<Adventure_Room_Type>()) {
+            toolbar_dropdown_button(name, () => {
+                new_editor.room_type = value;
+                title.text = editor_title();
+                submit_adventure_room_details_to_server(new_editor);
+                close();
+            }).SetHasClass("selected", value == new_editor.room_type);
+        }
+
+        toolbar_dropdown_button("Cancel", close);
+    }));
+
+    $.CreatePanel("Label", toolbar_buttons, "").text = "Rooms";
+
     for (const room of room_list.rooms) {
-        toolbar_button(`Go to room ${room.name}`, async () => {
+        toolbar_button(room.name, async () => {
             dispatch_local_editor_action({
                 type: Editor_Action_Type.enter_adventure_room,
                 room_id: room.id
@@ -2331,8 +2338,6 @@ function cleanup_current_editor() {
             for (const zone of editor.camera_restriction_zones) {
                 zone.particles.forEach(destroy_fx);
             }
-
-            world_indicators_root.RemoveAndDeleteChildren();
 
             break;
         }
@@ -2413,6 +2418,7 @@ function submit_editor_battleground_for_repaint(editor: Battleground_Editor) {
 function submit_adventure_room_details_to_server(editor: Adventure_Editor) {
     api_request(Api_Request_Type.editor_action, {
         type: Adventure_Editor_Action_Type.set_room_details,
+        room_type: editor.room_type,
         name: editor.room_name,
         entrance: editor.room_entrance_location,
         zones: editor.camera_restriction_zones.map(zone => ({
