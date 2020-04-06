@@ -75,7 +75,9 @@ export function async_local_api_request<T extends Local_Api_Request_Type>(type: 
         request_id: next_local_request_id()
     };
 
-    $.Msg(`Request ${enum_to_string<Local_Api_Request_Type>(type)}`);
+    if (type != Local_Api_Request_Type.editor_action) {
+        $.Msg(`Request ${enum_to_string<Local_Api_Request_Type>(type)}`);
+    }
 
     const promise = new Promise<Find_Local_Response<T>>((resolve, reject) => {
         const timeout = $.Schedule(10, () => {
@@ -89,7 +91,9 @@ export function async_local_api_request<T extends Local_Api_Request_Type>(type: 
         });
 
         ongoing_local_requests[packet.request_id] = (body: any) => {
-            $.Msg(`Response for ${enum_to_string<Local_Api_Request_Type>(type)}: ${body}`);
+            if (type != Local_Api_Request_Type.editor_action) {
+                $.Msg(`Response for ${enum_to_string<Local_Api_Request_Type>(type)}: ${body}`);
+            }
 
             resolve(body);
 

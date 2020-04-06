@@ -1,14 +1,14 @@
 declare const enum Local_Api_Request_Type {
     list_battle_locations = 0,
     get_ground_z = 1,
-    reroll_merchant_stock = 2
+    reroll_merchant_stock = 2,
+    editor_action = 3
 }
 
 declare const enum To_Server_Event_Type {
     adventure_interact_with_entity = 0,
     put_deltas = 1,
     fast_forward = 2,
-    editor_action = 3,
     adventure_purchase_merchant_item = 4
 }
 
@@ -52,9 +52,6 @@ type To_Server_Event = {
 } | {
     type: To_Server_Event_Type.fast_forward
     payload: Battle_Snapshot
-} | {
-    type: To_Server_Event_Type.editor_action
-    payload: Editor_Action
 }
 
 type To_Client_Event = {
@@ -125,6 +122,10 @@ type Local_Api_Request = {
     }
 
     response: Adventure_Merchant_Stock
+} | {
+    type: Local_Api_Request_Type.editor_action
+    request: Editor_Action
+    response: {}
 }
 
 type Local_Api_Request_Packet = {

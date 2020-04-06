@@ -195,7 +195,7 @@ function brush_button(text: string, action: () => void) {
 }
 
 function dispatch_local_editor_action(event: Editor_Action) {
-    fire_event(To_Server_Event_Type.editor_action, event);
+    return async_local_api_request(Local_Api_Request_Type.editor_action, event);
 }
 
 function update_editor_indicator(editor: Editor) {
@@ -2119,6 +2119,8 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
 }
 
 function set_current_editor(new_editor: Editor) {
+    cleanup_current_editor();
+
     brushes_root.RemoveAndDeleteChildren();
     entity_buttons.RemoveAndDeleteChildren();
     entity_buttons_dropdown.RemoveAndDeleteChildren();
@@ -2130,7 +2132,7 @@ function set_current_editor(new_editor: Editor) {
     update_state_from_editor_mode(current_state, new_editor);
 }
 
-async function enter_adventure_editor() {
+async function enter_adventure_editor(move_camera = false) {
     const room = await async_api_request(Api_Request_Type.editor_get_room_details, {
         access_token: get_access_token()
     });
@@ -2138,6 +2140,13 @@ async function enter_adventure_editor() {
     const room_list = await async_api_request(Api_Request_Type.editor_list_rooms, {
         access_token: get_access_token()
     });
+
+    if (move_camera) {
+        dispatch_local_editor_action({
+            type: Editor_Action_Type.move_camera,
+            to: xyz(room.entrance_location.x, room.entrance_location.y, 0)
+        })
+    }
 
     const new_editor: Adventure_Editor = {
         type: Editor_Type.adventure,
@@ -2169,11 +2178,11 @@ async function enter_adventure_editor() {
     });
 
     for (const room of room_list.rooms) {
-        toolbar_button(`Go to room ${room.name}`, () => {
+        toolbar_button(`Go to room ${room.name}`, async () => {
             dispatch_local_editor_action({
                 type: Editor_Action_Type.enter_adventure_room,
                 room_id: room.id
-            });
+            }).then(() => enter_adventure_editor(true));
         });
     }
 }

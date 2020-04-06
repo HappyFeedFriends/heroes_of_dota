@@ -350,6 +350,7 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
 
             if (!new_room) break;
 
+            cleanup_adventure(game.adventure);
             enter_adventure_room(game.player, game.adventure, new_room);
 
             break;
@@ -371,7 +372,10 @@ function subscribe_to_editor_events(game: Game) {
         auto_tree_id: 0 as Tree_Id
     };
 
-    on_custom_event_async(To_Server_Event_Type.editor_action, event => perform_editor_action(game, state, event));
+    register_local_api_handler(Local_Api_Request_Type.editor_action, event => {
+        perform_editor_action(game, state, event);
+        return {};
+    });
 
     fork(() => {
         while (true) {
