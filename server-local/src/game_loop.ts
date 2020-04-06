@@ -571,11 +571,13 @@ function game_loop() {
         state: Player_State.not_logged_in,
         adventure: {
             entities: [],
+            exits: [],
             ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
             num_party_slots: 0,
             camera_restriction_zones: [],
             camera_dummy: create_camera_entity(),
-            last_ordered_dummy_to_move_at: 0
+            last_ordered_dummy_to_move_at: 0,
+            requesting_room_exit_decision: false
         }
     };
 

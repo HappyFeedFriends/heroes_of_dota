@@ -69,14 +69,22 @@ type Adventure_World_Entity =
     Adventure_World_Gold_Bag |
     Adventure_World_Merchant
 
+type Adventure_World_Room_Exit = {
+    to: Adventure_Room_Id
+    at: Vector
+    fx: FX
+}
+
 type Adventure_State = {
     entities: Adventure_World_Entity[]
     current_right_click_target?: Adventure_World_Entity
     ongoing_adventure_id: Ongoing_Adventure_Id
     camera_restriction_zones: Camera_Restriction_Zone[]
+    exits: Adventure_World_Room_Exit[]
     camera_dummy: CDOTA_BaseNPC
     last_ordered_dummy_to_move_at: number
     num_party_slots: number
+    requesting_room_exit_decision: boolean
 }
 
 const debug_camera = false;
@@ -598,6 +606,33 @@ function adventure_update_loop(game: Game) {
             }
         }
 
+        const player_at = game.player.hero_unit.GetAbsOrigin();
+
+        if (!game.adventure.requesting_room_exit_decision) {
+            for (const exit of game.adventure.exits) {
+                const to_exit = (exit.at - player_at as Vector).Length2D();
+
+                if (to_exit <= 200) {
+                    game.adventure.requesting_room_exit_decision = true;
+
+                    fork(() => {
+                        const room = api_request(Api_Request_Type.enter_adventure_room, {
+                            room_id: exit.to,
+                            access_token: game.token,
+                            dedicated_server_key: get_dedicated_server_key()
+                        });
+
+                        game.adventure.requesting_room_exit_decision = false;
+
+                        if (room) {
+                            cleanup_adventure(game.adventure);
+                            enter_adventure_room(game.player, game.adventure, room);
+                        }
+                    });
+                }
+            }
+        }
+
         wait_one_frame();
     }
 }
@@ -865,6 +900,16 @@ function enter_adventure_room(player: Main_Player, adventure: Adventure_State, r
         adventure.entities.push(create_adventure_entity(entity));
     }
 
+    for (const exit of room.exits) {
+        const position = GetGroundPosition(Vector(exit.at.x, exit.at.y), undefined);
+
+        adventure.exits.push({
+            to: exit.to,
+            at: position,
+            fx: fx("particles/room_exit.vpcf").with_vector_value(0, position)
+        });
+    }
+
     adventure.camera_restriction_zones = room.camera_restriction_zones;
 
     update_adventure_net_table(adventure);
@@ -875,6 +920,12 @@ function cleanup_adventure(adventure: Adventure_State) {
         cleanup_adventure_entity(entity);
     }
 
+    for (const exit of adventure.exits) {
+        exit.fx.destroy_and_release(false);
+    }
+
+    adventure.requesting_room_exit_decision = false;
+    adventure.exits = [];
     adventure.entities = [];
     delete adventure.current_right_click_target;
 }
