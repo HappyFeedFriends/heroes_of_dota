@@ -16,6 +16,7 @@ type Game_Base = {
     player_id: Player_Id
     any_button_clicked_this_frame: boolean
     chat_messages: string[]
+    layout_stack: Layout[]
 }
 
 type Game_Not_Logged_In = Game_Base & {
@@ -24,6 +25,11 @@ type Game_Not_Logged_In = Game_Base & {
 
 type Game_On_Adventure = Game_Base & {
     state: Player_State.on_adventure
+    rooms: Array<{
+        id: Adventure_Room_Id
+        name: string
+    }>
+    room_entities: Adventure_Entity[]
 }
 
 type Game_On_Global_Map = Game_Base & {
@@ -49,11 +55,11 @@ type Game_In_Battle = Game_Base & {
 
 type Game = Game_In_Battle | Game_On_Global_Map | Game_On_Adventure | Game_Not_Logged_In;
 
-declare const enum Selection_Type {
-    none = 0,
-    card = 1,
-    unit = 2,
-    ability = 3
+const enum Selection_Type {
+    none,
+    card,
+    unit,
+    ability
 }
 
 type No_Selection = {
@@ -108,6 +114,16 @@ type Colored_String = {
     text: string
 }
 
+const enum Layout_Type {
+    vertical,
+    horizontal
+}
+
+type Layout = {
+    type: Layout_Type
+    cursor: XY
+}
+
 type Colored_Line = Array<Colored_String>
 
 let game: Game;
@@ -115,8 +131,6 @@ let game: Game;
 const player_name_cache: Record<number, string> = {};
 const image_cache: Map<string, Image_Resource> = new Map();
 const cell_size = 36;
-const grid_top_left_x = 120;
-const grid_top_left_y = 120;
 
 declare function embed_base64(from_path: string): string;
 
@@ -269,27 +283,29 @@ function do_button(text: string, top_left_x: number, top_left_y: number, font_si
     return state;
 }
 
-function button(text: string, top_left_x: number, top_left_y: number, font_size_px: number, padding: number): boolean {
-    return do_button(text, top_left_x, top_left_y, font_size_px, padding) == Button_State.clicked;
+function button(text: string) {
+    const padding = 8;
+    const font_size_px = 18;
+    const xy = layout_cursor();
+    const state = do_button(text, xy.x, xy.y, font_size_px, padding) == Button_State.clicked;
+    push_size(padding + font_size_px + padding);
+    return state;
 }
 
 function draw_entity_list(game: Game_On_Global_Map) {
-    const font_size_px = 18;
-    const padding = 8;
-    const margin = 4;
-
-    let height_offset = 0;
+    push_layout(Layout_Type.vertical);
 
     for (const entity of game.nearby_entities) {
-        const top_left_x = 30, top_left_y = 70 + height_offset;
         const entity_name = entity.type == Map_Entity_Type.npc ? enum_to_string(entity.npc_type) : entity.name;
 
-        if (button(entity_name, top_left_x, top_left_y, font_size_px, padding)) {
+        if (button(entity_name)) {
             on_entity_clicked(game, entity);
         }
 
-        height_offset += margin + padding + font_size_px + padding + margin;
+        push_size(4);
     }
+
+    pop_layout();
 }
 
 function drop_selection(game: Game_In_Battle) {
@@ -313,6 +329,8 @@ function draw_header(game: Game) {
     } else {
         ctx.fillText(enum_to_string(game.state), 30, 30);
     }
+
+    push_size(font_size_px + 8);
 }
 
 async function accept_chat_messages(game: Game, messages: Chat_Message[]) {
@@ -393,7 +411,7 @@ async function check_and_try_request_player_state(state: Game, time: number) {
             return;
         }
 
-        game = game_from_state(player_data, game);
+        game = await game_from_state(player_data, game);
 
         if (game.state == Player_State.in_battle) {
             for (const player of game.battle.players) {
@@ -1091,38 +1109,42 @@ function draw_battle_log(game: Game_In_Battle) {
 
     const font_height = 16;
 
-    const starting_x = 120 + game.battle.grid.size.x * cell_size + 180;
-
-    let cursor_x = starting_x;
-    let cursor_y = grid_top_left_y;
+    push_layout(Layout_Type.vertical);
 
     ctx.font = `${font_height}px Open Sans`;
 
     for (let index = 0; index < how_many_lines_to_show && index < lines.length; index++) {
         const line = lines[starting_index + index];
 
+        push_layout(Layout_Type.horizontal);
+
         for (const string of line) {
             const width = ctx.measureText(string.text).width;
+            const cursor = layout_cursor();
 
             ctx.fillStyle = string.color;
-            ctx.fillText(string.text, cursor_x, cursor_y);
+            ctx.fillText(string.text, cursor.x, cursor.y);
 
-            cursor_x += width;
+            push_size(width);
         }
 
-        cursor_x = starting_x;
-        cursor_y += font_height + 4;
+        pop_layout();
+
+        push_size(font_height + 4);
     }
+
+    pop_layout();
 }
 
-function draw_grid(game: Game_In_Battle, player: Battle_Player | undefined, highlight_occupied: boolean) {
+function draw_grid(game: Game_In_Battle, player?: Battle_Player, highlighted_ability?: Ability_Active) {
     const ctx = game.ctx;
 
     const grid_size = game.battle.grid.size;
+    const cursor = layout_cursor();
 
     ctx.strokeStyle = "black";
     ctx.lineWidth = 2;
-    ctx.translate(grid_top_left_x, grid_top_left_y);
+    ctx.translate(cursor.x, cursor.y);
     ctx.beginPath();
 
     for (let x = 0; x <= grid_size.x; x++) {
@@ -1157,8 +1179,8 @@ function draw_grid(game: Game_In_Battle, player: Battle_Player | undefined, high
             const hovered = contains(
                 game.mouse.x,
                 game.mouse.y,
-                grid_top_left_x + x * cell_size,
-                grid_top_left_y + y * cell_size,
+                cursor.x + x * cell_size,
+                cursor.y + y * cell_size,
                 cell_size,
                 cell_size
             );
@@ -1197,7 +1219,9 @@ function draw_grid(game: Game_In_Battle, player: Battle_Player | undefined, high
             ctx.lineWidth = 4;
             ctx.strokeRect(xy.x * cell_size, xy.y * cell_size, cell_size, cell_size);
 
-            if (!highlight_occupied) {
+            if (highlighted_ability && unit.abilities.indexOf(highlighted_ability) != -1) {
+                highlight_cells_for_ability(game.battle, unit, highlighted_ability);
+            } else {
                 if (game.selection.type == Selection_Type.ability) {
                     const ability_id = game.selection.ability_id;
                     const ability = find_unit_ability(unit, ability_id);
@@ -1419,23 +1443,48 @@ function draw_grid(game: Game_In_Battle, player: Battle_Player | undefined, high
         }
     }
 
-    ctx.translate(-grid_top_left_x, -grid_top_left_y);
+    ctx.translate(-cursor.x, -cursor.y);
+
+    push_size(grid_size.x * cell_size);
 }
 
 function draw_card_list(game: Game_In_Battle, player: Battle_Player) {
+    push_layout(Layout_Type.vertical);
+
     for (let index = 0; index < player.hand.length; index++) {
         const card = player.hand[index];
+        const top_left = {
+            ...layout_cursor()
+        };
 
-        const top_left_x = 30;
-        const top_left_y = 180 + index * 34;
-
-        if (card.type == Card_Type.hero) {
-            if (button(enum_to_string(card.hero_type), top_left_x, top_left_y, 18, 6)) {
-                game.selection = {
-                    type: Selection_Type.card,
-                    card_id: card.id
-                }
+        switch (card.type) {
+            case Card_Type.existing_hero: {
+                button("Existing hero card");
+                break;
             }
+
+            case Card_Type.hero: {
+                if (button(enum_to_string(card.hero_type))) {
+                    game.selection = {
+                        type: Selection_Type.card,
+                        card_id: card.id
+                    }
+                }
+
+                break;
+            }
+
+            case Card_Type.spell: {
+                button(enum_to_string(card.spell_id));
+                break;
+            }
+
+            case Card_Type.unknown: {
+                button("Unknown card");
+                break;
+            }
+
+            default: unreachable(card);
         }
 
         if (game.selection.type == Selection_Type.card && game.selection.card_id == card.id) {
@@ -1444,20 +1493,18 @@ function draw_card_list(game: Game_In_Battle, player: Battle_Player) {
             ctx.strokeStyle = "green";
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(top_left_x, top_left_y);
-            ctx.lineTo(top_left_x, top_left_y + 30);
+            ctx.moveTo(top_left.x, top_left.y);
+            ctx.lineTo(top_left.x, top_left.y + 30);
             ctx.stroke();
         }
+
+        push_size(4);
     }
+
+    pop_layout();
 }
 
 function draw_battle_list(global_map: Game_On_Global_Map) {
-    const font_size_px = 18;
-    const padding = 8;
-    const margin = 4;
-
-    let height_offset = 0;
-
     const battles = global_map.battles.slice();
 
     if (battles.length > 10) {
@@ -1469,12 +1516,13 @@ function draw_battle_list(global_map: Game_On_Global_Map) {
         return entity.type == Map_Entity_Type.player ? get_or_request_player_name(game, entity.player_id) : enum_to_string(entity.npc_type);
     }
 
+    push_layout(Layout_Type.vertical);
+
     for (const battle of battles) {
-        const top_left_x = 250, top_left_y = 70 + height_offset;
         const text = `Spectate ${entity_name(battle.participants[0])} vs ${entity_name(battle.participants[1])}`;
 
-        if (button(text, top_left_x, top_left_y, font_size_px, padding)) {
-            game = game_from_state({
+        if (button(text)) {
+            game_from_state({
                 battleground_theme: Battleground_Theme.forest,
                 battle_world_origin: { x: 0, y: 0, z: 0 },
                 state: Player_State.in_battle,
@@ -1483,21 +1531,78 @@ function draw_battle_list(global_map: Game_On_Global_Map) {
                 grid_size: battle.grid_size,
                 participants: battle.participants,
                 random_seed: battle.random_seed
-            }, game);
+            }, game).then(new_game => {
+                game = new_game;
 
-            if (game.state == Player_State.in_battle) {
-                game.spectating = true;
+                if (game.state == Player_State.in_battle) {
+                    game.spectating = true;
 
-                api_request(Api_Request_Type.get_debug_ai_data, {}).then(data => {
-                    if (game.state == Player_State.in_battle) {
-                        game.ai_data = data;
-                    }
-                })
-            }
+                    api_request(Api_Request_Type.get_debug_ai_data, {}).then(data => {
+                        if (game.state == Player_State.in_battle) {
+                            game.ai_data = data;
+                        }
+                    })
+                }
+            });
         }
 
-        height_offset += margin + padding + font_size_px + padding + margin;
+        push_size(4);
     }
+
+    pop_layout();
+}
+
+function draw_adventure_list() {
+    const adventures = enum_names_to_values<Adventure_Id>();
+
+    push_layout(Layout_Type.vertical);
+
+    for (const [name, adventure] of adventures) {
+        if (button(`Adventure: ${name}`)) {
+            api_request(Api_Request_Type.start_adventure, {
+                adventure_id: adventure,
+                access_token: game.access_token,
+                dedicated_server_key: ""
+            });
+        }
+
+        push_size(4);
+    }
+
+    pop_layout();
+}
+
+function draw_room_list(game: Game_On_Adventure) {
+    push_layout(Layout_Type.vertical);
+
+    for (const room of game.rooms) {
+        if (button(`To ${room.name}`)) {
+            api_request(Api_Request_Type.enter_adventure_room, {
+                room_id: room.id,
+                access_token: game.access_token,
+                dedicated_server_key: ""
+            }).then(room => {
+                game.room_entities = room.entities;
+            })
+        }
+
+        push_size(4);
+    }
+
+    pop_layout();
+}
+
+function draw_room_entity_list(game: Game_On_Adventure) {
+    push_layout(Layout_Type.vertical);
+
+    for (const entity of game.room_entities) {
+        if (button(`${enum_to_string(entity.type)}`)) {
+        }
+
+        push_size(4);
+    }
+
+    pop_layout();
 }
 
 function draw_chat(game: Game) {
@@ -1509,35 +1614,38 @@ function draw_chat(game: Game) {
 
     const font_height = 16;
 
-    const cursor_x = 1200;
-    let cursor_y = grid_top_left_y;
-
     ctx.font = `${font_height}px Open Sans`;
     ctx.fillStyle = "black";
 
+    push_layout(Layout_Type.vertical);
+
     for (let index = 0; index < how_many_lines_to_show && index < lines.length; index++) {
         const line = lines[starting_index + index];
+        const cursor = layout_cursor();
 
-        ctx.fillText(line, cursor_x, cursor_y);
+        ctx.fillText(line, cursor.x, cursor.y);
 
-        cursor_y += font_height + 4;
+        push_size(font_height + 4);
     }
+
+    pop_layout();
 }
 
-function draw_ability_list(game: Game_In_Battle, unit: Unit): boolean {
-    const top_left_x = 120 + game.battle.grid.size.x * cell_size + 30;
+function draw_ability_list(game: Game_In_Battle, unit: Unit): Ability_Active | undefined {
+    let ability_highlighted: Ability_Active | undefined;
 
-    let ability_highlighted = false;
+    push_layout(Layout_Type.vertical);
 
     for (let index = 0; index < unit.abilities.length; index++) {
         const ability = unit.abilities[index];
         const needs_targeting = ability.type == Ability_Type.target_ground || ability.type == Ability_Type.target_unit;
-        const top_left_y = 120 + index * 34;
+
+        const cursor = layout_cursor();
 
         const ability_name = enum_to_string(ability.id);
         const button_text = ability.type != Ability_Type.passive ? `${ability_name} (${ability.charges_remaining})` : ability_name;
 
-        const state = do_button(button_text, top_left_x, top_left_y, 14, 6);
+        const state = do_button(button_text, cursor.x, cursor.y, 14, 6);
 
         if (state == Button_State.clicked) {
             if (needs_targeting) {
@@ -1555,11 +1663,7 @@ function draw_ability_list(game: Game_In_Battle, unit: Unit): boolean {
             }
         } else if (state == Button_State.hovered) {
             if (ability.type != Ability_Type.passive) {
-                game.ctx.translate(grid_top_left_x, grid_top_left_y);
-                highlight_cells_for_ability(game.battle, unit, ability);
-                game.ctx.translate(-grid_top_left_x, -grid_top_left_y);
-
-                ability_highlighted = true;
+                ability_highlighted = ability;
             }
         }
 
@@ -1569,31 +1673,73 @@ function draw_ability_list(game: Game_In_Battle, unit: Unit): boolean {
             ctx.strokeStyle = "green";
             ctx.lineWidth = 3;
             ctx.beginPath();
-            ctx.moveTo(top_left_x, top_left_y);
-            ctx.lineTo(top_left_x, top_left_y + 30);
+            ctx.moveTo(cursor.x, cursor.y);
+            ctx.lineTo(cursor.x, cursor.y + 24);
             ctx.stroke();
         }
+
+        push_size(24);
+        push_size(4);
     }
 
+    pop_layout();
+
     return ability_highlighted;
+}
+
+function layout_cursor() {
+    return game.layout_stack[game.layout_stack.length - 1].cursor;
+}
+
+function push_layout(type: Layout_Type) {
+    const current = game.layout_stack[game.layout_stack.length - 1];
+
+    game.layout_stack.push({
+        type: type,
+        cursor: xy(current.cursor.x, current.cursor.y)
+    })
+}
+
+function pop_layout() {
+    game.layout_stack.pop();
+}
+
+function push_size(size: number) {
+    const current = game.layout_stack[game.layout_stack.length - 1];
+
+    switch (current.type) {
+        case Layout_Type.horizontal: {
+            current.cursor.x += size;
+            break;
+        }
+
+        case Layout_Type.vertical: {
+            current.cursor.y += size;
+            break;
+        }
+
+        default: unreachable(current.type);
+    }
 }
 
 function do_one_frame(time: number) {
     const ctx = game.ctx;
 
+    game.layout_stack = [{
+        type: Layout_Type.vertical,
+        cursor: xy(30, 30)
+    }];
+
     ctx.clearRect(0, 0, game.canvas_width, game.canvas_height);
     ctx.textBaseline = "middle";
 
     draw_header(game);
-    draw_chat(game);
+
+    push_layout(Layout_Type.horizontal);
 
     switch (game.state) {
         case Player_State.not_logged_in: {
-            const font_size_px = 18;
-            const padding = 8;
-            const margin = 4;
-
-            let height_offset = 0;
+            push_layout(Layout_Type.vertical);
 
             const logins: [string, string][] = [
                 ["Mister Guy", "3637"],
@@ -1601,9 +1747,7 @@ function do_one_frame(time: number) {
             ];
 
             for (const [name, id] of logins) {
-                const top_left_x = 30, top_left_y = 70 + height_offset;
-
-                if (button(`Login as ${name}`, top_left_x, top_left_y, font_size_px, padding)) {
+                if (button(`Login as ${name}`)) {
                     api_request(Api_Request_Type.authorize_steam_user, {
                         dedicated_server_key: "",
                         steam_id: id,
@@ -1616,15 +1760,20 @@ function do_one_frame(time: number) {
                     });
                 }
 
-                height_offset += margin + padding + font_size_px + padding + margin;
+                push_size(4);
             }
+
+            pop_layout();
 
             break;
         }
 
         case Player_State.on_global_map: {
-            draw_entity_list(game);
-            draw_battle_list(game);
+            push_layout(Layout_Type.horizontal);
+            draw_adventure_list(); push_size(250);
+            draw_entity_list(game); push_size(250);
+            draw_battle_list(game); push_size(250);
+            pop_layout();
 
             check_and_try_refresh_nearby_players(game, time);
             check_and_try_refresh_battles(game, time);
@@ -1632,43 +1781,65 @@ function do_one_frame(time: number) {
             break;
         }
 
+        case Player_State.on_adventure: {
+            push_layout(Layout_Type.horizontal);
+            draw_room_list(game); push_size(250);
+            draw_room_entity_list(game); push_size(250);
+            pop_layout();
+
+            break;
+        }
+
         case Player_State.in_battle: {
             const this_player = find_player_by_id(game.battle, game.battle_player_id);
 
-            let ability_was_highlighted = false;
+            push_layout(Layout_Type.vertical);
+            push_size(100);
+
+            push_layout(Layout_Type.horizontal);
+
+            let highlighted_ability: Ability_Active | undefined;
 
             if (is_unit_selection(game.selection)) {
                 const selected_unit = find_unit_by_id(game.battle, game.selection.unit_id);
 
                 if (selected_unit) {
-                    if (draw_ability_list(game, selected_unit)) {
-                        ability_was_highlighted = true;
+                    highlighted_ability = draw_ability_list(game, selected_unit);
+                }
+            }
+
+            push_size(300);
+            draw_grid(game, this_player, highlighted_ability);
+            push_size(20);
+
+            push_layout(Layout_Type.vertical); {
+                if (button("End turn")) {
+                    const battle = game;
+
+                    take_battle_action(game, {
+                        type: Action_Type.end_turn
+                    })
+                        .then(() => api_request(Api_Request_Type.get_debug_ai_data, {}))
+                        .then(ai_data => battle.ai_data = ai_data);
+
+                    drop_selection(game);
+                }
+
+                push_size(4);
+
+                if (game.ai_data) {
+                    if (button(`AI data${game.show_ai_data ? ' ✓' : ''}`)) {
+                        game.show_ai_data = !game.show_ai_data;
                     }
                 }
-            }
 
-            draw_grid(game, this_player, ability_was_highlighted);
-
-            if (button("End turn", 30, 120, 18, 6)) {
-                const battle = game;
-
-                take_battle_action(game, {
-                    type: Action_Type.end_turn
-                })
-                    .then(() => api_request(Api_Request_Type.get_debug_ai_data, {}))
-                    .then(ai_data => battle.ai_data = ai_data);
-
-                drop_selection(game);
-            }
-
-            if (game.ai_data) {
-                if (button(`AI data${game.show_ai_data ? ' ✓' : ''}`, 30, 160, 18, 6)) {
-                    game.show_ai_data = !game.show_ai_data;
+                if (this_player) {
+                    push_size(40);
+                    draw_card_list(game, this_player);
                 }
-            }
 
-            if (this_player) {
-                draw_card_list(game, this_player);
+                pop_layout();
+                push_size(200);
             }
 
             draw_battle_log(game);
@@ -1676,6 +1847,9 @@ function do_one_frame(time: number) {
             if (was_button_clicked(0) && !game.any_button_clicked_this_frame) {
                 drop_selection(game);
             }
+
+            pop_layout();
+            pop_layout();
 
             check_and_try_request_battle_deltas(game, time);
 
@@ -1687,6 +1861,11 @@ function do_one_frame(time: number) {
         check_and_try_request_player_state(game, time);
         check_and_try_request_chat(game, time);
     }
+
+    pop_layout();
+
+    push_size(500);
+    draw_chat(game);
 
     game.mouse.clicked = false;
     game.any_button_clicked_this_frame = false;
@@ -1722,7 +1901,7 @@ function fix_canvas_dpi_scale(canvas: HTMLCanvasElement, context: CanvasRenderin
     context.scale(ratio, ratio);
 }
 
-function game_from_state(player_state: Player_State_Data, game_base: Game_Base): Game {
+async function game_from_state(player_state: Player_State_Data, game_base: Game_Base): Promise<Game> {
     switch (player_state.state) {
         case Player_State.in_battle: {
             const battle_log: Colored_Line[] = [];
@@ -1764,7 +1943,11 @@ function game_from_state(player_state: Player_State_Data, game_base: Game_Base):
         case Player_State.on_adventure: {
             return {
                 ...game_base,
-                state: player_state.state
+                state: player_state.state,
+                rooms: (await api_request(Api_Request_Type.editor_list_rooms, {
+                    access_token: game.access_token
+                })).rooms,
+                room_entities: player_state.room.entities
             };
         }
 
@@ -1795,7 +1978,7 @@ async function start_game() {
 
     fix_canvas_dpi_scale(canvas, context);
 
-    game = game_from_state({ state: Player_State.not_logged_in }, {
+    game = await game_from_state({ state: Player_State.not_logged_in }, {
         canvas_width: canvas.width,
         canvas_height: canvas.height,
         ctx: context,
@@ -1810,7 +1993,8 @@ async function start_game() {
             button: 0,
             clicked: false
         },
-        player_id: -1 as Player_Id
+        player_id: -1 as Player_Id,
+        layout_stack: []
     });
 
     const cursor_position_on_canvas = (event: MouseEvent) => {
