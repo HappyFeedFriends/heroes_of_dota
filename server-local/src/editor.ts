@@ -333,10 +333,16 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
             break;
         }
 
-        case Editor_Action_Type.set_camera_restriction_zones: {
+        case Editor_Action_Type.set_room_details: {
             game.adventure.camera_restriction_zones = from_client_array(event.zones).map(zone => ({
                 points: from_client_array(zone.points)
             }));
+
+            for (const exit of game.adventure.exits) {
+                exit.fx.destroy_and_release(true);
+            }
+
+            game.adventure.exits = from_client_array(event.exits).map(exit => create_world_room_exit(exit));
 
             break;
         }

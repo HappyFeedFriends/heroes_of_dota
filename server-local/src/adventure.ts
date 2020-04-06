@@ -84,7 +84,7 @@ type Adventure_State = {
     camera_dummy: CDOTA_BaseNPC
     last_ordered_dummy_to_move_at: number
     num_party_slots: number
-    requesting_room_exit_decision: boolean
+    deciding_to_exit_at?: Adventure_World_Room_Exit
 }
 
 const debug_camera = false;
@@ -548,6 +548,33 @@ function update_adventure_camera(adventure: Adventure_State, player: Main_Player
     }
 }
 
+function update_adventure_room_exit_logic(player: Main_Player, adventure: Adventure_State, token: string) {
+    const player_at = player.hero_unit.GetAbsOrigin();
+    const exit_distance_threshold = 200;
+
+    if (adventure.deciding_to_exit_at) {
+        const to_exit = (adventure.deciding_to_exit_at.at - player_at as Vector).Length2D();
+
+        if (to_exit > exit_distance_threshold) {
+            adventure.deciding_to_exit_at = undefined;
+        }
+    } else {
+        for (const exit of adventure.exits) {
+            const to_exit = (exit.at - player_at as Vector).Length2D();
+
+            if (to_exit <= exit_distance_threshold) {
+                adventure.deciding_to_exit_at = exit;
+
+                player.hero_unit.Stop();
+
+                fire_event(To_Client_Event_Type.adventure_display_room_exit_popup, {
+                    room_id: exit.to
+                });
+            }
+        }
+    }
+}
+
 function draw_zones_debug(game: Game) {
     for (const zone of game.adventure.camera_restriction_zones) {
         const points = zone.points.map(point => GetGroundPosition(Vector(point.x, point.y), undefined));
@@ -606,32 +633,7 @@ function adventure_update_loop(game: Game) {
             }
         }
 
-        const player_at = game.player.hero_unit.GetAbsOrigin();
-
-        if (!game.adventure.requesting_room_exit_decision) {
-            for (const exit of game.adventure.exits) {
-                const to_exit = (exit.at - player_at as Vector).Length2D();
-
-                if (to_exit <= 200) {
-                    game.adventure.requesting_room_exit_decision = true;
-
-                    fork(() => {
-                        const room = api_request(Api_Request_Type.enter_adventure_room, {
-                            room_id: exit.to,
-                            access_token: game.token,
-                            dedicated_server_key: get_dedicated_server_key()
-                        });
-
-                        game.adventure.requesting_room_exit_decision = false;
-
-                        if (room) {
-                            cleanup_adventure(game.adventure);
-                            enter_adventure_room(game.player, game.adventure, room);
-                        }
-                    });
-                }
-            }
-        }
+        update_adventure_room_exit_logic(game.player, game.adventure, game.token);
 
         wait_one_frame();
     }
@@ -684,6 +686,23 @@ function adventure_try_purchase_merchant_item(game: Game, merchant_id: Adventure
     });
 
     update_adventure_net_table(game.adventure);
+}
+
+function adventure_make_room_exit_decision(game: Game) {
+    const exit = game.adventure.deciding_to_exit_at;
+
+    if (exit) {
+        const room = api_request(Api_Request_Type.enter_adventure_room, {
+            room_id: exit.to,
+            access_token: game.token,
+            dedicated_server_key: get_dedicated_server_key()
+        });
+
+        if (room) {
+            cleanup_adventure(game.adventure);
+            enter_adventure_room(game.player, game.adventure, room);
+        }
+    }
 }
 
 function adventure_interact_with_entity(game: Game, entity_id: Adventure_World_Entity_Id, current_head: number) {
@@ -877,6 +896,16 @@ function cleanup_adventure_entity(entity: Adventure_World_Entity) {
     }
 }
 
+function create_world_room_exit(exit: Adventure_Room_Exit): Adventure_World_Room_Exit {
+    const position = GetGroundPosition(Vector(exit.at.x, exit.at.y), undefined);
+
+    return {
+        to: exit.to,
+        at: position,
+        fx: fx("particles/room_exit.vpcf").with_vector_value(0, position)
+    };
+}
+
 function enter_adventure_room(player: Main_Player, adventure: Adventure_State, room: Adventure_Room_Data) {
     const start = Vector(room.entrance.x, room.entrance.y);
 
@@ -895,21 +924,8 @@ function enter_adventure_room(player: Main_Player, adventure: Adventure_State, r
         order_y: start.y
     }];
 
-    for (const entity of room.entities) {
-        print(`Create entity: ${enum_to_string(entity.type)}`);
-        adventure.entities.push(create_adventure_entity(entity));
-    }
-
-    for (const exit of room.exits) {
-        const position = GetGroundPosition(Vector(exit.at.x, exit.at.y), undefined);
-
-        adventure.exits.push({
-            to: exit.to,
-            at: position,
-            fx: fx("particles/room_exit.vpcf").with_vector_value(0, position)
-        });
-    }
-
+    adventure.entities = room.entities.map(entity => create_adventure_entity(entity));
+    adventure.exits = room.exits.map(exit => create_world_room_exit(exit));
     adventure.camera_restriction_zones = room.camera_restriction_zones;
 
     update_adventure_net_table(adventure);
@@ -924,7 +940,7 @@ function cleanup_adventure(adventure: Adventure_State) {
         exit.fx.destroy_and_release(false);
     }
 
-    adventure.requesting_room_exit_decision = false;
+    adventure.deciding_to_exit_at = undefined;
     adventure.exits = [];
     adventure.entities = [];
     delete adventure.current_right_click_target;

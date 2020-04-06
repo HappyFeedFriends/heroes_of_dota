@@ -4,7 +4,7 @@ import {
     api_request,
     async_api_request,
     fire_event,
-    subscribe_to_net_table_key
+    subscribe_to_net_table_key, async_local_api_request
 } from "./interop";
 
 import {
@@ -17,6 +17,7 @@ const adventure_ui = {
     card_container: adventure_ui_root.FindChildTraverse("adventure_cards"),
     currency_label: adventure_ui_root.FindChildTraverse("currency_remaining") as LabelPanel,
     bag_drop_layer: adventure_ui_root.FindChildTraverse("adventure_party_bag_drop_layer"),
+    fade: adventure_ui_root.FindChildTraverse("adventure_fade"),
     tooltip: {
         ...create_adventure_card_tooltip(adventure_ui_root.FindChildTraverse("adventure_card_tooltips")),
         css_class: ""
@@ -1019,6 +1020,54 @@ function show_entity_popup(entity: Adventure_Entity) {
     Game.EmitSound("adventure_popup_open");
 }
 
+function show_room_exit_popup() {
+    const popup = adventure_ui.popup;
+
+    function hide_popup() {
+        popup.window.SetHasClass("visible", false);
+        popup.background.SetHasClass("visible", false);
+
+        Game.EmitSound("popup_slide_down");
+    }
+
+    popup.window.SetHasClass("visible", true);
+    popup.background.SetHasClass("visible", true);
+    popup.content.RemoveAndDeleteChildren();
+    popup.header.text = "A way forward";
+    popup.text.text = "Continue to the next area?";
+
+    popup.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
+
+    popup.button_yes.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        Game.EmitSound("adventure_popup_ok");
+
+        adventure_ui.fade.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
+        adventure_ui.fade.AddClass("active");
+        adventure_ui.fade.hittest = true;
+
+        hide_popup();
+
+        $.Schedule(0.3, () => {
+            async_local_api_request(Local_Api_Request_Type.adventure_enter_room_through_suggested_exit, {}).then(() => {
+                adventure_ui.fade.hittest = false;
+                adventure_ui.fade.RemoveClass("active");
+                adventure_ui.fade.ClearPanelEvent(PanelEvent.ON_LEFT_CLICK);
+            });
+        });
+    });
+
+    popup.button_no.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        Game.EmitSound("click_simple");
+        hide_popup();
+    });
+
+    popup.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        hide_popup();
+    });
+
+    Game.EmitSound("adventure_popup_open");
+}
+
 function changes_equal(left: Adventure_Party_Change, right: Adventure_Party_Change) {
     function objects_equal(left: Record<string, any>, right: Record<string, any>): boolean {
         // TODO doesn't work with arrays or nulls
@@ -1680,6 +1729,10 @@ subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, e
 subscribe_to_custom_event(To_Client_Event_Type.adventure_receive_party_changes, event => {
     log(`Merging remote changes from event`);
     merge_adventure_party_changes(event.current_head, from_server_array(event.changes));
+});
+
+subscribe_to_custom_event(To_Client_Event_Type.adventure_display_room_exit_popup, event => {
+    show_room_exit_popup();
 });
 
 register_bag_drop_events(adventure_ui.bag_drop_layer);

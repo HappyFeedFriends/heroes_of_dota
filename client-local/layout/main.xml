@@ -173,6 +173,7 @@
                     </Button>
                 </Panel>
             </Panel>
+            <Panel id="adventure_fade" hittest="false"/>
         </Panel>
 
         <Panel id="editor_ui" hittest="false" class="ui_state">

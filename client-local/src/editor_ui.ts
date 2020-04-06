@@ -475,10 +475,11 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
 
     entity_button("Reroll stock", async () => {
         const new_stock = await async_local_api_request(Local_Api_Request_Type.reroll_merchant_stock, { merchant: merchant.id });
+        if (!new_stock.ok) return;
 
         merchant.stock = {
-            cards: from_server_array(new_stock.cards),
-            items: from_server_array(new_stock.items)
+            cards: from_server_array(new_stock.body.cards),
+            items: from_server_array(new_stock.body.items)
         };
 
         if (menu.highlighted_button == current_stock_button) {
@@ -620,7 +621,7 @@ function make_active_drag_state(drag_from: XY): Drag_State {
 
 async function camera_restriction_zone_particles(points: XY[]): Promise<ParticleId[]> {
     return Promise.all(
-        points.map(point => async_local_api_request(Local_Api_Request_Type.get_ground_z, point).then(ground => xyz(point.x, point.y, ground.z)))
+        points.map(point => async_local_api_request(Local_Api_Request_Type.get_ground_z, point).then(ground => xyz(point.x, point.y, ground.ok ? ground.body.z : 0)))
     ).then(points => {
         const result: ParticleId[] = [];
 
@@ -941,6 +942,11 @@ function battleground_editor_set_grid_brush_selection_state(editor: Battleground
 
     if (selection.active) {
         entity_button("Crop grid", async () => {
+            const new_world_x = editor.grid_world_origin.x + Const.battle_cell_size * selection.min.x;
+            const new_world_y = editor.grid_world_origin.y + Const.battle_cell_size * selection.min.y;
+            const new_world_z = await async_local_api_request(Local_Api_Request_Type.get_ground_z, { x: new_world_x, y: new_world_y });
+            if (!new_world_z.ok) return;
+
             const old_spawns = editor.spawns;
             editor.spawns = [];
 
@@ -957,11 +963,7 @@ function battleground_editor_set_grid_brush_selection_state(editor: Battleground
                 }
             });
 
-            const new_world_x = editor.grid_world_origin.x + Const.battle_cell_size * selection.min.x;
-            const new_world_y = editor.grid_world_origin.y + Const.battle_cell_size * selection.min.y;
-            const new_world_z = await async_local_api_request(Local_Api_Request_Type.get_ground_z, { x: new_world_x, y: new_world_y });
-
-            editor.grid_world_origin = { x: new_world_x, y: new_world_y, z: new_world_z.z };
+            editor.grid_world_origin = { x: new_world_x, y: new_world_y, z: new_world_z.body.z };
             editor.grid_size.x = selection.max.x - selection.min.x + 1;
             editor.grid_size.y = selection.max.y - selection.min.y + 1;
 
@@ -1109,8 +1111,9 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
 
         context_menu_button(`Set entrance to here`, async () => {
             const ground = await async_local_api_request(Local_Api_Request_Type.get_ground_z, click);
+            if (!ground.ok) return;
 
-            editor.room_entrance_location = xyz(click.x, click.y, ground.z);
+            editor.room_entrance_location = xyz(click.x, click.y, ground.body.z);
 
             submit_adventure_room_details_to_server(editor);
         });
@@ -1305,8 +1308,10 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         for (const room of room_list.rooms) {
             context_menu_button(`To ${room.name}`, async () => {
                 const ground = await async_local_api_request(Local_Api_Request_Type.get_ground_z, click);
+                if (!ground.ok) return;
+
                 const new_exit: UI_Room_Exit = {
-                    at: xyz(click.x, click.y, ground.z),
+                    at: xyz(click.x, click.y, ground.body.z),
                     indicator: create_world_indicator(`To ${room.name}`),
                     to: room.id,
                     name: room.name
@@ -2054,17 +2059,19 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
     toolbar_button("New", dropdown_menu_action(menu, async (parent, close_dropdown) => {
         const locations = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
 
-        for (const location of from_server_array(locations)) {
-            toolbar_dropdown_button(`${location.name} (${enum_to_string(location.theme)})`, async () => {
-                const response = await async_api_request(Api_Request_Type.editor_create_battleground, {
-                    name: "New battleground",
-                    world_origin: location.origin,
-                    theme: location.theme
-                });
+        if (locations.ok) {
+            for (const location of from_server_array(locations.body)) {
+                toolbar_dropdown_button(`${location.name} (${enum_to_string(location.theme)})`, async () => {
+                    const response = await async_api_request(Api_Request_Type.editor_create_battleground, {
+                        name: "New battleground",
+                        world_origin: location.origin,
+                        theme: location.theme
+                    });
 
-                cleanup_current_editor();
-                enter_battleground_editor(response.id, response.battleground, enemy, previous_editor);
-            });
+                    cleanup_current_editor();
+                    enter_battleground_editor(response.id, response.battleground, enemy, previous_editor);
+                });
+            }
         }
 
         toolbar_dropdown_button("Cancel", () => close_dropdown());
@@ -2106,14 +2113,16 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
     toolbar_button("Select location", dropdown_menu_action(menu, async (parent, close_dropdown) => {
         const locations = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
 
-        for (const location of from_server_array(locations)) {
-            toolbar_dropdown_button(location.name, () => {
-                new_editor.grid_world_origin = location.origin;
+        if (locations.ok) {
+            for (const location of from_server_array(locations.body)) {
+                toolbar_dropdown_button(location.name, () => {
+                    new_editor.grid_world_origin = location.origin;
 
-                battleground_editor_recreate_cells(new_editor);
-                submit_battleground_state_to_server(new_editor);
-                submit_editor_battleground_for_repaint(new_editor);
-            });
+                    battleground_editor_recreate_cells(new_editor);
+                    submit_battleground_state_to_server(new_editor);
+                    submit_editor_battleground_for_repaint(new_editor);
+                });
+            }
         }
 
         toolbar_dropdown_button("Cancel", () => close_dropdown());
@@ -2228,6 +2237,7 @@ async function enter_adventure_editor(move_camera = false) {
     });
 
     const ground = await async_local_api_request(Local_Api_Request_Type.get_ground_z, room.entrance_location);
+    if (!ground.ok) return;
 
     if (move_camera) {
         dispatch_local_editor_action({
@@ -2242,7 +2252,7 @@ async function enter_adventure_editor(move_camera = false) {
         room_name: room.name,
         selection: { type: Adventure_Selection_Type.none },
         camera_height_index: 4,
-        room_entrance_location: xyz(room.entrance_location.x, room.entrance_location.y, ground.z),
+        room_entrance_location: xyz(room.entrance_location.x, room.entrance_location.y, ground.body.z),
         last_camera_position: xyz(0, 0, 0),
         entrance_indicator: create_world_indicator(""),
         camera_restriction_zones: [],
@@ -2266,10 +2276,11 @@ async function enter_adventure_editor(move_camera = false) {
 
     new_editor.exits = await Promise.all(room.exits.map(async exit => {
         const ground = await async_local_api_request(Local_Api_Request_Type.get_ground_z, exit.at);
+        const z = ground.ok ? ground.body.z : 0;
 
         return {
             to: exit.to,
-            at: xyz(exit.at.x, exit.at.y, ground.z),
+            at: xyz(exit.at.x, exit.at.y, z),
             indicator: create_world_indicator(`To ${exit.name}`),
             name: exit.name
         }
@@ -2432,8 +2443,9 @@ function submit_adventure_room_details_to_server(editor: Adventure_Editor) {
     }, () => {});
 
     dispatch_local_editor_action({
-        type: Editor_Action_Type.set_camera_restriction_zones,
-        zones: editor.camera_restriction_zones
+        type: Editor_Action_Type.set_room_details,
+        zones: editor.camera_restriction_zones,
+        exits: editor.exits
     });
 }
 

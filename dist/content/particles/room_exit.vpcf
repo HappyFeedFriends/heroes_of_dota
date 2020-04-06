@@ -29,13 +29,13 @@
 		},
 		{
 			_class = "C_OP_InterpolateRadius"
-			m_flEndScale = 0.0
+			m_flEndScale = 4.0
 			m_flBias = 0.35
 		},
 		{
 			_class = "C_OP_ColorInterpolateRandom"
-			m_ColorFadeMin = [ 227, 129, 43, 255 ]
-			m_ColorFadeMax = [ 185, 50, 2, 255 ]
+			m_ColorFadeMin = [ 227, 184, 42, 255 ]
+			m_ColorFadeMax = [ 185, 123, 0, 255 ]
 		},
 		{
 			_class = "C_OP_Spin"
@@ -61,8 +61,8 @@
 		},
 		{
 			_class = "C_INIT_RandomRadius"
-			m_flRadiusMax = 30.0
-			m_flRadiusMin = 20.0
+			m_flRadiusMax = 10.0
+			m_flRadiusMin = 5.0
 		},
 		{
 			_class = "C_INIT_RandomRotation"

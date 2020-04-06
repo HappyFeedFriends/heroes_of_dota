@@ -4,6 +4,13 @@ const remote_root = Game.IsInToolsMode() ? "http://127.0.0.1:3638" : "http://cia
 const player_name_storage: Record<number, string> = {};
 const player_name_requests: Record<number, Player_Name_Callback[]> = {};
 
+type Api_Response<T> = {
+    ok: true
+    body: T
+} | {
+    ok: false
+}
+
 let local_request_id_counter = 0;
 
 const ongoing_local_requests: Record<number, (body: object) => void> = {};
@@ -68,7 +75,7 @@ export function async_api_request<T extends Api_Request_Type>(type: T, body: Fin
     return promise;
 }
 
-export function async_local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>): Promise<Find_Local_Response<T>> {
+export function async_local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>): Promise<Api_Response<Find_Local_Response<T>>> {
     const packet: Local_Api_Request_Packet = {
         type: type,
         body: body,
@@ -76,10 +83,10 @@ export function async_local_api_request<T extends Local_Api_Request_Type>(type: 
     };
 
     if (type != Local_Api_Request_Type.editor_action) {
-        $.Msg(`Request ${enum_to_string<Local_Api_Request_Type>(type)}`);
+        $.Msg(`Request ${packet.request_id}/${enum_to_string<Local_Api_Request_Type>(type)}`);
     }
 
-    const promise = new Promise<Find_Local_Response<T>>((resolve, reject) => {
+    const promise = new Promise<Api_Response<Find_Local_Response<T>>>(resolve => {
         const timeout = $.Schedule(10, () => {
             if (!ongoing_local_requests[packet.request_id]) {
                 return;
@@ -87,7 +94,9 @@ export function async_local_api_request<T extends Local_Api_Request_Type>(type: 
 
             delete ongoing_local_requests[packet.request_id];
 
-            reject();
+            $.Msg(`Request timeout in ${packet.request_id}/${enum_to_string<Local_Api_Request_Type>(type)}`);
+
+            resolve({ ok: false });
         });
 
         ongoing_local_requests[packet.request_id] = (body: any) => {
@@ -95,7 +104,10 @@ export function async_local_api_request<T extends Local_Api_Request_Type>(type: 
                 $.Msg(`Response for ${enum_to_string<Local_Api_Request_Type>(type)}: ${body}`);
             }
 
-            resolve(body);
+            resolve({
+                ok: true,
+                body: body
+            });
 
             delete ongoing_local_requests[packet.request_id];
 

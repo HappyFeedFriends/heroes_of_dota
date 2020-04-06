@@ -576,8 +576,7 @@ function game_loop() {
             num_party_slots: 0,
             camera_restriction_zones: [],
             camera_dummy: create_camera_entity(),
-            last_ordered_dummy_to_move_at: 0,
-            requesting_room_exit_decision: false
+            last_ordered_dummy_to_move_at: 0
         }
     };
 
@@ -643,6 +642,14 @@ function game_loop() {
         if (game.state == Player_State.on_adventure) {
             adventure_try_purchase_merchant_item(game, event.merchant_id, event.purchase_id, event.current_head);
         }
+    });
+
+    register_local_api_handler(Local_Api_Request_Type.adventure_enter_room_through_suggested_exit, () => {
+        if (game.state == Player_State.on_adventure) {
+            adventure_make_room_exit_decision(game);
+        }
+
+        return {};
     });
 
     if (IsInToolsMode()) {

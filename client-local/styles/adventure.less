@@ -589,6 +589,19 @@
       opacity: 1;
     }
   }
+
+  #adventure_fade {
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    background-color: black;
+    transition-property: opacity;
+    transition-duration: 0.4s;
+
+    &.active {
+      opacity: 1;
+    }
+  }
 }
 
 @adventure_slot_damage_animation: 'adventure_slot_damage_animation';

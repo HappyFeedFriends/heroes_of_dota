@@ -2,7 +2,8 @@ declare const enum Local_Api_Request_Type {
     list_battle_locations = 0,
     get_ground_z = 1,
     reroll_merchant_stock = 2,
-    editor_action = 3
+    editor_action = 3,
+    adventure_enter_room_through_suggested_exit = 4
 }
 
 declare const enum To_Server_Event_Type {
@@ -19,7 +20,8 @@ declare const enum To_Client_Event_Type {
     grid_highlight_no_target_ability = 3,
     show_start_turn_ui = 4,
     show_game_over_ui = 5,
-    log_chat_debug_message = 6
+    log_chat_debug_message = 6,
+    adventure_display_room_exit_popup = 7
 }
 
 declare const enum Prefixes {
@@ -93,6 +95,9 @@ type To_Client_Event = {
     payload: {
         message: string
     }
+} | {
+    type: To_Client_Event_Type.adventure_display_room_exit_popup
+    payload: {}
 }
 
 type Local_Api_Request = {
@@ -125,6 +130,10 @@ type Local_Api_Request = {
 } | {
     type: Local_Api_Request_Type.editor_action
     request: Editor_Action
+    response: {}
+} | {
+    type: Local_Api_Request_Type.adventure_enter_room_through_suggested_exit
+    request: {}
     response: {}
 }
 
@@ -316,7 +325,7 @@ declare const enum Editor_Action_Type {
     playtest_battleground = 10,
     edit_item_data = 11,
     move_camera = 12,
-    set_camera_restriction_zones = 13,
+    set_room_details = 13,
     enter_adventure_room = 14
 }
 
@@ -379,8 +388,9 @@ type Editor_Action = {
     entity_id: Adventure_World_Entity_Id
     item: Adventure_Item_Definition
 } | {
-    type: Editor_Action_Type.set_camera_restriction_zones
+    type: Editor_Action_Type.set_room_details
     zones: Camera_Restriction_Zone[]
+    exits: Adventure_Room_Exit[]
 } | {
     type: Editor_Action_Type.enter_adventure_room
     room_id: Adventure_Room_Id
