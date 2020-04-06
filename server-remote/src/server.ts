@@ -371,7 +371,8 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                 room: {
                     entities: ongoing_adventure.entities,
                     camera_restriction_zones: ongoing_adventure.current_room.camera_restriction_zones,
-                    entrance: ongoing_adventure.current_room.entrance_location
+                    entrance: ongoing_adventure.current_room.entrance_location,
+                    exits: ongoing_adventure.current_room.exits
                 },
                 player_position: {
                     x: player.online.current_location.x,
@@ -1185,7 +1186,8 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         return {
             entities: entities,
             entrance: room.entrance_location,
-            camera_restriction_zones: room.camera_restriction_zones
+            camera_restriction_zones: room.camera_restriction_zones,
+            exits: room.exits
         };
     });
 });
@@ -1512,7 +1514,11 @@ function register_dev_handlers() {
                 entrance_location: {
                     x: current_room.entrance_location.x,
                     y: current_room.entrance_location.y
-                }
+                },
+                exits: current_room.exits.map(exit => ({
+                    ...exit,
+                    name: room_by_id(state.ongoing_adventure.adventure, exit.to)!.name
+                }))
             };
         });
     });

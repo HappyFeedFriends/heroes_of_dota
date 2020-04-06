@@ -20,6 +20,9 @@ type Editor_Handlers = {
     response: {
         id: Adventure_Room_Id
         name: string
+        exits: Array<Adventure_Room_Exit & {
+            name: string
+        }>
         camera_restriction_zones: Camera_Restriction_Zone[]
         entrance_location: {
             x: number
@@ -116,6 +119,7 @@ type Adventure_Editor_Action = {
     type: Adventure_Editor_Action_Type.set_room_details
     name: string
     zones: Camera_Restriction_Zone[]
+    exits: Adventure_Room_Exit[]
     entrance: {
         x: number
         y: number

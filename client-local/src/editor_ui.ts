@@ -1,7 +1,6 @@
 import {current_state} from "./main_ui";
 
 import {
-    fire_event,
     subscribe_to_net_table_key,
     async_local_api_request,
     async_api_request,
@@ -18,7 +17,7 @@ const entity_panel = indicator.FindChildTraverse("editor_entity_panel");
 const context_menu = indicator.FindChildTraverse("editor_context_menu");
 const brushes_root = indicator.FindChildTraverse("editor_brushes");
 const toolbar_root = indicator.FindChildTraverse("editor_toolbar");
-const entrance_indicator = indicator.FindChildTraverse("editor_entrance_indicator");
+const world_indicators_root = indicator.FindChildTraverse("editor_world_indicators");
 
 const entity_buttons = entity_panel.FindChildTraverse("editor_entity_buttons");
 const entity_buttons_dropdown = entity_panel.FindChildTraverse("editor_entity_dropdown");
@@ -47,7 +46,8 @@ const enum Battleground_Brush_Type {
 const enum Adventure_Selection_Type {
     none,
     entity,
-    camera_restriction
+    camera_restriction,
+    room_exit
 }
 
 type Adventure_Editor = {
@@ -55,9 +55,11 @@ type Adventure_Editor = {
     selection: Adventure_Editor_Selection
     camera_height_index: number
     room_name: string
-    room_entrance_location: XY
+    room_entrance_location: XYZ
     last_camera_position: XYZ
     camera_restriction_zones: UI_Camera_Restriction_Zone[]
+    entrance_indicator: World_Indicator
+    exits: UI_Room_Exit[]
 }
 
 type Battleground_Editor = {
@@ -103,6 +105,9 @@ type Adventure_Editor_Selection = {
     type: Adventure_Selection_Type.camera_restriction
     zone: UI_Camera_Restriction_Zone
     particle: ParticleId
+} | {
+    type: Adventure_Selection_Type.room_exit
+    exit: UI_Room_Exit
 }
 
 type Battleground_Brush = Battleground_Select_Brush | Battleground_Grid_Brush | Battleground_Deployment_Brush | {
@@ -172,6 +177,18 @@ type UI_Camera_Restriction_Zone = {
     particles: ParticleId[]
 }
 
+type UI_Room_Exit = {
+    at: XYZ
+    to: Adventure_Room_Id
+    name: string
+    indicator: World_Indicator
+}
+
+type World_Indicator = {
+    root: Panel
+    text: LabelPanel
+}
+
 let pinned_context_menu_position = xyz(0, 0, 0);
 let context_menu_particle: ParticleId | undefined = undefined;
 export let editor: Editor = { type: Editor_Type.none };
@@ -207,6 +224,10 @@ function update_editor_camera_height(editor: Editor) {
 }
 
 function drop_adventure_editor_selection(editor: Adventure_Editor) {
+    for (const exit of editor.exits) {
+        exit.indicator.root.RemoveClass("selected");
+    }
+
     if (editor.selection.type == Adventure_Selection_Type.entity) {
         destroy_fx(editor.selection.particle);
     }
@@ -1072,8 +1093,10 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         context_menu_button(`Create gold bag`, () => gold_bag_buttons(10));
         context_menu_button(`Create ...`, entity_creation_buttons);
 
-        context_menu_button(`Set entrance to here`, () => {
-            editor.room_entrance_location = click;
+        context_menu_button(`Set entrance to here`, async () => {
+            const ground = await async_local_api_request(Local_Api_Request_Type.get_ground_z, click);
+
+            editor.room_entrance_location = xyz(click.x, click.y, ground.z);
 
             submit_adventure_room_details_to_server(editor);
         });
@@ -1204,6 +1227,10 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
             adventure_editor_select_camera_restriction_zone(editor, new_zone);
             submit_adventure_room_details_to_server(editor);
         });
+
+        context_menu_button("Room exit", async () => {
+            room_exit_buttons();
+        });
     }
 
     function gold_bag_buttons(amount: number) {
@@ -1249,6 +1276,31 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
                         },
                     }
                 })
+            });
+        }
+    }
+
+    async function room_exit_buttons() {
+        prepare_context_menu();
+        context_menu_button("Back", entity_creation_buttons);
+
+        const room_list = await async_api_request(Api_Request_Type.editor_list_rooms, {
+            access_token: get_access_token()
+        });
+
+        for (const room of room_list.rooms) {
+            context_menu_button(`To ${room.name}`, async () => {
+                const ground = await async_local_api_request(Local_Api_Request_Type.get_ground_z, click);
+                const new_exit: UI_Room_Exit = {
+                    at: xyz(click.x, click.y, ground.z),
+                    indicator: create_world_indicator(`To ${room.name}`),
+                    to: room.id,
+                    name: room.name
+                };
+
+                editor.exits.push(new_exit);
+
+                submit_adventure_room_details_to_server(editor);
             });
         }
     }
@@ -1403,6 +1455,32 @@ function adventure_editor_select_camera_restriction_zone(editor: Adventure_Edito
     }, "editor_entity_delete_button");
 }
 
+function adventure_editor_select_room_exit(editor: Adventure_Editor, exit: UI_Room_Exit) {
+    if (editor.selection.type != Adventure_Selection_Type.none) {
+        drop_adventure_editor_selection(editor);
+    }
+
+    exit.indicator.root.AddClass("selected");
+
+    editor.selection = {
+        type: Adventure_Selection_Type.room_exit,
+        exit: exit
+    };
+
+    const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
+    selection_label.text = `Selected: Exit to ${exit.name}`;
+
+    entity_button("Delete", () => {
+        const exit_index = editor.exits.findIndex(other => other == exit);
+        if (exit_index != -1) {
+            editor.exits.splice(exit_index, 1);
+            exit.indicator.root.DeleteAsync(0);
+            drop_adventure_editor_selection(editor);
+            submit_adventure_room_details_to_server(editor);
+        }
+    }, "editor_entity_delete_button");
+}
+
 // Returns if event should be consumed or not
 export function adventure_editor_filter_mouse_click(editor: Adventure_Editor, event: MouseEvent, button: MouseButton | WheelScroll): boolean {
     if (event != "pressed") {
@@ -1477,6 +1555,16 @@ export function adventure_editor_filter_mouse_click(editor: Adventure_Editor, ev
         }
 
         const cursor_world = get_screen_world_position(cursor);
+
+        if (cursor_world) {
+            const room_exit = editor.exits.find(exit => len(sub(exit.at, cursor_world)) <= 100);
+
+            if (room_exit) {
+                adventure_editor_select_room_exit(editor, room_exit);
+                return true;
+            }
+        }
+
         if (cursor_world) {
             const camera_zone = find_camera_restriction_zone_under_cursor(editor, xy(cursor_world.x, cursor_world.y));
 
@@ -1661,6 +1749,22 @@ function for_each_editor_spawn(spawns: Battleground_Spawn[][], action: (spawn: B
     }
 }
 
+function create_world_indicator(label: string): World_Indicator {
+    const indicator = $.CreatePanel("Panel", world_indicators_root, "");
+    indicator.AddClass("editor_world_indicator");
+
+    const text = $.CreatePanel("Label", indicator, "text");
+    text.text = label;
+
+    $.CreatePanel("Panel", indicator, "underline");
+    $.CreatePanel("Panel", indicator, "marker");
+
+    return {
+        root: indicator,
+        text: text
+    }
+}
+
 function periodically_update_editor_ui() {
     $.Schedule(1 / 200, periodically_update_editor_ui);
 
@@ -1671,10 +1775,10 @@ function periodically_update_editor_ui() {
             }
         }
 
-        if (editor.room_entrance_location) {
-            const position_over = xyz(editor.room_entrance_location.x, editor.room_entrance_location.y, 256);
+        position_panel_over_position_in_the_world(editor.entrance_indicator.root, editor.room_entrance_location, Align_H.center, Align_V.top);
 
-            position_panel_over_position_in_the_world(entrance_indicator, position_over, Align_H.center, Align_V.top);
+        for (const exit of editor.exits) {
+            position_panel_over_position_in_the_world(exit.indicator.root, exit.at, Align_H.center, Align_V.top);
         }
     }
 
@@ -1748,8 +1852,6 @@ function periodically_update_editor_camera_state() {
 }
 
 function update_state_from_editor_mode(state: Player_State, editor: Editor) {
-    entrance_indicator.style.visibility = editor.type == Editor_Type.adventure ? "visible" : "collapse";
-
     update_editor_indicator(editor);
     update_editor_camera_height(editor);
 
@@ -2141,6 +2243,8 @@ async function enter_adventure_editor(move_camera = false) {
         access_token: get_access_token()
     });
 
+    const ground = await async_local_api_request(Local_Api_Request_Type.get_ground_z, room.entrance_location);
+
     if (move_camera) {
         dispatch_local_editor_action({
             type: Editor_Action_Type.move_camera,
@@ -2153,19 +2257,38 @@ async function enter_adventure_editor(move_camera = false) {
         room_name: room.name,
         selection: { type: Adventure_Selection_Type.none },
         camera_height_index: 4,
-        room_entrance_location: room.entrance_location,
+        room_entrance_location: xyz(room.entrance_location.x, room.entrance_location.y, ground.z),
         last_camera_position: xyz(0, 0, 0),
-        camera_restriction_zones: await Promise.all(room.camera_restriction_zones.map(async zone => {
-            const new_zone: UI_Camera_Restriction_Zone = {
-                points: zone.points,
-                particles: await camera_restriction_zone_particles(zone.points)
-            };
-
-            return new_zone;
-        }))
+        entrance_indicator: create_world_indicator(""),
+        camera_restriction_zones: [],
+        exits: []
     };
 
     set_current_editor(new_editor);
+
+    // A hack since we delete all world indicators in set_current_editor
+    new_editor.entrance_indicator = create_world_indicator("START");
+    new_editor.entrance_indicator.root.AddClass("editor_room_entrance_indicator");
+
+    new_editor.camera_restriction_zones = await Promise.all(room.camera_restriction_zones.map(async zone => {
+        const new_zone: UI_Camera_Restriction_Zone = {
+            points: zone.points,
+            particles: await camera_restriction_zone_particles(zone.points)
+        };
+
+        return new_zone;
+    }));
+
+    new_editor.exits = await Promise.all(room.exits.map(async exit => {
+        const ground = await async_local_api_request(Local_Api_Request_Type.get_ground_z, exit.at);
+
+        return {
+            to: exit.to,
+            at: xyz(exit.at.x, exit.at.y, ground.z),
+            indicator: create_world_indicator(`To ${exit.name}`),
+            name: exit.name
+        }
+    }));
 
     $.CreatePanel("Label", toolbar_buttons, "").text = `Room #${room.id}`;
 
@@ -2208,6 +2331,8 @@ function cleanup_current_editor() {
             for (const zone of editor.camera_restriction_zones) {
                 zone.particles.forEach(destroy_fx);
             }
+
+            world_indicators_root.RemoveAndDeleteChildren();
 
             break;
         }
@@ -2293,6 +2418,10 @@ function submit_adventure_room_details_to_server(editor: Adventure_Editor) {
         zones: editor.camera_restriction_zones.map(zone => ({
             points: zone.points
         })),
+        exits: editor.exits.map(exit => ({
+            at: xy(exit.at.x, exit.at.y),
+            to: exit.to
+        })),
         access_token: get_access_token()
     }, () => {});
 
@@ -2303,8 +2432,6 @@ function submit_adventure_room_details_to_server(editor: Adventure_Editor) {
 }
 
 function exit_editor() {
-    cleanup_current_editor();
-
     set_current_editor({ type: Editor_Type.none });
 }
 

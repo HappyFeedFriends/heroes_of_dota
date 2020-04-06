@@ -168,6 +168,12 @@ type Adventure_Room_Data = {
     entrance: XY
     entities: Adventure_Entity[]
     camera_restriction_zones: Camera_Restriction_Zone[]
+    exits: Adventure_Room_Exit[]
+}
+
+type Adventure_Room_Exit = {
+    at: XY
+    to: Adventure_Room_Id
 }
 
 type Adventure_Entity_Definition_Base = {
