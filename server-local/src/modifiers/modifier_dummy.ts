@@ -13,6 +13,16 @@ class Modifier_Dummy extends CDOTA_Modifier_Lua {
     GetAttributes(): DOTAModifierAttribute_t {
         return DOTAModifierAttribute_t.MODIFIER_ATTRIBUTE_PERMANENT;
     }
+
+    DeclareFunctions(): modifierfunction[] {
+        return [
+            modifierfunction.MODIFIER_PROPERTY_IGNORE_MOVESPEED_LIMIT
+        ];
+    }
+
+    GetModifierIgnoreMovespeedLimit(): 0 | 1 {
+        return 1;
+    }
 }
 
 // TODO TSTL BUG

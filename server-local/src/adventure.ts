@@ -528,9 +528,10 @@ function update_adventure_camera(adventure: Adventure_State, player: Main_Player
         return player_position;
     }
 
-    const desired_camera_position = get_desired_camera_position();
     const camera = adventure.camera_dummy;
-    camera.SetBaseMoveSpeed(player.hero_unit.GetBaseMoveSpeed());
+    const actual_camera_position = camera.GetAbsOrigin();
+    const desired_camera_position = get_desired_camera_position();
+    camera.SetBaseMoveSpeed((desired_camera_position - actual_camera_position as Vector).Length2D() * 2);
 
     if (GameRules.GetGameTime() - adventure.last_ordered_dummy_to_move_at > FrameTime() * 2) {
         camera.MoveToPosition(desired_camera_position);
@@ -542,7 +543,6 @@ function update_adventure_camera(adventure: Adventure_State, player: Main_Player
         DebugDrawSphere(center, Vector(255, 0, 0), 128, 64, false, FrameTime());
     }
 
-    const actual_camera_position = camera.GetAbsOrigin();
     if ((actual_camera_position - desired_camera_position as Vector).Length2D() > 500) {
         camera.SetAbsOrigin(desired_camera_position);
     }
