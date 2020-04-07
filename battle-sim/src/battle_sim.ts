@@ -336,6 +336,8 @@ function is_point_in_deployment_zone(battle: Battle, xy: XY, player: Battle_Play
     const zone = player.deployment_zone;
 
     for (const unit of battle.units) {
+        if (unit.dead) continue;
+
         const unit_x = unit.position.x;
         const unit_y = unit.position.y;
 
