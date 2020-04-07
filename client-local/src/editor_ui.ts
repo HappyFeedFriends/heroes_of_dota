@@ -2191,19 +2191,23 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
     }
 
     if (previous_editor != undefined && previous_editor.type == Editor_Type.adventure) {
-        toolbar_button("Back to adventure", () => {
-            cleanup_current_editor();
-            set_current_editor(previous_editor);
-            dispatch_local_editor_action({
+        toolbar_button("Back to adventure", async () => {
+            await enter_adventure_editor();
+            await dispatch_local_editor_action({
                 type: Editor_Action_Type.move_camera,
                 to: previous_editor.last_camera_position
             });
 
-            if (enemy) {
-                const entity = find_adventure_entity_by_id(enemy.id);
+            if (editor.type == Editor_Type.adventure) {
+                editor.camera_height_index = previous_editor.camera_height_index;
+                update_editor_camera_height(editor);
 
-                if (entity) {
-                    adventure_editor_select_entity(previous_editor, entity);
+                if (enemy) {
+                    const entity = find_adventure_entity_by_id(enemy.id);
+
+                    if (entity) {
+                        adventure_editor_select_entity(editor, entity);
+                    }
                 }
             }
         });
