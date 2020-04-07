@@ -742,7 +742,7 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
             const clamped_base_health = Math.min(new_base_health, max_base_health);
 
             if (clamped_base_health != slot.base_health) {
-                push_party_change(player.party, change_party_change_health(link.slot_index, clamped_base_health, Adventure_Health_Change_Reason.combat));
+                push_party_change(player.party, change_party_set_health_clamped(link.slot_index, new_base_health, max_base_health, Adventure_Health_Change_Reason.combat));
             }
         }
 
@@ -755,8 +755,9 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
                 const slot = link.slot;
 
                 if (slot.health != source_unit.health) {
-                    const new_health = Math.min(source_unit.health, creep_definition_by_type(slot.creep).health);
-                    push_party_change(player.party, change_party_change_health(link.slot_index, new_health, Adventure_Health_Change_Reason.combat));
+                    const max_health = creep_definition_by_type(slot.creep).health;
+                    const new_health = source_unit.health;
+                    push_party_change(player.party, change_party_set_health_clamped(link.slot_index, new_health, max_health, Adventure_Health_Change_Reason.combat));
                 }
             } else {
                 push_party_change(player.party, change_party_empty_slot(link.slot_index));
@@ -1371,7 +1372,7 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                                 if (is_party_hero_dead(slot)) break;
 
                                 const max_health = hero_definition_by_type(slot.hero).health;
-                                const change = change_party_change_health(index, max_health, Adventure_Health_Change_Reason.shrine);
+                                const change = change_party_set_health(index, max_health, Adventure_Health_Change_Reason.shrine);
 
                                 push_party_change(party, change);
 
@@ -1382,7 +1383,7 @@ register_api_handler(Api_Request_Type.interact_with_adventure_entity, req => {
                                 if (is_party_creep_dead(slot)) break;
 
                                 const max_health = creep_definition_by_type(slot.creep).health;
-                                const change = change_party_change_health(index, max_health, Adventure_Health_Change_Reason.shrine);
+                                const change = change_party_set_health(index, max_health, Adventure_Health_Change_Reason.shrine);
 
                                 push_party_change(party, change);
 
@@ -1724,7 +1725,7 @@ function register_dev_handlers() {
 
                     for (const [index, slot] of party.slots.entries()) {
                         if (slot.type == Adventure_Party_Slot_Type.hero && targets.indexOf(slot.hero) != -1) {
-                            push_party_change(party, change_party_change_health(index, health, Adventure_Health_Change_Reason.combat));
+                            push_party_change(party, change_party_set_health(index, health, Adventure_Health_Change_Reason.combat));
                         }
                     }
 

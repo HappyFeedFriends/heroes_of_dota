@@ -109,11 +109,22 @@ function change_party_add_spell(slot: number, spell: Spell_Id, reason = Adventur
     }
 }
 
-function change_party_change_health(slot: number, health: number, reason: Adventure_Health_Change_Reason): Adventure_Party_Change {
+function change_party_set_health(slot: number, health: number, reason: Adventure_Health_Change_Reason): Adventure_Party_Change {
     return {
         type: Adventure_Party_Change_Type.set_health,
         slot_index: slot,
         health: health,
+        non_clamped_health: health,
+        reason: reason
+    }
+}
+
+function change_party_set_health_clamped(slot: number, health: number, max: number, reason: Adventure_Health_Change_Reason): Adventure_Party_Change {
+    return {
+        type: Adventure_Party_Change_Type.set_health,
+        slot_index: slot,
+        health: Math.min(health, max),
+        non_clamped_health: health,
         reason: reason
     }
 }
@@ -297,14 +308,10 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
             switch (item.item_id) {
                 case Adventure_Consumable_Item_Id.healing_salve: {
                     const max_health = hero_definition_by_type(target.hero).health;
-                    const new_health = Math.min(target.base_health + 5, max_health);
+                    const new_health = target.base_health + 5;
+                    const change = change_party_set_health_clamped(action.party_slot, new_health, max_health, Adventure_Health_Change_Reason.healing_salve);
 
-                    change_consumer({
-                        type: Adventure_Party_Change_Type.set_health,
-                        slot_index: action.party_slot,
-                        health: new_health,
-                        reason: Adventure_Health_Change_Reason.healing_salve
-                    });
+                    change_consumer(change);
 
                     break;
                 }

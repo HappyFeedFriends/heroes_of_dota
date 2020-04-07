@@ -15,6 +15,7 @@ import {
 const adventure_ui = {
     party_container: adventure_ui_root.FindChildTraverse("adventure_party"),
     card_container: adventure_ui_root.FindChildTraverse("adventure_cards"),
+    currency_root: adventure_ui_root.FindChildTraverse("adventure_currency"),
     currency_label: adventure_ui_root.FindChildTraverse("currency_remaining") as LabelPanel,
     bag_drop_layer: adventure_ui_root.FindChildTraverse("adventure_party_bag_drop_layer"),
     fade: adventure_ui_root.FindChildTraverse("adventure_fade"),
@@ -1279,6 +1280,40 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         return () => finished_updating;
     }
 
+    function animate_floating_numbers(over: Panel, how_many: number, css_class: string, period: number): Adventure_Animation_Promise {
+        let finished_updating = false;
+
+        function create_floating_number() {
+            if (how_many == 0 || current_state != Player_State.on_adventure) {
+                finished_updating = true;
+                return;
+            }
+
+            const screen_ratio = Game.GetScreenHeight() / 1080;
+            const window_position = over.GetPositionWithinWindow();
+            const width = over.actuallayoutwidth;
+            const offset_x = Math.random() * width * 0.9; // 0.9 to compensate for text width
+            const position_x = Math.round((window_position.x + offset_x) / screen_ratio);
+            const position_y = Math.round(window_position.y / screen_ratio);
+
+            const floating = $.CreatePanel("Label", adventure_ui_root, "");
+            floating.text = "+1";
+            floating.style.x = position_x + "px";
+            floating.style.y = position_y + "px";
+            floating.AddClass("floating_party_text");
+            floating.AddClass(css_class);
+            floating.DeleteAsync(1);
+
+            how_many--;
+
+            $.Schedule(period, create_floating_number);
+        }
+
+        create_floating_number();
+
+        return () => finished_updating;
+    }
+
     function both(a: Adventure_Animation_Promise, b: Adventure_Animation_Promise): Adventure_Animation_Promise {
         return () => a() && b();
     }
@@ -1431,13 +1466,21 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             if (change.from_purchase) {
                 adventure_ui.currency_label.text = change.amount.toString(10);
             } else {
-                return animate_integer(start_at, change.amount, 0.04, value => {
+                const label_animation = animate_integer(start_at, change.amount, 0.04, value => {
                     adventure_ui.currency_label.text = value.toString(10);
 
                     if (direction == 1) {
                         Game.EmitSound("gold_increment");
                     }
                 });
+
+                if (direction == 1) {
+                    const gain_animation = animate_floating_numbers(adventure_ui.currency_root, change.amount - start_at, "gold", 0.04);
+
+                    return both(gain_animation, label_animation);
+                } else {
+                    return label_animation;
+                }
             }
 
             break;
@@ -1505,6 +1548,8 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                     const new_health = compute_hero_display_health(slot.items, change.health);
                     const period = health_change_animation_period(change.reason);
 
+                    let floating_numbers: Adventure_Animation_Promise;
+
                     if (change.reason == Adventure_Health_Change_Reason.healing_salve) {
                         emit_sound("healing_salve");
                     }
@@ -1512,15 +1557,22 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                     if (new_health < old_health) {
                         emit_random_sound(hero_sounds_by_hero_type(slot.hero).pain);
                         flash_slot_damaged(slot, flash_duration);
+                        floating_numbers = proceed;
                     } else {
+                        const actually_restored = change.non_clamped_health - slot.base_health;
                         flash_slot_health_restored(slot, flash_duration);
+                        floating_numbers = animate_floating_numbers(slot.container, actually_restored, "heal", period)
                     }
 
                     slot.base_health = change.health;
 
                     const ui_updater = slot.ui.stat_health.value_updater;
 
-                    return both(fixed_duration(1.0), animate_integer(old_health, new_health, period, value => ui_updater(slot.ui.stat_health, value)));
+                    return all([
+                        fixed_duration(1.0),
+                        animate_integer(old_health, new_health, period, value => ui_updater(slot.ui.stat_health, value)),
+                        floating_numbers
+                    ]);
                 }
 
                 case Adventure_Party_Slot_Type.creep: {
@@ -1532,7 +1584,10 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
 
                     const ui_updater = slot.ui.stat_health.value_updater;
 
-                    return both(fixed_duration(1.0), animate_integer(slot.health, change.health, period, value => ui_updater(slot.ui.stat_health, value)));
+                    return all([
+                        fixed_duration(1.0),
+                        animate_integer(slot.health, change.health, period, value => ui_updater(slot.ui.stat_health, value))
+                    ]);
                 }
 
                 case Adventure_Party_Slot_Type.spell:
@@ -1582,6 +1637,8 @@ function reset_party_state() {
 }
 
 function fill_ui_from_snapshot(snapshot: Party_Snapshot) {
+    party.currency = snapshot.currency;
+
     adventure_ui.currency_label.text = snapshot.currency.toString(10);
 
     for (const item of snapshot.bag) {

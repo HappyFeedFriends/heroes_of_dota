@@ -602,6 +602,30 @@
       opacity: 1;
     }
   }
+
+  .floating_party_text {
+    font-family: @font-mono;
+    opacity: 1;
+    transition-property: transform, opacity;
+    transition-duration: 1s;
+
+    #number_floating_up() {
+      font-size: 20px;
+      color: white;
+      transform: translateY(-200px);
+      opacity: 0;
+    }
+
+    &.heal {
+      #number_floating_up();
+      text-shadow: 0px 0px 2px 2.0 rgb(17, 162, 0);
+    }
+
+    &.gold {
+      #number_floating_up();
+      color: rgb(244, 214, 106);
+    }
+  }
 }
 
 @adventure_slot_damage_animation: 'adventure_slot_damage_animation';

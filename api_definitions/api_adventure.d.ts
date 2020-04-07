@@ -311,6 +311,7 @@ type Adventure_Party_Change = {
     type: Adventure_Party_Change_Type.set_health
     slot_index: number
     health: number
+    non_clamped_health: number
     reason: Adventure_Health_Change_Reason
 } | {
     type: Adventure_Party_Change_Type.add_item_to_bag
