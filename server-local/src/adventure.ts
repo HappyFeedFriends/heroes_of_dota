@@ -639,21 +639,6 @@ function adventure_update_loop(game: Game) {
     }
 }
 
-function submit_adventure_movement_loop(game: Game) {
-    while (true) {
-        wait_until(() => game.state == Player_State.on_adventure);
-        wait(0.7);
-
-        const request = {
-            ...get_player_movement(game.player),
-            access_token: game.token,
-            dedicated_server_key: get_dedicated_server_key()
-        };
-
-        api_request_with_retry_on_403(Api_Request_Type.submit_adventure_player_movement, game, request);
-    }
-}
-
 function handle_in_interactive_distance(player: Main_Player, handle: CDOTA_BaseNPC) {
     const entity_world_position = handle.GetAbsOrigin();
     const distance_to_player = (player.hero_unit.GetAbsOrigin() - entity_world_position as Vector).Length2D();
@@ -688,7 +673,7 @@ function adventure_try_purchase_merchant_item(game: Game, merchant_id: Adventure
     update_adventure_net_table(game.adventure);
 }
 
-function adventure_make_room_exit_decision(game: Game) {
+function adventure_make_room_exit_decision(game: Game, map: Map_State) {
     const exit = game.adventure.deciding_to_exit_at;
 
     if (exit) {
@@ -701,6 +686,7 @@ function adventure_make_room_exit_decision(game: Game) {
         if (room) {
             cleanup_adventure(game.adventure);
             enter_adventure_room(game.player, game.adventure, room);
+            query_other_entities_movement(game, map);
         }
     }
 }
@@ -906,14 +892,12 @@ function create_world_room_exit(exit: Adventure_Room_Exit): Adventure_World_Room
     };
 }
 
-function enter_adventure_room(player: Main_Player, adventure: Adventure_State, room: Adventure_Room_Data) {
-    const start = Vector(room.entrance.x, room.entrance.y);
+function enter_adventure_room(player: Main_Player, adventure: Adventure_State, room: Adventure_Room_Data, override_position?: XY) {
+    const start = override_position ? Vector(override_position.x, override_position.y) : Vector(room.entrance.x, room.entrance.y);
 
     FindClearSpaceForUnit(player.hero_unit, start, true);
     player.hero_unit.Interrupt();
     adventure.camera_dummy.SetAbsOrigin(player.hero_unit.GetAbsOrigin());
-
-    set_camera_location_on_unit_blocking(player.player_id, adventure.camera_dummy);
 
     player.current_order_x = start.x;
     player.current_order_y = start.y;
@@ -928,6 +912,7 @@ function enter_adventure_room(player: Main_Player, adventure: Adventure_State, r
     adventure.exits = room.exits.map(exit => create_world_room_exit(exit));
     adventure.camera_restriction_zones = room.camera_restriction_zones;
 
+    set_camera_location_on_unit_blocking(player.player_id, adventure.camera_dummy);
     update_adventure_net_table(adventure);
 }
 

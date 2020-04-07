@@ -3,6 +3,7 @@ type Game = {
     state: Player_State
     player: Main_Player
     adventure: Adventure_State
+    map: Map_State
 }
 
 type Main_Player = {
@@ -375,7 +376,8 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         game.adventure.ongoing_adventure_id = next_state.ongoing_adventure_id;
         game.adventure.num_party_slots = next_state.num_party_slots;
 
-        enter_adventure_room(game.player, game.adventure, next_state.room);
+        fork(() => query_other_entities_movement(game, game.map));
+        enter_adventure_room(game.player, game.adventure, next_state.room, next_state.player_position);
     }
 
     game.state = next_state.state;
@@ -481,6 +483,27 @@ function register_local_api_handler<T extends Local_Api_Request_Type>(type: T, c
     local_api_handlers[type] = body => callback(body as Find_Local_Request<T>);
 }
 
+function submit_and_query_movement_loop(game: Game, map: Map_State) {
+    while (true) {
+        wait_until(() => game.state == Player_State.on_global_map || game.state == Player_State.on_adventure);
+        wait(Const.movement_history_submit_rate);
+
+        const request = {
+            ...get_player_movement(game.player),
+            access_token: game.token,
+            dedicated_server_key: get_dedicated_server_key()
+        };
+
+        if (game.state == Player_State.on_adventure) {
+            fork(() => api_request_with_retry_on_403(Api_Request_Type.submit_adventure_player_movement, game, request));
+        } else if (game.state == Player_State.on_global_map) {
+            fork(() => api_request_with_retry_on_403(Api_Request_Type.submit_player_movement, game, request));
+        }
+
+        fork(() => query_other_entities_movement(game, map));
+    }
+}
+
 function update_current_camera_target(game: Game) {
     if (game.state == Player_State.in_battle) {
         current_camera_target.target = battle.camera_dummy;
@@ -533,11 +556,6 @@ function game_loop() {
     let player_id: PlayerID | undefined = undefined;
     let player_unit: CDOTA_BaseNPC_Hero | undefined = undefined;
 
-    const map: Map_State = {
-        players: {},
-        neutrals: {}
-    };
-
     const camera_entity = create_camera_entity();
 
     reinitialize_battle(Vector(), Battleground_Theme.forest, camera_entity);
@@ -569,6 +587,10 @@ function game_loop() {
         player: player,
         token: "",
         state: Player_State.not_logged_in,
+        map: {
+            players: {},
+            neutrals: {}
+        },
         adventure: {
             entities: [],
             exits: [],
@@ -592,7 +614,7 @@ function game_loop() {
         }
 
         if (game.state == Player_State.on_global_map) {
-            return process_player_global_map_order(game, map, order);
+            return process_player_global_map_order(game, game.map, order);
         }
 
         return false;
@@ -646,7 +668,7 @@ function game_loop() {
 
     register_local_api_handler(Local_Api_Request_Type.adventure_enter_room_through_suggested_exit, () => {
         if (game.state == Player_State.on_adventure) {
-            adventure_make_room_exit_decision(game);
+            adventure_make_room_exit_decision(game, game.map);
         }
 
         return {};
@@ -705,9 +727,8 @@ function game_loop() {
         })
     }
 
-    fork(() => submit_adventure_movement_loop(game));
     fork(() => adventure_update_loop(game));
-    fork(() => submit_and_query_movement_loop(game, map));
+    fork(() => submit_and_query_movement_loop(game, game.map));
     fork(() => {
         while(true) {
             const state_data = api_request_with_retry_on_403(Api_Request_Type.get_player_state, game, {
@@ -773,12 +794,6 @@ function game_loop() {
         }
 
         switch (game.state) {
-            case Player_State.on_global_map: {
-                update_main_player_movement_history(player);
-
-                break;
-            }
-
             case Player_State.in_battle: {
                 while (!battle.is_over) {
                     const target_head = get_battle_remote_head();

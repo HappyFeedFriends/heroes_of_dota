@@ -33,16 +33,6 @@ declare const enum Const {
     movement_history_length = 30
 }
 
-function submit_player_global_map_movement(game: Game) {
-    const request = {
-        ...get_player_movement(game.player),
-        access_token: game.token,
-        dedicated_server_key: get_dedicated_server_key()
-    };
-
-    api_request_with_retry_on_403(Api_Request_Type.submit_player_movement, game, request);
-}
-
 function get_npc_definition(npc_type: Npc_Type): Npc_Definition {
     switch (npc_type) {
         case Npc_Type.satyr: return {
@@ -230,16 +220,6 @@ function update_main_player_movement_history(main_player: Main_Player) {
 
     if (main_player.movement_history.length > Const.movement_history_length) {
         main_player.movement_history.shift();
-    }
-}
-
-function submit_and_query_movement_loop(game: Game, map: Map_State) {
-    while (true) {
-        wait_until(() => game.state == Player_State.on_global_map);
-        wait(Const.movement_history_submit_rate);
-
-        fork(() => submit_player_global_map_movement(game));
-        fork(() => query_other_entities_movement(game, map));
     }
 }
 

@@ -77,6 +77,8 @@ const enum Right {
     enter_adventure_room
 }
 
+type Adventure_Player_Bucket_Id = number & { _adventure_player_bucket_id_brand: any };
+
 export type Map_Player = {
     steam_id: string
     id: Player_Id;
@@ -112,9 +114,17 @@ type Map_Player_On_Adventure = {
     state: Player_State.on_adventure
     ongoing_adventure: Ongoing_Adventure
     current_location: XY
+    current_bucket?: Adventure_Player_Bucket
     movement_history: Movement_History_Entry[]
     previous_global_map_location: XY
     party: Map_Player_Party
+}
+
+type Adventure_Player_Bucket = {
+    id: Adventure_Player_Bucket_Id
+    adventure_id: Adventure_Id
+    room_id: Adventure_Room_Id
+    players: Map_Player[]
 }
 
 type Card_Deck = {
@@ -141,6 +151,7 @@ let dev_mode = false;
 
 const players: Map_Player[] = [];
 const battles: Battle_Record[] = [];
+const adventure_player_buckets: Adventure_Player_Bucket[] = [];
 const token_to_player_login = new Map<string, Map_Player_Login>();
 const steam_id_to_player = new Map<string, Map_Player>();
 const api_handlers: ((body: object) => Request_Result<object>)[] = [];
@@ -152,6 +163,7 @@ const spells_in_deck = 5;
 const player_id_generator = typed_sequential_id_generator<Player_Id>();
 const ongoing_adventure_id_generator = typed_sequential_id_generator<Ongoing_Adventure_Id>();
 const battle_id_generator = typed_sequential_id_generator<Battle_Id>();
+const bucket_id_generator = typed_sequential_id_generator<Adventure_Player_Bucket_Id>();
 
 let random: Random;
 export let random_seed: number;
@@ -269,12 +281,57 @@ function with_player_on_adventure<T>(req: With_Token, do_what: (player: Map_Play
     }))
 }
 
+// @Performance
 function player_by_id(player_id: Player_Id) {
     return players.find(player => player.id == player_id);
 }
 
+// @Performance
 function battle_by_id(id: Battle_Id): Battle_Record | undefined {
     return battles.find(battle => battle.id == id);
+}
+
+function push_player_into_adventure_bucket(adventure_id: Adventure_Id, room_id: Adventure_Room_Id, player: Map_Player) {
+    const max_players_in_bucket = 5;
+
+    //@Performance
+    const vacant_bucket = adventure_player_buckets.find(bucket =>
+        bucket.adventure_id == adventure_id &&
+        bucket.room_id == room_id &&
+        bucket.players.length < max_players_in_bucket
+    );
+
+    if (vacant_bucket) {
+        vacant_bucket.players.push(player);
+
+        return vacant_bucket;
+    } else {
+        const new_bucket: Adventure_Player_Bucket = {
+            id: bucket_id_generator(),
+            adventure_id: adventure_id,
+            room_id: room_id,
+            players: [ player ]
+        };
+
+        adventure_player_buckets.push(new_bucket);
+
+        return new_bucket;
+    }
+}
+
+function remove_player_from_adventure_bucket(bucket: Adventure_Player_Bucket, player: Map_Player) {
+    //@Performance
+    const bucket_index = adventure_player_buckets.findIndex(bucket => bucket.id == bucket.id);
+    if (bucket_index == -1) return;
+
+    const player_index = bucket.players.indexOf(player);
+    if (player_index == -1) return;
+
+    bucket.players.splice(player_index, 1);
+
+    if (bucket.players.length == 0) {
+        adventure_player_buckets.splice(bucket_index, 1);
+    }
 }
 
 function typed_sequential_id_generator<T extends number>(): () => T {
@@ -322,6 +379,18 @@ type Result_Ok<T> = {
 type Result_Error = {
     type: Result_Type.error
     code: number
+}
+
+function set_player_state(player: Map_Player, new_state: Map_Player_State) {
+    const old_state = player.online;
+
+    if (old_state.state == Player_State.on_adventure) {
+        if (old_state.current_bucket) {
+            remove_player_from_adventure_bucket(old_state.current_bucket, player);
+        }
+    }
+
+    player.online = new_state;
 }
 
 function player_to_player_state_object(player: Map_Player): Player_State_Data {
@@ -403,7 +472,7 @@ function can_player(player: Map_Player, right: Right) {
         }
 
         case Right.submit_movement: {
-            return player.online.state == Player_State.on_global_map;
+            return player.online.state == Player_State.on_global_map || player.online.state == Player_State.on_adventure;
         }
 
         case Right.submit_battle_action: {
@@ -579,13 +648,13 @@ function transition_player_to_battle(player: Map_Player, battle: Battle_Record, 
     for (const battle_player of battle.players) {
         const entity = battle_player.map_entity;
         if (entity.type == Map_Entity_Type.player && entity.player_id == player.id) {
-            player.online = {
+            set_player_state(player, {
                 state: Player_State.in_battle,
                 battle: battle,
                 battle_player: battle_player,
                 previous_state: player.online,
                 in_playtest: for_playtest
-            };
+            });
         }
     }
 }
@@ -604,6 +673,10 @@ function check_and_disconnect_offline_players() {
             if (player.active_logins == 0) {
                 if (player.online.state == Player_State.in_battle) {
                     surrender_player_forces(player.online.battle, player.online.battle_player);
+                } else if (player.online.state == Player_State.on_adventure) {
+                    if (player.online.current_bucket) {
+                        remove_player_from_adventure_bucket(player.online.current_bucket, player);
+                    }
                 }
 
                 steam_id_to_player.delete(player.steam_id);
@@ -723,22 +796,22 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
 
                 if (player && player.online.state == Player_State.in_battle) {
                     const was_a_playtest = player.online.in_playtest;
+                    const next_state = player.online.previous_state;
 
-                    player.online = player.online.previous_state;
+                    set_player_state(player, next_state);
 
                     if (!was_a_playtest) {
-                        if (player.online.state == Player_State.on_adventure) {
+                        if (next_state.state == Player_State.on_adventure) {
                             if (player_won) {
-                                defeat_adventure_enemies(player.online.ongoing_adventure);
-                                update_player_adventure_state_from_battle(player.online, battle_player);
+                                defeat_adventure_enemies(next_state.ongoing_adventure);
+                                update_player_adventure_state_from_battle(next_state, battle_player);
                             } else {
                                 submit_chat_message(player, `${player.name} lost, their adventure is over`);
-
-                                player.online = {
+                                set_player_state(player, {
                                     state: Player_State.on_global_map,
-                                    current_location: player.online.previous_global_map_location,
+                                    current_location: next_state.previous_global_map_location,
                                     movement_history: []
-                                }
+                                });
                             }
                         }
 
@@ -797,6 +870,10 @@ register_api_handler(Api_Request_Type.submit_adventure_player_movement, req => {
     }
 
     return with_player_on_adventure(req, (player, state) => {
+        if (!can_player(player, Right.submit_movement)) {
+            return;
+        }
+
         state.current_location = req.current_location;
         state.movement_history = req.movement_history;
 
@@ -815,23 +892,22 @@ register_api_handler(Api_Request_Type.query_entity_movement, req => {
         }
 
         if (requesting_player.online.state == Player_State.on_adventure) {
-            const adventure = requesting_player.online.ongoing_adventure;
+            const bucket = requesting_player.online.current_bucket;
             const player_movement: Player_Movement_Data[] = [];
 
-            if (adventure.current_room.type == Adventure_Room_Type.rest) {
-                // @Performance
-                for (const player of players) {
-                    if (player != requesting_player && can_player(player, Right.submit_movement)) {
-                        if (player.online.state != Player_State.on_adventure) continue;
+            if (!bucket) {
+                return { players: [], neutrals: [] };
+            }
 
-                        if (player.online.ongoing_adventure.current_room == adventure.current_room) {
-                            player_movement.push({
-                                id: player.id,
-                                movement_history: player.online.movement_history,
-                                current_location: player.online.current_location
-                            });
-                        }
-                    }
+            for (const player of bucket.players) {
+                if (player != requesting_player && can_player(player, Right.submit_movement)) {
+                    if (player.online.state != Player_State.on_adventure) continue;
+
+                    player_movement.push({
+                        id: player.id,
+                        movement_history: player.online.movement_history,
+                        current_location: player.online.current_location
+                    });
                 }
             }
 
@@ -1139,23 +1215,25 @@ register_api_handler(Api_Request_Type.start_adventure, req => {
             }
         }
 
-        player.online = {
+        const new_adventure: Ongoing_Adventure = {
+            id: ongoing_adventure_id_generator(),
+            adventure: adventure,
+            current_room: starting_room,
+            entities: [],
+            next_party_entity_id: typed_sequential_id_generator<Adventure_Party_Entity_Id>(),
+            random: random
+        };
+
+        new_adventure.entities = create_room_entities(new_adventure, starting_room);
+
+        set_player_state(player, {
             state: Player_State.on_adventure,
-            ongoing_adventure: {
-                id: ongoing_adventure_id_generator(),
-                adventure: adventure,
-                current_room: starting_room,
-                entities: [],
-                next_party_entity_id: typed_sequential_id_generator<Adventure_Party_Entity_Id>(),
-                random: random
-            },
+            ongoing_adventure: new_adventure,
             current_location: starting_room.entrance_location,
             movement_history: [],
             previous_global_map_location: player.online.current_location,
             party: party
-        };
-
-        player.online.ongoing_adventure.entities = create_room_entities(player.online.ongoing_adventure, starting_room);
+        });
 
         return player_to_player_state_object(player);
     });
@@ -1170,23 +1248,32 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         if (!can_player(player, Right.enter_adventure_room)) return;
 
         const ongoing_adventure = state.ongoing_adventure;
-        const room = room_by_id(ongoing_adventure.adventure, req.room_id);
+        const next_room = room_by_id(ongoing_adventure.adventure, req.room_id);
+        if (!next_room) return;
 
-        if (!room) return;
+        if (state.current_bucket) {
+            remove_player_from_adventure_bucket(state.current_bucket, player);
+        }
 
-        const entities = create_room_entities(ongoing_adventure, room);;
+        const entities = create_room_entities(ongoing_adventure, next_room);
 
-        ongoing_adventure.current_room = room;
+        ongoing_adventure.current_room = next_room;
         ongoing_adventure.entities = entities;
 
+        if (next_room.type == Adventure_Room_Type.rest) {
+            state.current_bucket = push_player_into_adventure_bucket(ongoing_adventure.adventure.id, next_room.id, player);
+        } else {
+            state.current_bucket = undefined;
+        }
+
         state.movement_history = [];
-        state.current_location = room.entrance_location;
+        state.current_location = next_room.entrance_location;
 
         return {
             entities: entities,
-            entrance: room.entrance_location,
-            camera_restriction_zones: room.camera_restriction_zones,
-            exits: room.exits
+            entrance: next_room.entrance_location,
+            camera_restriction_zones: next_room.camera_restriction_zones,
+            exits: next_room.exits
         };
     });
 });
@@ -1235,11 +1322,11 @@ register_api_handler(Api_Request_Type.exit_adventure, req => {
     }
 
     return with_player_on_adventure(req, (player, state) => {
-        player.online = {
+        set_player_state(player, {
             state: Player_State.on_global_map,
             current_location: state.previous_global_map_location,
             movement_history: []
-        };
+        });
 
         return player_to_player_state_object(player);
     });
