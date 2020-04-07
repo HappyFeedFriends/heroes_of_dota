@@ -1651,6 +1651,10 @@ function battle_emit_sound(sound: string) {
     EmitSoundOnLocationWithCaster(battle.camera_dummy.GetAbsOrigin(), sound, battle.camera_dummy);
 }
 
+function highlight_player_deployment_zone(id: Battle_Player_Id) {
+    fire_event(To_Client_Event_Type.grid_highlight_deployment_zone, { for_player_id: id });
+}
+
 function spawn_unit_with_fx<T extends Unit>(at: XY, supplier: () => T): T {
     fx("particles/hero_spawn.vpcf")
         .to_location(0, at)
@@ -2268,9 +2272,9 @@ function play_no_target_spell_delta(game: Game, caster: Battle_Player, cast: Del
 
         case Spell_Id.call_to_arms: {
             const facing = find_player_deployment_zone_facing(cast.player_id);
-
             if (!facing) break;
 
+            highlight_player_deployment_zone(cast.player_id);
             battle_emit_sound("call_to_arms");
 
             for (const summon of from_client_array(cast.summons)) {
@@ -2294,6 +2298,7 @@ function play_ground_target_spell_delta(game: Game, cast: Delta_Use_Ground_Targe
             if (!facing) break;
 
             spawn_unit_with_fx(cast.at, () => spawn_creep_for_battle(cast.new_unit_type, cast.new_unit_id, cast.player_id, cast.at, facing));
+            highlight_player_deployment_zone(cast.player_id);
 
             break;
         }
@@ -3157,6 +3162,8 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
 
             const in_hand_modifier = array_find_index(unit.modifiers, modifier => modifier.modifier.id == Modifier_Id.returned_to_hand);
             if (in_hand_modifier == -1) break;
+
+            highlight_player_deployment_zone(unit.owner_remote_id);
 
             if (!unit.handle.IsAlive()) {
                 unit.handle.RespawnHero(false, false);

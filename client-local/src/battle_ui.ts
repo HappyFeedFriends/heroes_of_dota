@@ -2549,15 +2549,29 @@ function update_hand() {
     }
 }
 
+function highlight_grid_deployment_zone(player_id: Battle_Player_Id) {
+    const player = find_player_by_id(battle, player_id);
+    if (!player) return;
+
+    const outline: boolean[] = [];
+
+    for (const cell of battle.grid.cells) {
+        const index = grid_cell_index(battle.grid, cell.position);
+
+        if (is_point_in_deployment_zone(battle, cell.position, player)) {
+            outline[index] = true;
+        }
+    }
+
+    highlight_outline_temporarily(battle.grid, outline, color_green, 1.2);
+}
+
 function highlight_grid_for_unit_ability_with_predicate(unit_id: Unit_Id, ability_id: AbilityId, predicate: (ability: Ability_Active, cell: Cell) => boolean) {
     const unit = find_unit_by_id(battle, unit_id);
-
     if (!unit) return;
 
     const ability = find_unit_ability(unit, ability_id);
-
     if (!ability) return;
-
     if (ability.type == Ability_Type.passive) return;
 
     const outline: boolean[] = [];
@@ -2585,6 +2599,10 @@ subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_no_target_ability,
         event.ability_id,
         (ability, cell) => ability_targeting_fits(battle, ability.targeting, event.from, cell.position)
     );
+});
+
+subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_deployment_zone, event => {
+    highlight_grid_deployment_zone(event.for_player_id);
 });
 
 function show_start_turn_ui() {

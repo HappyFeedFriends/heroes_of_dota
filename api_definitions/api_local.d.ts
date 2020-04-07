@@ -21,7 +21,8 @@ declare const enum To_Client_Event_Type {
     show_start_turn_ui = 4,
     show_game_over_ui = 5,
     log_chat_debug_message = 6,
-    adventure_display_room_exit_popup = 7
+    adventure_display_room_exit_popup = 7,
+    grid_highlight_deployment_zone = 8
 }
 
 declare const enum Prefixes {
@@ -81,6 +82,11 @@ type To_Client_Event = {
         unit_id: Unit_Id
         ability_id: Ability_Id
         from: XY
+    }
+} | {
+    type: To_Client_Event_Type.grid_highlight_deployment_zone
+    payload: {
+        for_player_id: Battle_Player_Id
     }
 } | {
     type: To_Client_Event_Type.show_start_turn_ui
