@@ -5,7 +5,7 @@ import {
     Editor_Type
 } from "./editor_ui";
 import {battle_filter_mouse_click, enter_battle_ui, exit_battle_ui} from "./battle_ui";
-import {adventure_filter_mouse_click, enter_adventure_ui} from "./adventure_ui";
+import {adventure_filter_mouse_click, enter_adventure_ui, exit_adventure_ui} from "./adventure_ui";
 import {subscribe_to_net_table_key} from "./interop";
 
 export let current_state = Player_State.not_logged_in;
@@ -110,6 +110,10 @@ subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
 
         if (current_state == Player_State.in_battle) {
             exit_battle_ui();
+        }
+
+        if (current_state == Player_State.on_adventure) {
+            exit_adventure_ui();
         }
 
         if (data.state == Player_State.in_battle) {

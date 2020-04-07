@@ -793,18 +793,20 @@ function show_merchant_popup(popup: Merchant_Popup) {
     Game.EmitSound("merchant_open");
 }
 
-function fill_merchant_popup(popup: Merchant_Popup, merchant: Adventure_Merchant) {
+function hide_merchant_popup(popup: Merchant_Popup) {
     const ui = adventure_ui.merchant_popup;
 
-    function hide_popup() {
-        ui.window.SetHasClass("visible", false);
-        ui.background.SetHasClass("visible", false);
+    ui.window.SetHasClass("visible", false);
+    ui.background.SetHasClass("visible", false);
 
-        Game.EmitSound("popup_slide_down");
+    Game.EmitSound("popup_slide_down");
 
-        popup.purchasable_elements = [];
-        popup.visible = false;
-    }
+    popup.purchasable_elements = [];
+    popup.visible = false;
+}
+
+function fill_merchant_popup(popup: Merchant_Popup, merchant: Adventure_Merchant) {
+    const ui = adventure_ui.merchant_popup;
 
     ui.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
 
@@ -965,25 +967,30 @@ function fill_merchant_popup(popup: Merchant_Popup, merchant: Adventure_Merchant
     }
 
     ui.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-        hide_popup();
+        hide_merchant_popup(popup);
     });
 
     ui.button_leave.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
         Game.EmitSound("click_simple");
 
-        hide_popup();
+        hide_merchant_popup(popup);
     });
+}
+
+function hide_entity_popup() {
+    const popup = adventure_ui.popup;
+
+    popup.window.SetHasClass("visible", false);
+    popup.background.SetHasClass("visible", false);
+
+    Game.EmitSound("popup_slide_down");
 }
 
 function show_entity_popup(entity: Adventure_Entity) {
     const popup = adventure_ui.popup;
 
-    function hide_popup() {
-        popup.window.SetHasClass("visible", false);
-        popup.background.SetHasClass("visible", false);
-
-        Game.EmitSound("popup_slide_down");
-    }
+    popup.window.style.visibility = "visible";
+    popup.background.style.visibility = "visible";
 
     popup.window.SetHasClass("visible", true);
     popup.background.SetHasClass("visible", true);
@@ -1004,17 +1011,17 @@ function show_entity_popup(entity: Adventure_Entity) {
             current_head: party.current_head
         });
 
-        hide_popup();
+        hide_entity_popup();
     });
 
     popup.button_no.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
         Game.EmitSound("click_simple");
 
-        hide_popup();
+        hide_entity_popup();
     });
 
     popup.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-        hide_popup();
+        hide_entity_popup();
     });
 
     Game.EmitSound("adventure_popup_open");
@@ -1029,6 +1036,9 @@ function show_room_exit_popup() {
 
         Game.EmitSound("popup_slide_down");
     }
+
+    popup.window.style.visibility = "visible";
+    popup.background.style.visibility = "visible";
 
     popup.window.SetHasClass("visible", true);
     popup.background.SetHasClass("visible", true);
@@ -1692,6 +1702,22 @@ export async function enter_adventure_ui(data: Game_Net_Table_On_Adventure) {
     }
 
     adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
+}
+
+export function exit_adventure_ui() {
+    adventure_ui.merchant_popup.window.style.visibility = "collapse";
+    adventure_ui.merchant_popup.background.style.visibility = "collapse";
+
+    adventure_ui.popup.window.style.visibility = "collapse";
+    adventure_ui.popup.background.style.visibility = "collapse";
+
+    if (merchant_popup.visible) {
+        hide_merchant_popup(merchant_popup);
+    }
+
+    if (adventure_ui.popup.window.BHasClass("visible")) {
+        hide_entity_popup();
+    }
 }
 
 subscribe_to_net_table_key<Adventure_Net_Table>("adventure", "table", table => {
