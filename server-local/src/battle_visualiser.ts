@@ -2933,15 +2933,44 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
     }
 }
 
-function move_unit(game: Game, unit: Unit, path: XY[]) {
-    for (const cell of path) {
-        const world_position = battle_position_to_world_position_center(battle.world_origin, cell);
+function move_unit(game: Game, unit: Unit, points: XY[]) {
+    function unit_color() {
+        switch (unit.supertype) {
+            case Unit_Supertype.monster: return [255, 255, 255];
 
-        unit.handle.MoveToPosition(world_position);
+            case Unit_Supertype.hero:
+            case Unit_Supertype.creep: {
+                if (battle.this_player_id == unit.owner_remote_id) {
+                    return [ 128, 255, 128 ];
+                } else {
+                    return [ 255, 128, 128 ];
+                }
+            }
+        }
+    }
+
+    const path = points.map(xy => {
+        const world_position = battle_position_to_world_position_center(battle.world_origin, xy);
+        const path_color = unit_color();
+
+        return {
+            world_position: world_position,
+            fx: fx("particles/ui/path_marker.vpcf")
+                .with_vector_value(0, world_position)
+                .with_point_value(1, 12) // radius
+                .with_point_value(2, path_color[0], path_color[1], path_color[2])
+                .with_point_value(3, 200) // alpha
+        };
+    });
+
+    for (const fragment of path) {
+        unit.handle.MoveToPosition(fragment.world_position);
 
         wait_until(() => {
-            return (unit.handle.GetAbsOrigin() - world_position as Vector).Length2D() < unit.handle.GetBaseMoveSpeed() / 10;
+            return (unit.handle.GetAbsOrigin() - fragment.world_position as Vector).Length2D() < unit.handle.GetBaseMoveSpeed() / 10;
         });
+
+        fragment.fx.destroy_and_release(false);
 
         unit.move_points = unit.move_points - 1;
 
