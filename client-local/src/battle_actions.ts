@@ -2,7 +2,6 @@ import {
     battle,
     selection,
     control_panel,
-    find_grid_path,
     is_unit_selection,
     receive_battle_deltas,
     Hover_Type,
@@ -356,9 +355,8 @@ export function try_use_targeted_ability(unit: Unit, ability: Ability, at_positi
     return true;
 }
 
-function highlight_move_path(unit: Unit, to: XY) {
-    // TODO should be able to extract the path from move_permission
-    const path = find_grid_path(unit.position, to);
+function highlight_move_path(unit: Unit, to: XY, costs: Cost_Population_Result) {
+    const path = find_path_from_populated_costs(battle, costs, unit.position, to);
     if (!path) return;
 
     const cell_index_to_highlight: boolean[] = [];
@@ -371,6 +369,28 @@ function highlight_move_path(unit: Unit, to: XY) {
     square_click_particle(battle.grid, to, color_green);
 }
 
+function highlight_cells_where_unit_can_move_to(unit: Unit, costs: Cost_Population_Result) {
+    const outline: boolean[] = [];
+
+    for (const cell of battle.grid.cells) {
+        const index = grid_cell_index(battle.grid, cell.position);
+
+        if (costs.cell_index_to_cost[index] != undefined && costs.cell_index_to_cost[index] <= unit.move_points) {
+            outline[index] = true;
+        }
+    }
+
+    highlight_outline_temporarily(battle.grid, outline, color_green, 0.3);
+}
+
+function process_move_permission_error(unit: Unit, costs: Cost_Population_Result, error: Action_Error<Move_Order_Error>) {
+    if (error.kind == Move_Order_Error.not_enough_move_points || error.kind == Move_Order_Error.path_not_found) {
+        highlight_cells_where_unit_can_move_to(unit, costs);
+    }
+
+    return show_action_error_ui(error, move_order_error_reason);
+}
+
 export function try_order_unit_to_pick_up_rune(unit: Unit, rune: Rune) {
     const order_permission = authorize_unit_order_with_error_ui(unit);
     if (!order_permission) return;
@@ -378,12 +398,12 @@ export function try_order_unit_to_pick_up_rune(unit: Unit, rune: Rune) {
     const rune_pickup_permission = authorize_rune_pickup_order(order_permission, rune.id);
     if (!rune_pickup_permission.ok) return show_action_error_ui(rune_pickup_permission, rune_pickup_error_reason);
 
-    const move_permission = authorize_move_order(order_permission, rune.position, true);
-    if (!move_permission.ok) return show_action_error_ui(move_permission, move_order_error_reason);
+    const costs = populate_path_costs(battle, unit.position, true);
+    const move_permission = authorize_move_order_from_costs(order_permission, rune.position, costs);
+    if (!move_permission.ok) return process_move_permission_error(unit, costs, move_permission);
 
-    // TODO highlight move area on error
     try_emit_random_hero_sound(unit, sounds => sounds.move);
-    highlight_move_path(unit, rune.position);
+    highlight_move_path(unit, rune.position, costs);
 
     take_battle_action({
         type: Action_Type.pick_up_rune,
@@ -396,11 +416,12 @@ export function try_order_unit_to_move(unit: Unit, move_where: XY) {
     const order_permission = authorize_unit_order_with_error_ui(unit);
     if (!order_permission) return;
 
+    const costs = populate_path_costs(battle, unit.position, false);
     const move_permission = authorize_move_order(order_permission, move_where, false);
-    if (!move_permission.ok) return show_action_error_ui(move_permission, move_order_error_reason);
+    if (!move_permission.ok) return process_move_permission_error(unit, costs, move_permission);
 
     try_emit_random_hero_sound(unit, sounds => sounds.move);
-    highlight_move_path(unit, move_where);
+    highlight_move_path(unit, move_where, costs);
 
     take_battle_action({
         type: Action_Type.move,

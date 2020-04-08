@@ -464,6 +464,23 @@ function authorize_move_order(order_unit: Order_Unit_Permission, to: XY, ignore_
     }
 }
 
+function authorize_move_order_from_costs(order_unit: Order_Unit_Permission, to: XY, costs: Cost_Population_Result): Move_Order_Auth {
+    const { battle, unit } = order_unit;
+
+    if (is_unit_rooted(unit)) return { ok: false, kind: Move_Order_Error.rooted };
+
+    const path = find_path_from_populated_costs(battle, costs, unit.position, to);
+
+    if (!path) return { ok: false, kind: Move_Order_Error.path_not_found };
+    if (path.length > unit.move_points)  return { ok: false, kind: Move_Order_Error.not_enough_move_points };
+    if (xy_equal(unit.position, to)) return { ok: false, kind: Move_Order_Error.other };
+
+    return {
+        ...order_unit,
+        cost: path.length
+    }
+}
+
 function authorize_rune_pickup_order(order_unit: Order_Unit_Permission, rune_id: Rune_Id): Rune_Pickup_Order_Auth {
     const rune = order_unit.battle.runes.find(rune => rune.id == rune_id);
 

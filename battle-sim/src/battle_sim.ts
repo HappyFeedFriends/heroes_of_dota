@@ -581,6 +581,27 @@ function can_find_path(battle: Battle, from: XY, to: XY, ignore_runes = false): 
     return { found: false };
 }
 
+function find_path_from_populated_costs(battle: Battle, costs: Cost_Population_Result, from: XY, to: XY) {
+    let current_cell_index = costs.cell_index_to_parent_index[grid_cell_index(battle.grid, to)];
+    if (current_cell_index == undefined) return;
+
+    const to_index = grid_cell_index(battle.grid, from);
+    const path = [];
+
+    path.push(to);
+
+    while (to_index != current_cell_index) {
+        if (current_cell_index == undefined) {
+            return;
+        }
+
+        path.push(battle.grid.cells[current_cell_index].position);
+        current_cell_index = costs.cell_index_to_parent_index[current_cell_index];
+    }
+
+    return path.reverse();
+}
+
 function populate_path_costs(battle: Battle, from: XY, ignore_runes = false): Cost_Population_Result {
     const cell_index_to_cost: number[] = [];
     const cell_index_to_parent_index: number[] = [];
