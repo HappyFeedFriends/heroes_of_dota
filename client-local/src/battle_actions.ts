@@ -368,6 +368,7 @@ function highlight_move_path(unit: Unit, to: XY) {
     }
 
     highlight_outline_temporarily(battle.grid, cell_index_to_highlight, color_green, 0.5);
+    square_click_particle(battle.grid, to, color_green);
 }
 
 export function try_order_unit_to_pick_up_rune(unit: Unit, rune: Rune) {

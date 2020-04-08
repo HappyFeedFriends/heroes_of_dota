@@ -1934,11 +1934,9 @@ function select_unit(new_entity_id: EntityId, full_stats = false) {
     before_unit_selection_change();
 
     const unit_data = battle.entity_id_to_unit_data[new_entity_id];
-
     if (!unit_data) return;
 
     const unit = find_unit_by_id(battle, unit_data.id);
-
     if (!unit) return;
 
     set_selection({
@@ -1956,11 +1954,9 @@ function select_shop(new_entity_id: EntityId) {
 
     const shop_id = battle.entity_id_to_shop_id[new_entity_id];
     const shop_ui = ui_shop_data.find(shop => shop.id == shop_id);
-
     if (!shop_ui) return;
 
     const shop = find_shop_by_id(battle, shop_ui.id);
-
     if (!shop) return;
 
     if (is_unit_selection(selection)) {

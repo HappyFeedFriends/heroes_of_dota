@@ -29,6 +29,20 @@ function battle_position_to_world_position_center(world_origin: XYZ, position: X
     }
 }
 
+function square_click_particle<T extends Cell_Like>(grid: World_Grid<T>, cell: XY, color: RGB) {
+    const world_pos = battle_position_to_world_position_center(grid.world_origin, cell);
+    const particle = Particles.CreateParticle("particles/ui/square_click.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
+
+    Particles.SetParticleControl(particle, 0, xyz_to_array(world_pos));
+    Particles.SetParticleControl(particle, 1, [Const.battle_cell_size / 2, 0, 0]);
+    Particles.SetParticleControl(particle, 2, color);
+    Particles.SetParticleControl(particle, 3, [150, 0, 0]);
+    Particles.SetParticleControl(particle, 4, [0.4, 0, 0]);
+    Particles.ReleaseParticleIndex(particle);
+
+    return particle;
+}
+
 function create_cell_particle_at(position: XYZ) {
     const particle = Particles.CreateParticle("particles/ui/square_overlay.vpcf", ParticleAttachment_t.PATTACH_CUSTOMORIGIN, 0);
 
