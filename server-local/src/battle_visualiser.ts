@@ -3466,6 +3466,16 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
         }
 
         case Delta_Type.game_over: {
+            delta.result.draw = from_client_bool(delta.result.draw);
+
+            if (!delta.result.draw) {
+                for (const unit of battle.units) {
+                    if (unit.supertype != Unit_Supertype.monster && unit.owner_remote_id == delta.result.winner_player_id) {
+                        add_activity_override(unit, GameActivity_t.ACT_DOTA_VICTORY);
+                    }
+                }
+            }
+
             fire_event(To_Client_Event_Type.show_game_over_ui, {
                 winner_player_id: delta.result.draw ? undefined : delta.result.winner_player_id
             });
