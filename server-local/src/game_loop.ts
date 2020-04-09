@@ -24,7 +24,6 @@ let current_camera_target: Camera_Target = {};
 let editor_override_camera_target: Camera_Target | undefined = undefined;
 let reset_camera_override_at = 0;
 let suppress_camera_change = false;
-let can_transition_into_next_state = true;
 
 let state_transition: Player_State_Data | undefined = undefined;
 
@@ -111,17 +110,6 @@ function log_chat_debug_message(message: string) {
     fire_event(To_Client_Event_Type.log_chat_debug_message, {
         message: final_message
     });
-}
-
-function lock_state_transition(code: () => void) {
-    if (!can_transition_into_next_state) {
-        print("Failed to lock state transition");
-        return;
-    }
-
-    can_transition_into_next_state = false;
-    code();
-    can_transition_into_next_state = true;
 }
 
 function create_map_unit(dota_name: string, location: XY) {
@@ -512,6 +500,19 @@ function update_current_camera_target(game: Game) {
     } else if (game.state == Player_State.on_adventure) {
         current_camera_target.target = game.adventure.camera_dummy;
     }
+
+    const desired_camera_target = editor_override_camera_target ? editor_override_camera_target : current_camera_target;
+
+    if (desired_camera_target.target != actual_camera_target.target && !suppress_camera_change) {
+        print("Changed camera target to", desired_camera_target.target);
+
+        PlayerResource.SetCameraTarget(game.player.player_id, desired_camera_target.target);
+        actual_camera_target.target = desired_camera_target.target;
+    }
+
+    if (editor_override_camera_target && GameRules.GetGameTime() >= reset_camera_override_at) {
+        editor_override_camera_target = undefined;
+    }
 }
 
 function main() {
@@ -731,7 +732,6 @@ function game_loop() {
         })
     }
 
-    fork(() => adventure_update_loop(game));
     fork(() => submit_and_query_movement_loop(game, game.map));
     fork(() => {
         while(true) {
@@ -747,79 +747,71 @@ function game_loop() {
         }
     });
 
+    let end_state_fade_at = 0;
+    let trying_to_transition = false;
+
+    // TODO get rid of coroutines in adventure code and transition this into the main loop
     fork(() => {
-        while(true) {
-            update_main_player_movement_history(player);
+        while (true) {
+            if (game.state == Player_State.on_adventure) {
+                if (!trying_to_transition) {
+                    update_adventure(game);
+                }
+            }
+
             wait_one_frame();
         }
     });
 
     fork(() => {
         while(true) {
+            const should_wait_before_state_transition =
+                (game.state == Player_State.on_adventure && game.adventure.attacking_enemy) ||
+                (game.state == Player_State.in_battle && !battle.is_over);
+
+            if (state_transition && !should_wait_before_state_transition) {
+                if (!trying_to_transition) {
+                    trying_to_transition = true;
+                    end_state_fade_at = GameRules.GetGameTime() + 0.4;
+                    fire_event(To_Client_Event_Type.pre_state_change_screen_fade, {});
+                    print("Start transition fade")
+                } else if (GameRules.GetGameTime() >= end_state_fade_at) {
+                    trying_to_transition = false;
+                    process_state_transition(game, game.state, state_transition);
+                    state_transition = undefined;
+                }
+            }
+
             if (game.state == Player_State.in_battle) {
                 periodically_update_battle();
             }
 
-            wait_one_frame();
-        }
-    });
-
-    fork(() => {
-        while(true) {
-            const desired_camera_target = editor_override_camera_target ? editor_override_camera_target : current_camera_target;
-
-            if (desired_camera_target.target != actual_camera_target.target && !suppress_camera_change) {
-                print("Changed camera target to", desired_camera_target.target);
-
-                PlayerResource.SetCameraTarget(game.player.player_id, desired_camera_target.target);
-                actual_camera_target.target = desired_camera_target.target;
-            }
-
-            if (editor_override_camera_target && GameRules.GetGameTime() >= reset_camera_override_at) {
-                editor_override_camera_target = undefined;
-            }
-
-            wait_one_frame();
-        }
-    });
-
-    fork(() => {
-        while(true) {
+            update_main_player_movement_history(player);
             update_current_camera_target(game);
             wait_one_frame();
         }
     });
 
-    while (true) {
-        if (state_transition) {
-            wait_until(() => can_transition_into_next_state);
-            process_state_transition(game, game.state, state_transition);
-            state_transition = undefined;
-        }
+    fork(() => {
+        while (true) {
+            wait_until(() => game.state == Player_State.in_battle);
 
-        switch (game.state) {
-            case Player_State.in_battle: {
-                while (!battle.is_over) {
-                    const target_head = get_battle_remote_head();
+            if (!battle.is_over) {
+                const target_head = get_battle_remote_head();
 
-                    for (; battle.delta_head < target_head; battle.delta_head++) {
-                        const delta = battle.deltas[battle.delta_head];
+                for (; battle.delta_head < target_head; battle.delta_head++) {
+                    const delta = battle.deltas[battle.delta_head];
 
-                        if (!delta) break;
+                    if (!delta) break;
 
-                        print(`Playing delta ${enum_to_string(delta.type)} (#${battle.delta_head})`);
+                    print(`Playing delta ${enum_to_string(delta.type)} (#${battle.delta_head})`);
 
-                        play_delta(game, battle, delta, battle.delta_head);
-                        update_game_net_table(game);
-                    }
-
-                    wait_one_frame();
+                    play_delta(game, battle, delta, battle.delta_head);
+                    update_game_net_table(game);
                 }
-
-                break;
             }
-        }
 
-        wait_one_frame();
-    }
+            wait_one_frame();
+        }
+    });
 }

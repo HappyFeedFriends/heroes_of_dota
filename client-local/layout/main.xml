@@ -195,5 +195,7 @@
                 </Panel>
             </Panel>
         </Panel>
+
+        <Panel id="screen_fade" hittest="false"/>
     </Panel>
 </root>

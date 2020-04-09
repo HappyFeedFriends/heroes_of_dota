@@ -85,6 +85,7 @@ type Adventure_State = {
     last_ordered_dummy_to_move_at: number
     num_party_slots: number
     deciding_to_exit_at?: Adventure_World_Room_Exit
+    attacking_enemy?: Adventure_World_Enemy
 }
 
 const debug_camera = false;
@@ -270,7 +271,9 @@ function update_adventure_enemy(game: Game, enemy: Adventure_World_Enemy) {
         }
 
         if (from_enemy_to_player <= 96) {
-            lock_state_transition(() => {
+            if (!game.adventure.attacking_enemy) {
+                game.adventure.attacking_enemy = enemy;
+
                 enemy_handle.Stop();
 
                 const stun = player_handle.AddNewModifier(player_handle, undefined, "Modifier_Stunned", {});
@@ -299,7 +302,9 @@ function update_adventure_enemy(game: Game, enemy: Adventure_World_Enemy) {
                 }
 
                 stun.Destroy();
-            });
+
+                game.adventure.attacking_enemy = undefined;
+            }
         } else if (now - enemy.issued_movement_order_at > 0.1) {
             if (now - enemy.noticed_player_at > 0.25) {
                 enemy_handle.MoveToPosition(player_location);
@@ -587,56 +592,50 @@ function draw_zones_debug(game: Game) {
     }
 }
 
-function adventure_update_loop(game: Game) {
-    while (true) {
-        wait_until(() => game.state == Player_State.on_adventure);
-
-        if (debug_camera) {
-            draw_zones_debug(game);
-        }
-
-        update_adventure_camera(game.adventure, game.player);
-
-        const right_click_target = game.adventure.current_right_click_target;
-        if (right_click_target && (right_click_target.type == Adventure_Entity_Type.merchant || right_click_target.alive)) {
-            const delta = right_click_target.handle.GetAbsOrigin() - game.player.hero_unit.GetAbsOrigin() as Vector;
-
-            if (!game.player.hero_unit.IsMoving() && delta.Length2D() <= 300) {
-                game.adventure.current_right_click_target = undefined;
-
-                // In case hero is already close to the target we stop them so camera doesn't move behind the popup
-                game.player.hero_unit.Stop();
-                game.player.hero_unit.FaceTowards(right_click_target.handle.GetAbsOrigin());
-
-                fire_event(To_Client_Event_Type.adventure_display_entity_popup, {
-                    entity: right_click_target.base
-                });
-            }
-        }
-
-        for (const entity of game.adventure.entities) {
-            switch (entity.type) {
-                case Adventure_Entity_Type.enemy: {
-                    update_adventure_enemy(game, entity);
-                    break;
-                }
-
-                case Adventure_Entity_Type.lost_creep: {
-                    update_lost_creep(game, entity);
-                    break;
-                }
-
-                case Adventure_Entity_Type.merchant: {
-                    update_merchant(game, entity);
-                    break;
-                }
-            }
-        }
-
-        update_adventure_room_exit_logic(game.player, game.adventure, game.token);
-
-        wait_one_frame();
+function update_adventure(game: Game) {
+    if (debug_camera) {
+        draw_zones_debug(game);
     }
+
+    update_adventure_camera(game.adventure, game.player);
+
+    const right_click_target = game.adventure.current_right_click_target;
+    if (right_click_target && (right_click_target.type == Adventure_Entity_Type.merchant || right_click_target.alive)) {
+        const delta = right_click_target.handle.GetAbsOrigin() - game.player.hero_unit.GetAbsOrigin() as Vector;
+
+        if (!game.player.hero_unit.IsMoving() && delta.Length2D() <= 300) {
+            game.adventure.current_right_click_target = undefined;
+
+            // In case hero is already close to the target we stop them so camera doesn't move behind the popup
+            game.player.hero_unit.Stop();
+            game.player.hero_unit.FaceTowards(right_click_target.handle.GetAbsOrigin());
+
+            fire_event(To_Client_Event_Type.adventure_display_entity_popup, {
+                entity: right_click_target.base
+            });
+        }
+    }
+
+    for (const entity of game.adventure.entities) {
+        switch (entity.type) {
+            case Adventure_Entity_Type.enemy: {
+                update_adventure_enemy(game, entity);
+                break;
+            }
+
+            case Adventure_Entity_Type.lost_creep: {
+                update_lost_creep(game, entity);
+                break;
+            }
+
+            case Adventure_Entity_Type.merchant: {
+                update_merchant(game, entity);
+                break;
+            }
+        }
+    }
+
+    update_adventure_room_exit_logic(game.player, game.adventure, game.token);
 }
 
 function handle_in_interactive_distance(player: Main_Player, handle: CDOTA_BaseNPC) {

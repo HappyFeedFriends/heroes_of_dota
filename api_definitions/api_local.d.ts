@@ -23,7 +23,8 @@ declare const enum To_Client_Event_Type {
     show_game_over_ui = 5,
     log_chat_debug_message = 6,
     adventure_display_room_exit_popup = 7,
-    grid_highlight_deployment_zone = 8
+    grid_highlight_deployment_zone = 8,
+    pre_state_change_screen_fade = 9
 }
 
 declare const enum Prefixes {
@@ -113,6 +114,9 @@ type To_Client_Event = {
     }
 } | {
     type: To_Client_Event_Type.adventure_display_room_exit_popup
+    payload: {}
+} | {
+    type: To_Client_Event_Type.pre_state_change_screen_fade
     payload: {}
 }
 
