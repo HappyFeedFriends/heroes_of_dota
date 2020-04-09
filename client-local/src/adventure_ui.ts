@@ -786,6 +786,9 @@ function update_merchant_popup_elements(popup: Merchant_Popup) {
 function show_merchant_popup(popup: Merchant_Popup) {
     const ui = adventure_ui.merchant_popup;
 
+    ui.window.style.visibility = "visible";
+    ui.background.style.visibility = "visible";
+
     ui.window.SetHasClass("visible", true);
     ui.background.SetHasClass("visible", true);
 
