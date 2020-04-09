@@ -493,6 +493,10 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
         });
     }
 
+    if (battle.state.status == Battle_Status.finished) {
+        drop_selection();
+    }
+
     if (deltas.length > 0) {
         rebuild_cell_indexes();
         update_grid_visuals();
@@ -2061,6 +2065,7 @@ function periodically_update_ui() {
     $.Schedule(0, periodically_update_ui);
 
     if (current_state != Player_State.in_battle) return;
+    if (battle.state.status == Battle_Status.finished) return;
 
     update_current_ability_based_on_cursor_state();
     update_stat_bar_positions();
@@ -2127,13 +2132,12 @@ function periodically_update_stat_bar_display() {
 
 export function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
     if (event == "pressed" || event == "doublepressed") {
+        if (battle.state.status == Battle_Status.finished) return true;
+
         const click_behaviors = GameUI.GetClickBehaviors();
         const cursor = GameUI.GetCursorPosition();
         const world_position = get_screen_world_position(cursor);
-
-        if (!world_position) {
-            return true;
-        }
+        if (!world_position) return true;
 
         const battle_position = world_position_to_battle_position(battle.grid.world_origin, world_position);
         const cursor_entity = get_entity_under_cursor(cursor);
