@@ -10,7 +10,8 @@ declare const enum To_Server_Event_Type {
     adventure_interact_with_entity = 0,
     put_deltas = 1,
     fast_forward = 2,
-    adventure_purchase_merchant_item = 4
+    adventure_purchase_merchant_item = 4,
+    skip_combat_result_screen = 5
 }
 
 declare const enum To_Client_Event_Type {
@@ -30,6 +31,12 @@ declare const enum Prefixes {
     to_client_event = "to_client_",
     local_api_request = "local_api_request",
     local_api_response = "local_api_response"
+}
+
+declare const enum Combat_Result {
+    victory = 0,
+    defeat = 1,
+    draw = 2
 }
 
 type To_Server_Event = {
@@ -55,6 +62,9 @@ type To_Server_Event = {
 } | {
     type: To_Server_Event_Type.fast_forward
     payload: Battle_Snapshot
+} | {
+    type: To_Server_Event_Type.skip_combat_result_screen
+    payload: {}
 }
 
 type To_Client_Event = {
@@ -94,7 +104,7 @@ type To_Client_Event = {
 } | {
     type: To_Client_Event_Type.show_game_over_ui
     payload: {
-        winner_player_id?: Battle_Player_Id
+        result: Combat_Result
     }
 } | {
     type: To_Client_Event_Type.log_chat_debug_message

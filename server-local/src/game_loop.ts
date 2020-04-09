@@ -640,6 +640,10 @@ function game_loop() {
         update_game_net_table(game);
     });
 
+    on_custom_event_async(To_Server_Event_Type.skip_combat_result_screen, event => {
+        battle.player_requested_game_over_screen_skip = true;
+    });
+
     on_raw_custom_event_async<Local_Api_Request_Packet>(Prefixes.local_api_request, request => {
         const handler = local_api_handlers[request.type];
 

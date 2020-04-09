@@ -612,6 +612,7 @@ export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
 
     $("#shop_panels_container").RemoveAndDeleteChildren();
     $("#stat_bar_container").RemoveAndDeleteChildren();
+    $("#battle_over_container").RemoveAndDeleteChildren();
 
     request_battle_deltas();
 }
@@ -2597,6 +2598,46 @@ function show_start_turn_ui() {
     });
 }
 
+function show_game_over_ui(result: Combat_Result) {
+    const root = $("#battle_over_container");
+    const fade = $.CreatePanel("Panel", root, "fade");
+    const text = $.CreatePanel("Label", root, "result_text");
+    const continue_text = $.CreatePanel("Label", root, "continue_text");
+
+    text.SetHasClass("defeat", result == Combat_Result.defeat);
+    text.SetHasClass("victory", result == Combat_Result.victory);
+    text.SetHasClass("draw", result == Combat_Result.draw);
+    text.text = get_combat_result_string(result);
+    text.hittest = false;
+
+    continue_text.text = "CLICK TO CONTINUE";
+    continue_text.hittest = false;
+
+    for (const panel of [text, continue_text, fade]) {
+        panel.SetHasClass("visible", true);
+    }
+
+    function emit_sound() {
+        switch (result) {
+            case Combat_Result.victory: return Game.EmitSound("game_over_victory");
+            case Combat_Result.defeat: return Game.EmitSound("game_over_defeat");
+            case Combat_Result.draw: return;
+        }
+    }
+
+    const sound = emit_sound();
+
+    $.Schedule(1, () => {
+        fade.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+            fire_event(To_Server_Event_Type.skip_combat_result_screen, {});
+
+            if (sound != undefined) {
+                Game.StopSound(sound);
+            }
+        });
+    });
+}
+
 function try_select_unit_ability(unit: Unit, ability: Ability) {
     const ability_use = authorize_ability_use_with_error_ui(unit, ability);
     if (!ability_use) {
@@ -2655,3 +2696,4 @@ periodically_update_ui();
 periodically_update_stat_bar_display();
 periodically_request_battle_deltas_when_in_battle();
 subscribe_to_custom_event(To_Client_Event_Type.show_start_turn_ui, show_start_turn_ui);
+subscribe_to_custom_event(To_Client_Event_Type.show_game_over_ui, event => show_game_over_ui(event.result));

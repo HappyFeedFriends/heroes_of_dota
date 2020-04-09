@@ -21,7 +21,8 @@ type Battle = {
     is_over: boolean
     camera_dummy: CDOTA_BaseNPC
     applied_modifier_visuals: Applied_Modifier_Visuals[]
-    timed_effect_visuals: Active_Timed_Effect_Visuals[];
+    timed_effect_visuals: Active_Timed_Effect_Visuals[]
+    player_requested_game_over_screen_skip: boolean
 }
 
 type Battle_Player = {
@@ -3006,6 +3007,7 @@ function on_modifier_removed(unit: Unit, modifier_id: Modifier_Id) {
         const fall_time = 0.45;
 
         function f(x: number) {
+            // sin(x)/x inverted and offset mixed with 1 - x^2
             return ((1 - Math.sin(x * 6 - 6)/(x * 6 - 6)) + (1 - x * x)) / 2;
         }
 
@@ -3505,11 +3507,34 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
                 }
             }
 
+            const combat_result = () =>  {
+                if (delta.result.draw) {
+                    return Combat_Result.draw;
+                }
+
+                if (delta.result.winner_player_id == battle.this_player_id) {
+                    return Combat_Result.victory;
+                } else {
+                    return Combat_Result.defeat;
+                }
+            };
+
+            wait(2);
+
             fire_event(To_Client_Event_Type.show_game_over_ui, {
-                winner_player_id: delta.result.draw ? undefined : delta.result.winner_player_id
+                result: combat_result()
             });
 
-            wait(5);
+            const start_time = GameRules.GetGameTime();
+
+            while (true) {
+                const timed_out = GameRules.GetGameTime() - start_time >= 20.0;
+                if (timed_out || battle.player_requested_game_over_screen_skip) {
+                    break;
+                }
+
+                wait_one_frame();
+            }
 
             battle.is_over = true;
 
@@ -3591,6 +3616,7 @@ function reinitialize_battle(world_origin: Vector, theme: Battleground_Theme, ca
         },
         has_started: false,
         is_over: true,
+        player_requested_game_over_screen_skip: false,
         camera_dummy: camera_entity,
         applied_modifier_visuals: [],
         timed_effect_visuals: []

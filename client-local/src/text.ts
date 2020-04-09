@@ -107,3 +107,11 @@ function get_adventure_entity_name(entity: Adventure_Entity): string {
         case Adventure_Entity_Type.merchant: return "Merchant";
     }
 }
+
+function get_combat_result_string(result: Combat_Result): string {
+    switch (result) {
+        case Combat_Result.victory: return "victory";
+        case Combat_Result.defeat: return "defeat";
+        case Combat_Result.draw: return "draw";
+    }
+}

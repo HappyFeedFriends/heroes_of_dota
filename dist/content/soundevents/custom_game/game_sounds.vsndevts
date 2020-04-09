@@ -296,4 +296,16 @@
         type = "dota_src1_2d"
         vsnd_files = "sounds/ui/shop_slide_down.vsnd"
     }
+
+    game_over_victory = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/music/thefatrat_01/stingers/radiant_win.vsnd"
+        volume_fade_out = 1
+    }
+
+    game_over_defeat = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/music/jboberg_01/stingers/radiant_lose.vsnd"
+        volume_fade_out = 1
+    }
 }

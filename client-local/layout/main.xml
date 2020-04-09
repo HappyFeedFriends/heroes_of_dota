@@ -79,6 +79,8 @@
                     <Label text="YOUR TURN"/>
                 </Panel>
             </Panel>
+
+            <Panel id="battle_over_container"/>
         </Panel>
 
         <Panel id="global_map_ui" hittest="false" class="ui_state">
