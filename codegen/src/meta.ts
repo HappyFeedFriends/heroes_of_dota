@@ -151,7 +151,7 @@ export default function run_transformer(program: ts.Program, options: Options): 
                     if (enum_members.length > 10) {
                         const properties = enum_members.map(member => {
                             if (member.type.kind == SimpleTypeKind.NUMBER_LITERAL) {
-                                return ts.createPropertyAssignment(ts.createLiteral(member.type.value), ts.createStringLiteral(member.name));
+                                return ts.createPropertyAssignment(ts.createComputedPropertyName(ts.createLiteral(member.type.value)), ts.createStringLiteral(member.name));
                             }
 
                             error_out(argument, "Unsupported member type " + member.type);
