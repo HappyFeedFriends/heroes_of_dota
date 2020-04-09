@@ -148,6 +148,18 @@ export default function run_transformer(program: ts.Program, options: Options): 
                         return ts.createStringLiteral(enum_members[0].name);
                     }
 
+                    if (enum_members.length > 10) {
+                        const properties = enum_members.map(member => {
+                            if (member.type.kind == SimpleTypeKind.NUMBER_LITERAL) {
+                                return ts.createPropertyAssignment(ts.createLiteral(member.type.value), ts.createStringLiteral(member.name));
+                            }
+
+                            error_out(argument, "Unsupported member type " + member.type);
+                        });
+
+                        return ts.createElementAccess(ts.createObjectLiteral(properties, true), argument);
+                    }
+
                     const cases = enum_members.map(member => {
                         if (member.type.kind == SimpleTypeKind.NUMBER_LITERAL) {
                             return ts.createCaseClause(ts.createLiteral(member.type.value), [
