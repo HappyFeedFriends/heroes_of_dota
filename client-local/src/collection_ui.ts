@@ -273,14 +273,14 @@ function create_deck_card_panel(parent: Panel, type: string, text: string, image
 }
 
 function update_deck_counters() {
-    deck_counter_heroes.current.text = deck_ui.heroes.length.toString(10);
-    deck_counter_spells.current.text = deck_ui.spells.length.toString(10);
+    update_deck_counter(deck_counter_heroes, deck_ui.heroes.length, heroes_in_deck);
+    update_deck_counter(deck_counter_spells, deck_ui.spells.length, spells_in_deck);
+}
 
-    deck_counter_heroes.max.text = heroes_in_deck.toString(10);
-    deck_counter_spells.max.text = spells_in_deck.toString(10);
-
-    deck_counter_heroes.root.SetHasClass("incomplete", deck_ui.heroes.length != heroes_in_deck);
-    deck_counter_spells.root.SetHasClass("incomplete", deck_ui.spells.length != spells_in_deck);
+function update_deck_counter(counter: Deck_Counter, current: number, max: number) {
+    counter.current.text = current.toString(10);
+    counter.max.text = max.toString(10);
+    counter.root.SetHasClass("incomplete", current != heroes_in_deck);
 }
 
 function refresh_deck_contents(deck: Deck_Contents) {
