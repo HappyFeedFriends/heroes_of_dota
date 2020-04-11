@@ -232,71 +232,76 @@
       width: 100%;
       flow-children: down;
 
-      >.deck_card {
+      .type_container {
         width: 100%;
-        background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
-        background-size: 100% 100%;
-        border-bottom: 1px solid #111111;
+        flow-children: down;
 
-        transition-property: position;
-        transition-duration: 0.06s;
+        > .deck_card {
+          width: 100%;
+          background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
+          background-size: 100% 100%;
+          border-bottom: 1px solid #111111;
 
-        &.hero {
-          background-color: @hero-card-header-color;
-        }
+          transition-property: position;
+          transition-duration: 0.06s;
 
-        &.spell {
-          background-color: @spell-card-header-color;
-        }
-
-        &:hover {
-          brightness: 1.4;
-
-          #name {
-            transform: translateX(3px);
+          &.hero {
+            background-color: @hero-card-header-color;
           }
-        }
 
-        &:active {
-          brightness: 2;
-
-          #name {
-            transform: translateX(5px);
+          &.spell {
+            background-color: @spell-card-header-color;
           }
-        }
 
-        &.hero>#image {
-          horizontal-align: right;
+          &:hover {
+            brightness: 1.4;
 
-          height: 100%;
-          width: 80px;
-          opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
-          background-size: auto 130%;
-          background-position: 50% 50%;
-        }
+            #name {
+              transform: translateX(3px);
+            }
+          }
 
-        &.spell>#image {
-          horizontal-align: right;
+          &:active {
+            brightness: 2;
 
-          height: 100%;
-          width: 80px;
-          opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
-          background-size: 170% auto;
-          background-position: 50% 50%;
-        }
+            #name {
+              transform: translateX(5px);
+            }
+          }
 
-        >#name {
-          padding: 5px 0;
+          &.hero > #image {
+            horizontal-align: right;
 
-          transition-property: transform, position;
-          transition-duration: 0.1s;
+            height: 100%;
+            width: 80px;
+            opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
+            background-size: auto 130%;
+            background-position: 50% 50%;
+          }
 
-          font-family: @font-regular;
-          font-stretch: condensed;
-          font-size: 22px;
-          color: #ececec;
-          margin-left: 16px;
-          text-shadow: 0px 0px 2px 2.0 #333333ff;
+          &.spell > #image {
+            horizontal-align: right;
+
+            height: 100%;
+            width: 80px;
+            opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
+            background-size: 170% auto;
+            background-position: 50% 50%;
+          }
+
+          > #name {
+            padding: 5px 0;
+
+            transition-property: transform, position;
+            transition-duration: 0.1s;
+
+            font-family: @font-regular;
+            font-stretch: condensed;
+            font-size: 22px;
+            color: #ececec;
+            margin-left: 16px;
+            text-shadow: 0px 0px 2px 2.0 #333333ff;
+          }
         }
       }
     }

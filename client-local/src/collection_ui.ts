@@ -31,6 +31,8 @@ const collection_ui = global_map_ui_root.FindChildTraverse("collection_window");
 const page_overlay = collection_ui.FindChildTraverse("page_overlay");
 const page_root = collection_ui.FindChildTraverse("page");
 const deck_content_root = collection_ui.FindChildTraverse("deck_content");
+const deck_heroes_root = deck_content_root.FindChildTraverse("deck_heroes");
+const deck_spells_root = deck_content_root.FindChildTraverse("deck_spells");
 const deck_footer = collection_ui.FindChildTraverse("deck_footer");
 
 // Makes it impossible to click through, so background doesn't receive a click event and dismiss the window
@@ -210,36 +212,51 @@ function refresh_collection_hero_page(page: Collection_Page) {
     refresh_card_availability();
 }
 
-function create_deck_card_panel_from_card(card: Collection_Card): Panel {
+function create_deck_card_panel_from_card(card: Collection_Card) {
     switch (card.type) {
-        case Card_Type.spell: return create_deck_spell_card_panel(card.spell);
-        case Card_Type.hero: return create_deck_hero_card_panel(card.hero);
+        case Card_Type.spell: create_deck_spell_card_panel(card.spell); break;
+        case Card_Type.hero: create_deck_hero_card_panel(card.hero); break;
     }
+}
+
+function add_panel_to_deck_list<T>(panel: Panel, element: T, list: T[]) {
+    list.push(element);
+
+    panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        const index = list.indexOf(element);
+
+        if (index != -1) {
+            list.splice(index, 1);
+        }
+
+        panel.DeleteAsync(0.0);
+        refresh_card_availability();
+        update_deck_counters();
+    });
 }
 
 function create_deck_hero_card_panel(hero: Hero_Type) {
-    const panel = create_deck_card_panel("hero", get_hero_name(hero), get_full_hero_icon_path(hero), panel => ({
+    const panel = create_deck_card_panel(deck_heroes_root, "hero", get_hero_name(hero), get_full_hero_icon_path(hero));
+    const card = {
         type: hero,
         panel: panel
-    }), deck_ui.heroes);
+    };
 
-    const this_is_the_first_hero_panel_added = deck_ui.heroes.length == 1;
-    if (this_is_the_first_hero_panel_added) {
-        panel.GetParent().MoveChildBefore(panel, panel.GetParent().GetChild(0));
-    }
-
-    return panel;
+    add_panel_to_deck_list(panel, card, deck_ui.heroes);
 }
 
 function create_deck_spell_card_panel(spell: Spell_Id) {
-    return create_deck_card_panel("spell", get_spell_name(spell), get_spell_card_art(spell), panel => ({
+    const panel = create_deck_card_panel(deck_spells_root, "spell", get_spell_name(spell), get_spell_card_art(spell));
+    const card = {
         id: spell,
         panel: panel
-    }), deck_ui.spells);
+    };
+
+    add_panel_to_deck_list(panel, card, deck_ui.spells);
 }
 
-function create_deck_card_panel<T extends { panel: Panel }>(type: string, text: string, image_path: string, creator: (panel: Panel) => T, target: T[]) {
-    const card = $.CreatePanel("Panel", deck_content_root, "");
+function create_deck_card_panel(parent: Panel, type: string, text: string, image_path: string) {
+    const card = $.CreatePanel("Panel", parent, "");
     card.AddClass("deck_card");
     card.AddClass(type);
 
@@ -251,26 +268,6 @@ function create_deck_card_panel<T extends { panel: Panel }>(type: string, text: 
 
     const image = $.CreatePanel("Panel", card, "image");
     safely_set_panel_background_image(image, image_path);
-
-    if (target.length > 0) {
-        deck_content_root.MoveChildAfter(card, target[target.length - 1].panel);
-    }
-
-    const creation = creator(card);
-
-    target.push(creation);
-
-    card.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-        const index = target.indexOf(creation);
-
-        if (index != -1) {
-            target.splice(index, 1);
-        }
-
-        card.DeleteAsync(0.0);
-        refresh_card_availability();
-        update_deck_counters();
-    });
 
     return card;
 }
@@ -287,7 +284,8 @@ function update_deck_counters() {
 }
 
 function refresh_deck_contents(deck: Deck_Contents) {
-    deck_content_root.RemoveAndDeleteChildren();
+    deck_heroes_root.RemoveAndDeleteChildren();
+    deck_spells_root.RemoveAndDeleteChildren();
 
     deck_ui.heroes = [];
     deck_ui.spells = [];

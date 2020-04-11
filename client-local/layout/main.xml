@@ -114,7 +114,10 @@
                         <Label text="DECK"/>
                     </Panel>
                     <Panel id="deck_inner">
-                        <Panel id="deck_content"/>
+                        <Panel id="deck_content">
+                            <Panel id="deck_heroes" class="type_container"/>
+                            <Panel id="deck_spells" class="type_container"/>
+                        </Panel>
                     </Panel>
 
                     <Panel id="deck_footer">
