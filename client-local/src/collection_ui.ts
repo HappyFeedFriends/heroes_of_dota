@@ -263,7 +263,7 @@ function update_deck_counters() {
 function update_deck_counter(counter: Deck_Counter, current: number, max: number) {
     counter.current.text = current.toString(10);
     counter.max.text = max.toString(10);
-    counter.root.SetHasClass("incomplete", current != heroes_in_deck);
+    counter.root.SetHasClass("incomplete", current != max);
 }
 
 function refresh_deck_contents(deck: Deck_Contents) {
