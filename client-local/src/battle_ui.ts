@@ -494,6 +494,7 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
     }
 
     if (battle.state.status == Battle_Status.finished) {
+        hover = { type: Hover_Type.none };
         drop_selection();
     }
 

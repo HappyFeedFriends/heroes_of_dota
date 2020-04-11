@@ -3519,7 +3519,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
                 }
             };
 
-            wait(2);
+            wait(1);
 
             fire_event(To_Client_Event_Type.show_game_over_ui, {
                 result: combat_result()
