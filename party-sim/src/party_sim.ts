@@ -392,6 +392,35 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
             break;
         }
 
+        case Adventure_Party_Change_Type.set_state_after_combat: {
+            for (const health_change of change.slot_health_changes) {
+                const slot = party.slots[health_change.index];
+                if (!slot) continue;
+
+                switch (slot.type) {
+                    case Adventure_Party_Slot_Type.hero: {
+                        slot.base_health = health_change.health_now;
+                        break;
+                    }
+
+                    case Adventure_Party_Slot_Type.creep: {
+                        slot.health = health_change.health_now;
+                        break;
+                    }
+
+                    case Adventure_Party_Slot_Type.spell: break;
+                    case Adventure_Party_Slot_Type.empty: break;
+                    default: unreachable(slot);
+                }
+            }
+
+            for (const removed_slot_index of change.slots_removed) {
+                party.slots[removed_slot_index] = { type: Adventure_Party_Slot_Type.empty };
+            }
+
+            break;
+        }
+
         case Adventure_Party_Change_Type.move_item: {
             function get_and_remove_item_from_slot(source: Adventure_Item_Container): Adventure_Item | undefined {
                 switch (source.type) {

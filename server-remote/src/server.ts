@@ -710,7 +710,9 @@ export function check_if_battle_is_over(battle: Battle_Record) {
 }
 
 function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Participant_Map_Entity) {
-    function defeat_adventure_enemies(adventure: Ongoing_Adventure) {
+    function defeat_adventure_enemies(adventure: Ongoing_Adventure): Creep_Type[] {
+        const defeated: Creep_Type[] = [];
+
         for (const defeated_player of battle.players) {
             const defeated_entity = defeated_player.map_entity;
 
@@ -719,13 +721,27 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
 
                 if (defeated_adventure_entity && defeated_adventure_entity.type == Adventure_Entity_Type.enemy) {
                     defeated_adventure_entity.alive = false;
+
+                    defeated.push(...defeated_adventure_entity.creeps);
                 }
             }
         }
+
+        return defeated;
     }
 
-    function update_player_adventure_state_from_battle(player: Map_Player_On_Adventure, battle_counterpart: Battle_Player) {
+    function update_player_adventure_state_from_battle(player: Map_Player_On_Adventure, battle_counterpart: Battle_Player, defeated: Creep_Type[]) {
         const links = player.party.links;
+        const change: Find_By_Type<Adventure_Party_Change, Adventure_Party_Change_Type.set_state_after_combat> = {
+            type: Adventure_Party_Change_Type.set_state_after_combat,
+            slots_removed: [],
+            slot_health_changes: [],
+            enemy: {
+                heroes: [],
+                creeps: defeated,
+                spells: []
+            }
+        };
 
         for (const link of links.heroes) {
             const slot = link.slot;
@@ -742,7 +758,11 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
             const clamped_base_health = Math.min(new_base_health, max_base_health);
 
             if (clamped_base_health != slot.base_health) {
-                push_party_change(player.party, change_party_set_health_clamped(link.slot_index, new_base_health, max_base_health, Adventure_Health_Change_Reason.combat));
+                change.slot_health_changes.push({
+                    index: link.slot_index,
+                    health_before: slot.base_health,
+                    health_now: clamped_base_health
+                });
             }
         }
 
@@ -757,10 +777,15 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
                 if (slot.health != source_unit.health) {
                     const max_health = creep_definition_by_type(slot.creep).health;
                     const new_health = source_unit.health;
-                    push_party_change(player.party, change_party_set_health_clamped(link.slot_index, new_health, max_health, Adventure_Health_Change_Reason.combat));
+
+                    change.slot_health_changes.push({
+                        index: link.slot_index,
+                        health_before: slot.health,
+                        health_now: Math.min(new_health, max_health)
+                    });
                 }
             } else {
-                push_party_change(player.party, change_party_empty_slot(link.slot_index));
+                change.slots_removed.push(link.slot_index);
             }
         }
 
@@ -768,9 +793,11 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
             const card = battle_counterpart.hand.find(card => card.id == link.card);
 
             if (!card) {
-                push_party_change(player.party, change_party_empty_slot(link.slot_index));
+                change.slots_removed.push(link.slot_index);
             }
         }
+
+        push_party_change(player.party, change);
 
         player.party.links = {
             heroes: [],
@@ -804,8 +831,8 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
                     if (!was_a_playtest) {
                         if (next_state.state == Player_State.on_adventure) {
                             if (player_won) {
-                                defeat_adventure_enemies(next_state.ongoing_adventure);
-                                update_player_adventure_state_from_battle(next_state, battle_player);
+                                const defeated = defeat_adventure_enemies(next_state.ongoing_adventure);
+                                update_player_adventure_state_from_battle(next_state, battle_player, defeated);
                             } else {
                                 submit_chat_message(player, `${player.name} lost, their adventure is over`);
                                 set_player_state(player, {

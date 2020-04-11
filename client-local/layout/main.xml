@@ -80,7 +80,7 @@
                 </Panel>
             </Panel>
 
-            <Panel id="battle_over_container"/>
+            <Panel id="battle_over_container" hittest="false"/>
         </Panel>
 
         <Panel id="global_map_ui" hittest="false" class="ui_state">
@@ -128,17 +128,7 @@
 
         <Panel id="adventure_ui" hittest="false" class="ui_state">
             <Label id="adventure_entity_name_indicator"/>
-            <Panel id="adventure_merchant_popup_background" class="window_background"/>
-            <Panel id="adventure_merchant_popup">
-                <Label class="adventure_popup_header" text="Merchant"/>
-                <Panel id="adventure_merchant_popup_content">
-                    <Panel id="adventure_merchant_popup_cards"/>
-                    <Panel id="adventure_merchant_popup_items"/>
-                </Panel>
-                <Button id="adventure_merchant_popup_leave" class="adventure_popup_button">
-                    <Label id="text" text="LEAVE"/>
-                </Button>
-            </Panel>
+            <Panel id="adventure_merchant_popup_container" class="popup_container" hittest="false"/>
 
             <Panel id="adventure_party_container">
                 <Panel id="left_flare"/>
@@ -161,23 +151,7 @@
             </Panel>
             <Panel hittest="false" id="adventure_card_tooltips"/>
 
-            <Panel id="adventure_popup_background" class="window_background"/>
-            <Panel id="adventure_popup">
-                <Panel id="adventure_popup_content">
-                    <Label id="adventure_popup_header" class="adventure_popup_header"/>
-                    <Panel id="adventure_popup_inner_content"/>
-                    <Label id="adventure_popup_text"/>
-                </Panel>
-
-                <Panel id="adventure_popup_buttons">
-                    <Button id="adventure_popup_yes" class="adventure_popup_button">
-                        <Panel id="icon"/>
-                    </Button>
-                    <Button id="adventure_popup_no" class="adventure_popup_button">
-                        <Panel id="icon"/>
-                    </Button>
-                </Panel>
-            </Panel>
+            <Panel id="adventure_popup_container" class="popup_container" hittest="false"/>
             <Panel id="adventure_fade" hittest="false"/>
         </Panel>
 

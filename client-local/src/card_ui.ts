@@ -82,6 +82,20 @@ function get_full_hero_icon_path(type: Hero_Type): string {
     return `file://{images}/heroes/npc_dota_hero_${get_hero_dota_name(type)}.png`;
 }
 
+function get_full_creep_icon_path(type: Creep_Type): string {
+    switch (type) {
+        case Creep_Type.pocket_tower: return "";
+        case Creep_Type.lane_creep: return "";
+        case Creep_Type.satyr_big: return "";
+        case Creep_Type.satyr_small: return "";
+        case Creep_Type.small_spider: return "";
+        case Creep_Type.large_spider: return "";
+        case Creep_Type.spider_matriarch: return "";
+        case Creep_Type.spiderling: return "";
+        case Creep_Type.ember_fire_remnant: return "";
+    }
+}
+
 function get_spell_card_art(spell_id: Spell_Id): string {
     function get_spell_card_art_file(spell_id: Spell_Id): string {
         switch (spell_id) {
@@ -174,4 +188,21 @@ function create_spell_card_ui_base(container: Panel, spell: Spell_Id, spell_text
     const text = $.CreatePanel("Label", text_container, "");
 
     text.text = spell_text;
+}
+
+function create_deck_card_panel(parent: Panel, type: string, text: string, image_path: string) {
+    const card = $.CreatePanel("Panel", parent, "");
+    card.AddClass("deck_card");
+    card.AddClass(type);
+
+    const flash = $.CreatePanel("Panel", card, "");
+    flash.AddClass("animate_add_to_deck_flash");
+
+    const label = $.CreatePanel("Label", card, "name");
+    label.text = text;
+
+    const image = $.CreatePanel("Panel", card, "image");
+    safely_set_panel_background_image(image, image_path);
+
+    return card;
 }

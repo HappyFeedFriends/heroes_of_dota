@@ -333,6 +333,11 @@
     }
   }
 
+  .popup_container {
+    width: 100%;
+    height: 100%;
+  }
+
   #adventure_popup_base {
     #ui_window();
 
@@ -376,7 +381,7 @@
     }
   }
 
-  #adventure_popup {
+  .adventure_popup {
     width: 500px;
 
     #adventure_popup_base();
@@ -421,44 +426,44 @@
         }
       }
     }
+  }
 
-    #adventure_popup_buttons {
-      align: center bottom;
-      margin-bottom: 12px;
-      flow-children: right;
+  #adventure_popup_buttons {
+    align: center bottom;
+    margin-bottom: 12px;
+    flow-children: right;
 
-      #icon {
-        width: 32px;
-        height: 32px;
-        align: center center;
-        background-size: 100% 100%;
-      }
+    #icon {
+      width: 32px;
+      height: 32px;
+      align: center center;
+      background-size: 100% 100%;
+    }
 
-      #adventure_popup_yes {
-        #button_gradient(#60862d, #3d5f1c);
-      }
+    #adventure_popup_yes {
+      #button_gradient(#60862d, #3d5f1c);
+    }
 
-      #adventure_popup_no {
-        #button_gradient(#708586, #465253);
-      }
+    #adventure_popup_no {
+      #button_gradient(#708586, #465253);
+    }
 
-      #adventure_popup_yes #icon {
-        background-image: url("s2r://panorama/images/control_icons/check_shadow_png.vtex");
-      }
+    #adventure_popup_yes #icon {
+      background-image: url("s2r://panorama/images/control_icons/check_shadow_png.vtex");
+    }
 
-      #adventure_popup_no #icon {
-        background-image: url("s2r://panorama/images/control_icons/x_close_png.vtex");
-        img-shadow: 0px 1px 0px 1 rgba(0, 0, 0, 0.69);
-      }
+    #adventure_popup_no #icon {
+      background-image: url("s2r://panorama/images/control_icons/x_close_png.vtex");
+      img-shadow: 0px 1px 0px 1 rgba(0, 0, 0, 0.69);
+    }
 
-      .adventure_popup_button {
-        margin: 12px;
-        width: 120px;
-      }
+    .adventure_popup_button {
+      margin: 12px;
+      width: 120px;
     }
   }
 
-  #adventure_merchant_popup {
+  .adventure_merchant_popup {
     #adventure_popup_base();
 
     width: 900px;
@@ -574,6 +579,140 @@
       }
     }
   }
+
+  .adventure_combat_result_popup {
+    #adventure_popup_base();
+
+    .adventure_popup_header {
+      font-size: 58px;
+    }
+
+    width: 900px;
+    height: 600px;
+
+    #adventure_popup_content {
+      flow-children: right;
+      align: center center;
+
+      #vs {
+        color: white;
+        font-family: @font-title;
+        font-size: 64px;
+        vertical-align: center;
+        text-shadow: 0px 0px 3px 3 black;
+        margin: 20px;
+      }
+
+      .participant {
+        flow-children: right;
+        horizontal-align: center;
+
+        #container_column {
+          width: 280px;
+          flow-children: down;
+
+          > #name {
+            font-size: 32px;
+            font-family: @font-regular;
+            color: white;
+            text-shadow: 0px 0px 3px 3 black;
+            margin: 10px;
+            align: center center;
+          }
+
+          > #resources {
+            flow-children: down;
+            width: 100%;
+            box-shadow: #151515 0 0 6px 0;
+
+            &.no_losses {
+              box-shadow: none;
+
+              #no_losses {
+                color: white;
+                font-family: @font-regular;
+                font-size: 24px;
+                text-shadow: 0px 0px 3px 3 black;
+                align: center center;
+              }
+            }
+
+            .deck_card {
+              &.dead {
+                wash-color: gray;
+              }
+
+              &.dead #death_overlay {
+                width: 100%;
+                height: 3px;
+                vertical-align: center;
+                background-color: red;
+                box-shadow: black 0px 0px 3px 3px;
+                z-index: 1;
+              }
+            }
+          }
+        }
+
+        #changes_column {
+          vertical-align: bottom;
+          flow-children: down;
+          width: 64px;
+          margin-left: 8px;
+          margin-right: 8px;
+
+          > Panel {
+            width: 100%;
+            height: 40px;
+
+            &.dead {
+              width: 40px;
+
+              background-image: url("s2r://panorama/images/textures/fightrecap_skull_red_psd.vtex");
+              background-repeat: no-repeat;
+              background-position: 50% 50%;
+              background-size: 80% 80%;
+            }
+
+            &.health_change {
+              flow-children: right;
+
+              &.negative #text {
+                text-shadow: 0px 0px 1px 2 #c8000e;
+              }
+
+              #icon {
+                width: 24px;
+                height: 24px;
+                vertical-align: center;
+                background-image: @icon-health;
+                background-repeat: no-repeat;
+                background-position: 50% 50%;
+                background-size: 100% 100%;
+              }
+
+              #text {
+                text-shadow: 0px 0px 1px 2 #43c804;
+                vertical-align: bottom;
+                text-align: center;
+                font-family: @font-mono;
+                color: white;
+                font-size: 24px;
+                margin-bottom: 2px;
+              }
+            }
+          }
+        }
+      }
+
+      .adventure_popup_button {
+        margin-bottom: 30px;
+
+        align: center bottom;
+      }
+    }
+  }
+
 
   #adventure_entity_name_indicator {
     font-size: 24px;

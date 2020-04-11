@@ -29,7 +29,8 @@ declare const enum Adventure_Party_Change_Type {
     add_item_to_bag = 2,
     move_item = 3,
     remove_bag_item = 4,
-    set_currency_amount = 5
+    set_currency_amount = 5,
+    set_state_after_combat = 6
 }
 
 declare const enum Adventure_Party_Action_Type {
@@ -328,6 +329,19 @@ type Adventure_Party_Change = {
     type: Adventure_Party_Change_Type.set_currency_amount
     amount: number
     from_purchase: boolean
+} | {
+    type: Adventure_Party_Change_Type.set_state_after_combat
+    slots_removed: number[]
+    slot_health_changes: {
+        index: number
+        health_before: number
+        health_now: number
+    }[]
+    enemy: {
+        heroes: Hero_Type[]
+        creeps: Creep_Type[]
+        spells: Spell_Id[]
+    }
 }
 
 type Adventure_Item_Container = {

@@ -235,74 +235,6 @@
       .type_container {
         width: 100%;
         flow-children: down;
-
-        > .deck_card {
-          width: 100%;
-          background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
-          background-size: 100% 100%;
-          border-bottom: 1px solid #111111;
-
-          transition-property: position;
-          transition-duration: 0.06s;
-
-          &.hero {
-            background-color: @hero-card-header-color;
-          }
-
-          &.spell {
-            background-color: @spell-card-header-color;
-          }
-
-          &:hover {
-            brightness: 1.4;
-
-            #name {
-              transform: translateX(3px);
-            }
-          }
-
-          &:active {
-            brightness: 2;
-
-            #name {
-              transform: translateX(5px);
-            }
-          }
-
-          &.hero > #image {
-            horizontal-align: right;
-
-            height: 100%;
-            width: 80px;
-            opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
-            background-size: auto 130%;
-            background-position: 50% 50%;
-          }
-
-          &.spell > #image {
-            horizontal-align: right;
-
-            height: 100%;
-            width: 80px;
-            opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
-            background-size: 170% auto;
-            background-position: 50% 50%;
-          }
-
-          > #name {
-            padding: 5px 0;
-
-            transition-property: transform, position;
-            transition-duration: 0.1s;
-
-            font-family: @font-regular;
-            font-stretch: condensed;
-            font-size: 22px;
-            color: #ececec;
-            margin-left: 16px;
-            text-shadow: 0px 0px 2px 2.0 #333333ff;
-          }
-        }
       }
     }
 
@@ -348,6 +280,82 @@
         }
       }
     }
+  }
+}
+
+.deck_card {
+  width: 100%;
+  height: 40px;
+  background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
+  background-size: 100% 100%;
+  border-bottom: 1px solid #111111;
+
+  transition-property: position;
+  transition-duration: 0.06s;
+
+  &.hero {
+    background-color: @hero-card-header-color;
+  }
+
+  &.spell {
+    background-color: @spell-card-header-color;
+  }
+
+  &.creep {
+    background-color: @creep-card-header-color;
+  }
+
+  &:hover {
+    brightness: 1.4;
+
+    #name {
+      transform: translateX(3px);
+    }
+  }
+
+  &:active {
+    brightness: 2;
+
+    #name {
+      transform: translateX(5px);
+    }
+  }
+
+  > #image {
+    horizontal-align: right;
+    height: 100%;
+    width: 80px;
+    opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
+  }
+
+  &.hero > #image {
+    background-size: auto 130%;
+    background-position: 50% 50%;
+  }
+
+  &.spell > #image {
+    background-size: 170% auto;
+    background-position: 50% 50%;
+  }
+
+  &.creep > #image {
+    background-size: 300% auto;
+    background-position: 50% 20%;
+  }
+
+  > #name {
+    padding: 5px 0;
+
+    transition-property: transform, position;
+    transition-duration: 0.1s;
+    white-space: nowrap;
+
+    font-family: @font-regular;
+    font-stretch: condensed;
+    font-size: 22px;
+    color: #ececec;
+    margin-left: 16px;
+    text-shadow: 0px 0px 2px 2.0 #333333ff;
   }
 }
 

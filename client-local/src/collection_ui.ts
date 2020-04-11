@@ -255,23 +255,6 @@ function create_deck_spell_card_panel(spell: Spell_Id) {
     add_panel_to_deck_list(panel, card, deck_ui.spells);
 }
 
-function create_deck_card_panel(parent: Panel, type: string, text: string, image_path: string) {
-    const card = $.CreatePanel("Panel", parent, "");
-    card.AddClass("deck_card");
-    card.AddClass(type);
-
-    const flash = $.CreatePanel("Panel", card, "");
-    flash.AddClass("animate_add_to_deck_flash");
-
-    const label = $.CreatePanel("Label", card, "name");
-    label.text = text;
-
-    const image = $.CreatePanel("Panel", card, "image");
-    safely_set_panel_background_image(image, image_path);
-
-    return card;
-}
-
 function update_deck_counters() {
     update_deck_counter(deck_counter_heroes, deck_ui.heroes.length, heroes_in_deck);
     update_deck_counter(deck_counter_spells, deck_ui.spells.length, spells_in_deck);

@@ -4,7 +4,9 @@ import {
     api_request,
     async_api_request,
     fire_event,
-    subscribe_to_net_table_key, async_local_api_request
+    subscribe_to_net_table_key,
+    async_local_api_request,
+    async_get_player_name
 } from "./interop";
 
 import {
@@ -23,23 +25,10 @@ const adventure_ui = {
         ...create_adventure_card_tooltip(adventure_ui_root.FindChildTraverse("adventure_card_tooltips")),
         css_class: ""
     },
-    popup: {
-        window: adventure_ui_root.FindChildTraverse("adventure_popup"),
-        header: adventure_ui_root.FindChildTraverse("adventure_popup_header") as LabelPanel,
-        text: adventure_ui_root.FindChildTraverse("adventure_popup_text") as LabelPanel,
-        content: adventure_ui_root.FindChildTraverse("adventure_popup_inner_content"),
-        background: adventure_ui_root.FindChildTraverse("adventure_popup_background"),
-        button_yes: adventure_ui_root.FindChildTraverse("adventure_popup_yes"),
-        button_no: adventure_ui_root.FindChildTraverse("adventure_popup_no")
-    },
-    merchant_popup: {
-        window: adventure_ui_root.FindChildTraverse("adventure_merchant_popup"),
-        background: adventure_ui_root.FindChildTraverse("adventure_merchant_popup_background"),
-        cards: adventure_ui_root.FindChildTraverse("adventure_merchant_popup_cards"),
-        items: adventure_ui_root.FindChildTraverse("adventure_merchant_popup_items"),
-        button_leave: adventure_ui_root.FindChildTraverse("adventure_merchant_popup_leave")
-    },
+    basic_popup_container: adventure_ui_root.FindChildTraverse("adventure_popup_container"),
+    merchant_popup_container: adventure_ui_root.FindChildTraverse("adventure_merchant_popup_container"),
     ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
+    player_id: -1 as Player_Id
 };
 
 const enum Drag_Source {
@@ -150,15 +139,64 @@ type Purchasable = {
     entity_id: Adventure_Party_Entity_Id
 }
 
-type Merchant_Popup = {
-    visible: boolean
-    purchasable_elements: Purchasable_Element[]
-}
-
 type Purchasable_Element = {
     root: Panel
     purchasable: Purchasable
 }
+
+type Combat_Resources = {
+    attacker: Combat_Resource[]
+    defendant: Combat_Resource[]
+}
+
+type Combat_Resource = {
+    type: Adventure_Party_Slot_Type.hero
+    hero: Hero_Type
+    health_change: number
+    dead: boolean
+} | {
+    type: Adventure_Party_Slot_Type.creep
+    creep: Creep_Type
+    health_change: number
+    dead: boolean
+} | {
+    type: Adventure_Party_Slot_Type.spell
+    spell: Spell_Id
+}
+
+const enum Popup_Type {
+    basic,
+    merchant,
+    combat_result
+}
+
+type Basic_Popup = {
+    type: Popup_Type.basic
+    content: Panel
+    set_header_text(text: string): void
+    set_content_text(text: string): void
+    create_button(id: string, click: () => void): void
+    close(): void
+}
+
+type Merchant_Popup = {
+    type: Popup_Type.merchant
+    purchasable_elements: Purchasable_Element[]
+    cards: Panel
+    items: Panel
+    on_button_click(click: () => void): void
+    update(party: Party_Snapshot): void
+    close(): void
+}
+
+type Combat_Result_Popup = {
+    type: Popup_Type.combat_result
+    content: Panel
+    on_button_click(click: () => void): void
+    close(): void
+}
+
+type Popup = Basic_Popup | Merchant_Popup | Combat_Result_Popup
 
 const party: Party_UI = {
     currency: 0,
@@ -189,10 +227,7 @@ const entity_name: Entity_Name_UI = {
     previous_screen_y: 0
 };
 
-const merchant_popup: Merchant_Popup = {
-    visible: false,
-    purchasable_elements: []
-};
+let open_popup: Popup | undefined = undefined;
 
 const entities: Physical_Adventure_Entity[] = [];
 
@@ -701,17 +736,15 @@ function set_adventure_party_slot(slot_index: number, slot: Adventure_Party_Slot
     return new_slot;
 }
 
-function fill_entity_popup_content(entity: Adventure_Entity) {
-    const popup = adventure_ui.popup;
-
+function fill_entity_popup_content(popup: Basic_Popup, entity: Adventure_Entity) {
     switch (entity.type) {
         case Adventure_Entity_Type.lost_creep: {
-            popup.header.text = "Ally";
-            popup.text.text = "Lost Creep would like to join your party";
+            popup.set_header_text("Ally");
+            popup.set_content_text("Lost Creep would like to join your party");
 
             const creep = Creep_Type.lane_creep;
             const def = creep_definition_by_type(creep);
-            const container = create_card_container_ui(adventure_ui.popup.content, false);
+            const container = create_card_container_ui(popup.content, false);
             create_unit_card_ui_base(container, get_creep_name(creep), get_creep_card_art(creep), def.health, def.attack_damage, def.move_points);
             container.AddClass("creep");
 
@@ -719,8 +752,8 @@ function fill_entity_popup_content(entity: Adventure_Entity) {
         }
 
         case Adventure_Entity_Type.shrine: {
-            popup.header.text = "Shrine";
-            popup.text.text = "This magical shrine can restore your party members' health";
+            popup.set_header_text("Shrine");
+            popup.set_content_text("This magical shrine can restore your party members' health");
 
             const icon = $.CreatePanel("Image", popup.content, "");
             icon.AddClass("icon");
@@ -732,8 +765,8 @@ function fill_entity_popup_content(entity: Adventure_Entity) {
         case Adventure_Entity_Type.item_on_the_ground: {
             const item_name = get_adventure_item_name(entity.item);
 
-            popup.header.text = "Item found";
-            popup.text.text = snake_case_to_capitalized_words(item_name);
+            popup.set_header_text("Item found");
+            popup.set_content_text(snake_case_to_capitalized_words(item_name));
 
             const icon = $.CreatePanel("Image", popup.content, "");
             icon.AddClass("item_icon");
@@ -744,8 +777,8 @@ function fill_entity_popup_content(entity: Adventure_Entity) {
         }
 
         case Adventure_Entity_Type.gold_bag: {
-            popup.header.text = "Gold Bag";
-            popup.text.text = "You've found a bag full of gold";
+            popup.set_header_text("Gold Bag");
+            popup.set_content_text("You've found a bag full of gold");
 
             const icon = $.CreatePanel("Image", popup.content, "");
             icon.AddClass("no_border_icon");
@@ -783,39 +816,70 @@ function update_merchant_popup_elements(popup: Merchant_Popup) {
     }
 }
 
-function show_merchant_popup(popup: Merchant_Popup) {
-    const ui = adventure_ui.merchant_popup;
+function create_popup_background(container: Panel) {
+    const background = $.CreatePanel("Panel", container, "");
+    background.AddClass("window_background");
+    background.SetHasClass("visible", true);
 
-    ui.window.style.visibility = "visible";
-    ui.background.style.visibility = "visible";
+    return background;
+}
 
-    ui.window.SetHasClass("visible", true);
-    ui.background.SetHasClass("visible", true);
+function create_popup_window(container: Panel, css_class: string) {
+    const popup = $.CreatePanel("Panel", container, "");
+    popup.AddClass(css_class);
+    popup.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
+    popup.SetHasClass("visible", true);
+    return popup;
+}
 
-    popup.visible = true;
+function show_merchant_popup(merchant: Adventure_Merchant): Merchant_Popup {
+    function create_ui(container: Panel): Merchant_Popup {
+        const background = create_popup_background(container);
+        background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, close);
+
+        const popup = create_popup_window(container, "adventure_merchant_popup");
+
+        const header = $.CreatePanel("Label", popup, "");
+        header.text = "Merchant";
+        header.AddClass("adventure_popup_header");
+
+        const content = $.CreatePanel("Panel", popup, "adventure_merchant_popup_content");
+        const cards = $.CreatePanel("Panel", content, "adventure_merchant_popup_cards");
+        const items = $.CreatePanel("Panel", content, "adventure_merchant_popup_items");
+        const button = $.CreatePanel("Button", popup, "adventure_merchant_popup_leave");
+        button.AddClass("adventure_popup_button");
+        $.CreatePanel("Label", button, "text").text = "LEAVE";
+
+        function close() {
+            close_and_delete_current_popup(background, popup);
+        }
+
+        const purchasable_elements: Purchasable_Element[] = [];
+
+        return {
+            type: Popup_Type.merchant,
+            cards: cards,
+            items: items,
+            purchasable_elements: purchasable_elements,
+            on_button_click(click: () => void): void {
+                button.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, click);
+            },
+            update(party: Party_Snapshot): void {
+                for (const element of purchasable_elements) {
+                    const purchasable = element.purchasable;
+
+                    element.root.SetHasClass("sold_out", purchasable.sold_out);
+                    element.root.SetHasClass("enough_gold", party.currency >= purchasable.cost);
+                    element.root.enabled = !purchasable.sold_out;
+                }
+            },
+            close: close
+        }
+    }
+
+    const popup = create_ui(adventure_ui.merchant_popup_container);
 
     Game.EmitSound("merchant_open");
-}
-
-function hide_merchant_popup(popup: Merchant_Popup) {
-    const ui = adventure_ui.merchant_popup;
-
-    ui.window.SetHasClass("visible", false);
-    ui.background.SetHasClass("visible", false);
-
-    Game.EmitSound("popup_slide_down");
-
-    popup.purchasable_elements = [];
-    popup.visible = false;
-}
-
-function fill_merchant_popup(popup: Merchant_Popup, merchant: Adventure_Merchant) {
-    const ui = adventure_ui.merchant_popup;
-
-    ui.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
-
-    ui.cards.RemoveAndDeleteChildren();
-    ui.items.RemoveAndDeleteChildren();
 
     function cost_container(parent: Panel, cost: number) {
         const cost_container = $.CreatePanel("Panel", parent, "");
@@ -828,7 +892,7 @@ function fill_merchant_popup(popup: Merchant_Popup, merchant: Adventure_Merchant
     }
 
     function purchasable_item(icon: string, cost: number) {
-        const wrapper = $.CreatePanel("Panel", ui.items, "");
+        const wrapper = $.CreatePanel("Panel", popup.items, "");
         wrapper.AddClass("item_with_cost_wrapper");
         wrapper.AddClass("purchasable_wrapper");
 
@@ -892,7 +956,7 @@ function fill_merchant_popup(popup: Merchant_Popup, merchant: Adventure_Merchant
 
     function purchasable_card(card: Adventure_Merchant_Card) {
         function card_ui(type: string, cost: number): { root: Panel, card_container: Panel } {
-            const wrapper = $.CreatePanel("Panel", ui.cards, "");
+            const wrapper = $.CreatePanel("Panel", popup.cards, "");
             wrapper.AddClass("card_with_cost_wrapper");
             wrapper.AddClass("purchasable_wrapper");
 
@@ -970,44 +1034,209 @@ function fill_merchant_popup(popup: Merchant_Popup, merchant: Adventure_Merchant
         });
     }
 
-    ui.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-        hide_merchant_popup(popup);
-    });
-
-    ui.button_leave.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+    popup.on_button_click(() => {
         Game.EmitSound("click_simple");
 
-        hide_merchant_popup(popup);
+        popup.close();
     });
+
+    return popup;
 }
 
-function hide_entity_popup() {
-    const popup = adventure_ui.popup;
+function set_current_popup(new_popup?: Popup) {
+    if (open_popup) {
+        open_popup.close();
+    }
 
-    popup.window.SetHasClass("visible", false);
-    popup.background.SetHasClass("visible", false);
+    open_popup = new_popup;
+}
+
+function close_and_delete_current_popup(background: Panel, window: Panel) {
+    window.DeleteAsync(1);
+    window.SetHasClass("visible", false);
+    background.DeleteAsync(1);
+    background.SetHasClass("visible", false);
 
     Game.EmitSound("popup_slide_down");
+
+    open_popup = undefined;
 }
 
-function show_entity_popup(entity: Adventure_Entity) {
-    const popup = adventure_ui.popup;
+function create_basic_popup(container: Panel): Basic_Popup {
+    const background = create_popup_background(container);
+    background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, close);
 
-    popup.window.style.visibility = "visible";
-    popup.background.style.visibility = "visible";
+    const popup = create_popup_window(container, "adventure_popup");
 
-    popup.window.SetHasClass("visible", true);
-    popup.background.SetHasClass("visible", true);
+    const content = $.CreatePanel("Panel", popup, "adventure_popup_content");
 
-    popup.header.text = "";
-    popup.text.text = "";
-    popup.content.RemoveAndDeleteChildren();
+    const header = $.CreatePanel("Label", content, "");
+    header.AddClass("adventure_popup_header");
 
-    fill_entity_popup_content(entity);
+    const inner_content = $.CreatePanel("Panel", content, "adventure_popup_inner_content");
+    const text = $.CreatePanel("Label", content, "adventure_popup_text");
+    const buttons = $.CreatePanel("Panel", popup, "adventure_popup_buttons");
 
-    popup.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
+    function close() {
+        close_and_delete_current_popup(background, popup);
+    }
 
-    popup.button_yes.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+    return {
+        type: Popup_Type.basic,
+        content: inner_content,
+        set_header_text(text: string): void {
+            header.text = text;
+        },
+        set_content_text(content: string): void {
+            text.text = content;
+        },
+        create_button(id: string, click: () => void): void {
+            const button = $.CreatePanel("Button", buttons, id);
+            button.AddClass("adventure_popup_button");
+            button.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, click);
+            $.CreatePanel("Panel", button, "icon");
+        },
+        close: close
+    }
+}
+
+function show_combat_result_popup(resources: Combat_Resources): Combat_Result_Popup {
+    function create_ui(container: Panel): Combat_Result_Popup {
+        const background = create_popup_background(container);
+        background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, close);
+
+        const popup = create_popup_window(container, "adventure_combat_result_popup");
+
+        const header = $.CreatePanel("Label", popup, "");
+        header.AddClass("adventure_popup_header");
+        header.text = "Combat Result";
+
+        const content = $.CreatePanel("Panel", popup, "adventure_popup_content");
+        const buttons = $.CreatePanel("Panel", popup, "adventure_popup_buttons");
+
+        const button = $.CreatePanel("Button", buttons, "adventure_popup_yes");
+        button.AddClass("adventure_popup_button");
+        $.CreatePanel("Panel", button, "icon");
+
+        function close() {
+            close_and_delete_current_popup(background, popup);
+        }
+
+        return {
+            type: Popup_Type.combat_result,
+            content: content,
+            on_button_click(click: () => void): void {
+                button.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, click);
+            },
+            close: close
+        }
+    }
+
+    const popup = create_ui(adventure_ui.basic_popup_container);
+
+    popup.on_button_click(() => {
+        Game.EmitSound("click_simple");
+        popup.close();
+    });
+
+    function fill_health_change(parent: Panel, health_change: number, dead: boolean) {
+        if (dead) {
+            $.CreatePanel("Panel", parent, "");
+        } else {
+            const container = $.CreatePanel("Panel", parent, "");
+            container.AddClass("health_change");
+            container.SetHasClass("negative", health_change < 0);
+
+            $.CreatePanel("Panel", container, "icon");
+
+            const text =$.CreatePanel("Label", container, "text");
+            text.text = health_change > 0 ? "+" + health_change : health_change.toString(10);
+        }
+    }
+
+    function fill_spell_use(parent: Panel) {
+        $.CreatePanel("Panel", parent, "spell_used");
+    }
+
+    function create_deck_card_with_death_overlay(parent: Panel, type: string, text: string, image_path: string, dead: boolean) {
+        const card_panel = create_deck_card_panel(parent, type, text, image_path);
+        card_panel.SetHasClass("dead", dead);
+        const death_overlay = $.CreatePanel("Panel", card_panel, "death_overlay");
+        death_overlay.hittest = false;
+        return card_panel;
+    }
+
+    function fill_combat_resources(container_column: Panel, changes_column: Panel, resources: Combat_Resource[]) {
+        for (const resource of resources) {
+            switch (resource.type) {
+                case Adventure_Party_Slot_Type.hero: {
+                    create_deck_card_with_death_overlay(container_column, "hero", get_hero_name(resource.hero), get_full_hero_icon_path(resource.hero), resource.dead);
+                    fill_health_change(changes_column, resource.health_change, resource.dead);
+                    break;
+                }
+
+                case Adventure_Party_Slot_Type.creep: {
+                    create_deck_card_with_death_overlay(container_column, "creep", get_creep_name(resource.creep), get_creep_card_art(resource.creep), resource.dead);
+                    fill_health_change(changes_column, resource.health_change, resource.dead);
+                    break;
+                }
+
+                case Adventure_Party_Slot_Type.spell: {
+                    create_deck_card_with_death_overlay(container_column, "spell", get_spell_name(resource.spell), get_spell_card_art(resource.spell), true);
+                    fill_spell_use(changes_column);
+                    break;
+                }
+            }
+        }
+
+        if (resources.length == 0) {
+            container_column.AddClass("no_losses");
+
+            $.CreatePanel("Label", container_column, "no_losses").text = "No losses";
+        }
+    }
+
+    const attacker_container = $.CreatePanel("Panel", popup.content, "");
+    attacker_container.AddClass("participant");
+    $.CreatePanel("Label", popup.content, "vs").text = "VS";
+    const defendant_container = $.CreatePanel("Panel", popup.content, "");
+    defendant_container.AddClass("participant");
+
+    {
+        const container_column = $.CreatePanel("Panel", attacker_container, "container_column");
+        const changes_column = $.CreatePanel("Panel", attacker_container, "changes_column");
+
+        const name = $.CreatePanel("Label", container_column, "name");
+        async_get_player_name(adventure_ui.player_id, content => name.text = content);
+
+        const participant = $.CreatePanel("Panel", container_column, "resources");
+
+        fill_combat_resources(participant, changes_column, resources.attacker);
+    }
+
+    {
+        const changes_column = $.CreatePanel("Panel", defendant_container, "changes_column");
+        const container_column = $.CreatePanel("Panel", defendant_container, "container_column");
+
+        const name = $.CreatePanel("Label", container_column, "name");
+        name.text = "Adversary";
+
+        const participant = $.CreatePanel("Panel", container_column, "resources");
+
+        fill_combat_resources(participant, changes_column, resources.defendant);
+    }
+
+
+    Game.EmitSound("adventure_popup_open");
+
+    return popup;
+}
+
+function show_entity_popup(entity: Adventure_Entity): Popup {
+    const popup = create_basic_popup(adventure_ui.basic_popup_container);
+    fill_entity_popup_content(popup, entity);
+
+    popup.create_button("adventure_popup_yes", () => {
         Game.EmitSound("adventure_popup_ok");
 
         fire_event(To_Server_Event_Type.adventure_interact_with_entity, {
@@ -1015,51 +1244,34 @@ function show_entity_popup(entity: Adventure_Entity) {
             current_head: party.current_head
         });
 
-        hide_entity_popup();
+        popup.close();
     });
 
-    popup.button_no.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+    popup.create_button("adventure_popup_no", () => {
         Game.EmitSound("click_simple");
 
-        hide_entity_popup();
-    });
-
-    popup.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-        hide_entity_popup();
+        popup.close();
     });
 
     Game.EmitSound("adventure_popup_open");
+
+    return popup;
 }
 
-function show_room_exit_popup() {
-    const popup = adventure_ui.popup;
+function show_room_exit_popup(): Popup {
+    const popup = create_basic_popup(adventure_ui.basic_popup_container);
 
-    function hide_popup() {
-        popup.window.SetHasClass("visible", false);
-        popup.background.SetHasClass("visible", false);
+    popup.set_header_text("A way forward");
+    popup.set_content_text("Continue to the next area?");
 
-        Game.EmitSound("popup_slide_down");
-    }
-
-    popup.window.style.visibility = "visible";
-    popup.background.style.visibility = "visible";
-
-    popup.window.SetHasClass("visible", true);
-    popup.background.SetHasClass("visible", true);
-    popup.content.RemoveAndDeleteChildren();
-    popup.header.text = "A way forward";
-    popup.text.text = "Continue to the next area?";
-
-    popup.window.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
-
-    popup.button_yes.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+    popup.create_button("adventure_popup_yes", () => {
         Game.EmitSound("adventure_popup_ok");
 
         adventure_ui.fade.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {});
         adventure_ui.fade.AddClass("active");
         adventure_ui.fade.hittest = true;
 
-        hide_popup();
+        popup.close();
 
         $.Schedule(0.3, () => {
             async_local_api_request(Local_Api_Request_Type.adventure_enter_room_through_suggested_exit, {}).then(() => {
@@ -1070,49 +1282,66 @@ function show_room_exit_popup() {
         });
     });
 
-    popup.button_no.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+    popup.create_button("adventure_popup_no", () => {
         Game.EmitSound("click_simple");
-        hide_popup();
-    });
-
-    popup.background.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
-        hide_popup();
+        popup.close();
     });
 
     Game.EmitSound("adventure_popup_open");
+
+    return popup;
 }
 
 function changes_equal(left: Adventure_Party_Change, right: Adventure_Party_Change) {
-    function objects_equal(left: Record<string, any>, right: Record<string, any>): boolean {
-        // TODO doesn't work with arrays or nulls
+    function objects_equal(left: any, right: any): boolean {
+        // Non-strict comparison here due to panorama sending ints as strings and bools as ints...
+        if (left == right) {
+            return true;
+        }
 
-        const left_keys = Object.keys(left);
-        const right_keys = Object.keys(right);
-
-        if (left_keys.length != right_keys.length) {
+        if (typeof left != typeof right) {
             return false;
         }
 
-        for (const key of left_keys) {
-            const left_value = left[key];
-            const right_value = right[key];
+        if (typeof left == "object" && typeof right == "object") {
+            if (Array.isArray(left)) {
+                if (Array.isArray(right)) {
+                    if (left.length == right.length) {
+                        for (let index = 0; index < left.length; index++) {
+                            if (!objects_equal(left[index], right[index])) {
+                                return false;
+                            }
+                        }
 
-            // if (typeof left_value != typeof right_value) {
-            //     return false;
-            // }
-
-            if (typeof left_value == "object" && typeof right_value == "object") {
-                const children_equal = objects_equal(left_value, right_value);
-                if (!children_equal) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else {
                     return false;
                 }
-            // Non-strict comparison here due to panorama sending ints as strings and bools as ints...
-            } else if (left_value != right_value) {
+            }
+
+            const left_keys = Object.keys(left);
+            const right_keys = Object.keys(right);
+
+            if (left_keys.length != right_keys.length) {
                 return false;
             }
+
+            for (const key of left_keys) {
+                const left_value = left[key];
+                const right_value = right[key];
+
+                if (!objects_equal(left_value, right_value)) {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
-        return true;
+        return false;
     }
 
     return objects_equal(left, right);
@@ -1182,8 +1411,8 @@ function merge_adventure_party_changes(head_before_merge: number, changes: Adven
         log(`\tState restored from snapshot after merge conflict`);
     }
 
-    if (merchant_popup.visible) {
-        update_merchant_popup_elements(merchant_popup);
+    if (open_popup && open_popup.type == Popup_Type.merchant) {
+        open_popup.update(compute_finalized_local_party_state());
     }
 }
 
@@ -1604,6 +1833,108 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             break;
         }
 
+        case Adventure_Party_Change_Type.set_state_after_combat: {
+            const attackers: Combat_Resource[] = [];
+            const defendants: Combat_Resource[] = [];
+
+            for (const health_change of change.slot_health_changes) {
+                const slot = party.slots[health_change.index];
+                if (!slot) continue;
+
+                switch (slot.type) {
+                    case Adventure_Party_Slot_Type.hero: {
+                        const new_health = compute_hero_display_health(slot.items, health_change.health_now);
+                        slot.base_health = health_change.health_now;
+                        slot.ui.stat_health.value_updater(slot.ui.stat_health, new_health);
+
+                        attackers.push({
+                            type: Adventure_Party_Slot_Type.hero,
+                            hero: slot.hero,
+                            health_change: health_change.health_now - health_change.health_before,
+                            dead: new_health == 0
+                        });
+
+                        break;
+                    }
+
+                    case Adventure_Party_Slot_Type.creep: {
+                        slot.ui.stat_health.value_updater(slot.ui.stat_health, health_change.health_now);
+
+                        attackers.push({
+                            type: Adventure_Party_Slot_Type.creep,
+                            creep: slot.creep,
+                            health_change: health_change.health_now - health_change.health_before,
+                            dead: false
+                        });
+
+                        break;
+                    }
+
+                    case Adventure_Party_Slot_Type.spell: break;
+                    case Adventure_Party_Slot_Type.empty: break;
+                    default: unreachable(slot);
+                }
+
+                flash_panel(slot.container);
+            }
+
+            for (const slot_index of change.slots_removed) {
+                const slot = party.slots[slot_index];
+                if (!slot) continue;
+
+                if (slot.type == Adventure_Party_Slot_Type.spell) {
+                    attackers.push({
+                        type: Adventure_Party_Slot_Type.spell,
+                        spell: slot.spell
+                    });
+                } else if (slot.type == Adventure_Party_Slot_Type.creep) {
+                    attackers.push({
+                        type: Adventure_Party_Slot_Type.creep,
+                        creep: slot.creep,
+                        health_change: -slot.health,
+                        dead: true
+                    });
+                }
+
+                const new_slot = set_adventure_party_slot(slot_index, { type: Adventure_Party_Slot_Type.empty });
+                flash_panel(new_slot.container);
+            }
+
+            for (const hero of change.enemy.heroes) {
+                defendants.push({
+                    type: Adventure_Party_Slot_Type.hero,
+                    hero: hero,
+                    health_change: 0,
+                    dead: true
+                });
+            }
+
+            for (const creep of change.enemy.creeps) {
+                defendants.push({
+                    type: Adventure_Party_Slot_Type.creep,
+                    creep: creep,
+                    health_change: 0,
+                    dead: true
+                });
+            }
+
+            for (const spell of change.enemy.spells) {
+                defendants.push({
+                    type: Adventure_Party_Slot_Type.spell,
+                    spell: spell
+                });
+            }
+
+            const popup = show_combat_result_popup({
+                attacker: attackers,
+                defendant: defendants
+            });
+
+            set_current_popup(popup);
+
+            return () => open_popup != popup;
+        }
+
         default: unreachable(change);
     }
 
@@ -1761,23 +2092,17 @@ export async function enter_adventure_ui(data: Game_Net_Table_On_Adventure) {
         merge_adventure_party_changes(head_before_merge, result.changes);
     }
 
+    adventure_ui.player_id = data.id;
     adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
+
+    set_current_popup(show_combat_result_popup({
+        attacker: [],
+        defendant: []
+    }));
 }
 
 export function exit_adventure_ui() {
-    adventure_ui.merchant_popup.window.style.visibility = "collapse";
-    adventure_ui.merchant_popup.background.style.visibility = "collapse";
-
-    adventure_ui.popup.window.style.visibility = "collapse";
-    adventure_ui.popup.background.style.visibility = "collapse";
-
-    if (merchant_popup.visible) {
-        hide_merchant_popup(merchant_popup);
-    }
-
-    if (adventure_ui.popup.window.BHasClass("visible")) {
-        hide_entity_popup();
-    }
+    set_current_popup();
 }
 
 subscribe_to_net_table_key<Adventure_Net_Table>("adventure", "table", table => {
@@ -1804,11 +2129,12 @@ subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, e
 
     if (event.entity.type == Adventure_Entity_Type.merchant) {
         fixup_merchant_server_data(event.entity);
-        fill_merchant_popup(merchant_popup, event.entity);
-        show_merchant_popup(merchant_popup);
-        update_merchant_popup_elements(merchant_popup);
+
+        const popup = show_merchant_popup(event.entity);
+        update_merchant_popup_elements(popup);
+        set_current_popup(popup);
     } else {
-        show_entity_popup(event.entity);
+        set_current_popup(show_entity_popup(event.entity));
     }
 });
 
@@ -1818,7 +2144,7 @@ subscribe_to_custom_event(To_Client_Event_Type.adventure_receive_party_changes, 
 });
 
 subscribe_to_custom_event(To_Client_Event_Type.adventure_display_room_exit_popup, event => {
-    show_room_exit_popup();
+    set_current_popup(show_room_exit_popup());
 });
 
 register_bag_drop_events(adventure_ui.bag_drop_layer);
