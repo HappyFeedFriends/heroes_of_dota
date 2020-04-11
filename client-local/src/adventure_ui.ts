@@ -2094,11 +2094,6 @@ export async function enter_adventure_ui(data: Game_Net_Table_On_Adventure) {
 
     adventure_ui.player_id = data.id;
     adventure_ui.ongoing_adventure_id = data.ongoing_adventure_id;
-
-    set_current_popup(show_combat_result_popup({
-        attacker: [],
-        defendant: []
-    }));
 }
 
 export function exit_adventure_ui() {
