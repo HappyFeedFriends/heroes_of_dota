@@ -41,6 +41,10 @@
 			_class = "C_OP_Spin"
 			m_nSpinRateDegrees = 10
 		},
+		{
+			_class = "C_OP_RemapCPVisibilityToScalar"
+			m_nSetMethod = "PARTICLE_SET_SCALE_CURRENT_VALUE"
+		},
 	]
 	m_Initializers = 
 	[
@@ -75,9 +79,9 @@
 			m_flEmitRate = 
 			{
 				m_nType = "PF_TYPE_LITERAL"
-				m_nMapType = "PF_MAP_TYPE_DIRECT"
+				m_nMapType = "PF_MAP_TYPE_REMAP"
 				m_flLiteralValue = 75.0
-				m_nControlPoint = 0
+				m_nControlPoint = 1
 				m_nScalarAttribute = 3
 				m_nVectorAttribute = 6
 				m_nVectorComponent = 0
@@ -92,8 +96,8 @@
 				m_flMultFactor = 1.0
 				m_flInput0 = 0.0
 				m_flInput1 = 1.0
-				m_flOutput0 = 0.0
-				m_flOutput1 = 1.0
+				m_flOutput0 = 1.0
+				m_flOutput1 = 100.0
 				m_nBiasType = "PF_BIAS_TYPE_STANDARD"
 				m_flBiasParameter = 0.0
 				m_Curve = 
@@ -132,4 +136,5 @@
 			]
 		},
 	]
+	m_bInfiniteBounds = true
 }
