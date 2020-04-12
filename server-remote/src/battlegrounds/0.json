@@ -157,5 +157,6 @@
             "face_x": -1,
             "face_y": 0
         }
-    ]
+    ],
+    "disabled_cells": []
 }

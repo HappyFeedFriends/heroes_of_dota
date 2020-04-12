@@ -145,29 +145,15 @@ declare const enum Timed_Effect_Type {
     shaker_fissure_block = 0
 }
 
-declare const enum Unit_Id_Brand { _ = "" }
-type Unit_Id = number & Unit_Id_Brand;
-
-declare const enum Card_Id_Brand { _ = "" }
-type Card_Id = number & Card_Id_Brand;
-
-declare const enum Shop_Id_Brand { _ = "" }
-type Shop_Id = number & Shop_Id_Brand;
-
-declare const enum Rune_Id_Brand { _ = "" }
-type Rune_Id = number & Rune_Id_Brand;
-
-declare const enum Tree_Id_Brand { _ = "" }
-type Tree_Id = number & Tree_Id_Brand;
-
-declare const enum Modifier_Handle_Id_Brand { _ = "" }
-type Modifier_Handle_Id = number & Modifier_Handle_Id_Brand;
-
-declare const enum Effect_Handle_Id_Brand { _ = "" }
-type Effect_Handle_Id = number & Effect_Handle_Id_Brand;
-
-declare const enum Battle_Player_Id_Brand { _ = "" }
-type Battle_Player_Id = number & Battle_Player_Id_Brand;
+type Unit_Id = number & { _unit_id_brand: any };
+type Card_Id = number & { _card_id_brand: any };
+type Shop_Id = number & { _shop_id_brand: any };
+type Rune_Id = number & { _rune_id_brand: any };
+type Tree_Id = number & { _tree_id_brand: any };
+type Modifier_Handle_Id = number & { _modifier_handle_id_brand: any };
+type Effect_Handle_Id = number & { _effect_handle_id_brand: any };
+type Battle_Player_Id = number & { _battle_player_id_brand: any };
+type Cell_Index = number & { _cell_index_brand: any };
 
 type XY = {
     x: number

@@ -54,6 +54,8 @@ type Battleground_File = {
         face_y: number
         items: string[]
     }>
+
+    disabled_cells: Array<number>
 }
 
 const storage_dir_path = "src/battlegrounds";
@@ -96,14 +98,15 @@ export function get_all_battlegrounds() {
 
 export function make_new_battleground(name: string, world_origin: World_Origin, theme: Battleground_Theme): Persistent_Battleground {
     const id = fetch_new_battleground_id();
-    const bg = {
+    const bg: Persistent_Battleground = {
         name: name,
         id: id,
         world_origin: world_origin,
         theme: theme,
         grid_size: { x: 10, y: 10 },
         deployment_zones: [],
-        spawns: []
+        spawns: [],
+        disabled_cells: []
     };
 
     battlegrounds.push(bg);
@@ -197,7 +200,8 @@ function battleground_to_file_object(battleground: Battleground) {
         trees: [],
         shops: [],
         runes: [],
-        monsters: []
+        monsters: [],
+        disabled_cells: battleground.disabled_cells
     };
 
     for (const spawn of battleground.spawns) {
@@ -352,6 +356,7 @@ function load_battleground_from_file(file_path: string, battleground: Battlegrou
             max: { x: zone.max_x, y: zone.max_y },
             face: { x: zone.face_x, y: zone.face_y }
         })),
-        spawns: spawns
+        spawns: spawns,
+        disabled_cells: battleground.disabled_cells.map(index => index as Cell_Index)
     }
 }

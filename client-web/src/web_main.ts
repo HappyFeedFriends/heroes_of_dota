@@ -1530,7 +1530,8 @@ function draw_battle_list(global_map: Game_On_Global_Map) {
                 battle_player_id: -1 as Battle_Player_Id,
                 grid_size: battle.grid_size,
                 participants: battle.participants,
-                random_seed: battle.random_seed
+                random_seed: battle.random_seed,
+                disabled_cell_indices: []
             }, game).then(new_game => {
                 game = new_game;
 
@@ -1912,7 +1913,7 @@ async function game_from_state(player_state: Player_State_Data, game_base: Game_
                 },
             };
 
-            fill_grid(battle);
+            fill_grid(battle, player_state.disabled_cell_indices);
 
             return {
                 ...game_base,

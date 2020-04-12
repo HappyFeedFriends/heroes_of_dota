@@ -145,9 +145,12 @@ type UI_Battle = Battle & {
     grid: UI_Grid
 }
 
-type UI_Cell = Cell & {
+type UI_Cell = Cell & ({
+    disabled: false
     associated_particle: ParticleId;
-}
+} | {
+    disabled: true
+})
 
 type Control_Panel = {
     panel: Panel;
@@ -595,19 +598,36 @@ export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
 
     ui_shop_data = [];
 
+    const sparse_index = disabled_cell_index(from_server_array(new_data.disabled_cells));
+
     for (let x = 0; x < battle.grid.size.x; x++) {
         for (let y = 0; y < battle.grid.size.y; y++) {
-            const center = battle_position_to_world_position_center(battle.grid.world_origin, xy(x, y));
-            const particle = create_cell_particle_at(center);
+            const index = grid_cell_index_raw(battle.grid, x, y);
+            if (index == undefined) continue;
 
-            battle.grid.cells.push({
-                position: xy(x, y),
-                occupants: 0,
-                cost: 1,
-                associated_particle: particle
-            });
+            const disabled = sparse_index[index];
 
-            register_particle_for_reload(particle);
+            if (!disabled) {
+                const center = battle_position_to_world_position_center(battle.grid.world_origin, xy(x, y));
+                const particle = create_cell_particle_at(center);
+
+                battle.grid.cells.push({
+                    disabled: false,
+                    position: xy(x, y),
+                    occupants: 0,
+                    cost: 1,
+                    associated_particle: particle
+                });
+
+                register_particle_for_reload(particle);
+            } else {
+                battle.grid.cells.push({
+                    disabled: true,
+                    position: xy(x, y),
+                    occupants: 1,
+                    cost: 1,
+                });
+            }
         }
     }
 
@@ -624,8 +644,10 @@ export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
 
 export function exit_battle_ui() {
     for (const cell of battle.grid.cells) {
-        Particles.DestroyParticleEffect(cell.associated_particle, true);
-        Particles.ReleaseParticleIndex(cell.associated_particle);
+        if (!cell.disabled) {
+            Particles.DestroyParticleEffect(cell.associated_particle, true);
+            Particles.ReleaseParticleIndex(cell.associated_particle);
+        }
     }
 }
 
@@ -727,8 +749,10 @@ function selection_to_grid_selection(): Grid_Selection {
 }
 
 function color_cell(cell: UI_Cell, color: RGB, alpha: number) {
-    Particles.SetParticleControl(cell.associated_particle, 2, color);
-    Particles.SetParticleControl(cell.associated_particle, 3, [ alpha, 0, 0 ]);
+    if (!cell.disabled) {
+        Particles.SetParticleControl(cell.associated_particle, 2, color);
+        Particles.SetParticleControl(cell.associated_particle, 3, [ alpha, 0, 0 ]);
+    }
 }
 
 function compute_unit_cell_color(unit_in_cell: Unit): [RGB, number] {

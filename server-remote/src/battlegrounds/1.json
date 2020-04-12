@@ -84,5 +84,15 @@
     ],
     "shops": [],
     "runes": [],
-    "monsters": []
+    "monsters": [],
+    "disabled_cells": [
+        4,
+        5,
+        7,
+        15,
+        23,
+        31,
+        72,
+        80
+    ]
 }

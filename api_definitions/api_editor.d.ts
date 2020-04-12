@@ -196,4 +196,5 @@ type Battleground = {
     grid_size: XY
     deployment_zones: Deployment_Zone[]
     spawns: Battleground_Spawn[]
+    disabled_cells: Cell_Index[]
 }

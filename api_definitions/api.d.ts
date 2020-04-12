@@ -121,6 +121,7 @@ type Player_State_In_Battle = {
     participants: Battle_Participant_Info[]
     battle_world_origin: World_Origin
     battleground_theme: Battleground_Theme
+    disabled_cell_indices: Cell_Index[]
 }
 
 type Player_State_Data =

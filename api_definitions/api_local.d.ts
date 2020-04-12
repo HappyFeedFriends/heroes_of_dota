@@ -253,6 +253,7 @@ type Game_Net_Table_In_Battle = Player_Net_Table_Base & {
         entity_id_to_rune_id: Record<number, Rune_Id>
         entity_id_to_shop_id: Record<number, Shop_Id>
         current_visual_head: number
+        disabled_cells: Cell_Index[]
     }
 }
 

@@ -7,8 +7,7 @@ export type Battle_Record = Battle & {
     random: Random
     random_seed: number
     monster_targets: Map<Monster, Unit>
-    world_origin: World_Origin
-    theme: Battleground_Theme
+    battleground: Battleground
 }
 
 export type Battle_Participant = {
@@ -2225,22 +2224,19 @@ export function make_battle_record(battle_id: Battle_Id,
                                    id_generator: Id_Generator,
                                    random: Random,
                                    players: Battle_Player[],
-                                   grid_size: XY,
-                                   world_origin: World_Origin,
-                                   theme: Battleground_Theme): Battle_Record {
+                                   battleground: Battleground): Battle_Record {
     const battle: Battle_Record = {
-        ...make_battle(players, grid_size.x, grid_size.y),
+        ...make_battle(players, battleground.grid_size.x, battleground.grid_size.y),
         id: battle_id,
         id_generator: id_generator,
         random: random,
         random_seed: random.int_range(0, 65536),
         monster_targets: new Map(),
-        world_origin: world_origin,
-        theme: theme,
+        battleground: battleground,
         receive_event: on_battle_event
     };
 
-    fill_grid(battle);
+    fill_grid(battle, battleground.disabled_cells);
 
     return battle;
 }
@@ -2260,7 +2256,7 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
         battle_players.push(battle_player);
     }
 
-    const battle = make_battle_record(battle_id, id_generator, random, battle_players, bg.grid_size, bg.world_origin, bg.theme);
+    const battle = make_battle_record(battle_id, id_generator, random, battle_players, bg);
 
     function get_starting_gold(player: Battle_Player): Delta_Gold_Change {
         return {

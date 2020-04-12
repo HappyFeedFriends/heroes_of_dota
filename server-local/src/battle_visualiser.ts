@@ -23,6 +23,7 @@ type Battle = {
     applied_modifier_visuals: Applied_Modifier_Visuals[]
     timed_effect_visuals: Active_Timed_Effect_Visuals[]
     player_requested_game_over_screen_skip: boolean
+    disabled_cells: Cell_Index[]
 }
 
 type Battle_Player = {
@@ -3594,7 +3595,7 @@ function clean_battle_world_handles(battle: Battle) {
     battle.timed_effect_visuals = [];
 }
 
-function reinitialize_battle(world_origin: Vector, theme: Battleground_Theme, camera_entity: CDOTA_BaseNPC) {
+function reinitialize_battle(world_origin: Vector, theme: Battleground_Theme, disabled_cells: Cell_Index[], camera_entity: CDOTA_BaseNPC) {
     battle = {
         id: -1 as Battle_Id,
         this_player_id: -1 as Battle_Player_Id,
@@ -3619,7 +3620,8 @@ function reinitialize_battle(world_origin: Vector, theme: Battleground_Theme, ca
         player_requested_game_over_screen_skip: false,
         camera_dummy: camera_entity,
         applied_modifier_visuals: [],
-        timed_effect_visuals: []
+        timed_effect_visuals: [],
+        disabled_cells: disabled_cells
     };
 }
 

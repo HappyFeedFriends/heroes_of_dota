@@ -219,7 +219,8 @@ function game_net_table(game: Game): Game_Net_Table {
                     current_visual_head: battle.delta_head,
                     entity_id_to_unit_data: entity_id_to_unit_data,
                     entity_id_to_rune_id: entity_id_to_rune_id,
-                    entity_id_to_shop_id: entity_id_to_shop_id
+                    entity_id_to_shop_id: entity_id_to_shop_id,
+                    disabled_cells: battle.disabled_cells
                 }
             };
         }
@@ -318,7 +319,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         battle.camera_dummy.SetDayTimeVisionRange(0);
 
         clean_battle_world_handles(battle);
-        reinitialize_battle(battle.world_origin, battle.theme, battle.camera_dummy);
+        reinitialize_battle(battle.world_origin, battle.theme, battle.disabled_cells, battle.camera_dummy);
     }
 
     if (next_state.state == Player_State.on_global_map) {
@@ -331,7 +332,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         const origin = next_state.battle_world_origin;
 
         clean_battle_world_handles(battle);
-        reinitialize_battle(Vector(origin.x, origin.y, origin.z), next_state.battleground_theme, battle.camera_dummy);
+        reinitialize_battle(Vector(origin.x, origin.y, origin.z), next_state.battleground_theme, next_state.disabled_cell_indices, battle.camera_dummy);
 
         battle.id = next_state.battle_id;
         battle.random_seed = next_state.random_seed;
@@ -559,7 +560,7 @@ function game_loop() {
 
     const camera_entity = create_camera_entity();
 
-    reinitialize_battle(Vector(), Battleground_Theme.forest, camera_entity);
+    reinitialize_battle(Vector(), Battleground_Theme.forest, [], camera_entity);
 
     on_player_connected_async(id => player_id = id);
 

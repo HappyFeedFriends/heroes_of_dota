@@ -413,7 +413,6 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                 battle_id: battle.id,
                 battle_player_id: player.online.battle_player.id,
                 random_seed: battle.random_seed,
-                battleground_theme: battle.theme,
                 participants: battle.players.map(player => ({
                     id: player.id,
                     deployment_zone: player.deployment_zone,
@@ -423,7 +422,9 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                     width: battle.grid.size.x,
                     height: battle.grid.size.y
                 },
-                battle_world_origin: battle.world_origin
+                battleground_theme: battle.battleground.theme,
+                battle_world_origin: battle.battleground.world_origin,
+                disabled_cell_indices: battle.battleground.disabled_cells
             }
         }
 
@@ -601,7 +602,7 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
             }
 
             case Adventure_Party_Slot_Type.spell: {
-                const id = next_id() as Unit_Id;
+                const id = next_id() as Card_Id;
 
                 links.spells.push({
                     slot_index: index,

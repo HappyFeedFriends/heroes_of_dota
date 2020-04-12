@@ -565,14 +565,16 @@ export function make_test_battle() {
 
     const id_generator = () => id++;
 
+    const deployment_zone: Deployment_Zone = {
+        min: { x: 0, y: 0 },
+        max: { x: 1, y: 1},
+        face: { x: 1, y: 0 }
+    };
+
     function test_player(): Battle_Player {
         return {
             id: id_generator() as Battle_Player_Id,
-            deployment_zone: {
-                min: { x: 0, y: 0 },
-                max: { x: 1, y: 1},
-                face: { x: 1, y: 0 }
-            },
+            deployment_zone: deployment_zone,
             gold: 0,
             has_used_a_card_this_turn: false,
             hand: [],
@@ -583,8 +585,18 @@ export function make_test_battle() {
         };
     }
 
+    const bg: Battleground = {
+        name: "Test",
+        disabled_cells: [],
+        grid_size: { x: 10, y: 10 },
+        theme: Battleground_Theme.forest,
+        deployment_zones: [deployment_zone],
+        spawns: [],
+        world_origin: { x: 0, y: 0, z: 0 }
+    };
+
     return make_battle_record(0 as Battle_Id, id_generator, new Random(Math.random), [
         test_player(),
         test_player()
-    ], { x: 10, y: 10 }, { x: 0, y: 0, z: 0 }, Battleground_Theme.forest);
+    ], bg);
 }

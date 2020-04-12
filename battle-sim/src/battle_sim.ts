@@ -173,7 +173,7 @@ type Ability = Ability_Passive | Ability_Active;
 
 type Cost_Population_Result = {
     cell_index_to_cost: number[];
-    cell_index_to_parent_index: number[];
+    cell_index_to_parent_index: Cell_Index[];
 }
 
 type Grid<T extends Cell_Like> = {
@@ -219,16 +219,16 @@ function grid_cell_at<T extends Cell_Like>(grid: Grid<T>, at: XY): T | undefined
     return grid_cell_at_raw(grid, at.x, at.y);
 }
 
-function grid_cell_index_raw<T extends Cell_Like>(grid: Grid<T>, x: number, y: number): number | undefined {
+function grid_cell_index_raw<T extends Cell_Like>(grid: Grid<T>, x: number, y: number): Cell_Index | undefined {
     if (x < 0 || x >= grid.size.x || y < 0 || y >= grid.size.y) {
         return undefined;
     }
 
-    return x * grid.size.y + y;
+    return x * grid.size.y + y as Cell_Index;
 }
 
-function grid_cell_index<T extends Cell_Like>(grid: Grid<T>, at: XY): number {
-    return at.x * grid.size.y + at.y;
+function grid_cell_index<T extends Cell_Like>(grid: Grid<T>, at: XY): Cell_Index {
+    return at.x * grid.size.y + at.y as Cell_Index;
 }
 
 function grid_cell_at_unchecked<T extends Cell_Like>(grid: Grid<T>, at: XY): T {
@@ -503,7 +503,7 @@ function make_battle(players: Battle_Player[], grid_width: number, grid_height: 
 type Path_Iterator = {
     battle: Battle
     indices_already_checked: boolean[]
-    indices_not_checked: number[]
+    indices_not_checked: Cell_Index[]
     ignore_runes: boolean
 }
 
@@ -523,7 +523,7 @@ function path_iterator(battle: Battle, from: XY, ignore_runes: boolean): Path_It
     return iterator;
 }
 
-function path_iterator_check_neighbor(iter: Path_Iterator, neighbor: Cell | undefined): number | undefined {
+function path_iterator_check_neighbor(iter: Path_Iterator, neighbor: Cell | undefined): Cell_Index | undefined {
     if (!neighbor) return;
 
     const neighbor_index = grid_cell_index(iter.battle.grid, neighbor.position);
@@ -552,7 +552,7 @@ function can_find_path(battle: Battle, from: XY, to: XY, ignore_runes = false): 
     const iterator = path_iterator(battle, from, ignore_runes);
 
     for (let current_cost = 0; iterator.indices_not_checked.length > 0; current_cost++) {
-        const new_indices: number[] = [];
+        const new_indices: Cell_Index[] = [];
 
         for (const index of iterator.indices_not_checked) {
             const cell = battle.grid.cells[index];
@@ -604,14 +604,14 @@ function find_path_from_populated_costs(battle: Battle, costs: Cost_Population_R
 
 function populate_path_costs(battle: Battle, from: XY, ignore_runes = false): Cost_Population_Result {
     const cell_index_to_cost: number[] = [];
-    const cell_index_to_parent_index: number[] = [];
+    const cell_index_to_parent_index: Cell_Index[] = [];
     const from_index = grid_cell_index(battle.grid, from);
     cell_index_to_cost[from_index] = 0;
 
     const iterator = path_iterator(battle, from, ignore_runes);
 
     for (let current_cost = 0; iterator.indices_not_checked.length > 0; current_cost++) {
-        const new_indices: number[] = [];
+        const new_indices: Cell_Index[] = [];
 
         for (const index of iterator.indices_not_checked) {
             const cell = battle.grid.cells[index];
@@ -754,12 +754,29 @@ function ability_selector_fits(battle: Battle, selector: Ability_Target_Selector
     }
 }
 
-function fill_grid(battle: Battle) {
+function disabled_cell_index(disabled_cells: Cell_Index[]) {
+    const sparse_index: Record<number, boolean> = [];
+
+    for (const index of disabled_cells) {
+        sparse_index[index] = true;
+    }
+
+    return sparse_index;
+}
+
+function fill_grid(battle: Battle, disabled_cells: Cell_Index[]) {
+    const sparse_index = disabled_cell_index(disabled_cells);
+
     for (let x = 0; x < battle.grid.size.x; x++) {
         for (let y = 0; y < battle.grid.size.y; y++) {
+            const index = grid_cell_index_raw(battle.grid, x, y);
+            if (index == undefined) continue;
+
+            const occupied = sparse_index[index];
+
             battle.grid.cells.push({
                 position: xy(x, y),
-                occupants: 0,
+                occupants: occupied ? 1 : 0,
                 cost: 1
             });
         }
