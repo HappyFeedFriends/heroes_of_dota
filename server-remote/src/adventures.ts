@@ -278,7 +278,7 @@ function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventu
     }
 }
 
-function equipment_item_cost(id: Adventure_Equipment_Item_Id) {
+function equipment_item_cost(id: Adventure_Equipment_Item_Id): number {
     switch (id) {
         case Adventure_Equipment_Item_Id.boots_of_travel: return 10;
         case Adventure_Equipment_Item_Id.assault_cuirass: return 10;
@@ -290,10 +290,14 @@ function equipment_item_cost(id: Adventure_Equipment_Item_Id) {
         case Adventure_Equipment_Item_Id.chainmail: return 10;
         case Adventure_Equipment_Item_Id.basher: return 10;
         case Adventure_Equipment_Item_Id.iron_branch: return 10;
+        case Adventure_Equipment_Item_Id.ring_of_regen: return 10;
+        case Adventure_Equipment_Item_Id.mystic_staff: return 10;
+        case Adventure_Equipment_Item_Id.ring_of_tarrasque: return 10;
+        case Adventure_Equipment_Item_Id.heart_of_tarrasque: return 10;
     }
 }
 
-function consumable_item_cost(id: Adventure_Consumable_Item_Id) {
+function consumable_item_cost(id: Adventure_Consumable_Item_Id): number {
     switch (id) {
         case Adventure_Consumable_Item_Id.healing_salve: return 5;
         case Adventure_Consumable_Item_Id.enchanted_mango: return 5;

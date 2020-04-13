@@ -521,7 +521,8 @@ function player_to_battle_participant(next_id: Id_Generator, player: Map_Player)
             id: next_id() as Unit_Id,
             type: type,
             health: hero_definition_by_type(type).health,
-            modifiers: []
+            modifiers: [],
+            start_effects: []
         })),
         spells: player.deck.spells.map(spell => ({
             id: next_id() as Card_Id,
@@ -554,13 +555,22 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                 if (actual_health > 0) {
                     const id = next_id() as Unit_Id;
                     const modifiers: Adventure_Item_Modifier[] = [];
+                    const start_effects: Adventure_Item_Combat_Start_Effect[] = [];
 
                     for (const item of slot.items) {
                         if (item && item.type == Adventure_Item_Type.equipment) {
-                            modifiers.push({
-                                item: item.item_id,
-                                modifier: item.modifier
-                            })
+                            for (const effect of item.effects) {
+                                if (effect.type == Adventure_Item_Effect_Type.in_combat) {
+                                    modifiers.push({
+                                        item: item.item_id,
+                                        modifier: effect.modifier
+                                    });
+                                }
+
+                                if (effect.type == Adventure_Item_Effect_Type.combat_start) {
+                                    start_effects.push(effect);
+                                }
+                            }
                         }
                     }
 
@@ -574,7 +584,8 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                         id: id,
                         health: actual_health,
                         type: slot.hero,
-                        modifiers: modifiers
+                        modifiers: modifiers,
+                        start_effects: start_effects
                     });
                 }
 
@@ -731,6 +742,18 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
         return defeated;
     }
 
+    type Adventure_Post_Combat_Item_Effect = Find_By_Type<Adventure_Item_Effect, Adventure_Item_Effect_Type.post_combat>;
+
+    function apply_adventure_item_effect(party: Map_Player_Party, slot: Adventure_Party_Hero_Slot, slot_index: number, effect: Adventure_Post_Combat_Item_Effect) {
+        if (effect.effect_id == Adventure_Post_Combat_Effect_Id.restore_health) {
+            const new_health = slot.base_health + effect.how_much;
+            const max_health = hero_definition_by_type(slot.hero).health;
+            const change = change_party_set_health_clamped(slot_index, new_health, max_health, Adventure_Health_Change_Reason.combat);
+
+            push_party_change(party, change);
+        }
+    }
+
     function update_player_adventure_state_from_battle(player: Map_Player_On_Adventure, battle_counterpart: Battle_Player, defeated: Creep_Type[]) {
         const links = player.party.links;
         const change: Find_By_Type<Adventure_Party_Change, Adventure_Party_Change_Type.set_state_after_combat> = {
@@ -805,6 +828,22 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
             creeps: [],
             spells: []
         };
+
+        for (let slot_index = 0; slot_index < player.party.slots.length; slot_index++) {
+            const slot = player.party.slots[slot_index];
+            if (slot.type == Adventure_Party_Slot_Type.hero && !is_party_hero_dead(slot)) {
+                for (let item_index = 0; item_index < Adventure_Constants.max_hero_items; item_index++) {
+                    const item = slot.items[item_index];
+                    if (!item) continue;
+
+                    for (const effect of item.effects) {
+                        if (effect.type == Adventure_Item_Effect_Type.post_combat) {
+                            apply_adventure_item_effect(player.party, slot, slot_index, effect);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     for (const battle_player of battle.players) {

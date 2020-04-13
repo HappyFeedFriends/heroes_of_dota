@@ -50,6 +50,12 @@ declare const enum Adventure_Item_Type {
     consumable = 1
 }
 
+declare const enum Adventure_Item_Effect_Type {
+    in_combat = 0,
+    post_combat = 1,
+    combat_start = 2
+}
+
 declare const enum Adventure_Equipment_Item_Id {
     boots_of_travel = 0,
     assault_cuirass = 1,
@@ -60,7 +66,19 @@ declare const enum Adventure_Equipment_Item_Id {
     belt_of_strength = 6,
     chainmail = 7,
     basher = 8,
-    iron_branch = 9
+    iron_branch = 9,
+    mystic_staff = 10,
+    ring_of_regen = 11,
+    ring_of_tarrasque = 12,
+    heart_of_tarrasque = 13
+}
+
+declare const enum Adventure_Combat_Start_Effect_Id {
+    add_ability_charges = 0
+}
+
+declare const enum Adventure_Post_Combat_Effect_Id {
+    restore_health = 0
 }
 
 declare const enum Adventure_Consumable_Item_Id {
@@ -303,6 +321,9 @@ type Adventure_Party_Slot = {
     spell: Spell_Id
 }
 
+type Adventure_Party_Hero_Slot = Find_By_Type<Adventure_Party_Slot, Adventure_Party_Slot_Type.hero>
+type Adventure_Party_Creep_Slot = Find_By_Type<Adventure_Party_Slot, Adventure_Party_Slot_Type.creep>
+
 type Adventure_Party_Change = {
     type: Adventure_Party_Change_Type.set_slot
     slot: Adventure_Party_Slot
@@ -390,8 +411,23 @@ type Adventure_Equipment_Item = {
     type: Adventure_Item_Type.equipment
     entity_id: Adventure_Party_Entity_Id
     item_id: Adventure_Equipment_Item_Id
-    modifier: Modifier
+    effects: Adventure_Item_Effect[]
 }
+
+type Adventure_Item_Effect = {
+    type: Adventure_Item_Effect_Type.in_combat
+    modifier: Modifier
+} | {
+    type: Adventure_Item_Effect_Type.combat_start
+    effect_id: Adventure_Combat_Start_Effect_Id.add_ability_charges
+    how_many: number
+} | {
+    type: Adventure_Item_Effect_Type.post_combat
+    effect_id: Adventure_Post_Combat_Effect_Id.restore_health
+    how_much: number
+}
+
+type Adventure_Item_Combat_Start_Effect = Find_By_Type<Adventure_Item_Effect, Adventure_Item_Effect_Type.combat_start>
 
 type Adventure_Hero_Inventory = Array<Adventure_Equipment_Item | undefined> // Sparse array
 

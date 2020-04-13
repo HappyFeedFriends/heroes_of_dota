@@ -27,6 +27,7 @@ type Hero_Spawn = {
     type: Hero_Type
     health: number
     modifiers: Adventure_Item_Modifier[]
+    start_effects: Adventure_Item_Combat_Start_Effect[]
 }
 
 type Creep_Spawn = {
@@ -2297,6 +2298,7 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
                     type: Delta_Type.adventure_items_applied,
                     unit_id: hero.id,
                     modifiers: modifiers,
+                    start_effects: hero.start_effects,
                     final_health: hero.health
                 });
             }

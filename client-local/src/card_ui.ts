@@ -10,6 +10,10 @@ function get_adventure_equipment_item_icon(id: Adventure_Equipment_Item_Id): str
         case Adventure_Equipment_Item_Id.chainmail: return get_item_icon(Item_Id.chainmail);
         case Adventure_Equipment_Item_Id.basher: return get_item_icon(Item_Id.basher);
         case Adventure_Equipment_Item_Id.iron_branch: return get_item_icon(Item_Id.iron_branch);
+        case Adventure_Equipment_Item_Id.mystic_staff: return "file://{images}/items/mystic_staff.png";
+        case Adventure_Equipment_Item_Id.ring_of_regen: return "file://{images}/items/ring_of_regen.png";
+        case Adventure_Equipment_Item_Id.ring_of_tarrasque: return "file://{images}/items/ring_of_tarrasque.png";
+        case Adventure_Equipment_Item_Id.heart_of_tarrasque: return get_item_icon(Item_Id.heart_of_tarrasque);
     }
 }
 

@@ -80,6 +80,10 @@ function get_adventure_item_name(item: Adventure_Item): string {
             case Adventure_Equipment_Item_Id.chainmail: return get_item_name(Item_Id.chainmail);
             case Adventure_Equipment_Item_Id.basher: return get_item_name(Item_Id.basher);
             case Adventure_Equipment_Item_Id.iron_branch: return get_item_name(Item_Id.iron_branch);
+            case Adventure_Equipment_Item_Id.mystic_staff: return "Mystic Staff";
+            case Adventure_Equipment_Item_Id.ring_of_regen: return "Ring of Regen";
+            case Adventure_Equipment_Item_Id.ring_of_tarrasque: return "Ring of Tarrasque";
+            case Adventure_Equipment_Item_Id.heart_of_tarrasque: return get_item_name(Item_Id.heart_of_tarrasque);
         }
     }
 

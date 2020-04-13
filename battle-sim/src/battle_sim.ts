@@ -2025,6 +2025,17 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                 apply_modifier(battle, adventure_item_source(modifier.source_item), unit, modifier);
             }
 
+            for (const effect of delta.start_effects) {
+                if (effect.effect_id == Adventure_Combat_Start_Effect_Id.add_ability_charges) {
+                    for (const ability of unit.abilities) {
+                        if (ability.type != Ability_Type.passive) {
+                            ability.charges += effect.how_many;
+                            ability.charges_remaining += effect.how_many;
+                        }
+                    }
+                }
+            }
+
             unit.health = delta.final_health;
 
             break;

@@ -17,12 +17,16 @@ function compute_adventure_hero_inventory_field_bonus(inventory: Adventure_Hero_
     for (const item of inventory) {
         if (!item) continue;
 
-        const changes = calculate_modifier_changes(item.modifier);
+        for (const effect of item.effects) {
+            if (effect.type == Adventure_Item_Effect_Type.in_combat) {
+                const changes = calculate_modifier_changes(effect.modifier);
 
-        for (const change of changes) {
-            if (change.type == Modifier_Change_Type.field_change) {
-                if (change.field == field) {
-                    bonus += change.delta;
+                for (const change of changes) {
+                    if (change.type == Modifier_Change_Type.field_change) {
+                        if (change.field == field) {
+                            bonus += change.delta;
+                        }
+                    }
                 }
             }
         }
@@ -194,13 +198,13 @@ function available_purchase_to_party_changes(party: Party_Snapshot, available: A
     }
 }
 
-function is_party_hero_dead(slot: Find_By_Type<Adventure_Party_Slot, Adventure_Party_Slot_Type.hero>) {
+function is_party_hero_dead(slot: Adventure_Party_Hero_Slot) {
     const health_bonus = compute_adventure_hero_inventory_field_bonus(slot.items, Modifier_Field.health_bonus);
     const actual_health = slot.base_health + health_bonus;
     return actual_health <= 0;
 }
 
-function is_party_creep_dead(slot: Find_By_Type<Adventure_Party_Slot, Adventure_Party_Slot_Type.creep>) {
+function is_party_creep_dead(slot: Adventure_Party_Creep_Slot) {
     return slot.health == 0;
 }
 

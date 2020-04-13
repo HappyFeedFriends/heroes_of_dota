@@ -544,6 +544,7 @@ type Delta_Adventure_Items_Applied = {
     modifiers: Array<Modifier_Application & {
         source_item: Adventure_Equipment_Item_Id
     }>
+    start_effects: Array<Adventure_Item_Combat_Start_Effect>
 }
 
 type Delta_Shop_Spawn = {

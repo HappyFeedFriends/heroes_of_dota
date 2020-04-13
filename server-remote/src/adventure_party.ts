@@ -8,13 +8,13 @@ export type Map_Player_Party = Party_Snapshot & {
 }
 
 type Hero_Slot_To_Unit = {
-    slot: Find_By_Type<Adventure_Party_Slot, Adventure_Party_Slot_Type.hero>
+    slot: Adventure_Party_Hero_Slot
     slot_index: number
     unit: Unit_Id
 }
 
 type Creep_Slot_To_Unit = {
-    slot: Find_By_Type<Adventure_Party_Slot, Adventure_Party_Slot_Type.creep>
+    slot: Adventure_Party_Creep_Slot
     slot_index: number
     unit: Unit_Id
 }
@@ -64,98 +64,157 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
         entity_id: entity_id
     } as const;
 
+    function in_combat_effect(modifier: Modifier): Adventure_Item_Effect {
+        return {
+            type: Adventure_Item_Effect_Type.in_combat,
+            modifier: modifier
+        };
+    }
+
     switch (item_id) {
         case Adventure_Equipment_Item_Id.boots_of_travel: return {
             ...base,
             item_id: item_id,
-            modifier: {
+            effects: [in_combat_effect({
                 id: Modifier_Id.move_speed,
-                bonus :3
-            }
+                bonus: 3
+            })]
         };
 
         case Adventure_Equipment_Item_Id.assault_cuirass: return {
             ...base,
             item_id: item_id,
-            modifier: {
+            effects: [in_combat_effect({
                 id: Modifier_Id.armor,
                 bonus: 4
-            }
+            })]
         };
 
         case Adventure_Equipment_Item_Id.divine_rapier: return {
             ...base,
             item_id: item_id,
-            modifier: {
+            effects: [in_combat_effect({
                 id: Modifier_Id.attack_damage,
                 bonus: 8
-            }
+            })]
         };
 
         case Adventure_Equipment_Item_Id.mask_of_madness: return {
             ...base,
             item_id: item_id,
-            modifier: {
+            effects: [in_combat_effect({
                 id: Modifier_Id.item_mask_of_madness,
                 attack: 4
-            }
+            })]
         };
 
         case Adventure_Equipment_Item_Id.boots_of_speed: return {
             ...base,
             item_id: item_id,
-            modifier: {
+            effects: [in_combat_effect({
                 id: Modifier_Id.move_speed,
                 bonus: 1
-            }
+            })]
         };
 
         case Adventure_Equipment_Item_Id.blades_of_attack: return {
             ...base,
             item_id: item_id,
-            modifier: {
+            effects: [in_combat_effect({
                 id: Modifier_Id.attack_damage,
                 bonus: 2
-            }
+            })]
         };
 
         case Adventure_Equipment_Item_Id.belt_of_strength: return {
             ...base,
             item_id: item_id,
-            modifier: {
+            effects: [in_combat_effect({
                 id: Modifier_Id.health,
                 bonus: 4
-            }
+            })]
         };
 
         case Adventure_Equipment_Item_Id.chainmail: return {
             ...base,
             item_id: item_id,
-            modifier: {
+            effects: [in_combat_effect({
                 id: Modifier_Id.armor,
                 bonus: 1
-            }
+            })]
         };
 
         case Adventure_Equipment_Item_Id.basher: return {
             ...base,
             item_id: item_id,
-            modifier: {
+            effects: [in_combat_effect({
                 id: Modifier_Id.item_basher
-            }
+            })]
         };
 
         case Adventure_Equipment_Item_Id.iron_branch: return {
             ...base,
             item_id: item_id,
-            modifier: {
+            effects: [in_combat_effect({
                 id: Modifier_Id.item_iron_branch,
                 armor_bonus: 1,
                 attack_bonus: 1,
                 health_bonus: 1,
                 moves_bonus: 1
-            }
-        }
+            })]
+        };
+
+        case Adventure_Equipment_Item_Id.mystic_staff: return {
+            ...base,
+            item_id: item_id,
+            effects: [{
+                type: Adventure_Item_Effect_Type.combat_start,
+                effect_id: Adventure_Combat_Start_Effect_Id.add_ability_charges,
+                how_many: 1
+            }]
+        };
+
+        case Adventure_Equipment_Item_Id.ring_of_regen: return {
+            ...base,
+            item_id: item_id,
+            effects: [{
+                type: Adventure_Item_Effect_Type.post_combat,
+                effect_id: Adventure_Post_Combat_Effect_Id.restore_health,
+                how_much: 1
+            }]
+        };
+
+        case Adventure_Equipment_Item_Id.ring_of_tarrasque: return {
+            ...base,
+            item_id: item_id,
+            effects: [
+                {
+                    type: Adventure_Item_Effect_Type.post_combat,
+                    effect_id: Adventure_Post_Combat_Effect_Id.restore_health,
+                    how_much: 3
+                },
+                in_combat_effect({
+                    id: Modifier_Id.health,
+                    bonus: 2
+                })
+            ]
+        };
+
+        case Adventure_Equipment_Item_Id.heart_of_tarrasque: return {
+            ...base,
+            item_id: item_id,
+            effects: [
+                {
+                    type: Adventure_Item_Effect_Type.post_combat,
+                    effect_id: Adventure_Post_Combat_Effect_Id.restore_health,
+                    how_much: 5
+                },
+                in_combat_effect({
+                    id: Modifier_Id.health,
+                    bonus: 5
+                })
+            ]
+        };
     }
 }
 

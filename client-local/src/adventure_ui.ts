@@ -2135,7 +2135,18 @@ subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, e
 
 subscribe_to_custom_event(To_Client_Event_Type.adventure_receive_party_changes, event => {
     log(`Merging remote changes from event`);
-    merge_adventure_party_changes(event.current_head, from_server_array(event.changes));
+
+    // TODO we really need runtime reflection there, wasted 20 minutes on debugging this
+    event.changes = from_server_array(event.changes);
+    for (const change of event.changes) {
+        if (change.type == Adventure_Party_Change_Type.add_item_to_bag) {
+            if (change.item.type == Adventure_Item_Type.equipment) {
+                change.item.effects = from_server_array(change.item.effects);
+            }
+        }
+    }
+
+    merge_adventure_party_changes(event.current_head, event.changes);
 });
 
 subscribe_to_custom_event(To_Client_Event_Type.adventure_display_room_exit_popup, event => {
