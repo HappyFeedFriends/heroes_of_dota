@@ -1,3 +1,4 @@
+/// <reference path="./reflection.d.ts" />
 import * as ts from "typescript";
 import {SyntaxKind, TypeFlags} from "typescript";
 import * as utils from "tsutils";
@@ -7,6 +8,7 @@ import {
     SimpleTypeKind,
     SimpleTypeMemberNamed,
     SimpleTypeObject,
+    SimpleTypePrimitive,
     toSimpleType
 } from "ts-simple-type";
 import {readFileSync} from "fs";
@@ -101,6 +103,224 @@ export default function run_transformer(program: ts.Program, options: Options): 
             });
     }
 
+    function any_to_literal(any: any): ts.Expression {
+        if (any == undefined) {
+            return ts.createLiteral(undefined);
+        }
+
+        switch (typeof any) {
+            case "string":
+            case "number":
+            case "boolean": return ts.createLiteral(any);
+
+            case "object": {
+                if (Array.isArray(any)) {
+                    return ts.createArrayLiteral(any.map(any_to_literal));
+                } else {
+                    return ts.createObjectLiteral(Object.entries(any)
+                        .map(([key, value]) => {
+                            return ts.createPropertyAssignment(key, any_to_literal(value));
+                        }));
+                }
+            }
+        }
+    }
+
+    // Stupidscript won't allow me to use those directly...
+    const type_string: Type_Kind.string = 0;
+    const type_number: Type_Kind.number = 1;
+    const type_boolean: Type_Kind.boolean = 2;
+    const type_string_literal: Type_Kind.string_literal = 3;
+    const type_number_literal: Type_Kind.number_literal = 4;
+    const type_boolean_literal: Type_Kind.boolean_literal = 5;
+    const type_object: Type_Kind.object = 6;
+    const type_union: Type_Kind.union = 7;
+    const type_intersection: Type_Kind.intersection = 8;
+    const type_enum_member: Type_Kind.enum_member = 9;
+    const type_enum: Type_Kind.enum = 10;
+    const type_array: Type_Kind.array = 11;
+    const type_any: Type_Kind.any = 12;
+    const type_undefined: Type_Kind.undefined = 13;
+
+    type Serialization_Context = {
+        enums: Find_By_Kind<Type, Type_Kind.enum>[]
+    }
+
+    function serialize_type_to_function(type: Type) {
+        const context: Serialization_Context = {
+            enums: [],
+        };
+
+        const root_type = serialize_type(type, context);
+
+        const enum_declarations = context.enums.map(en => {
+            const declaration = ts.createVariableDeclaration(en.name, undefined, any_to_literal(en));
+            return ts.createVariableStatement(undefined, [ declaration ]);
+        });
+
+        return ts.createImmediatelyInvokedArrowFunction([
+            ...enum_declarations,
+            ts.createReturn(root_type)
+        ]);
+    }
+
+    function serialize_type(type: Type, context: Serialization_Context): ts.Expression {
+        switch (type.kind) {
+            case type_object: {
+                const members = type.members.map(member => ts.createObjectLiteral([
+                    ts.createPropertyAssignment("optional", any_to_literal(member.optional)),
+                    ts.createPropertyAssignment("name", any_to_literal(member.name)),
+                    ts.createPropertyAssignment("type", serialize_type(member.type, context))
+                ], true));
+
+                return ts.createObjectLiteral([
+                    ts.createPropertyAssignment("kind", any_to_literal(type.kind)),
+                    ts.createPropertyAssignment("members", ts.createArrayLiteral(members))
+                ], true);
+            }
+
+            case type_any:
+            case type_undefined:
+            case type_string:
+            case type_number:
+            case type_boolean:
+            case type_number_literal:
+            case type_string_literal:
+            case type_boolean_literal: {
+                return any_to_literal(type);
+            }
+
+            case type_intersection:
+            case type_union: {
+                const types = type.types.map(member_type => serialize_type(member_type, context));
+
+                return ts.createObjectLiteral([
+                    ts.createPropertyAssignment("kind", any_to_literal(type.kind)),
+                    ts.createPropertyAssignment("types", ts.createArrayLiteral(types))
+                ], true);
+            }
+
+            case type_enum_member: {
+                return any_to_literal(type);
+            }
+
+            case type_enum: {
+                if (!context.enums.find(target => target.name == type.name)) {
+                    context.enums.push(type);
+                }
+
+                return ts.createIdentifier(type.name);
+            }
+
+            case type_array: {
+                return ts.createObjectLiteral([
+                    ts.createPropertyAssignment("kind", any_to_literal(type.kind)),
+                    ts.createPropertyAssignment("type", serialize_type(type.type, context))
+                ], true);
+            }
+        }
+    }
+
+    function simple_type_to_type(type: SimpleType, error_node: ts.Node): Type {
+        function primitive(type: SimpleTypePrimitive): Primitive {
+            switch (type.kind) {
+                case SimpleTypeKind.STRING: return { kind: type_string };
+                case SimpleTypeKind.NUMBER: return { kind: type_number };
+                case SimpleTypeKind.BOOLEAN: return { kind: type_boolean };
+                case SimpleTypeKind.UNDEFINED: return { kind: type_undefined };
+
+                case SimpleTypeKind.NUMBER_LITERAL: return {
+                    kind: type_number_literal,
+                    value: type.value
+                };
+
+                case SimpleTypeKind.STRING_LITERAL: return {
+                    kind: type_string_literal,
+                    value: type.value
+                };
+
+                case SimpleTypeKind.BOOLEAN_LITERAL: return {
+                    kind: type_boolean_literal,
+                    value: type.value
+                };
+            }
+        }
+
+        function enum_member(type: SimpleTypeEnumMember): Find_By_Kind<Type, Type_Kind.enum_member> {
+            return {
+                kind: type_enum_member,
+                name: type.name,
+                full_name: type.fullName,
+                type: primitive(type.type)
+            }
+        }
+
+        switch (type.kind) {
+            case SimpleTypeKind.ALIAS: {
+                return simple_type_to_type(resolve_alias(type.target), error_node);
+            }
+
+            case SimpleTypeKind.OBJECT: {
+                return {
+                    kind: type_object,
+                    members: type.members.map(member => ({
+                        name: member.name,
+                        optional: member.optional,
+                        type: simple_type_to_type(member.type, error_node)
+                    }))
+                }
+            }
+
+            case SimpleTypeKind.UNION: {
+                return {
+                    kind: type_union,
+                    types: type.types.map(type => simple_type_to_type(type, error_node))
+                }
+            }
+
+            case SimpleTypeKind.INTERSECTION: {
+                return {
+                    kind: type_intersection,
+                    types: type.types.map(type => simple_type_to_type(type, error_node))
+                }
+            }
+
+            case SimpleTypeKind.ENUM: {
+                return {
+                    kind: type_enum,
+                    name: type.name,
+                    members: type.types.map(enum_member)
+                }
+            }
+
+            case SimpleTypeKind.ENUM_MEMBER: return enum_member(type);
+
+            case SimpleTypeKind.ARRAY: return {
+                kind: type_array,
+                type: simple_type_to_type(type.type, error_node)
+            };
+
+            case SimpleTypeKind.ANY: return { kind: type_any };
+
+            case SimpleTypeKind.CIRCULAR_TYPE_REF: {
+                console.error("Circular type ref not implemented");
+                return { kind: type_string_literal, value: "circular_ref_unsupported" };
+            }
+
+            case SimpleTypeKind.NUMBER_LITERAL:
+            case SimpleTypeKind.STRING_LITERAL:
+            case SimpleTypeKind.BOOLEAN_LITERAL:
+            case SimpleTypeKind.UNDEFINED:
+            case SimpleTypeKind.STRING:
+            case SimpleTypeKind.NUMBER:
+            case SimpleTypeKind.BOOLEAN: {
+                return primitive(type);
+            }
+
+            default: error_out(error_node, `Unsupported type kind ${type.kind}`);
+        }
+    }
+
     function process_node(node: ts.Node): ts.Node | undefined {
         if (utils.isPrefixUnaryExpression(node)) {
             if (node.operator == SyntaxKind.ExclamationToken) {
@@ -120,6 +340,13 @@ export default function run_transformer(program: ts.Program, options: Options): 
 
             if (decl.kind == ts.SyntaxKind.FunctionDeclaration) {
                 const function_name = decl.name.escapedText;
+
+                if (function_name == "type_of") {
+                    const argument = resolve_alias(toSimpleType(node.typeArguments[0], checker));
+                    const type = simple_type_to_type(argument, node);
+
+                    return serialize_type_to_function(type);
+                }
 
                 if (function_name == "enum_to_string") {
                     const argument = node.arguments[0];
