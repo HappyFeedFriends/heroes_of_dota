@@ -84,6 +84,7 @@ function get_adventure_item_name(item: Adventure_Item): string {
             case Adventure_Equipment_Item_Id.ring_of_regen: return "Ring of Regen";
             case Adventure_Equipment_Item_Id.ring_of_tarrasque: return "Ring of Tarrasque";
             case Adventure_Equipment_Item_Id.heart_of_tarrasque: return get_item_name(Item_Id.heart_of_tarrasque);
+            case Adventure_Equipment_Item_Id.tome_of_aghanim: return "Tome of Aghanim";
         }
     }
 

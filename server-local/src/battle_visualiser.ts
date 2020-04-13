@@ -2759,6 +2759,27 @@ function apply_item_equip_effects(game: Game, hero: Hero, equip: Equip_Item) {
     }
 }
 
+function play_combat_start_effect(game: Game, hero: Hero, effect: Adventure_Item_Combat_Start_Effect) {
+    switch (effect.effect_id) {
+        case Adventure_Combat_Start_Effect_Id.add_ability_charges: {
+            break;
+        }
+
+        case Adventure_Combat_Start_Effect_Id.level_up: {
+            // @HardcodedConstant
+            // This is actually a real bummer, we shouldn't be applying all the effects in the same delta
+            // also data from a delta should already be 'valid' so we'll need to split start effects into
+            // adventure start effects (aka definitions) and actual processed start_effects
+            // formed inside start_battle
+            const new_level = Math.min(3, hero.level + effect.how_many_levels);
+            change_hero_level(game, hero, new_level);
+            break;
+        }
+
+        default: unreachable(effect);
+    }
+}
+
 function play_item_equip_delta(game: Game, hero: Hero, equip: Equip_Item) {
     wait(0.3);
 
@@ -3332,14 +3353,18 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
         }
 
         case Delta_Type.adventure_items_applied: {
-            const unit = find_unit_by_id(delta.unit_id);
-            if (!unit) break;
+            const hero = find_hero_by_id(delta.unit_id);
+            if (!hero) break;
 
             for (const modifier of from_client_array(delta.modifiers)) {
-                apply_modifier(game, unit, modifier);
+                apply_modifier(game, hero, modifier);
             }
 
-            unit.health = delta.final_health;
+            for (const effect of from_client_array(delta.start_effects)) {
+                play_combat_start_effect(game, hero, effect);
+            }
+
+            hero.health = delta.final_health;
 
             update_game_net_table(game);
 

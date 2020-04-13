@@ -294,6 +294,7 @@ function equipment_item_cost(id: Adventure_Equipment_Item_Id): number {
         case Adventure_Equipment_Item_Id.mystic_staff: return 10;
         case Adventure_Equipment_Item_Id.ring_of_tarrasque: return 10;
         case Adventure_Equipment_Item_Id.heart_of_tarrasque: return 10;
+        case Adventure_Equipment_Item_Id.tome_of_aghanim: return 10;
     }
 }
 

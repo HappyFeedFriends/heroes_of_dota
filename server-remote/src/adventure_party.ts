@@ -215,6 +215,16 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
                 })
             ]
         };
+
+        case Adventure_Equipment_Item_Id.tome_of_aghanim: return {
+            ...base,
+            item_id: item_id,
+            effects: [{
+                type: Adventure_Item_Effect_Type.combat_start,
+                effect_id: Adventure_Combat_Start_Effect_Id.level_up,
+                how_many_levels: 1
+            }]
+        }
     }
 }
 

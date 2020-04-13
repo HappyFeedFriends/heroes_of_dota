@@ -70,11 +70,13 @@ declare const enum Adventure_Equipment_Item_Id {
     mystic_staff = 10,
     ring_of_regen = 11,
     ring_of_tarrasque = 12,
-    heart_of_tarrasque = 13
+    heart_of_tarrasque = 13,
+    tome_of_aghanim = 14
 }
 
 declare const enum Adventure_Combat_Start_Effect_Id {
-    add_ability_charges = 0
+    add_ability_charges = 0,
+    level_up = 1
 }
 
 declare const enum Adventure_Post_Combat_Effect_Id {
@@ -421,6 +423,10 @@ type Adventure_Item_Effect = {
     type: Adventure_Item_Effect_Type.combat_start
     effect_id: Adventure_Combat_Start_Effect_Id.add_ability_charges
     how_many: number
+} | {
+    type: Adventure_Item_Effect_Type.combat_start
+    effect_id: Adventure_Combat_Start_Effect_Id.level_up
+    how_many_levels: number
 } | {
     type: Adventure_Item_Effect_Type.post_combat
     effect_id: Adventure_Post_Combat_Effect_Id.restore_health

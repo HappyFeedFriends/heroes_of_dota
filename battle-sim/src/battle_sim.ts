@@ -1088,6 +1088,28 @@ function expire_timed_effect(battle: Battle, effect: Timed_Effect) {
     }
 }
 
+function collapse_combat_start_effect(hero: Hero, effect: Adventure_Item_Combat_Start_Effect) {
+    switch (effect.effect_id) {
+        case Adventure_Combat_Start_Effect_Id.add_ability_charges: {
+            for (const ability of hero.abilities) {
+                if (ability.type != Ability_Type.passive) {
+                    ability.charges += effect.how_many;
+                    ability.charges_remaining += effect.how_many;
+                }
+            }
+
+            break;
+        }
+
+        case Adventure_Combat_Start_Effect_Id.level_up: {
+            hero.level = Math.min(Const.max_unit_level, hero.level + effect.how_many_levels);
+            break;
+        }
+
+        default: unreachable(effect);
+    }
+}
+
 function collapse_modifier_effect(battle: Battle, effect: Delta_Modifier_Effect_Applied) {
     const found = find_modifier_by_handle_id(battle, effect.handle_id);
     if (!found) return;
@@ -1958,7 +1980,6 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
         case Delta_Type.use_no_target_spell: {
             const player = find_player_by_id(battle, delta.player_id);
-
             if (!player) break;
 
             collapse_no_target_spell_use(battle, player, delta);
@@ -1980,7 +2001,6 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
         case Delta_Type.use_ground_target_spell: {
             const player = find_player_by_id(battle, delta.player_id);
-
             if (!player) break;
 
             collapse_ground_target_spell_use(battle, player, delta.at, delta);
@@ -2018,25 +2038,18 @@ function collapse_delta(battle: Battle, delta: Delta): void {
         }
 
         case Delta_Type.adventure_items_applied: {
-            const unit = find_unit_by_id(battle, delta.unit_id);
-            if (!unit) break;
+            const hero = find_hero_by_id(battle, delta.unit_id);
+            if (!hero) break;
 
             for (const modifier of delta.modifiers) {
-                apply_modifier(battle, adventure_item_source(modifier.source_item), unit, modifier);
+                apply_modifier(battle, adventure_item_source(modifier.source_item), hero, modifier);
             }
 
             for (const effect of delta.start_effects) {
-                if (effect.effect_id == Adventure_Combat_Start_Effect_Id.add_ability_charges) {
-                    for (const ability of unit.abilities) {
-                        if (ability.type != Ability_Type.passive) {
-                            ability.charges += effect.how_many;
-                            ability.charges_remaining += effect.how_many;
-                        }
-                    }
-                }
+                collapse_combat_start_effect(hero, effect);
             }
 
-            unit.health = delta.final_health;
+            hero.health = delta.final_health;
 
             break;
         }
