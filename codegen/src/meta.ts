@@ -143,7 +143,7 @@ export default function run_transformer(program: ts.Program, options: Options): 
     const type_undefined: Type_Kind.undefined = 13;
 
     type Serialization_Context = {
-        enums: Find_By_Kind<Type, Type_Kind.enum>[]
+        enums: Enum_Type[]
     }
 
     function serialize_type_to_function(type: Type) {
@@ -246,7 +246,7 @@ export default function run_transformer(program: ts.Program, options: Options): 
             }
         }
 
-        function enum_member(type: SimpleTypeEnumMember): Find_By_Kind<Type, Type_Kind.enum_member> {
+        function enum_member(type: SimpleTypeEnumMember): Enum_Member_Type {
             return {
                 kind: type_enum_member,
                 name: type.name,
@@ -303,8 +303,7 @@ export default function run_transformer(program: ts.Program, options: Options): 
             case SimpleTypeKind.ANY: return { kind: type_any };
 
             case SimpleTypeKind.CIRCULAR_TYPE_REF: {
-                console.error("Circular type ref not implemented");
-                return { kind: type_string_literal, value: "circular_ref_unsupported" };
+                return simple_type_to_type(type.ref, error_node);
             }
 
             case SimpleTypeKind.NUMBER_LITERAL:
@@ -315,6 +314,11 @@ export default function run_transformer(program: ts.Program, options: Options): 
             case SimpleTypeKind.NUMBER:
             case SimpleTypeKind.BOOLEAN: {
                 return primitive(type);
+            }
+
+            case SimpleTypeKind.GENERIC_ARGUMENTS: {
+                console.error("unsupported_generic_arguments");
+                return { kind: type_string_literal, value: "unsupported_generic_arguments" };
             }
 
             default: error_out(error_node, `Unsupported type kind ${type.kind}`);

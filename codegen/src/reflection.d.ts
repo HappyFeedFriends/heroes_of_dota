@@ -17,18 +17,60 @@ declare const enum Type_Kind {
     undefined = 13
 }
 
-type Find_By_Kind<Union, Type> = Union extends { kind: Type } ? Union : never;
+type Type =
+    Object_Type |
+    Union_Type |
+    Intersection_Type |
+    Enum_Member_Type |
+    Primitive |
+    Enum_Type |
+    Array_Type |
+    Any_Type
 
-type Type = {
+type Union_Type = {
+    kind: Type_Kind.union
+    types: Type[]
+}
+
+type Intersection_Type = {
+    kind: Type_Kind.intersection
+    types: Type[]
+}
+
+type Object_Type = {
+    kind: Type_Kind.object
+    name?: string
+    members: Member_Named[]
+}
+
+type Enum_Member_Type = {
+    kind: Type_Kind.enum_member
+    name: string
+    full_name: string
+    type: Primitive
+}
+
+type Enum_Type = {
+    kind: Type_Kind.enum
+    name: string
+    members: Enum_Member_Type[]
+}
+
+type Array_Type = {
+    kind: Type_Kind.array
+    type: Type
+}
+
+type Any_Type = {
+    kind: Type_Kind.any
+}
+
+type Primitive = {
     kind: Type_Kind.string
 } | {
     kind: Type_Kind.number
 } | {
     kind: Type_Kind.boolean
-} | {
-    kind: Type_Kind.object
-    name?: string
-    members: Member_Named[]
 } | {
     kind: Type_Kind.number_literal
     value: number
@@ -39,38 +81,8 @@ type Type = {
     kind: Type_Kind.boolean_literal
     value: boolean
 } | {
-    kind: Type_Kind.union
-    types: Type[]
-} | {
-    kind: Type_Kind.enum_member
-    name: string
-    full_name: string
-    type: Primitive
-} | {
-    kind: Type_Kind.enum
-    name: string
-    members: Find_By_Kind<Type, Type_Kind.enum_member>[]
-} | {
-    kind: Type_Kind.array
-    type: Type
-} | {
-    kind: Type_Kind.intersection
-    types: Type[]
-} | {
-    kind: Type_Kind.any
-} | {
     kind: Type_Kind.undefined
 }
-
-type Primitive = Find_By_Kind<Type,
-    Type_Kind.string_literal |
-    Type_Kind.number_literal |
-    Type_Kind.boolean_literal |
-    Type_Kind.string |
-    Type_Kind.number |
-    Type_Kind.boolean |
-    Type_Kind.undefined
->
 
 type Member = {
     type: Type

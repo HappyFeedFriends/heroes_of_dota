@@ -1,6 +1,6 @@
 import {
     subscribe_to_custom_event,
-    subscribe_to_net_table_key,
+    subscribe_to_game_net_table_key,
     async_get_player_name,
     api_request,
     get_access_token,
@@ -141,7 +141,7 @@ function subscribe_to_debug_message_event() {
 
 let chat_initialized = false;
 
-subscribe_to_net_table_key<Game_Net_Table>("main", "game", () => {
+subscribe_to_game_net_table_key("main", "game", () => {
     if (!chat_initialized) {
         hack_into_game_chat();
         periodically_pull_chat_messages();

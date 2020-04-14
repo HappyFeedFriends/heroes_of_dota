@@ -2,6 +2,7 @@
     <scripts>
         <include src="file://{resources}/scripts/custom_game/module.js" />
 
+        <include src="file://{resources}/scripts/custom_game/reflection.js" />
         <include src="file://{resources}/scripts/custom_game/interop.js" />
         <include src="file://{resources}/scripts/custom_game/commons.js" />
         <include src="file://{resources}/scripts/custom_game/text.js" />

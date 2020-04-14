@@ -1,3 +1,10 @@
+import {
+    adventure_net_table_parser,
+    client_event_payload_parser,
+    game_net_table_parser,
+    local_api_response_parser
+} from "./reflection";
+
 type Player_Name_Callback = (name: string) => void;
 
 const remote_root = Game.IsInToolsMode() ? "http://127.0.0.1:3638" : "http://cia-is.moe:3638";
@@ -75,7 +82,23 @@ export function async_api_request<T extends Api_Request_Type>(type: T, body: Fin
     return promise;
 }
 
+const parser_cache: Record<number, (data: object) => any> = {};
+
+function get_or_create_api_request_parser<T extends Local_Api_Request_Type>(type: T) {
+    const existing = parser_cache[type];
+
+    if (existing) {
+        return existing;
+    }
+
+    const new_parser = local_api_response_parser(type);
+    parser_cache[type] = new_parser;
+    return new_parser;
+}
+
 export function async_local_api_request<T extends Local_Api_Request_Type>(type: T, body: Find_Local_Request<T>): Promise<Api_Response<Find_Local_Response<T>>> {
+    const parser = get_or_create_api_request_parser(type);
+
     const packet: Local_Api_Request_Packet = {
         type: type,
         body: body,
@@ -106,7 +129,7 @@ export function async_local_api_request<T extends Local_Api_Request_Type>(type: 
 
             resolve({
                 ok: true,
-                body: body
+                body: parser(body)
             });
 
             delete ongoing_local_requests[packet.request_id];
@@ -160,12 +183,30 @@ export function fire_event<T extends To_Server_Event_Type>(type: T, data: Find_T
 }
 
 export function subscribe_to_custom_event<T extends To_Client_Event_Type>(type: T, handler: (data: Find_To_Client_Payload<T>) => void) {
+    const parser = client_event_payload_parser(type);
+
     GameEvents.Subscribe(`${Prefixes.to_client_event}${type}`, event_data => {
-        handler(event_data as Find_To_Client_Payload<T>);
+        handler(parser(event_data));
     })
 }
 
-export function subscribe_to_net_table_key<T>(table: string, key: string, callback: (data: T) => void){
+export function subscribe_to_adventure_net_table(table: string, key: string, callback: (data: Adventure_Net_Table) => void) {
+    const parser = adventure_net_table_parser();
+
+    subscribe_to_net_table_key(table, key, object => {
+        callback(parser(object));
+    });
+}
+
+export function subscribe_to_game_net_table_key(table: string, key: string, callback: (data: Game_Net_Table) => void) {
+    const parser = game_net_table_parser();
+
+    subscribe_to_net_table_key(table, key, object => {
+        callback(parser(object));
+    });
+}
+
+function subscribe_to_net_table_key(table: string, key: string, callback: (data: object) => void){
     const listener = CustomNetTables.SubscribeNetTableListener(table, function(table, table_key, data){
         if (key == table_key){
             if (!data) {

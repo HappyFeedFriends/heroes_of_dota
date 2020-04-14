@@ -3,6 +3,8 @@ type RGB = [ number, number, number ] & { _color_id_brand: any };
 const enum Align_H { left, center, right}
 const enum Align_V { top, center, bottom}
 
+type Find_By_State<Union, Type> = Union extends { state: Type } ? Union : never;
+
 declare const enum Const {
     hand_base_x = 400,
     hand_base_y = 957,
@@ -91,16 +93,6 @@ function safely_set_panel_background_image(panel: Panel, image: string) {
     panel.style.backgroundImage = `url('${image}')`;
     panel.AddClass("fix_bg");
     panel.RemoveClass("fix_bg");
-}
-
-function from_server_array<T>(array: Array<T>): Array<T> {
-    const result: Array<T> = [];
-
-    for (const index in array) {
-        result[parseInt(index) - 1] = array[index];
-    }
-
-    return result;
 }
 
 function register_particle_for_reload(particle: ParticleId) {

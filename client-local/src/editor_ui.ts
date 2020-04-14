@@ -1,7 +1,7 @@
 import {current_state} from "./main_ui";
 
 import {
-    subscribe_to_net_table_key,
+    subscribe_to_game_net_table_key,
     async_local_api_request,
     async_api_request,
     api_request,
@@ -483,8 +483,8 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
         if (!new_stock.ok) return;
 
         merchant.stock = {
-            cards: from_server_array(new_stock.body.cards),
-            items: from_server_array(new_stock.body.items)
+            cards: new_stock.body.cards,
+            items: new_stock.body.items
         };
 
         if (menu.highlighted_button == current_stock_button) {
@@ -2133,7 +2133,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         const locations = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
 
         if (locations.ok) {
-            for (const location of from_server_array(locations.body)) {
+            for (const location of locations.body) {
                 toolbar_dropdown_button(`${location.name} (${enum_to_string(location.theme)})`, async () => {
                     const response = await async_api_request(Api_Request_Type.editor_create_battleground, {
                         name: "New battleground",
@@ -2187,7 +2187,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         const locations = await async_local_api_request(Local_Api_Request_Type.list_battle_locations, {});
 
         if (locations.ok) {
-            for (const location of from_server_array(locations.body)) {
+            for (const location of locations.body) {
                 toolbar_dropdown_button(location.name, () => {
                     new_editor.grid_world_origin = location.origin;
 
@@ -2534,7 +2534,7 @@ function exit_editor() {
 function init_editor_ui() {
     editor_root.style.visibility = "visible";
 
-    subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
+    subscribe_to_game_net_table_key("main", "game", data => {
         buttons_root.RemoveAndDeleteChildren();
 
         if (data.state != Player_State.on_adventure && editor.type == Editor_Type.adventure) {

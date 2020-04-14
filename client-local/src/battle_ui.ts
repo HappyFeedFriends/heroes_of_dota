@@ -16,7 +16,7 @@ import {
 
 import {
     subscribe_to_custom_event,
-    subscribe_to_net_table_key,
+    subscribe_to_game_net_table_key,
     async_get_player_name,
     api_request,
     get_access_token,
@@ -562,7 +562,7 @@ function on_battle_event(battle: UI_Battle, event: Battle_Event) {
 
 export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
     const new_data = new_state.battle;
-    const base = make_battle(from_server_array(new_data.participants).map(make_battle_player), new_data.grid_size.width, new_data.grid_size.height);
+    const base = make_battle(new_data.participants.map(make_battle_player), new_data.grid_size.width, new_data.grid_size.height);
     const this_player = find_player_by_id(base, new_state.battle.battle_player_id);
 
     if (!this_player) {
@@ -598,7 +598,7 @@ export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
 
     ui_shop_data = [];
 
-    const sparse_index = disabled_cell_index(from_server_array(new_data.disabled_cells));
+    const sparse_index = disabled_cell_index(new_data.disabled_cells);
 
     for (let x = 0; x < battle.grid.size.x; x++) {
         for (let y = 0; y < battle.grid.size.y; y++) {
@@ -1196,7 +1196,7 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
 
     const base = {
         id: data.id,
-        modifiers: from_server_array(data.modifiers),
+        modifiers: data.modifiers,
         stats: data,
         hidden: data.hidden,
         stat_bar_panel: top_level,
@@ -1261,7 +1261,7 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
         ui.level = new_data.level;
     }
 
-    ui.modifiers = from_server_array(new_data.modifiers);
+    ui.modifiers = new_data.modifiers;
     ui.stats = new_data;
     ui.hidden = new_data.hidden;
 
@@ -1319,10 +1319,7 @@ function dispose_of_unit_stat_bar_data(data: UI_Unit_Data) {
 }
 
 function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In_Battle) {
-    ui_player_data = from_server_array(state.battle.players).map(player => ({
-        id: player.id,
-        gold: player.gold
-    }));
+    ui_player_data = state.battle.players;
 
     battle.entity_id_to_rune_id = {};
 
@@ -2713,7 +2710,7 @@ $("#end_turn_button").SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
     });
 });
 
-subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
+subscribe_to_game_net_table_key("main", "game", data => {
     if (battle && data.state == Player_State.in_battle) {
         battle_process_state_update(battle, data);
         update_grid_visuals();

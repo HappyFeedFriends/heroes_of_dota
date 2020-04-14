@@ -4,7 +4,7 @@ import {
     api_request,
     async_api_request,
     fire_event,
-    subscribe_to_net_table_key,
+    subscribe_to_adventure_net_table,
     async_local_api_request,
     async_get_player_name
 } from "./interop";
@@ -797,11 +797,6 @@ function fill_entity_popup_content(popup: Basic_Popup, entity: Adventure_Entity)
 
         default: unreachable(entity)
     }
-}
-
-function fixup_merchant_server_data(merchant: Adventure_Merchant) {
-    merchant.stock.cards = from_server_array(merchant.stock.cards);
-    merchant.stock.items = from_server_array(merchant.stock.items);
 }
 
 function update_merchant_popup_elements(popup: Merchant_Popup) {
@@ -2100,20 +2095,9 @@ export function exit_adventure_ui() {
     set_current_popup();
 }
 
-subscribe_to_net_table_key<Adventure_Net_Table>("adventure", "table", table => {
+subscribe_to_adventure_net_table("adventure", "table", table => {
     entities.length = 0;
-    entities.push(...from_server_array(table.entities));
-
-    // Array fixup
-    for (const entity of entities) {
-        if (entity.base.type == Adventure_Entity_Type.enemy) {
-            entity.base.creeps = from_server_array(entity.base.creeps);
-        }
-
-        if (entity.base.type == Adventure_Entity_Type.merchant) {
-            fixup_merchant_server_data(entity.base);
-        }
-    }
+    entities.push(...table.entities);
 });
 
 subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, event => {
@@ -2123,8 +2107,6 @@ subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, e
     }
 
     if (event.entity.type == Adventure_Entity_Type.merchant) {
-        fixup_merchant_server_data(event.entity);
-
         const popup = show_merchant_popup(event.entity);
         update_merchant_popup_elements(popup);
         set_current_popup(popup);
@@ -2135,16 +2117,6 @@ subscribe_to_custom_event(To_Client_Event_Type.adventure_display_entity_popup, e
 
 subscribe_to_custom_event(To_Client_Event_Type.adventure_receive_party_changes, event => {
     log(`Merging remote changes from event`);
-
-    // TODO we really need runtime reflection there, wasted 20 minutes on debugging this
-    event.changes = from_server_array(event.changes);
-    for (const change of event.changes) {
-        if (change.type == Adventure_Party_Change_Type.add_item_to_bag) {
-            if (change.item.type == Adventure_Item_Type.equipment) {
-                change.item.effects = from_server_array(change.item.effects);
-            }
-        }
-    }
 
     merge_adventure_party_changes(event.current_head, event.changes);
 });

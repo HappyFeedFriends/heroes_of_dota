@@ -6,7 +6,7 @@ import {
 } from "./editor_ui";
 import {battle_filter_mouse_click, enter_battle_ui, exit_battle_ui} from "./battle_ui";
 import {adventure_filter_mouse_click, enter_adventure_ui, exit_adventure_ui} from "./adventure_ui";
-import {subscribe_to_custom_event, subscribe_to_net_table_key} from "./interop";
+import {subscribe_to_custom_event, subscribe_to_game_net_table_key} from "./interop";
 
 export let current_state = Player_State.not_logged_in;
 
@@ -103,7 +103,7 @@ subscribe_to_custom_event(To_Client_Event_Type.pre_state_change_screen_fade, () 
     queued_screen_fade_out_at = Game.GetGameTime() + 10;
 });
 
-subscribe_to_net_table_key<Game_Net_Table>("main", "game", data => {
+subscribe_to_game_net_table_key("main", "game", data => {
     global_map_ui_root.SetHasClass("active", data.state == Player_State.on_global_map);
     adventure_ui_root.SetHasClass("active", data.state == Player_State.on_adventure);
     $("#battle_ui").SetHasClass("active", data.state == Player_State.in_battle);
