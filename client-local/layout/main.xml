@@ -22,6 +22,8 @@
         <include src="file://{resources}/scripts/custom_game/battle_actions.js" />
     </scripts>
     <styles>
+        <include src="file://{resources}/styles/custom_game/images.css" />
+
         <include src="file://{resources}/styles/custom_game/shared.css" />
         <include src="file://{resources}/styles/custom_game/global_map.css" />
         <include src="file://{resources}/styles/custom_game/adventure.css" />

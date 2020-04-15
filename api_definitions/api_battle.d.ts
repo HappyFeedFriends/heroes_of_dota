@@ -541,10 +541,8 @@ type Delta_Adventure_Items_Applied = {
     type: Delta_Type.adventure_items_applied
     unit_id: Unit_Id
     final_health: number
-    modifiers: Array<Modifier_Application & {
-        source_item: Adventure_Equipment_Item_Id
-    }>
-    start_effects: Array<Adventure_Item_Combat_Start_Effect>
+    modifiers: Modifier_Application_From_Adventure_Item[]
+    start_effects: Adventure_Item_Combat_Start_Effect[]
 }
 
 type Delta_Shop_Spawn = {
@@ -660,6 +658,16 @@ type Modifier_Application = {
     modifier_handle_id: Modifier_Handle_Id
     modifier: Modifier
     duration?: number
+}
+
+type Modifier_Application_From_Adventure_Item = {
+    type: Adventure_Item_Type.equipment
+    item_id: Adventure_Equipment_Item_Id
+    application: Modifier_Application
+} | {
+    type: Adventure_Item_Type.consumable
+    item_id: Adventure_Consumable_Item_Id
+    application: Modifier_Application
 }
 
 type Timed_Effect_Application = {

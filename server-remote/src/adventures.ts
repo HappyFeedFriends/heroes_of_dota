@@ -303,6 +303,8 @@ function consumable_item_cost(id: Adventure_Consumable_Item_Id): number {
         case Adventure_Consumable_Item_Id.healing_salve: return 5;
         case Adventure_Consumable_Item_Id.enchanted_mango: return 5;
         case Adventure_Consumable_Item_Id.tome_of_knowledge: return 5;
+        case Adventure_Consumable_Item_Id.tome_of_strength: return 5;
+        case Adventure_Consumable_Item_Id.tome_of_agility: return 5;
     }
 }
 

@@ -19,15 +19,21 @@ function get_adventure_equipment_item_icon(id: Adventure_Equipment_Item_Id): str
 }
 
 function get_adventure_consumable_item_icon(id: Adventure_Consumable_Item_Id): string {
-    function get_consumable_icon_name(id: Adventure_Consumable_Item_Id): string {
-        switch (id) {
-            case Adventure_Consumable_Item_Id.enchanted_mango: return "enchanted_mango";
-            case Adventure_Consumable_Item_Id.healing_salve: return "salve";
-            case Adventure_Consumable_Item_Id.tome_of_knowledge: return "tome_of_knowledge";
-        }
+    function custom_icon(name: string) {
+        return `file://{images}/custom_game/items/${name}.png`;
     }
 
-    return `file://{images}/items/${get_consumable_icon_name(id)}.png`;
+    function default_icon(name: string) {
+        return `file://{images}/items/${name}.png`;
+    }
+
+    switch (id) {
+        case Adventure_Consumable_Item_Id.enchanted_mango: return default_icon("enchanted_mango");
+        case Adventure_Consumable_Item_Id.healing_salve: return default_icon("salve");
+        case Adventure_Consumable_Item_Id.tome_of_knowledge: return default_icon("tome_of_knowledge");
+        case Adventure_Consumable_Item_Id.tome_of_agility: return custom_icon("book_of_agility");
+        case Adventure_Consumable_Item_Id.tome_of_strength: return custom_icon("book_of_strength");
+    }
 }
 
 function get_adventure_item_icon(item: Adventure_Item): string {

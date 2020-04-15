@@ -11,25 +11,37 @@ type Available_Purchase = {
     card: Adventure_Merchant_Card
 }
 
-function compute_adventure_hero_inventory_field_bonus(inventory: Adventure_Hero_Inventory, field: Modifier_Field) {
+function compute_item_effect_field_bonus(effect: Adventure_Item_Effect, field: Modifier_Field) {
     let bonus = 0;
 
-    for (const item of inventory) {
-        if (!item) continue;
+    if (effect.type == Adventure_Item_Effect_Type.in_combat) {
+        const changes = calculate_modifier_changes(effect.modifier);
 
-        for (const effect of item.effects) {
-            if (effect.type == Adventure_Item_Effect_Type.in_combat) {
-                const changes = calculate_modifier_changes(effect.modifier);
-
-                for (const change of changes) {
-                    if (change.type == Modifier_Change_Type.field_change) {
-                        if (change.field == field) {
-                            bonus += change.delta;
-                        }
-                    }
+        for (const change of changes) {
+            if (change.type == Modifier_Change_Type.field_change) {
+                if (change.field == field) {
+                    bonus += change.delta;
                 }
             }
         }
+    }
+
+    return bonus;
+}
+
+function compute_adventure_hero_field_bonus(state: Adventure_Hero_State, field: Modifier_Field) {
+    let bonus = 0;
+
+    for (const item of state.items) {
+        if (!item) continue;
+
+        for (const effect of item.effects) {
+            bonus += compute_item_effect_field_bonus(effect, field);
+        }
+    }
+
+    for (const effect of state.permanents) {
+        bonus += compute_item_effect_field_bonus(effect, field);
     }
 
     return bonus;
@@ -82,7 +94,8 @@ function change_party_add_hero(slot: number, hero: Hero_Type, reason = Adventure
             type: Adventure_Party_Slot_Type.hero,
             hero: hero,
             base_health: hero_definition_by_type(hero).health,
-            items: []
+            items: [],
+            permanents: []
         },
         reason: reason
     }
@@ -199,7 +212,7 @@ function available_purchase_to_party_changes(party: Party_Snapshot, available: A
 }
 
 function is_party_hero_dead(slot: Adventure_Party_Hero_Slot) {
-    const health_bonus = compute_adventure_hero_inventory_field_bonus(slot.items, Modifier_Field.health_bonus);
+    const health_bonus = compute_adventure_hero_field_bonus(slot, Modifier_Field.health_bonus);
     const actual_health = slot.base_health + health_bonus;
     return actual_health <= 0;
 }
@@ -208,9 +221,7 @@ function is_party_creep_dead(slot: Adventure_Party_Creep_Slot) {
     return slot.health == 0;
 }
 
-// TODO This is wack, because we change the snapshot we pass on server when consuming changes, but not on the client
-//      this function could be made pure, if it doesn't cause any problems
-function consume_adventure_party_action(party: Party_Snapshot, action: Adventure_Party_Action, change_consumer: (change: Adventure_Party_Change) => void) {
+function adventure_party_action_to_changes(party: Party_Snapshot, action: Adventure_Party_Action): Adventure_Party_Change[] {
     function find_item_by_entity_id(id: Adventure_Party_Entity_Id): [Adventure_Item_Container, Adventure_Item] | undefined {
         const index_in_bag = party.bag.findIndex(item => item.entity_id == id);
         if (index_in_bag != -1) {
@@ -239,6 +250,8 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
         }
     }
 
+    const changes: Adventure_Party_Change[] = [];
+
     switch (action.type) {
         case Adventure_Party_Action_Type.drag_item_on_hero: {
             const result = find_item_by_entity_id(action.item_entity);
@@ -256,7 +269,7 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
                 const item_slot = slot.items[index];
 
                 if (!item_slot) {
-                    change_consumer({
+                    changes.push({
                         type: Adventure_Party_Change_Type.move_item,
                         source: container,
                         target: {
@@ -279,7 +292,7 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
 
             const [container] = result;
 
-            change_consumer({
+            changes.push({
                 type: Adventure_Party_Change_Type.move_item,
                 source: container,
                 target: {
@@ -304,33 +317,36 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
             if (container.type != Adventure_Item_Container_Type.bag) break;
             if (item.type != Adventure_Item_Type.consumable) break;
 
-            change_consumer({
+            changes.push({
                 type: Adventure_Party_Change_Type.remove_bag_item,
                 slot_index: container.bag_slot_index
             });
 
-            switch (item.item_id) {
-                case Adventure_Consumable_Item_Id.healing_salve: {
+            switch (item.effect.type) {
+                case Adventure_Consumable_Effect_Type.add_permanent: {
+                    changes.push({
+                        type: Adventure_Party_Change_Type.add_permanent_effect,
+                        hero_slot_index: action.party_slot,
+                        effect: {
+                            source_item_id: item.item_id,
+                            ...item.effect.permanent
+                        }
+                    });
+
+                    break;
+                }
+
+                case Adventure_Consumable_Effect_Type.restore_health: {
                     const max_health = hero_definition_by_type(target.hero).health;
-                    const new_health = target.base_health + 5;
-                    const change = change_party_set_health_clamped(action.party_slot, new_health, max_health, Adventure_Health_Change_Reason.healing_salve);
-
-                    change_consumer(change);
+                    const new_health = target.base_health + item.effect.how_much;
+                    const change = change_party_set_health_clamped(action.party_slot, new_health, max_health, item.effect.reason);
+                    changes.push(change);
 
                     break;
                 }
 
-                case Adventure_Consumable_Item_Id.tome_of_knowledge: {
-                    break;
-                }
-
-                case Adventure_Consumable_Item_Id.enchanted_mango: {
-                    break;
-                }
-
-                default: unreachable(item.item_id);
+                default: unreachable(item.effect);
             }
-
 
             break;
         }
@@ -341,6 +357,8 @@ function consume_adventure_party_action(party: Party_Snapshot, action: Adventure
 
         default: unreachable(action);
     }
+
+    return changes;
 }
 
 
@@ -392,6 +410,16 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
 
         case Adventure_Party_Change_Type.remove_bag_item: {
             party.bag.splice(change.slot_index, 1);
+
+            break;
+        }
+
+        case Adventure_Party_Change_Type.add_permanent_effect: {
+            const slot = party.slots[change.hero_slot_index];
+            if (!slot) return;
+            if (slot.type != Adventure_Party_Slot_Type.hero) return;
+
+            slot.permanents.push(change.effect);
 
             break;
         }

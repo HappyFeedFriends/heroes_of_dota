@@ -553,7 +553,7 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
     for (const [index, slot] of player_on_adventure.party.slots.entries()) {
         switch (slot.type) {
             case Adventure_Party_Slot_Type.hero: {
-                const health_bonus = compute_adventure_hero_inventory_field_bonus(slot.items, Modifier_Field.health_bonus);
+                const health_bonus = compute_adventure_hero_field_bonus(slot, Modifier_Field.health_bonus);
                 const actual_health = slot.base_health + health_bonus;
 
                 if (actual_health > 0) {
@@ -567,6 +567,7 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                                 if (effect.type == Adventure_Item_Effect_Type.in_combat) {
                                     modifiers.push({
                                         item: item.item_id,
+                                        type: item.type,
                                         modifier: effect.modifier
                                     });
                                 }
@@ -575,6 +576,16 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                                     start_effects.push(effect);
                                 }
                             }
+                        }
+                    }
+
+                    for (const permanent of slot.permanents) {
+                        if (permanent.type == Adventure_Item_Effect_Type.in_combat) {
+                            modifiers.push({
+                                item: permanent.source_item_id,
+                                type: Adventure_Item_Type.consumable,
+                                modifier: permanent.modifier
+                            });
                         }
                     }
 
@@ -779,7 +790,7 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
 
             // Base health can go into negatives
             // Display health or health in combat = health bonus + base health
-            const health_bonus = compute_adventure_hero_inventory_field_bonus(slot.items, Modifier_Field.health_bonus);
+            const health_bonus = compute_adventure_hero_field_bonus(slot, Modifier_Field.health_bonus);
             const post_combat_health = source_unit.health;
             const max_base_health = hero_definition_by_type(slot.hero).health;
             const new_base_health = post_combat_health - health_bonus;

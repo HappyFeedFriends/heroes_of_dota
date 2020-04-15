@@ -30,7 +30,8 @@ declare const enum Adventure_Party_Change_Type {
     move_item = 3,
     remove_bag_item = 4,
     set_currency_amount = 5,
-    set_state_after_combat = 6
+    set_state_after_combat = 6,
+    add_permanent_effect = 7
 }
 
 declare const enum Adventure_Party_Action_Type {
@@ -54,6 +55,11 @@ declare const enum Adventure_Item_Effect_Type {
     in_combat = 0,
     post_combat = 1,
     combat_start = 2
+}
+
+declare const enum Adventure_Consumable_Effect_Type {
+    restore_health = 0,
+    add_permanent = 1
 }
 
 declare const enum Adventure_Equipment_Item_Id {
@@ -86,7 +92,9 @@ declare const enum Adventure_Post_Combat_Effect_Id {
 declare const enum Adventure_Consumable_Item_Id {
     healing_salve = 0,
     enchanted_mango = 1,
-    tome_of_knowledge = 2
+    tome_of_knowledge = 2,
+    tome_of_strength = 3,
+    tome_of_agility = 4
 }
 
 declare const enum Adventure_Constants {
@@ -314,6 +322,7 @@ type Adventure_Party_Slot = {
     hero: Hero_Type
     base_health: number // Can be negative, if compensated by item bonuses
     items: Adventure_Hero_Inventory
+    permanents: Adventure_Item_Effect_From_Source[]
 } | {
     type: Adventure_Party_Slot_Type.creep
     creep: Creep_Type
@@ -365,6 +374,10 @@ type Adventure_Party_Change = {
         creeps: Creep_Type[]
         spells: Spell_Id[]
     }
+} | {
+    type: Adventure_Party_Change_Type.add_permanent_effect
+    hero_slot_index: number
+    effect: Adventure_Item_Effect_From_Source
 }
 
 type Adventure_Item_Container = {
@@ -407,6 +420,7 @@ type Adventure_Consumable_Item = {
     type: Adventure_Item_Type.consumable
     entity_id: Adventure_Party_Entity_Id
     item_id: Adventure_Consumable_Item_Id
+    effect: Adventure_Consumable_Effect
 }
 
 type Adventure_Equipment_Item = {
@@ -433,7 +447,25 @@ type Adventure_Item_Effect = {
     how_much: number
 }
 
+type Adventure_Consumable_Effect = {
+    type: Adventure_Consumable_Effect_Type.restore_health
+    reason: Adventure_Health_Change_Reason
+    how_much: number
+} | {
+    type: Adventure_Consumable_Effect_Type.add_permanent
+    permanent: Adventure_Item_Effect
+}
+
+type Adventure_Item_Effect_From_Source = Adventure_Item_Effect & {
+    source_item_id: Adventure_Consumable_Item_Id
+}
+
 type Adventure_Item_Combat_Start_Effect = Find_By_Type<Adventure_Item_Effect, Adventure_Item_Effect_Type.combat_start>
+
+type Adventure_Hero_State = {
+    items: Adventure_Hero_Inventory
+    permanents: Adventure_Item_Effect_From_Source[]
+}
 
 type Adventure_Hero_Inventory = Array<Adventure_Equipment_Item | undefined> // Sparse array
 

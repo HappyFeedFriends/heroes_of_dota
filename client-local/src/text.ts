@@ -93,6 +93,8 @@ function get_adventure_item_name(item: Adventure_Item): string {
             case Adventure_Consumable_Item_Id.healing_salve: return "Healing Salve";
             case Adventure_Consumable_Item_Id.enchanted_mango: return get_item_name(Item_Id.enchanted_mango);
             case Adventure_Consumable_Item_Id.tome_of_knowledge: return get_item_name(Item_Id.tome_of_knowledge);
+            case Adventure_Consumable_Item_Id.tome_of_strength: return "Tome of Strength";
+            case Adventure_Consumable_Item_Id.tome_of_agility: return "Tome of Agility";
         }
     }
 

@@ -3357,7 +3357,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             if (!hero) break;
 
             for (const modifier of from_client_array(delta.modifiers)) {
-                apply_modifier(game, hero, modifier);
+                apply_modifier(game, hero, modifier.application);
             }
 
             for (const effect of from_client_array(delta.start_effects)) {

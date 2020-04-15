@@ -104,6 +104,8 @@ function adventure_consumable_item_id_to_model(id: Adventure_Consumable_Item_Id)
     switch (id) {
         case Adventure_Consumable_Item_Id.healing_salve: return "models/props_gameplay/salve.vmdl";
         case Adventure_Consumable_Item_Id.enchanted_mango: return "models/props_gameplay/mango.vmdl";
+        case Adventure_Consumable_Item_Id.tome_of_strength: return "models/gameplay/attrib_tome_str.vmdl";
+        case Adventure_Consumable_Item_Id.tome_of_agility: return "models/gameplay/attrib_tome_agi.vmdl";
     }
 
     return "models/props_gameplay/neutral_box.vmdl";

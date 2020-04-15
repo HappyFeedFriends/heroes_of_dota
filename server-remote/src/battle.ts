@@ -18,7 +18,12 @@ export type Battle_Participant = {
 }
 
 export type Adventure_Item_Modifier = {
+    type: Adventure_Item_Type.equipment
     item: Adventure_Equipment_Item_Id
+    modifier: Modifier
+} | {
+    type: Adventure_Item_Type.consumable
+    item: Adventure_Consumable_Item_Id
     modifier: Modifier
 }
 
@@ -2289,10 +2294,21 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
             const spawned_hero = find_hero_by_id(battle, hero.id);
 
             if (spawned_hero) {
-                const modifiers = hero.modifiers.map(data => ({
-                    ...modifier(battle, data.modifier),
-                    source_item: data.item
-                }));
+                const modifiers = hero.modifiers.map(data => {
+                    switch (data.type) {
+                        case Adventure_Item_Type.equipment: return {
+                            type: data.type,
+                            item_id: data.item,
+                            application: modifier(battle, data.modifier),
+                        } as const;
+
+                        case Adventure_Item_Type.consumable: return {
+                            type: data.type,
+                            item_id: data.item,
+                            application: modifier(battle, data.modifier),
+                        } as const;
+                    }
+                });
 
                 submit_battle_delta(battle, {
                     type: Delta_Type.adventure_items_applied,

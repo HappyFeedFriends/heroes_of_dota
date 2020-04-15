@@ -27,7 +27,11 @@ type Spell_Slot_To_Card = {
 }
 
 export function act_on_adventure_party(party: Map_Player_Party, action: Adventure_Party_Action): Adventure_Party_Response {
-    consume_adventure_party_action(party, action, change => push_party_change(party, change));
+    const changes = adventure_party_action_to_changes(party, action);
+
+    for (const change of changes) {
+        push_party_change(party, change);
+    }
 
     const all_changes = party.changes;
     const origin_head = all_changes.length;
@@ -237,11 +241,13 @@ export function adventure_consumable_item_id_to_item(entity_id: Adventure_Party_
     } as const;
 
     switch (item_id) {
+        // @ts-ignore For now until we implement temporaries
         case Adventure_Consumable_Item_Id.enchanted_mango: return {
             ...base,
             item_id: item_id,
         };
 
+        // @ts-ignore For now until we implement temporaries
         case Adventure_Consumable_Item_Id.tome_of_knowledge: return {
             ...base,
             item_id: item_id
@@ -249,7 +255,42 @@ export function adventure_consumable_item_id_to_item(entity_id: Adventure_Party_
 
         case Adventure_Consumable_Item_Id.healing_salve: return {
             ...base,
-            item_id: item_id
+            item_id: item_id,
+            effect: {
+                type: Adventure_Consumable_Effect_Type.restore_health,
+                how_much: 5,
+                reason: Adventure_Health_Change_Reason.healing_salve
+            }
+        };
+
+        case Adventure_Consumable_Item_Id.tome_of_strength: return {
+            ...base,
+            item_id: item_id,
+            effect: {
+                type: Adventure_Consumable_Effect_Type.add_permanent,
+                permanent: {
+                    type: Adventure_Item_Effect_Type.in_combat,
+                    modifier: {
+                        id: Modifier_Id.health,
+                        bonus: 3
+                    }
+                }
+            }
+        };
+
+        case Adventure_Consumable_Item_Id.tome_of_agility: return {
+            ...base,
+            item_id: item_id,
+            effect: {
+                type: Adventure_Consumable_Effect_Type.add_permanent,
+                permanent: {
+                    type: Adventure_Item_Effect_Type.in_combat,
+                    modifier: {
+                        id: Modifier_Id.attack_damage,
+                        bonus: 1
+                    }
+                }
+            }
         };
     }
 }

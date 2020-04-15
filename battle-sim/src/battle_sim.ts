@@ -2042,7 +2042,21 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             if (!hero) break;
 
             for (const modifier of delta.modifiers) {
-                apply_modifier(battle, adventure_item_source(modifier.source_item), hero, modifier);
+                switch (modifier.type) {
+                    case Adventure_Item_Type.equipment: {
+                        apply_modifier(battle, adventure_item_source(modifier.item_id), hero, modifier.application);
+
+                        break;
+                    }
+
+                    case Adventure_Item_Type.consumable: {
+                        apply_modifier(battle, no_source(), hero, modifier.application);
+
+                        break;
+                    }
+
+                    default: unreachable(modifier);
+                }
             }
 
             for (const effect of delta.start_effects) {

@@ -1,18 +1,15 @@
 import {
-    subscribe_to_custom_event,
-    get_access_token,
     api_request,
     async_api_request,
-    fire_event,
-    subscribe_to_adventure_net_table,
+    async_get_player_name,
     async_local_api_request,
-    async_get_player_name
+    fire_event,
+    get_access_token,
+    subscribe_to_adventure_net_table,
+    subscribe_to_custom_event
 } from "./interop";
 
-import {
-    adventure_ui_root,
-    current_state,
-} from "./main_ui";
+import {adventure_ui_root, current_state,} from "./main_ui";
 
 const adventure_ui = {
     party_container: adventure_ui_root.FindChildTraverse("adventure_party"),
@@ -77,6 +74,7 @@ type Adventure_Party_Slot_UI = { container: Panel } & ({
     hero: Hero_Type
     base_health: number
     items: Inventory_Item_UI[]
+    permanents: Permanents_UI
     ui: {
         card_panel: Panel
         stat_health: Stat_Indicator
@@ -95,6 +93,8 @@ type Adventure_Party_Slot_UI = { container: Panel } & ({
     type: Adventure_Party_Slot_Type.spell
     spell: Spell_Id
 })
+
+type Adventure_Party_Hero_Slot_UI = Find_By_Type<Adventure_Party_Slot_UI, Adventure_Party_Slot_Type.hero>
 
 type Stat_Indicator = {
     label: LabelPanel
@@ -119,7 +119,12 @@ type Base_Slot_UI = {
 type Inventory_Item_UI = {
     item: Adventure_Equipment_Item | undefined
     panel: Panel
-    drop_layer: Panel
+}
+
+type Permanents_UI = {
+    effects: Adventure_Item_Effect_From_Source[]
+    root: Panel
+    last_three_effects_panels: Panel[]
 }
 
 type Bag_UI = {
@@ -272,34 +277,40 @@ function fill_adventure_base_slot_ui(container: Panel): Base_Slot_UI {
     }
 }
 
-function compute_hero_display_health(items: Inventory_Item_UI[], base_hp: number) {
-    const hp_bonus = compute_adventure_hero_inventory_field_bonus(items.map(item => item.item), Modifier_Field.health_bonus);
+function extract_hero_state(slot: Adventure_Party_Hero_Slot_UI): Adventure_Hero_State {
+    return {
+        items: slot.items.map(item => item.item),
+        permanents: slot.permanents.effects.map(effect => effect) // copy
+    };
+}
 
+function compute_hero_display_health(state: Adventure_Hero_State, base_hp: number) {
+    const hp_bonus = compute_adventure_hero_field_bonus(state, Modifier_Field.health_bonus);
     return Math.max(0, base_hp + hp_bonus);
 }
 
-function compute_hero_display_stats(hero: Hero_Type, items: Inventory_Item_UI[], base_hp: number) {
-    function compute_hero_display_attack(items: Inventory_Item_UI[], hero: Hero_Type) {
+function compute_hero_display_stats(hero: Hero_Type, state: Adventure_Hero_State, base_hp: number) {
+    function compute_hero_display_attack() {
         const base = hero_definition_by_type(hero).attack_damage;
-        const bonus = compute_adventure_hero_inventory_field_bonus(items.map(item => item.item), Modifier_Field.attack_bonus);
+        const bonus = compute_adventure_hero_field_bonus(state, Modifier_Field.attack_bonus);
         return base + bonus;
     }
 
-    function compute_hero_display_move_points(items: Inventory_Item_UI[], hero: Hero_Type) {
+    function compute_hero_display_move_points() {
         const base = hero_definition_by_type(hero).move_points;
-        const bonus = compute_adventure_hero_inventory_field_bonus(items.map(item => item.item), Modifier_Field.move_points_bonus);
+        const bonus = compute_adventure_hero_field_bonus(state, Modifier_Field.move_points_bonus);
         return base + bonus;
     }
 
-    function compute_hero_display_armor(items: Inventory_Item_UI[]) {
-        return compute_adventure_hero_inventory_field_bonus(items.map(item => item.item), Modifier_Field.armor_bonus);
+    function compute_hero_display_armor() {
+        return compute_adventure_hero_field_bonus(state, Modifier_Field.armor_bonus);
     }
 
     return {
-        health: compute_hero_display_health(items, base_hp),
-        attack: compute_hero_display_attack(items, hero),
-        moves: compute_hero_display_move_points(items, hero),
-        armor: compute_hero_display_armor(items)
+        health: compute_hero_display_health(state, base_hp),
+        attack: compute_hero_display_attack(),
+        moves: compute_hero_display_move_points(),
+        armor: compute_hero_display_armor()
     }
 }
 
@@ -548,7 +559,11 @@ function create_slot_stat_indicators(parent: Panel, stats: Display_Stats) {
     };
 }
 
-function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: Hero_Type, base_health: number, items: Adventure_Hero_Inventory): Adventure_Party_Slot_UI {
+function update_permanents_ui(permanents: Permanents_UI) {
+    // TBD
+}
+
+function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: Hero_Type, base_health: number, state: Adventure_Hero_State): Adventure_Party_Slot_UI {
     const base = fill_adventure_base_slot_ui(container);
     base.art.AddClass("hero");
     safely_set_panel_background_image(base.art, get_hero_card_art(hero));
@@ -557,19 +572,14 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
     const item_panels: Inventory_Item_UI[] = [];
 
     for (let item_index = 0; item_index < Adventure_Constants.max_hero_items; item_index++) {
-        const item_in_slot = items[item_index];
+        const item_in_slot = state.items[item_index];
         const item_panel = $.CreatePanel("Panel", inventory_parent, "");
-
         item_panel.AddClass("slot");
-
-        const drop_layer = $.CreatePanel("Panel", item_panel, "drop_layer");
-        drop_layer.hittest = false;
 
         const item_ui = {
             item: item_in_slot,
             panel: item_panel,
-            slot_index: item_index,
-            drop_layer: drop_layer
+            slot_index: item_index
         };
 
         update_hero_inventory_item_ui(item_ui, slot_index, item_index, item_in_slot);
@@ -577,7 +587,14 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
         item_panels.push(item_ui);
     }
 
-    const stats = compute_hero_display_stats(hero, item_panels, base_health);
+    const permanents_parent = $.CreatePanel("Panel", base.card_panel, "permanents");
+    const permanents_ui: Permanents_UI = {
+        effects: state.permanents,
+        root: permanents_parent,
+        last_three_effects_panels: []
+    };
+
+    const stats = compute_hero_display_stats(hero, state, base_health);
     const stats_ui = create_slot_stat_indicators(base.card_panel, stats);
 
     base.card_panel.SetHasClass("dead", stats.health == 0);
@@ -626,6 +643,7 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
         display_stats: stats,
         container: base.container,
         items: item_panels,
+        permanents: permanents_ui,
         ui: {
             card_panel: base.card_panel,
             stat_health: stats_ui.health,
@@ -636,7 +654,7 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
     } as const;
 
     set_up_adventure_slot_tooltip(base.container, "hero", tooltip => {
-        const stats = compute_hero_display_stats(slot.hero, slot.items, slot.base_health);
+        const stats = compute_hero_display_stats(slot.hero, extract_hero_state(slot), slot.base_health);
 
         create_hero_card_ui_base(tooltip, hero, stats.health, stats.attack, stats.moves, stats.armor);
     });
@@ -718,7 +736,7 @@ function reinitialize_adventure_ui(slots: number) {
 function set_adventure_party_slot(slot_index: number, slot: Adventure_Party_Slot): Adventure_Party_Slot_UI {
     function make_new_slot(slot: Adventure_Party_Slot, container: Panel): Adventure_Party_Slot_UI {
         switch (slot.type) {
-            case Adventure_Party_Slot_Type.hero: return fill_adventure_hero_slot(container, slot_index, slot.hero, slot.base_health, slot.items);
+            case Adventure_Party_Slot_Type.hero: return fill_adventure_hero_slot(container, slot_index, slot.hero, slot.base_health, slot);
             case Adventure_Party_Slot_Type.creep: return fill_adventure_creep_slot(container, slot.creep, slot.health);
             case Adventure_Party_Slot_Type.spell: return fill_adventure_spell_slot(container, slot.spell);
             case Adventure_Party_Slot_Type.empty: return fill_adventure_empty_slot(container);
@@ -729,7 +747,7 @@ function set_adventure_party_slot(slot_index: number, slot: Adventure_Party_Slot
     const container = old_slot.container;
     container.RemoveAndDeleteChildren();
 
-    const new_slot = make_new_slot(slot, container);
+    const new_slot = make_new_slot(deep_copy(slot), container);
 
     party.slots[slot_index] = new_slot;
 
@@ -1342,31 +1360,27 @@ function changes_equal(left: Adventure_Party_Change, right: Adventure_Party_Chan
     return objects_equal(left, right);
 }
 
-function copy_snapshot(snapshot: Party_Snapshot) {
-    function copy_value<T extends any>(source: T): T {
-        if (source == null) {
-            return source;
-        }
-
-        if (typeof source == "object") {
-            if (Array.isArray(source)) {
-                return source.map((value: any) => copy_value(value));
-            } else {
-                const result: Record<any, string> = {};
-                const keys = Object.keys(source);
-
-                for (const key of keys) {
-                    result[key] = copy_value(source[key]);
-                }
-
-                return result;
-            }
-        } else {
-            return source;
-        }
+function deep_copy<T extends any>(source: T): T {
+    if (source == null) {
+        return source;
     }
 
-    return copy_value(snapshot);
+    if (typeof source == "object") {
+        if (Array.isArray(source)) {
+            return source.map((value: any) => deep_copy(value));
+        } else {
+            const result: Record<any, any> = {};
+            const keys = Object.keys(source);
+
+            for (const key of keys) {
+                result[key] = deep_copy(source[key]);
+            }
+
+            return result;
+        }
+    } else {
+        return source;
+    }
 }
 
 function merge_adventure_party_changes(head_before_merge: number, changes: Adventure_Party_Change[]) {
@@ -1412,7 +1426,7 @@ function merge_adventure_party_changes(head_before_merge: number, changes: Adven
 }
 
 function compute_finalized_local_party_state() {
-    const snapshot = copy_snapshot(party.base_snapshot);
+    const snapshot = deep_copy(party.base_snapshot);
 
     for (const change of party.changes) {
         collapse_party_change(snapshot, change);
@@ -1433,17 +1447,13 @@ function restore_ui_state_from_party_state() {
 
 function perform_adventure_party_action(action: Adventure_Party_Action) {
     const predicted_local_state = compute_finalized_local_party_state();
-    let predicted_changes = 0;
+    const predicted_changes = adventure_party_action_to_changes(predicted_local_state, action);
 
-    consume_adventure_party_action(predicted_local_state, action, change => {
-        // There are cases where the game crashes without that schedule, presumably because of DnD
-        // Might be so deleting panels can't happen during drag and drop or whatever
-        $.Schedule(0, () => {
-            log(`Merging local changes after ${party.current_head}`);
-            merge_adventure_party_changes(party.current_head, [change]);
-
-            predicted_changes++;
-        })
+    // There are cases where the game crashes without that schedule, presumably because of DnD
+    // Might be so deleting panels can't happen during drag and drop or whatever
+    $.Schedule(0, () => {
+        log(`Merging local changes after ${party.current_head}`);
+        merge_adventure_party_changes(party.current_head, predicted_changes);
     });
 
     api_request(Api_Request_Type.act_on_adventure_party, {
@@ -1455,7 +1465,7 @@ function perform_adventure_party_action(action: Adventure_Party_Action) {
         accept_adventure_party_response(response);
 
         // The number of changes doesn't match so it's definitely a conflict
-        if (!response.snapshot && response.changes.length < predicted_changes) {
+        if (!response.snapshot && response.changes.length < predicted_changes.length) {
             log(`\tChange number mismatch, restoring from snapshot`);
 
             restore_ui_state_from_party_state();
@@ -1648,14 +1658,8 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         }
     }
 
-    function maybe_animate_hero_stat_change_after_inventory_change(container: Adventure_Item_Container): Adventure_Animation_Promise | undefined {
-        if (container.type != Adventure_Item_Container_Type.hero) return;
-
-        const slot = party.slots[container.hero_slot_index];
-        if (!slot) return;
-        if (slot.type != Adventure_Party_Slot_Type.hero) return;
-
-        const new_stats = compute_hero_display_stats(slot.hero, slot.items, slot.base_health);
+    function maybe_animate_hero_stat_change_after_state_change(slot: Adventure_Party_Hero_Slot_UI) {
+        const new_stats = compute_hero_display_stats(slot.hero, extract_hero_state(slot), slot.base_health);
         const animations: Adventure_Animation_Promise[] = [];
 
         const maybe_animate_stat = (stat: Stat_Indicator) => {
@@ -1673,6 +1677,16 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
         maybe_animate_stat(slot.ui.stat_armor);
 
         return all(animations);
+    }
+
+    function maybe_animate_container_stat_change_after_state_change(container: Adventure_Item_Container): Adventure_Animation_Promise | undefined {
+        if (container.type != Adventure_Item_Container_Type.hero) return;
+
+        const slot = party.slots[container.hero_slot_index];
+        if (!slot) return;
+        if (slot.type != Adventure_Party_Slot_Type.hero) return;
+
+        return maybe_animate_hero_stat_change_after_state_change(slot);
     }
 
     function health_change_animation_period(reason: Adventure_Health_Change_Reason): number {
@@ -1753,8 +1767,8 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
 
             animations.push(fixed_duration(0.2));
 
-            const animate_source = maybe_animate_hero_stat_change_after_inventory_change(change.source);
-            const animate_target = maybe_animate_hero_stat_change_after_inventory_change(change.target);
+            const animate_source = maybe_animate_container_stat_change_after_state_change(change.source);
+            const animate_target = maybe_animate_container_stat_change_after_state_change(change.target);
 
             if (animate_source) animations.push(animate_source);
             if (animate_target) animations.push(animate_target);
@@ -1772,7 +1786,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             switch (slot.type) {
                 case Adventure_Party_Slot_Type.hero: {
                     const old_health = slot.ui.stat_health.displayed_value;
-                    const new_health = compute_hero_display_health(slot.items, change.health);
+                    const new_health = compute_hero_display_health(extract_hero_state(slot), change.health);
                     const period = health_change_animation_period(change.reason);
 
                     let floating_numbers: Adventure_Animation_Promise;
@@ -1828,6 +1842,29 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             break;
         }
 
+        case Adventure_Party_Change_Type.add_permanent_effect: {
+            const slot = party.slots[change.hero_slot_index];
+            if (!slot) break;
+            if (slot.type != Adventure_Party_Slot_Type.hero) break;
+
+            slot.permanents.effects.push(change.effect);
+
+            switch (change.effect.source_item_id) {
+                case Adventure_Consumable_Item_Id.tome_of_knowledge:
+                case Adventure_Consumable_Item_Id.tome_of_strength:
+                case Adventure_Consumable_Item_Id.tome_of_agility: {
+                    Game.EmitSound("consume_tome");
+                    break;
+                }
+            }
+
+            update_permanents_ui(slot.permanents);
+            maybe_animate_hero_stat_change_after_state_change(slot);
+            flash_panel(slot.container);
+
+            break;
+        }
+
         case Adventure_Party_Change_Type.set_state_after_combat: {
             const attackers: Combat_Resource[] = [];
             const defendants: Combat_Resource[] = [];
@@ -1838,7 +1875,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
 
                 switch (slot.type) {
                     case Adventure_Party_Slot_Type.hero: {
-                        const new_health = compute_hero_display_health(slot.items, health_change.health_now);
+                        const new_health = compute_hero_display_health(extract_hero_state(slot), health_change.health_now);
                         slot.base_health = health_change.health_now;
                         slot.ui.stat_health.value_updater(slot.ui.stat_health, new_health);
 
