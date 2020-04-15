@@ -44,6 +44,7 @@ import {
 
 import {
     Map_Player_Party,
+    Map_Player_Party_Links,
     push_party_change,
     act_on_adventure_party,
     adventure_equipment_item_id_to_item,
@@ -532,7 +533,7 @@ function player_to_battle_participant(next_id: Id_Generator, player: Map_Player)
     }
 }
 
-function player_to_adventure_battle_participant(next_id: Id_Generator, id: Player_Id, player_on_adventure: Map_Player_On_Adventure): Battle_Participant {
+function player_to_adventure_battle_participant(next_id: Id_Generator, id: Player_Id, player_on_adventure: Map_Player_On_Adventure): [Battle_Participant, Map_Player_Party_Links] {
     const participant: Battle_Participant =  {
         map_entity: {
             type: Map_Entity_Type.player,
@@ -543,8 +544,11 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
         creeps: [],
     };
 
-    // TODO this function mutates player state, bad, just return it?
-    const links = player_on_adventure.party.links;
+    const links: Map_Player_Party_Links = {
+        creeps: [],
+        heroes: [],
+        spells: []
+    };
 
     for (const [index, slot] of player_on_adventure.party.slots.entries()) {
         switch (slot.type) {
@@ -634,7 +638,7 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
         }
     }
 
-    return participant;
+    return [participant, links];
 }
 
 type Adventure_Enemy_Definition = Find_By_Type<Adventure_Entity_Definition, Adventure_Entity_Type.enemy>;
@@ -1364,12 +1368,14 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
         }
 
         const id_generator = sequential_id_generator();
+        const [player_participant, links] = player_to_adventure_battle_participant(id_generator, player.id, state);
 
         const battle = start_battle(battle_id_generator(), id_generator, random, [
-            player_to_adventure_battle_participant(id_generator, player.id, state),
+            player_participant,
             adventure_enemy_to_battle_participant(id_generator, entity.id, entity.definition)
         ], battleground);
 
+        state.party.links = links;
         battles.push(battle);
 
         transition_player_to_battle(player, battle);
@@ -1636,8 +1642,9 @@ function register_dev_handlers() {
 
             const id_generator = sequential_id_generator();
 
+            const [player_participant] = player_to_adventure_battle_participant(id_generator, player.id, state);
             const battle = start_battle(battle_id_generator(), id_generator, random, [
-                player_to_adventure_battle_participant(id_generator, player.id, state),
+                player_participant,
                 adventure_enemy_to_battle_participant(id_generator, entity.id, entity.definition)
             ], battleground);
 

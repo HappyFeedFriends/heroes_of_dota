@@ -1,10 +1,12 @@
 export type Map_Player_Party = Party_Snapshot & {
     changes: Adventure_Party_Change[]
-    links: {
-        heroes: Hero_Slot_To_Unit[]
-        creeps: Creep_Slot_To_Unit[]
-        spells: Spell_Slot_To_Card[]
-    }
+    links: Map_Player_Party_Links
+}
+
+export type Map_Player_Party_Links = {
+    heroes: Hero_Slot_To_Unit[]
+    creeps: Creep_Slot_To_Unit[]
+    spells: Spell_Slot_To_Card[]
 }
 
 type Hero_Slot_To_Unit = {
