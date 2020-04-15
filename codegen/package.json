@@ -8,9 +8,9 @@
   "devDependencies": {
     "@types/node": "12.6.9",
     "ttypescript": "1.5.9",
-    "typescript": "3.8.3",
+    "typescript": "3.7.4",
     "ts-node": "8.5.4",
-    "typescript-to-lua": "0.32.2",
+    "typescript-to-lua": "0.31.0",
     "tsutils": "3.17.1"
   },
   "author": "",
