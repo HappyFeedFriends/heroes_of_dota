@@ -2944,6 +2944,12 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
             try_play_random_sound_for_hero(target, sounds => sounds.pain);
         }
 
+        if (target.supertype == Unit_Supertype.creep) {
+            if (target.type == Creep_Type.small_spider || target.type == Creep_Type.spiderling) {
+                add_activity_override(target, GameActivity_t.ACT_DOTA_SPAWN, 0.5);
+            }
+        }
+
         number_particle(-value_delta, 250, 70, 70);
     }
 
