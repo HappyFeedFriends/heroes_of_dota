@@ -2573,7 +2573,10 @@ function submit_adventure_room_details_to_server(editor: Adventure_Editor) {
     dispatch_local_editor_action({
         type: Editor_Action_Type.set_room_details,
         zones: editor.camera_restriction_zones,
-        exits: editor.exits
+        exits: editor.exits.map(exit => ({
+            at: exit.at,
+            to: exit.to
+        }))
     });
 }
 
