@@ -131,26 +131,23 @@ function find_union_tags(union: Union_Type): Union_Tag[] | undefined {
 
     for (const member_name of Object.keys(member_counter)) {
         const member_values = member_counter[member_name];
-        const member_is_in_all_types = member_values.length == union.types.length;
 
-        if (member_is_in_all_types) {
-            for (const member_value of member_values) {
-                const existing_tag = result.find(tag => tag.discriminates_to == member_value.object);
+        for (const member_value of member_values) {
+            const existing_tag = result.find(tag => tag.discriminates_to == member_value.object);
 
-                if (existing_tag) {
-                    existing_tag.discriminated_by.push({
+            if (existing_tag) {
+                existing_tag.discriminated_by.push({
+                    name: member_value.member_name,
+                    type: member_value.member_type
+                });
+            } else {
+                result.push({
+                    discriminates_to: member_value.object,
+                    discriminated_by: [{
                         name: member_value.member_name,
                         type: member_value.member_type
-                    });
-                } else {
-                    result.push({
-                        discriminates_to: member_value.object,
-                        discriminated_by: [{
-                            name: member_value.member_name,
-                            type: member_value.member_type
-                        }]
-                    })
-                }
+                    }]
+                })
             }
         }
     }
@@ -188,7 +185,7 @@ function deserialize_value(type: Type, from: any): any {
 
         case Type_Kind.union: {
             const tags = find_union_tags(type);
-            if (!tags) {
+            if (!tags || tags.length == 0) {
                 $.Msg("Unable to find union tags");
                 return;
             }

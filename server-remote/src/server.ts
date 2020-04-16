@@ -39,15 +39,15 @@ import {
     apply_editor_action,
     editor_create_entity,
     find_available_purchase_by_id,
-    mark_available_purchase_as_sold_out
+    mark_available_purchase_as_sold_out,
+    adventure_item_id_to_item
 } from "./adventures";
 
 import {
     Map_Player_Party,
     Map_Player_Party_Links,
     push_party_change,
-    act_on_adventure_party,
-    adventure_item_id_to_item
+    act_on_adventure_party
 } from "./adventure_party";
 
 import {
@@ -577,11 +577,15 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                         }
                     }
 
-                    for (const permanent of slot.permanents) {
-                        if (permanent.type == Adventure_Item_Effect_Type.in_combat) {
+                    for (const effect of slot.effects) {
+                        if (effect.type == Adventure_Item_Effect_Type.combat_start) {
+                            start_effects.push(effect);
+                        }
+
+                        if (effect.type == Adventure_Item_Effect_Type.in_combat) {
                             modifiers.push({
-                                item: permanent.source_item_id,
-                                modifier: permanent.modifier
+                                item: effect.source_item_id,
+                                modifier: effect.modifier
                             });
                         }
                     }
@@ -852,6 +856,24 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
                         if (effect.type == Adventure_Item_Effect_Type.post_combat) {
                             apply_adventure_item_effect(player.party, slot, slot_index, effect);
                         }
+                    }
+                }
+
+                for (const effect of slot.effects) {
+                    if (effect.type == Adventure_Item_Effect_Type.post_combat) {
+                        apply_adventure_item_effect(player.party, slot, slot_index, effect);
+                    }
+                }
+
+                for (let effect_index = 0; effect_index < slot.effects.length; effect_index++) {
+                    const effect = slot.effects[effect_index];
+
+                    if (!effect.permanent) {
+                        push_party_change(player.party, {
+                            type: Adventure_Party_Change_Type.remove_effect,
+                            hero_slot_index: slot_index,
+                            effect_index: effect_index
+                        });
                     }
                 }
             }
@@ -1788,8 +1810,7 @@ function register_dev_handlers() {
                     const items = parse_enum_query(parts[1], enum_names_to_values<Adventure_Item_Id>());
 
                     for (const id of items) {
-                        const entity_id = state.ongoing_adventure.next_party_entity_id();
-                        push_party_change(party, change_party_add_item(adventure_item_id_to_item(entity_id, id)));
+                        push_party_change(party, change_party_add_item(adventure_item_id_to_item(state.ongoing_adventure, id)));
                     }
 
                     break;

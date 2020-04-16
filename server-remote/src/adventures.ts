@@ -1,6 +1,5 @@
 import {readFileSync, writeFileSync, readdirSync} from "fs";
 import {try_string_to_enum_value, unreachable} from "./common";
-import {adventure_item_id_to_item} from "./adventure_party";
 import {Entry_With_Weight, Random} from "./random";
 
 const storage_dir_path = "src/adventures";
@@ -157,7 +156,7 @@ function create_adventure_entity_from_definition(ongoing: Ongoing_Adventure, def
             return {
                 ...base,
                 type: definition.type,
-                item: adventure_item_id_to_item(ongoing.next_party_entity_id(), definition.item)
+                item: adventure_item_id_to_item(ongoing, definition.item)
             };
         }
 
@@ -214,7 +213,7 @@ function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventu
 
     const item_entries = definition.items.map(id => {
         return {
-            data: adventure_item_id_to_item(ongoing.next_party_entity_id(), id),
+            data: adventure_item_id_to_item(ongoing, id),
             entity_id: ongoing.next_party_entity_id(),
             cost: item_cost(id),
             sold_out: false
@@ -880,4 +879,253 @@ export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventur
     }
 
     persist_adventure_to_file_system(ongoing.adventure);
+}
+
+export function adventure_item_id_to_item(ongoing: Ongoing_Adventure, item_id: Adventure_Item_Id): Adventure_Item {
+    const item_entity_id = ongoing.next_party_entity_id();
+    
+    const equipment = {
+        type: Adventure_Item_Type.equipment,
+        entity_id: item_entity_id
+    } as const;
+
+    const consumable = {
+        type: Adventure_Item_Type.consumable,
+        entity_id: item_entity_id
+    } as const;
+
+    function in_combat_effect(modifier: Modifier): Adventure_Item_Effect {
+        return {
+            type: Adventure_Item_Effect_Type.in_combat,
+            modifier: modifier
+        };
+    }
+
+    switch (item_id) {
+        case Adventure_Item_Id.boots_of_travel: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [in_combat_effect({
+                id: Modifier_Id.move_speed,
+                bonus: 3
+            })]
+        };
+
+        case Adventure_Item_Id.assault_cuirass: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [in_combat_effect({
+                id: Modifier_Id.armor,
+                bonus: 4
+            })]
+        };
+
+        case Adventure_Item_Id.divine_rapier: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [in_combat_effect({
+                id: Modifier_Id.attack_damage,
+                bonus: 8
+            })]
+        };
+
+        case Adventure_Item_Id.mask_of_madness: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [in_combat_effect({
+                id: Modifier_Id.item_mask_of_madness,
+                attack: 4
+            })]
+        };
+
+        case Adventure_Item_Id.boots_of_speed: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [in_combat_effect({
+                id: Modifier_Id.move_speed,
+                bonus: 1
+            })]
+        };
+
+        case Adventure_Item_Id.blades_of_attack: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [in_combat_effect({
+                id: Modifier_Id.attack_damage,
+                bonus: 2
+            })]
+        };
+
+        case Adventure_Item_Id.belt_of_strength: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [in_combat_effect({
+                id: Modifier_Id.health,
+                bonus: 4
+            })]
+        };
+
+        case Adventure_Item_Id.chainmail: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [in_combat_effect({
+                id: Modifier_Id.armor,
+                bonus: 1
+            })]
+        };
+
+        case Adventure_Item_Id.basher: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [in_combat_effect({
+                id: Modifier_Id.item_basher
+            })]
+        };
+
+        case Adventure_Item_Id.iron_branch: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [in_combat_effect({
+                id: Modifier_Id.item_iron_branch,
+                armor_bonus: 1,
+                attack_bonus: 1,
+                health_bonus: 1,
+                moves_bonus: 1
+            })]
+        };
+
+        case Adventure_Item_Id.mystic_staff: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [{
+                type: Adventure_Item_Effect_Type.combat_start,
+                effect_id: Adventure_Combat_Start_Effect_Id.add_ability_charges,
+                for_abilities_with_level_less_or_equal: 3,
+                how_many: 1
+            }]
+        };
+
+        case Adventure_Item_Id.ring_of_regen: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [{
+                type: Adventure_Item_Effect_Type.post_combat,
+                effect_id: Adventure_Post_Combat_Effect_Id.restore_health,
+                how_much: 1
+            }]
+        };
+
+        case Adventure_Item_Id.ring_of_tarrasque: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [
+                {
+                    type: Adventure_Item_Effect_Type.post_combat,
+                    effect_id: Adventure_Post_Combat_Effect_Id.restore_health,
+                    how_much: 3
+                },
+                in_combat_effect({
+                    id: Modifier_Id.health,
+                    bonus: 2
+                })
+            ]
+        };
+
+        case Adventure_Item_Id.heart_of_tarrasque: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [
+                {
+                    type: Adventure_Item_Effect_Type.post_combat,
+                    effect_id: Adventure_Post_Combat_Effect_Id.restore_health,
+                    how_much: 5
+                },
+                in_combat_effect({
+                    id: Modifier_Id.health,
+                    bonus: 5
+                })
+            ]
+        };
+
+        case Adventure_Item_Id.tome_of_aghanim: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [{
+                type: Adventure_Item_Effect_Type.combat_start,
+                effect_id: Adventure_Combat_Start_Effect_Id.level_up,
+                how_many_levels: 1
+            }]
+        };
+
+        case Adventure_Item_Id.enchanted_mango: return {
+            ...consumable,
+            item_id: item_id,
+            action: {
+                type: Adventure_Consumable_Action_Type.add_effect,
+                permanent: false,
+                effect: {
+                    type: Adventure_Item_Effect_Type.combat_start,
+                    effect_id: Adventure_Combat_Start_Effect_Id.add_ability_charges,
+                    for_abilities_with_level_less_or_equal: 1,
+                    how_many: 1
+                }
+            }
+        };
+
+        case Adventure_Item_Id.tome_of_knowledge: return {
+            ...consumable,
+            item_id: item_id,
+            action: {
+                type: Adventure_Consumable_Action_Type.add_effect,
+                permanent: false,
+                effect: {
+                    type: Adventure_Item_Effect_Type.combat_start,
+                    effect_id: Adventure_Combat_Start_Effect_Id.level_up,
+                    how_many_levels: 1
+                }
+            }
+        };
+
+        case Adventure_Item_Id.healing_salve: return {
+            ...consumable,
+            item_id: item_id,
+            action: {
+                type: Adventure_Consumable_Action_Type.restore_health,
+                how_much: 5,
+                reason: Adventure_Health_Change_Reason.healing_salve
+            }
+        };
+
+        case Adventure_Item_Id.tome_of_strength: return {
+            ...consumable,
+            item_id: item_id,
+            action: {
+                type: Adventure_Consumable_Action_Type.add_effect,
+                permanent: true,
+                effect: {
+                    type: Adventure_Item_Effect_Type.in_combat,
+                    modifier: {
+                        id: Modifier_Id.health,
+                        bonus: 2
+                    }
+                }
+            }
+        };
+
+        case Adventure_Item_Id.tome_of_agility: return {
+            ...consumable,
+            item_id: item_id,
+            action: {
+                type: Adventure_Consumable_Action_Type.add_effect,
+                permanent: true,
+                effect: {
+                    type: Adventure_Item_Effect_Type.in_combat,
+                    modifier: {
+                        id: Modifier_Id.attack_damage,
+                        bonus: 1
+                    }
+                }
+            }
+        };
+    }
 }

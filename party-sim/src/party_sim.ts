@@ -40,7 +40,7 @@ function compute_adventure_hero_field_bonus(state: Adventure_Hero_State, field: 
         }
     }
 
-    for (const effect of state.permanents) {
+    for (const effect of state.effects) {
         bonus += compute_item_effect_field_bonus(effect, field);
     }
 
@@ -95,7 +95,7 @@ function change_party_add_hero(slot: number, hero: Hero_Type, reason = Adventure
             hero: hero,
             base_health: hero_definition_by_type(hero).health,
             items: [],
-            permanents: []
+            effects: []
         },
         reason: reason
     }
@@ -322,30 +322,31 @@ function adventure_party_action_to_changes(party: Party_Snapshot, action: Advent
                 slot_index: container.bag_slot_index
             });
 
-            switch (item.effect.type) {
-                case Adventure_Consumable_Effect_Type.add_permanent: {
+            switch (item.action.type) {
+                case Adventure_Consumable_Action_Type.add_effect: {
                     changes.push({
-                        type: Adventure_Party_Change_Type.add_permanent_effect,
+                        type: Adventure_Party_Change_Type.add_effect,
                         hero_slot_index: action.party_slot,
                         effect: {
                             source_item_id: item.item_id,
-                            ...item.effect.permanent
+                            permanent: item.action.permanent,
+                            ...item.action.effect
                         }
                     });
 
                     break;
                 }
 
-                case Adventure_Consumable_Effect_Type.restore_health: {
+                case Adventure_Consumable_Action_Type.restore_health: {
                     const max_health = hero_definition_by_type(target.hero).health;
-                    const new_health = target.base_health + item.effect.how_much;
-                    const change = change_party_set_health_clamped(action.party_slot, new_health, max_health, item.effect.reason);
+                    const new_health = target.base_health + item.action.how_much;
+                    const change = change_party_set_health_clamped(action.party_slot, new_health, max_health, item.action.reason);
                     changes.push(change);
 
                     break;
                 }
 
-                default: unreachable(item.effect);
+                default: unreachable(item.action);
             }
 
             break;
@@ -414,12 +415,22 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
             break;
         }
 
-        case Adventure_Party_Change_Type.add_permanent_effect: {
+        case Adventure_Party_Change_Type.add_effect: {
             const slot = party.slots[change.hero_slot_index];
             if (!slot) return;
             if (slot.type != Adventure_Party_Slot_Type.hero) return;
 
-            slot.permanents.push(change.effect);
+            slot.effects.push(change.effect);
+
+            break;
+        }
+
+        case Adventure_Party_Change_Type.remove_effect: {
+            const slot = party.slots[change.hero_slot_index];
+            if (!slot) return;
+            if (slot.type != Adventure_Party_Slot_Type.hero) return;
+
+            slot.effects.splice(change.effect_index, 1);
 
             break;
         }

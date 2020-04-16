@@ -1092,7 +1092,7 @@ function collapse_combat_start_effect(hero: Hero, effect: Adventure_Item_Combat_
     switch (effect.effect_id) {
         case Adventure_Combat_Start_Effect_Id.add_ability_charges: {
             for (const ability of hero.abilities) {
-                if (ability.type != Ability_Type.passive) {
+                if (ability.type != Ability_Type.passive && ability.available_since_level <= effect.for_abilities_with_level_less_or_equal) {
                     ability.charges += effect.how_many;
                     ability.charges_remaining += effect.how_many;
                 }

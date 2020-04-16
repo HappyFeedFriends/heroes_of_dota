@@ -74,7 +74,7 @@ type Adventure_Party_Slot_UI = { container: Panel } & ({
     hero: Hero_Type
     base_health: number
     items: Inventory_Item_UI[]
-    permanents: Permanents_UI
+    effects: Effects_UI
     ui: {
         card_panel: Panel
         stat_health: Stat_Indicator
@@ -121,7 +121,7 @@ type Inventory_Item_UI = {
     panel: Panel
 }
 
-type Permanents_UI = {
+type Effects_UI = {
     effects: Adventure_Item_Effect_From_Source[]
     root: Panel
     last_three_effects_panels: Panel[]
@@ -280,7 +280,7 @@ function fill_adventure_base_slot_ui(container: Panel): Base_Slot_UI {
 function extract_hero_state(slot: Adventure_Party_Hero_Slot_UI): Adventure_Hero_State {
     return {
         items: slot.items.map(item => item.item),
-        permanents: slot.permanents.effects.map(effect => effect) // copy
+        effects: Array.from(slot.effects.effects)
     };
 }
 
@@ -559,7 +559,7 @@ function create_slot_stat_indicators(parent: Panel, stats: Display_Stats) {
     };
 }
 
-function update_permanents_ui(permanents: Permanents_UI) {
+function update_effects_ui(ui: Effects_UI) {
     // TBD
 }
 
@@ -587,10 +587,10 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
         item_panels.push(item_ui);
     }
 
-    const permanents_parent = $.CreatePanel("Panel", base.card_panel, "permanents");
-    const permanents_ui: Permanents_UI = {
-        effects: state.permanents,
-        root: permanents_parent,
+    const effects_parent = $.CreatePanel("Panel", base.card_panel, "effects");
+    const effects_ui: Effects_UI = {
+        effects: state.effects,
+        root: effects_parent,
         last_three_effects_panels: []
     };
 
@@ -643,7 +643,7 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
         display_stats: stats,
         container: base.container,
         items: item_panels,
-        permanents: permanents_ui,
+        effects: effects_ui,
         ui: {
             card_panel: base.card_panel,
             stat_health: stats_ui.health,
@@ -1842,12 +1842,12 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             break;
         }
 
-        case Adventure_Party_Change_Type.add_permanent_effect: {
+        case Adventure_Party_Change_Type.add_effect: {
             const slot = party.slots[change.hero_slot_index];
             if (!slot) break;
             if (slot.type != Adventure_Party_Slot_Type.hero) break;
 
-            slot.permanents.effects.push(change.effect);
+            slot.effects.effects.push(change.effect);
 
             switch (change.effect.source_item_id) {
                 case Adventure_Item_Id.tome_of_knowledge:
@@ -1856,13 +1856,32 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                     Game.EmitSound("consume_tome");
                     break;
                 }
+
+                case Adventure_Item_Id.enchanted_mango: {
+                    Game.EmitSound("consume_mango");
+                    break;
+                }
             }
 
-            update_permanents_ui(slot.permanents);
+            update_effects_ui(slot.effects);
             maybe_animate_hero_stat_change_after_state_change(slot);
             flash_panel(slot.container);
 
             break;
+        }
+
+        case Adventure_Party_Change_Type.remove_effect: {
+            const slot = party.slots[change.hero_slot_index];
+            if (!slot) break;
+            if (slot.type != Adventure_Party_Slot_Type.hero) break;
+
+            slot.effects.effects.splice(change.effect_index, 1);
+
+            update_effects_ui(slot.effects);
+            maybe_animate_hero_stat_change_after_state_change(slot);
+            flash_panel(slot.container);
+
+            return fixed_duration(0.1);
         }
 
         case Adventure_Party_Change_Type.set_state_after_combat: {
