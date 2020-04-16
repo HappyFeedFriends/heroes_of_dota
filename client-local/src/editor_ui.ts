@@ -349,8 +349,8 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
         access_token: get_access_token()
     });
 
-    async function update_array_and_resubmit<T>(elements: T[], clicked_element: T, matcher: (a: T, b: T) => boolean) {
-        const existing_index = elements.findIndex(existing => matcher(existing, clicked_element));
+    async function update_array_and_resubmit<T>(elements: T[], clicked_element: T) {
+        const existing_index = elements.indexOf(clicked_element);
 
         if (existing_index == -1) {
             elements.push(clicked_element);
@@ -370,10 +370,10 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
         return existing_index == -1;
     }
 
-    function stock_updating_button<T>(button: Panel, elements: T[], associated_element: T, matcher: (a: T, b: T) => boolean) {
-        button.SetHasClass("selected", elements.some(existing => matcher(existing, associated_element)));
+    function stock_updating_button<T>(button: Panel, elements: T[], associated_element: T) {
+        button.SetHasClass("selected", elements.indexOf(associated_element) != -1)
         button.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, async () => {
-            const selected = await update_array_and_resubmit(elements, associated_element, matcher);
+            const selected = await update_array_and_resubmit(elements, associated_element);
             button.SetHasClass("selected", selected);
         });
     }
@@ -406,7 +406,7 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
 
         for (const hero of enum_values<Hero_Type>()) {
             const button = hero_button(container, hero);
-            stock_updating_button(button, stock.heroes, hero, (a, b) => a == b);
+            stock_updating_button(button, stock.heroes, hero);
         }
     }));
 
@@ -415,7 +415,7 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
 
         for (const creep of enum_values<Creep_Type>()) {
             const button = entity_dropdown_button(get_creep_name(creep), () => {});
-            stock_updating_button(button, stock.creeps, creep, (a, b) => a == b);
+            stock_updating_button(button, stock.creeps, creep);
         }
     }));
 
@@ -424,27 +424,18 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
 
         for (const spell of enum_values<Spell_Id>()) {
             const button = entity_dropdown_button(get_spell_name(spell), () => {});
-            stock_updating_button(button, stock.spells, spell, (a, b) => a == b);
+            stock_updating_button(button, stock.spells, spell);
         }
     }));
 
     entity_button("Items", dropdown_menu_action(menu, async parent => {
         const stock = await async_stock;
-        const all_items: Adventure_Item_Definition[] = [];
-
-        for (const id of enum_values<Adventure_Consumable_Item_Id>()) {
-            all_items.push({ type: Adventure_Item_Type.consumable, id: id });
-        }
-
-        for (const id of enum_values<Adventure_Equipment_Item_Id>()) {
-            all_items.push({ type: Adventure_Item_Type.equipment, id: id });
-        }
-
+        const all_items = enum_values<Adventure_Item_Id>();
         const container = wrapping_container(parent);
 
         for (const item of all_items) {
-            const button = item_button(container, get_adventure_item_definition_icon(item));
-            stock_updating_button(button, stock.items, item, (a, b) => a.type == b.type && a.id == b.id);
+            const button = item_button(container, get_adventure_item_icon_by_id(item));
+            stock_updating_button(button, stock.items, item);
         }
     }));
 
@@ -1075,18 +1066,6 @@ export function battleground_editor_filter_mouse_click(editor: Battleground_Edit
     }
 }
 
-function get_adventure_item_definition_icon(item: Adventure_Item_Definition): string {
-    switch (item.type) {
-        case Adventure_Item_Type.equipment: {
-            return get_adventure_equipment_item_icon(item.id);
-        }
-
-        case Adventure_Item_Type.consumable: {
-            return get_adventure_consumable_item_icon(item.id);
-        }
-    }
-}
-
 function adventure_editor_show_context_menu(editor: Adventure_Editor, click_world_position: XYZ) {
     const click = xy(click_world_position.x, click_world_position.y);
 
@@ -1138,7 +1117,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         const wrapper = $.CreatePanel("Panel", context_menu, "context_menu_item_wrapper");
         const item_container = $.CreatePanel("Panel", wrapper, "context_menu_item_container");
 
-        function item_button(name: string, item: Adventure_Item_Definition) {
+        function item_button(name: string, item: Adventure_Item_Id) {
             const button = $.CreatePanel("Button", item_container, "");
             button.AddClass("item");
             button.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
@@ -1163,21 +1142,11 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
                 });
             });
 
-            safely_set_panel_background_image(button, get_adventure_item_definition_icon(item));
+            safely_set_panel_background_image(button, get_adventure_item_icon_by_id(item));
         }
 
-        for (const [name, id] of enum_names_to_values<Adventure_Equipment_Item_Id>()) {
-            item_button(name, {
-                type: Adventure_Item_Type.equipment,
-                id: id
-            });
-        }
-
-        for (const [name, id] of enum_names_to_values<Adventure_Consumable_Item_Id>()) {
-            item_button(name, {
-                type: Adventure_Item_Type.consumable,
-                id: id
-            });
+        for (const [name, id] of enum_names_to_values<Adventure_Item_Id>()) {
+            item_button(name, id);
         }
     }
 

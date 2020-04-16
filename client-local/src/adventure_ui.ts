@@ -1850,9 +1850,9 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             slot.permanents.effects.push(change.effect);
 
             switch (change.effect.source_item_id) {
-                case Adventure_Consumable_Item_Id.tome_of_knowledge:
-                case Adventure_Consumable_Item_Id.tome_of_strength:
-                case Adventure_Consumable_Item_Id.tome_of_agility: {
+                case Adventure_Item_Id.tome_of_knowledge:
+                case Adventure_Item_Id.tome_of_strength:
+                case Adventure_Item_Id.tome_of_agility: {
                     Game.EmitSound("consume_tome");
                     break;
                 }

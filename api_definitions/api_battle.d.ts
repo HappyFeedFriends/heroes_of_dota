@@ -661,12 +661,7 @@ type Modifier_Application = {
 }
 
 type Modifier_Application_From_Adventure_Item = {
-    type: Adventure_Item_Type.equipment
-    item_id: Adventure_Equipment_Item_Id
-    application: Modifier_Application
-} | {
-    type: Adventure_Item_Type.consumable
-    item_id: Adventure_Consumable_Item_Id
+    item_id: Adventure_Item_Id
     application: Modifier_Application
 }
 

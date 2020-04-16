@@ -68,39 +68,28 @@ function get_item_name(item: Item_Id): string {
 }
 
 function get_adventure_item_name(item: Adventure_Item): string {
-    function get_adventure_equipment_item_name(id: Adventure_Equipment_Item_Id): string {
-        switch (id) {
-            case Adventure_Equipment_Item_Id.boots_of_travel: return get_item_name(Item_Id.boots_of_travel);
-            case Adventure_Equipment_Item_Id.assault_cuirass: return get_item_name(Item_Id.assault_cuirass);
-            case Adventure_Equipment_Item_Id.divine_rapier: return get_item_name(Item_Id.divine_rapier);
-            case Adventure_Equipment_Item_Id.mask_of_madness: return get_item_name(Item_Id.mask_of_madness);
-            case Adventure_Equipment_Item_Id.boots_of_speed: return get_item_name(Item_Id.boots_of_speed);
-            case Adventure_Equipment_Item_Id.blades_of_attack: return get_item_name(Item_Id.blades_of_attack);
-            case Adventure_Equipment_Item_Id.belt_of_strength: return get_item_name(Item_Id.belt_of_strength);
-            case Adventure_Equipment_Item_Id.chainmail: return get_item_name(Item_Id.chainmail);
-            case Adventure_Equipment_Item_Id.basher: return get_item_name(Item_Id.basher);
-            case Adventure_Equipment_Item_Id.iron_branch: return get_item_name(Item_Id.iron_branch);
-            case Adventure_Equipment_Item_Id.mystic_staff: return "Mystic Staff";
-            case Adventure_Equipment_Item_Id.ring_of_regen: return "Ring of Regen";
-            case Adventure_Equipment_Item_Id.ring_of_tarrasque: return "Ring of Tarrasque";
-            case Adventure_Equipment_Item_Id.heart_of_tarrasque: return get_item_name(Item_Id.heart_of_tarrasque);
-            case Adventure_Equipment_Item_Id.tome_of_aghanim: return "Tome of Aghanim";
-        }
-    }
+    switch (item.item_id) {
+        case Adventure_Item_Id.boots_of_travel: return get_item_name(Item_Id.boots_of_travel);
+        case Adventure_Item_Id.assault_cuirass: return get_item_name(Item_Id.assault_cuirass);
+        case Adventure_Item_Id.divine_rapier: return get_item_name(Item_Id.divine_rapier);
+        case Adventure_Item_Id.mask_of_madness: return get_item_name(Item_Id.mask_of_madness);
+        case Adventure_Item_Id.boots_of_speed: return get_item_name(Item_Id.boots_of_speed);
+        case Adventure_Item_Id.blades_of_attack: return get_item_name(Item_Id.blades_of_attack);
+        case Adventure_Item_Id.belt_of_strength: return get_item_name(Item_Id.belt_of_strength);
+        case Adventure_Item_Id.chainmail: return get_item_name(Item_Id.chainmail);
+        case Adventure_Item_Id.basher: return get_item_name(Item_Id.basher);
+        case Adventure_Item_Id.iron_branch: return get_item_name(Item_Id.iron_branch);
+        case Adventure_Item_Id.mystic_staff: return "Mystic Staff";
+        case Adventure_Item_Id.ring_of_regen: return "Ring of Regen";
+        case Adventure_Item_Id.ring_of_tarrasque: return "Ring of Tarrasque";
+        case Adventure_Item_Id.heart_of_tarrasque: return get_item_name(Item_Id.heart_of_tarrasque);
+        case Adventure_Item_Id.tome_of_aghanim: return "Tome of Aghanim";
 
-    function get_adventure_consumable_item_name(id: Adventure_Consumable_Item_Id): string {
-        switch (id) {
-            case Adventure_Consumable_Item_Id.healing_salve: return "Healing Salve";
-            case Adventure_Consumable_Item_Id.enchanted_mango: return get_item_name(Item_Id.enchanted_mango);
-            case Adventure_Consumable_Item_Id.tome_of_knowledge: return get_item_name(Item_Id.tome_of_knowledge);
-            case Adventure_Consumable_Item_Id.tome_of_strength: return "Tome of Strength";
-            case Adventure_Consumable_Item_Id.tome_of_agility: return "Tome of Agility";
-        }
-    }
-
-    switch (item.type) {
-        case Adventure_Item_Type.equipment: return get_adventure_equipment_item_name(item.item_id);
-        case Adventure_Item_Type.consumable: return get_adventure_consumable_item_name(item.item_id);
+        case Adventure_Item_Id.healing_salve: return "Healing Salve";
+        case Adventure_Item_Id.enchanted_mango: return get_item_name(Item_Id.enchanted_mango);
+        case Adventure_Item_Id.tome_of_knowledge: return get_item_name(Item_Id.tome_of_knowledge);
+        case Adventure_Item_Id.tome_of_strength: return "Tome of Strength";
+        case Adventure_Item_Id.tome_of_agility: return "Tome of Agility";
     }
 }
 

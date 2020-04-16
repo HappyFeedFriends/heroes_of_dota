@@ -407,7 +407,7 @@ type Editor_Action = {
 } | {
     type: Editor_Action_Type.edit_item_data
     entity_id: Adventure_World_Entity_Id
-    item: Adventure_Item_Definition
+    item: Adventure_Item_Id
 } | {
     type: Editor_Action_Type.set_room_details
     zones: Camera_Restriction_Zone[]

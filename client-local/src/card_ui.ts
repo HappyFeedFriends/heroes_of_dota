@@ -1,24 +1,4 @@
-function get_adventure_equipment_item_icon(id: Adventure_Equipment_Item_Id): string {
-    switch (id) {
-        case Adventure_Equipment_Item_Id.boots_of_travel: return get_item_icon(Item_Id.boots_of_travel);
-        case Adventure_Equipment_Item_Id.assault_cuirass: return get_item_icon(Item_Id.assault_cuirass);
-        case Adventure_Equipment_Item_Id.divine_rapier: return get_item_icon(Item_Id.divine_rapier);
-        case Adventure_Equipment_Item_Id.mask_of_madness: return get_item_icon(Item_Id.mask_of_madness);
-        case Adventure_Equipment_Item_Id.boots_of_speed: return get_item_icon(Item_Id.boots_of_speed);
-        case Adventure_Equipment_Item_Id.blades_of_attack: return get_item_icon(Item_Id.blades_of_attack);
-        case Adventure_Equipment_Item_Id.belt_of_strength: return get_item_icon(Item_Id.belt_of_strength);
-        case Adventure_Equipment_Item_Id.chainmail: return get_item_icon(Item_Id.chainmail);
-        case Adventure_Equipment_Item_Id.basher: return get_item_icon(Item_Id.basher);
-        case Adventure_Equipment_Item_Id.iron_branch: return get_item_icon(Item_Id.iron_branch);
-        case Adventure_Equipment_Item_Id.mystic_staff: return "file://{images}/items/mystic_staff.png";
-        case Adventure_Equipment_Item_Id.ring_of_regen: return "file://{images}/items/ring_of_regen.png";
-        case Adventure_Equipment_Item_Id.ring_of_tarrasque: return "file://{images}/items/ring_of_tarrasque.png";
-        case Adventure_Equipment_Item_Id.heart_of_tarrasque: return get_item_icon(Item_Id.heart_of_tarrasque);
-        case Adventure_Equipment_Item_Id.tome_of_aghanim: return "file://{images}/items/tome_of_aghanim.png";
-    }
-}
-
-function get_adventure_consumable_item_icon(id: Adventure_Consumable_Item_Id): string {
+function get_adventure_item_icon_by_id(id: Adventure_Item_Id): string {
     function custom_icon(name: string) {
         return `file://{images}/custom_game/items/${name}.png`;
     }
@@ -28,24 +8,32 @@ function get_adventure_consumable_item_icon(id: Adventure_Consumable_Item_Id): s
     }
 
     switch (id) {
-        case Adventure_Consumable_Item_Id.enchanted_mango: return default_icon("enchanted_mango");
-        case Adventure_Consumable_Item_Id.healing_salve: return default_icon("salve");
-        case Adventure_Consumable_Item_Id.tome_of_knowledge: return default_icon("tome_of_knowledge");
-        case Adventure_Consumable_Item_Id.tome_of_agility: return custom_icon("book_of_agility");
-        case Adventure_Consumable_Item_Id.tome_of_strength: return custom_icon("book_of_strength");
+        case Adventure_Item_Id.boots_of_travel: return get_item_icon(Item_Id.boots_of_travel);
+        case Adventure_Item_Id.assault_cuirass: return get_item_icon(Item_Id.assault_cuirass);
+        case Adventure_Item_Id.divine_rapier: return get_item_icon(Item_Id.divine_rapier);
+        case Adventure_Item_Id.mask_of_madness: return get_item_icon(Item_Id.mask_of_madness);
+        case Adventure_Item_Id.boots_of_speed: return get_item_icon(Item_Id.boots_of_speed);
+        case Adventure_Item_Id.blades_of_attack: return get_item_icon(Item_Id.blades_of_attack);
+        case Adventure_Item_Id.belt_of_strength: return get_item_icon(Item_Id.belt_of_strength);
+        case Adventure_Item_Id.chainmail: return get_item_icon(Item_Id.chainmail);
+        case Adventure_Item_Id.basher: return get_item_icon(Item_Id.basher);
+        case Adventure_Item_Id.iron_branch: return get_item_icon(Item_Id.iron_branch);
+        case Adventure_Item_Id.mystic_staff: return default_icon("mystic_staff");
+        case Adventure_Item_Id.ring_of_regen: return default_icon("ring_of_regen");
+        case Adventure_Item_Id.ring_of_tarrasque: return default_icon("ring_of_tarrasque");
+        case Adventure_Item_Id.heart_of_tarrasque: return get_item_icon(Item_Id.heart_of_tarrasque);
+        case Adventure_Item_Id.tome_of_aghanim: return default_icon("tome_of_aghanim");
+
+        case Adventure_Item_Id.enchanted_mango: return default_icon("enchanted_mango");
+        case Adventure_Item_Id.healing_salve: return default_icon("salve");
+        case Adventure_Item_Id.tome_of_knowledge: return default_icon("tome_of_knowledge");
+        case Adventure_Item_Id.tome_of_agility: return custom_icon("book_of_agility");
+        case Adventure_Item_Id.tome_of_strength: return custom_icon("book_of_strength");
     }
 }
 
 function get_adventure_item_icon(item: Adventure_Item): string {
-    switch (item.type) {
-        case Adventure_Item_Type.equipment: {
-            return get_adventure_equipment_item_icon(item.item_id);
-        }
-
-        case Adventure_Item_Type.consumable: {
-            return get_adventure_consumable_item_icon(item.item_id);
-        }
-    }
+    return get_adventure_item_icon_by_id(item.item_id);
 }
 
 function get_item_icon(id: Item_Id) {

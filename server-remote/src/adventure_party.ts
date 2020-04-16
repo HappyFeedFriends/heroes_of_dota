@@ -64,9 +64,14 @@ export function push_party_change(party: Map_Player_Party, change: Adventure_Par
     return change;
 }
 
-export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_Entity_Id, item_id: Adventure_Equipment_Item_Id): Adventure_Item {
-    const base = {
+export function adventure_item_id_to_item(entity_id: Adventure_Party_Entity_Id, item_id: Adventure_Item_Id): Adventure_Item {
+    const equipment = {
         type: Adventure_Item_Type.equipment,
+        entity_id: entity_id
+    } as const;
+
+    const consumable = {
+        type: Adventure_Item_Type.consumable,
         entity_id: entity_id
     } as const;
 
@@ -78,8 +83,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
     }
 
     switch (item_id) {
-        case Adventure_Equipment_Item_Id.boots_of_travel: return {
-            ...base,
+        case Adventure_Item_Id.boots_of_travel: return {
+            ...equipment,
             item_id: item_id,
             effects: [in_combat_effect({
                 id: Modifier_Id.move_speed,
@@ -87,8 +92,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             })]
         };
 
-        case Adventure_Equipment_Item_Id.assault_cuirass: return {
-            ...base,
+        case Adventure_Item_Id.assault_cuirass: return {
+            ...equipment,
             item_id: item_id,
             effects: [in_combat_effect({
                 id: Modifier_Id.armor,
@@ -96,8 +101,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             })]
         };
 
-        case Adventure_Equipment_Item_Id.divine_rapier: return {
-            ...base,
+        case Adventure_Item_Id.divine_rapier: return {
+            ...equipment,
             item_id: item_id,
             effects: [in_combat_effect({
                 id: Modifier_Id.attack_damage,
@@ -105,8 +110,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             })]
         };
 
-        case Adventure_Equipment_Item_Id.mask_of_madness: return {
-            ...base,
+        case Adventure_Item_Id.mask_of_madness: return {
+            ...equipment,
             item_id: item_id,
             effects: [in_combat_effect({
                 id: Modifier_Id.item_mask_of_madness,
@@ -114,8 +119,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             })]
         };
 
-        case Adventure_Equipment_Item_Id.boots_of_speed: return {
-            ...base,
+        case Adventure_Item_Id.boots_of_speed: return {
+            ...equipment,
             item_id: item_id,
             effects: [in_combat_effect({
                 id: Modifier_Id.move_speed,
@@ -123,8 +128,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             })]
         };
 
-        case Adventure_Equipment_Item_Id.blades_of_attack: return {
-            ...base,
+        case Adventure_Item_Id.blades_of_attack: return {
+            ...equipment,
             item_id: item_id,
             effects: [in_combat_effect({
                 id: Modifier_Id.attack_damage,
@@ -132,8 +137,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             })]
         };
 
-        case Adventure_Equipment_Item_Id.belt_of_strength: return {
-            ...base,
+        case Adventure_Item_Id.belt_of_strength: return {
+            ...equipment,
             item_id: item_id,
             effects: [in_combat_effect({
                 id: Modifier_Id.health,
@@ -141,8 +146,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             })]
         };
 
-        case Adventure_Equipment_Item_Id.chainmail: return {
-            ...base,
+        case Adventure_Item_Id.chainmail: return {
+            ...equipment,
             item_id: item_id,
             effects: [in_combat_effect({
                 id: Modifier_Id.armor,
@@ -150,16 +155,16 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             })]
         };
 
-        case Adventure_Equipment_Item_Id.basher: return {
-            ...base,
+        case Adventure_Item_Id.basher: return {
+            ...equipment,
             item_id: item_id,
             effects: [in_combat_effect({
                 id: Modifier_Id.item_basher
             })]
         };
 
-        case Adventure_Equipment_Item_Id.iron_branch: return {
-            ...base,
+        case Adventure_Item_Id.iron_branch: return {
+            ...equipment,
             item_id: item_id,
             effects: [in_combat_effect({
                 id: Modifier_Id.item_iron_branch,
@@ -170,8 +175,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             })]
         };
 
-        case Adventure_Equipment_Item_Id.mystic_staff: return {
-            ...base,
+        case Adventure_Item_Id.mystic_staff: return {
+            ...equipment,
             item_id: item_id,
             effects: [{
                 type: Adventure_Item_Effect_Type.combat_start,
@@ -180,8 +185,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             }]
         };
 
-        case Adventure_Equipment_Item_Id.ring_of_regen: return {
-            ...base,
+        case Adventure_Item_Id.ring_of_regen: return {
+            ...equipment,
             item_id: item_id,
             effects: [{
                 type: Adventure_Item_Effect_Type.post_combat,
@@ -190,8 +195,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             }]
         };
 
-        case Adventure_Equipment_Item_Id.ring_of_tarrasque: return {
-            ...base,
+        case Adventure_Item_Id.ring_of_tarrasque: return {
+            ...equipment,
             item_id: item_id,
             effects: [
                 {
@@ -206,8 +211,8 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             ]
         };
 
-        case Adventure_Equipment_Item_Id.heart_of_tarrasque: return {
-            ...base,
+        case Adventure_Item_Id.heart_of_tarrasque: return {
+            ...equipment,
             item_id: item_id,
             effects: [
                 {
@@ -222,39 +227,30 @@ export function adventure_equipment_item_id_to_item(entity_id: Adventure_Party_E
             ]
         };
 
-        case Adventure_Equipment_Item_Id.tome_of_aghanim: return {
-            ...base,
+        case Adventure_Item_Id.tome_of_aghanim: return {
+            ...equipment,
             item_id: item_id,
             effects: [{
                 type: Adventure_Item_Effect_Type.combat_start,
                 effect_id: Adventure_Combat_Start_Effect_Id.level_up,
                 how_many_levels: 1
             }]
-        }
-    }
-}
+        };
 
-export function adventure_consumable_item_id_to_item(entity_id: Adventure_Party_Entity_Id, item_id: Adventure_Consumable_Item_Id): Adventure_Item {
-    const base = {
-        type: Adventure_Item_Type.consumable,
-        entity_id: entity_id
-    } as const;
-
-    switch (item_id) {
         // @ts-ignore For now until we implement temporaries
-        case Adventure_Consumable_Item_Id.enchanted_mango: return {
-            ...base,
+        case Adventure_Item_Id.enchanted_mango: return {
+            ...consumable,
             item_id: item_id,
         };
 
         // @ts-ignore For now until we implement temporaries
-        case Adventure_Consumable_Item_Id.tome_of_knowledge: return {
-            ...base,
+        case Adventure_Item_Id.tome_of_knowledge: return {
+            ...consumable,
             item_id: item_id
         };
 
-        case Adventure_Consumable_Item_Id.healing_salve: return {
-            ...base,
+        case Adventure_Item_Id.healing_salve: return {
+            ...consumable,
             item_id: item_id,
             effect: {
                 type: Adventure_Consumable_Effect_Type.restore_health,
@@ -263,8 +259,8 @@ export function adventure_consumable_item_id_to_item(entity_id: Adventure_Party_
             }
         };
 
-        case Adventure_Consumable_Item_Id.tome_of_strength: return {
-            ...base,
+        case Adventure_Item_Id.tome_of_strength: return {
+            ...consumable,
             item_id: item_id,
             effect: {
                 type: Adventure_Consumable_Effect_Type.add_permanent,
@@ -272,14 +268,14 @@ export function adventure_consumable_item_id_to_item(entity_id: Adventure_Party_
                     type: Adventure_Item_Effect_Type.in_combat,
                     modifier: {
                         id: Modifier_Id.health,
-                        bonus: 3
+                        bonus: 2
                     }
                 }
             }
         };
 
-        case Adventure_Consumable_Item_Id.tome_of_agility: return {
-            ...base,
+        case Adventure_Item_Id.tome_of_agility: return {
+            ...consumable,
             item_id: item_id,
             effect: {
                 type: Adventure_Consumable_Effect_Type.add_permanent,

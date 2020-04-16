@@ -1,6 +1,6 @@
 import {readFileSync, writeFileSync, readdirSync} from "fs";
 import {try_string_to_enum_value, unreachable} from "./common";
-import {adventure_consumable_item_id_to_item, adventure_equipment_item_id_to_item} from "./adventure_party";
+import {adventure_item_id_to_item} from "./adventure_party";
 import {Entry_With_Weight, Random} from "./random";
 
 const storage_dir_path = "src/adventures";
@@ -45,7 +45,6 @@ type Adventure_File = {
             battleground: number
         }>
         items?: Array<File_Entity_Base & {
-            type: string
             item_id: string
         }>
         gold_bags?: Array<File_Entity_Base & {
@@ -56,10 +55,7 @@ type Adventure_File = {
             heroes: string[]
             creeps: string[]
             spells: string[]
-            items: Array<{
-                type: string
-                item_id: string
-            }>
+            items: string[]
         }>
         other_entities?: Array<File_Entity_Base & {
             type: string
@@ -158,21 +154,11 @@ function create_adventure_entity_from_definition(ongoing: Ongoing_Adventure, def
                 alive: true
             };
 
-            switch (definition.item.type) {
-                case Adventure_Item_Type.equipment: return {
-                    ...base,
-                    type: definition.type,
-                    item: adventure_equipment_item_id_to_item(ongoing.next_party_entity_id(), definition.item.id)
-                };
-
-                case Adventure_Item_Type.consumable: return {
-                    ...base,
-                    type: definition.type,
-                    item: adventure_consumable_item_id_to_item(ongoing.next_party_entity_id(), definition.item.id)
-                };
-            }
-
-            break;
+            return {
+                ...base,
+                type: definition.type,
+                item: adventure_item_id_to_item(ongoing.next_party_entity_id(), definition.item)
+            };
         }
 
         case Adventure_Entity_Type.gold_bag: return {
@@ -226,28 +212,12 @@ function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventu
         };
     }
 
-    function consumable_item(id: Adventure_Consumable_Item_Id, cost: number): Adventure_Merchant_Item {
+    const item_entries = definition.items.map(id => {
         return {
-            data: adventure_consumable_item_id_to_item(ongoing.next_party_entity_id(), id),
+            data: adventure_item_id_to_item(ongoing.next_party_entity_id(), id),
             entity_id: ongoing.next_party_entity_id(),
-            cost: cost,
+            cost: item_cost(id),
             sold_out: false
-        }
-    }
-
-    function equipment_item(id: Adventure_Equipment_Item_Id, cost: number): Adventure_Merchant_Item {
-        return {
-            data: adventure_equipment_item_id_to_item(ongoing.next_party_entity_id(), id),
-            entity_id: ongoing.next_party_entity_id(),
-            cost: cost,
-            sold_out: false
-        }
-    }
-
-    const item_entries = definition.items.map(item => {
-        switch (item.type) {
-            case Adventure_Item_Type.consumable: return consumable_item(item.id, consumable_item_cost(item.id))
-            case Adventure_Item_Type.equipment: return equipment_item(item.id, equipment_item_cost(item.id))
         }
     });
 
@@ -278,33 +248,30 @@ function populate_merchant_stock(ongoing: Ongoing_Adventure, definition: Adventu
     }
 }
 
-function equipment_item_cost(id: Adventure_Equipment_Item_Id): number {
+function item_cost(id: Adventure_Item_Id): number {
     switch (id) {
-        case Adventure_Equipment_Item_Id.boots_of_travel: return 10;
-        case Adventure_Equipment_Item_Id.assault_cuirass: return 10;
-        case Adventure_Equipment_Item_Id.divine_rapier: return 10;
-        case Adventure_Equipment_Item_Id.mask_of_madness: return 10;
-        case Adventure_Equipment_Item_Id.boots_of_speed: return 10;
-        case Adventure_Equipment_Item_Id.blades_of_attack: return 10;
-        case Adventure_Equipment_Item_Id.belt_of_strength: return 10;
-        case Adventure_Equipment_Item_Id.chainmail: return 10;
-        case Adventure_Equipment_Item_Id.basher: return 10;
-        case Adventure_Equipment_Item_Id.iron_branch: return 10;
-        case Adventure_Equipment_Item_Id.ring_of_regen: return 10;
-        case Adventure_Equipment_Item_Id.mystic_staff: return 10;
-        case Adventure_Equipment_Item_Id.ring_of_tarrasque: return 10;
-        case Adventure_Equipment_Item_Id.heart_of_tarrasque: return 10;
-        case Adventure_Equipment_Item_Id.tome_of_aghanim: return 10;
-    }
-}
+        case Adventure_Item_Id.boots_of_travel: return 10;
+        case Adventure_Item_Id.assault_cuirass: return 10;
+        case Adventure_Item_Id.divine_rapier: return 10;
+        case Adventure_Item_Id.mask_of_madness: return 10;
+        case Adventure_Item_Id.boots_of_speed: return 10;
+        case Adventure_Item_Id.blades_of_attack: return 10;
+        case Adventure_Item_Id.belt_of_strength: return 10;
+        case Adventure_Item_Id.chainmail: return 10;
+        case Adventure_Item_Id.basher: return 10;
+        case Adventure_Item_Id.iron_branch: return 10;
+        case Adventure_Item_Id.ring_of_regen: return 10;
+        case Adventure_Item_Id.mystic_staff: return 10;
+        case Adventure_Item_Id.ring_of_tarrasque: return 10;
+        case Adventure_Item_Id.heart_of_tarrasque: return 10;
+        case Adventure_Item_Id.tome_of_aghanim: return 10;
 
-function consumable_item_cost(id: Adventure_Consumable_Item_Id): number {
-    switch (id) {
-        case Adventure_Consumable_Item_Id.healing_salve: return 5;
-        case Adventure_Consumable_Item_Id.enchanted_mango: return 5;
-        case Adventure_Consumable_Item_Id.tome_of_knowledge: return 5;
-        case Adventure_Consumable_Item_Id.tome_of_strength: return 5;
-        case Adventure_Consumable_Item_Id.tome_of_agility: return 5;
+        case Adventure_Item_Id.healing_salve: return 5;
+        case Adventure_Item_Id.enchanted_mango: return 5;
+        case Adventure_Item_Id.tome_of_knowledge: return 5;
+        case Adventure_Item_Id.tome_of_strength: return 5;
+        case Adventure_Item_Id.tome_of_agility: return 5;
+
     }
 }
 
@@ -373,43 +340,11 @@ export function load_all_adventures(): boolean {
     return true;
 }
 
-function try_read_item(item_type_string: string, item_id_string: string, file_path: string): Adventure_Item_Definition | undefined {
-    const item_type = try_string_to_enum_value(item_type_string, enum_names_to_values<Adventure_Item_Type>());
-
-    if (item_type == undefined) {
-        console.error(`Item type ${item_type_string} not found while parsing ${file_path}`);
-        return;
-    }
-
-    switch (item_type) {
-        case Adventure_Item_Type.consumable: {
-            const item_id = try_string_to_enum_value(item_id_string, enum_names_to_values<Adventure_Consumable_Item_Id>());
-            if (item_id == undefined) {
-                console.error(`Item id ${item_id} not found while parsing ${file_path}`);
-                return;
-            }
-
-            return { type: item_type, id: item_id } as const;
-        }
-
-        case Adventure_Item_Type.equipment: {
-            const item_id = try_string_to_enum_value(item_id_string, enum_names_to_values<Adventure_Equipment_Item_Id>());
-            if (item_id == undefined) {
-                console.error(`Item id ${item_id_string} not found while parsing ${file_path}`);
-                return;
-            }
-
-            return { type: item_type, id: item_id } as const;
-        }
-
-        default: unreachable(item_type);
-    }
-}
-
 function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | undefined {
     const adventure = JSON.parse(readFileSync(file_path, "utf8")) as Adventure_File;
     const npc_enum = enum_names_to_values<Npc_Type>();
     const creeps_enum = enum_names_to_values<Creep_Type>();
+    const items_enum = enum_names_to_values<Adventure_Item_Id>();
     const entities_enum = enum_names_to_values<Adventure_Entity_Type>();
 
     const rooms: Adventure_Room[] = [];
@@ -472,9 +407,10 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
         }
 
         for (const source_entity of source_room.items || []) {
-            const item = try_read_item(source_entity.type, source_entity.item_id, file_path);
+            const item = try_string_to_enum_value(source_entity.item_id, items_enum);
+
             if (!item) {
-                console.error(`Item parse error in ${file_path}`);
+                console.error(`Item type ${item_source} not found while parsing ${file_path}`);
                 return;
             }
 
@@ -504,7 +440,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             const spells: Spell_Id[] = [];
             const creeps: Creep_Type[] = [];
             const heroes: Hero_Type[] = [];
-            const items: Adventure_Item_Definition[] = [];
+            const items: Adventure_Item_Id[] = [];
 
             for (const spell_string of source.spells) {
                 const spell_id = try_string_to_enum_value(spell_string, enum_names_to_values<Spell_Id>());
@@ -540,9 +476,10 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             }
 
             for (const item_source of source.items) {
-                const item = try_read_item(item_source.type, item_source.item_id, file_path);
+                const item = try_string_to_enum_value(item_source, items_enum);
+
                 if (!item) {
-                    console.error(`Item parse error in ${file_path}`);
+                    console.error(`Item type ${item_source} not found while parsing ${file_path}`);
                     return;
                 }
 
@@ -672,17 +609,9 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                     }
 
                     case Adventure_Entity_Type.item_on_the_ground: {
-                        const item_id = () => {
-                            switch (entity.item.type) {
-                                case Adventure_Item_Type.equipment: return enum_to_string(entity.item.id);
-                                case Adventure_Item_Type.consumable: return enum_to_string(entity.item.id);
-                            }
-                        };
-
                         items.push({
                             ...base,
-                            type: enum_to_string(entity.item.type),
-                            item_id: item_id()
+                            item_id: enum_to_string(entity.item)
                         });
 
                         break;
@@ -698,30 +627,10 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                     }
 
                     case Adventure_Entity_Type.merchant: {
-                        const merchant_items: { type: string, item_id: string }[] = [];
+                        const merchant_items: string[] = [];
 
                         for (const item of entity.stock.items) {
-                            switch (item.type) {
-                                case Adventure_Item_Type.consumable: {
-                                    merchant_items.push({
-                                        type: enum_to_string(Adventure_Item_Type.consumable),
-                                        item_id: enum_to_string(item.id)
-                                    });
-
-                                    break;
-                                }
-
-                                case Adventure_Item_Type.equipment: {
-                                    merchant_items.push({
-                                        type: enum_to_string(Adventure_Item_Type.equipment),
-                                        item_id: enum_to_string(item.id)
-                                    });
-
-                                    break;
-                                }
-
-                                default: unreachable(item)
-                            }
+                            merchant_items.push(enum_to_string(item));
                         }
 
                         merchants.push({

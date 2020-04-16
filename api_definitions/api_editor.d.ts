@@ -154,7 +154,7 @@ type Adventure_Editor_Action = {
 } | {
     type: Adventure_Editor_Action_Type.set_item_data
     entity_id: Adventure_World_Entity_Id
-    item: Adventure_Item_Definition
+    item: Adventure_Item_Id
 } | {
     type: Adventure_Editor_Action_Type.set_merchant_stock
     entity_id: Adventure_World_Entity_Id

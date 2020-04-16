@@ -47,8 +47,7 @@ import {
     Map_Player_Party_Links,
     push_party_change,
     act_on_adventure_party,
-    adventure_equipment_item_id_to_item,
-    adventure_consumable_item_id_to_item
+    adventure_item_id_to_item
 } from "./adventure_party";
 
 import {
@@ -567,7 +566,6 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                                 if (effect.type == Adventure_Item_Effect_Type.in_combat) {
                                     modifiers.push({
                                         item: item.item_id,
-                                        type: item.type,
                                         modifier: effect.modifier
                                     });
                                 }
@@ -583,7 +581,6 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                         if (permanent.type == Adventure_Item_Effect_Type.in_combat) {
                             modifiers.push({
                                 item: permanent.source_item_id,
-                                type: Adventure_Item_Type.consumable,
                                 modifier: permanent.modifier
                             });
                         }
@@ -1788,17 +1785,11 @@ function register_dev_handlers() {
                 }
 
                 case "item": {
-                    const equipment = parse_enum_query(parts[1], enum_names_to_values<Adventure_Equipment_Item_Id>());
-                    const consumables = parse_enum_query(parts[1], enum_names_to_values<Adventure_Consumable_Item_Id>());
+                    const items = parse_enum_query(parts[1], enum_names_to_values<Adventure_Item_Id>());
 
-                    for (const id of equipment) {
+                    for (const id of items) {
                         const entity_id = state.ongoing_adventure.next_party_entity_id();
-                        push_party_change(party, change_party_add_item(adventure_equipment_item_id_to_item(entity_id, id)));
-                    }
-
-                    for (const id of consumables) {
-                        const entity_id = state.ongoing_adventure.next_party_entity_id();
-                        push_party_change(party, change_party_add_item(adventure_consumable_item_id_to_item(entity_id, id)));
+                        push_party_change(party, change_party_add_item(adventure_item_id_to_item(entity_id, id)));
                     }
 
                     break;

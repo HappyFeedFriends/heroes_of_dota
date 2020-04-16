@@ -37,7 +37,6 @@
                         1,
                         0
                     ],
-                    "type": "equipment",
                     "item_id": "iron_branch"
                 }
             ],
@@ -181,18 +180,9 @@
                     ],
                     "model": "normal",
                     "items": [
-                        {
-                            "type": "consumable",
-                            "item_id": "healing_salve"
-                        },
-                        {
-                            "type": "consumable",
-                            "item_id": "enchanted_mango"
-                        },
-                        {
-                            "type": "equipment",
-                            "item_id": "iron_branch"
-                        }
+                        "healing_salve",
+                        "enchanted_mango",
+                        "iron_branch"
                     ],
                     "creeps": [],
                     "heroes": [],
@@ -214,22 +204,10 @@
                     ],
                     "model": "smith",
                     "items": [
-                        {
-                            "type": "equipment",
-                            "item_id": "blades_of_attack"
-                        },
-                        {
-                            "type": "equipment",
-                            "item_id": "belt_of_strength"
-                        },
-                        {
-                            "type": "equipment",
-                            "item_id": "chainmail"
-                        },
-                        {
-                            "type": "equipment",
-                            "item_id": "boots_of_speed"
-                        }
+                        "blades_of_attack",
+                        "belt_of_strength",
+                        "chainmail",
+                        "boots_of_speed"
                     ],
                     "creeps": [],
                     "heroes": [],

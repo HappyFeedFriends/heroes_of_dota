@@ -31,7 +31,7 @@ type Source_Modifier = {
 
 type Source_Adventure_Item = {
     type: Source_Type.adventure_item
-    item_id: Adventure_Equipment_Item_Id
+    item_id: Adventure_Item_Id
 }
 
 type Source = Source_None | Source_Unit | Source_Item | Source_Player | Source_Modifier | Source_Adventure_Item
@@ -461,7 +461,7 @@ function modifier_source(applied: Applied_Modifier): Source {
     }
 }
 
-function adventure_item_source(item_id: Adventure_Equipment_Item_Id): Source {
+function adventure_item_source(item_id: Adventure_Item_Id): Source {
     return {
         type: Source_Type.adventure_item,
         item_id: item_id
@@ -2042,21 +2042,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             if (!hero) break;
 
             for (const modifier of delta.modifiers) {
-                switch (modifier.type) {
-                    case Adventure_Item_Type.equipment: {
-                        apply_modifier(battle, adventure_item_source(modifier.item_id), hero, modifier.application);
-
-                        break;
-                    }
-
-                    case Adventure_Item_Type.consumable: {
-                        apply_modifier(battle, no_source(), hero, modifier.application);
-
-                        break;
-                    }
-
-                    default: unreachable(modifier);
-                }
+                apply_modifier(battle, adventure_item_source(modifier.item_id), hero, modifier.application);
             }
 
             for (const effect of delta.start_effects) {

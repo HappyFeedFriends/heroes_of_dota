@@ -62,7 +62,7 @@ declare const enum Adventure_Consumable_Effect_Type {
     add_permanent = 1
 }
 
-declare const enum Adventure_Equipment_Item_Id {
+declare const enum Adventure_Item_Id {
     boots_of_travel = 0,
     assault_cuirass = 1,
     divine_rapier = 2,
@@ -77,7 +77,13 @@ declare const enum Adventure_Equipment_Item_Id {
     ring_of_regen = 11,
     ring_of_tarrasque = 12,
     heart_of_tarrasque = 13,
-    tome_of_aghanim = 14
+    tome_of_aghanim = 14,
+
+    healing_salve = 100,
+    enchanted_mango = 101,
+    tome_of_knowledge = 102,
+    tome_of_strength = 103,
+    tome_of_agility = 104
 }
 
 declare const enum Adventure_Combat_Start_Effect_Id {
@@ -87,14 +93,6 @@ declare const enum Adventure_Combat_Start_Effect_Id {
 
 declare const enum Adventure_Post_Combat_Effect_Id {
     restore_health = 0
-}
-
-declare const enum Adventure_Consumable_Item_Id {
-    healing_salve = 0,
-    enchanted_mango = 1,
-    tome_of_knowledge = 2,
-    tome_of_strength = 3,
-    tome_of_agility = 4
 }
 
 declare const enum Adventure_Constants {
@@ -232,7 +230,7 @@ type Adventure_Entity_Definition = Adventure_Entity_Definition_Base & ({
     type: Adventure_Entity_Type.shrine
 } | {
     type: Adventure_Entity_Type.item_on_the_ground
-    item: Adventure_Item_Definition
+    item: Adventure_Item_Id
 } | {
     type: Adventure_Entity_Type.gold_bag
     amount: number
@@ -241,14 +239,6 @@ type Adventure_Entity_Definition = Adventure_Entity_Definition_Base & ({
     model: Adventure_Merchant_Model
     stock: Adventure_Merchant_Stock_Definition
 })
-
-type Adventure_Item_Definition = {
-    type: Adventure_Item_Type.consumable
-    id: Adventure_Consumable_Item_Id
-} | {
-    type: Adventure_Item_Type.equipment
-    id: Adventure_Equipment_Item_Id
-}
 
 type Adventure_Entity_Base = Adventure_Entity_Definition_Base & {
     id: Adventure_World_Entity_Id
@@ -312,7 +302,7 @@ type Adventure_Merchant_Stock_Definition = {
     heroes: Hero_Type[]
     creeps: Creep_Type[]
     spells: Spell_Id[]
-    items: Adventure_Item_Definition[]
+    items: Adventure_Item_Id[]
 }
 
 type Adventure_Party_Slot = {
@@ -419,14 +409,14 @@ type Adventure_Item = Adventure_Consumable_Item | Adventure_Equipment_Item
 type Adventure_Consumable_Item = {
     type: Adventure_Item_Type.consumable
     entity_id: Adventure_Party_Entity_Id
-    item_id: Adventure_Consumable_Item_Id
+    item_id: Adventure_Item_Id
     effect: Adventure_Consumable_Effect
 }
 
 type Adventure_Equipment_Item = {
     type: Adventure_Item_Type.equipment
     entity_id: Adventure_Party_Entity_Id
-    item_id: Adventure_Equipment_Item_Id
+    item_id: Adventure_Item_Id
     effects: Adventure_Item_Effect[]
 }
 
@@ -457,7 +447,7 @@ type Adventure_Consumable_Effect = {
 }
 
 type Adventure_Item_Effect_From_Source = Adventure_Item_Effect & {
-    source_item_id: Adventure_Consumable_Item_Id
+    source_item_id: Adventure_Item_Id
 }
 
 type Adventure_Item_Combat_Start_Effect = Find_By_Type<Adventure_Item_Effect, Adventure_Item_Effect_Type.combat_start>

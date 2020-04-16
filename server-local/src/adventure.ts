@@ -90,32 +90,23 @@ type Adventure_State = {
 
 const debug_camera = false;
 
-function adventure_equipment_item_id_to_model(id: Adventure_Equipment_Item_Id): string {
+function adventure_item_id_to_model(id: Adventure_Item_Id): string {
     switch (id) {
-        case Adventure_Equipment_Item_Id.divine_rapier: return "models/props_gameplay/divine_rapier.vmdl";
-        case Adventure_Equipment_Item_Id.boots_of_speed: return "models/props_gameplay/boots_of_speed.vmdl";
-        case Adventure_Equipment_Item_Id.iron_branch: return "models/props_gameplay/branch.vmdl";
-    }
+        case Adventure_Item_Id.divine_rapier: return "models/props_gameplay/divine_rapier.vmdl";
+        case Adventure_Item_Id.boots_of_speed: return "models/props_gameplay/boots_of_speed.vmdl";
+        case Adventure_Item_Id.iron_branch: return "models/props_gameplay/branch.vmdl";
 
-    return "models/props_gameplay/neutral_box.vmdl";
-}
-
-function adventure_consumable_item_id_to_model(id: Adventure_Consumable_Item_Id): string {
-    switch (id) {
-        case Adventure_Consumable_Item_Id.healing_salve: return "models/props_gameplay/salve.vmdl";
-        case Adventure_Consumable_Item_Id.enchanted_mango: return "models/props_gameplay/mango.vmdl";
-        case Adventure_Consumable_Item_Id.tome_of_strength: return "models/gameplay/attrib_tome_str.vmdl";
-        case Adventure_Consumable_Item_Id.tome_of_agility: return "models/gameplay/attrib_tome_agi.vmdl";
+        case Adventure_Item_Id.healing_salve: return "models/props_gameplay/salve.vmdl";
+        case Adventure_Item_Id.enchanted_mango: return "models/props_gameplay/mango.vmdl";
+        case Adventure_Item_Id.tome_of_strength: return "models/gameplay/attrib_tome_str.vmdl";
+        case Adventure_Item_Id.tome_of_agility: return "models/gameplay/attrib_tome_agi.vmdl";
     }
 
     return "models/props_gameplay/neutral_box.vmdl";
 }
 
 function adventure_item_to_model(item: Adventure_Item) {
-    switch (item.type) {
-        case Adventure_Item_Type.equipment: return adventure_equipment_item_id_to_model(item.item_id);
-        case Adventure_Item_Type.consumable: return adventure_consumable_item_id_to_model(item.item_id);
-    }
+    return adventure_item_id_to_model(item.item_id);
 }
 
 function create_adventure_entity(entity: Adventure_Entity): Adventure_World_Entity {
