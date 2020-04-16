@@ -430,18 +430,20 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
 
         case Player_State.on_adventure: {
             const ongoing_adventure = player.online.ongoing_adventure;
+            const room = ongoing_adventure.current_room;
 
             return {
                 state: player.online.state,
                 adventure_id: ongoing_adventure.adventure.id,
-                current_room_id: ongoing_adventure.current_room.id,
+                current_room_id: room.id,
                 ongoing_adventure_id: ongoing_adventure.id,
                 num_party_slots: player.online.party.slots.length,
                 room: {
                     entities: ongoing_adventure.entities,
-                    camera_restriction_zones: ongoing_adventure.current_room.camera_restriction_zones,
-                    entrance: ongoing_adventure.current_room.entrance_location,
-                    exits: ongoing_adventure.current_room.exits
+                    camera_restriction_zones: room.camera_restriction_zones,
+                    entrance: room.entrance_location,
+                    exits: room.exits,
+                    environment: room.environment
                 },
                 player_position: {
                     x: player.online.current_location.x,
@@ -1374,6 +1376,7 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         return {
             entities: entities,
             entrance: next_room.entrance_location,
+            environment: next_room.environment,
             camera_restriction_zones: next_room.camera_restriction_zones,
             exits: next_room.exits
         };
@@ -1703,6 +1706,7 @@ function register_dev_handlers() {
                 type: current_room.type,
                 name: current_room.name,
                 camera_restriction_zones: current_room.camera_restriction_zones,
+                environment: current_room.environment,
                 entrance_location: {
                     x: current_room.entrance_location.x,
                     y: current_room.entrance_location.y

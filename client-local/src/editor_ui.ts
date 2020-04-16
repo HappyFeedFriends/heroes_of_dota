@@ -57,6 +57,7 @@ type Adventure_Editor = {
     selection: Adventure_Editor_Selection
     camera_height_index: number
     room_type: Adventure_Room_Type
+    room_env: Adventure_Room_Environment
     room_name: string
     room_entrance_location: XYZ
     last_camera_position: XYZ
@@ -2377,6 +2378,7 @@ async function enter_adventure_editor(move_camera = false) {
         type: Editor_Type.adventure,
         room_type: room.type,
         room_name: room.name,
+        room_env: room.environment,
         selection: { type: Adventure_Selection_Type.none },
         camera_height_index: 4,
         room_entrance_location: xyz(room.entrance_location.x, room.entrance_location.y, ground.body.z),
@@ -2420,6 +2422,14 @@ async function enter_adventure_editor(move_camera = false) {
     const title = $.CreatePanel("Label", toolbar_buttons, "");
     title.text = editor_title();
 
+    const env_label = $.CreatePanel("Label", toolbar_buttons, "");
+
+    function update_env_label() {
+        env_label.text = `Environment: ${enum_to_string(new_editor.room_env)}`;
+    }
+
+    update_env_label();
+
     const name_input = $.CreatePanel("TextEntry", toolbar_buttons, "name_input");
     name_input.text = room.name;
     name_input.SetPanelEvent(PanelEvent.ON_TEXT_ENTRY_CHANGE, () => {
@@ -2438,6 +2448,19 @@ async function enter_adventure_editor(move_camera = false) {
                 submit_adventure_room_details_to_server(new_editor);
                 close();
             }).SetHasClass("selected", value == new_editor.room_type);
+        }
+
+        toolbar_dropdown_button("Cancel", close);
+    }));
+
+    toolbar_button("Change environment", dropdown_menu_action(menu, (parent, close) => {
+        for (const [name, value] of enum_names_to_values<Adventure_Room_Environment>()) {
+            toolbar_dropdown_button(name, () => {
+                new_editor.room_env = value;
+                update_env_label();
+                submit_adventure_room_details_to_server(new_editor);
+                close();
+            }).SetHasClass("selected", value == new_editor.room_env);
         }
 
         toolbar_dropdown_button("Cancel", close);
@@ -2559,6 +2582,7 @@ function submit_adventure_room_details_to_server(editor: Adventure_Editor) {
         type: Adventure_Editor_Action_Type.set_room_details,
         room_type: editor.room_type,
         name: editor.room_name,
+        environment: editor.room_env,
         entrance: editor.room_entrance_location,
         zones: editor.camera_restriction_zones.map(zone => ({
             points: zone.points
@@ -2572,6 +2596,7 @@ function submit_adventure_room_details_to_server(editor: Adventure_Editor) {
 
     dispatch_local_editor_action({
         type: Editor_Action_Type.set_room_details,
+        environment: editor.room_env,
         zones: editor.camera_restriction_zones,
         exits: editor.exits.map(exit => ({
             at: exit.at,

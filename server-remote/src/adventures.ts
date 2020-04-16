@@ -23,6 +23,7 @@ type Adventure_Room = {
     name: string
     entrance_location: XY
     entities: Adventure_Entity_Definition[]
+    environment: Adventure_Room_Environment
     camera_restriction_zones: Camera_Restriction_Zone[]
     exits: Adventure_Room_Exit[]
 }
@@ -38,6 +39,7 @@ type Adventure_File = {
         name: string
         type: string
         entrance: [number, number]
+        environment: string
         enemies?: Array<File_Entity_Base & {
             type: string
             creeps: string[]
@@ -367,6 +369,12 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             return;
         }
 
+        const environment = try_string_to_enum_value(source_room.environment, enum_names_to_values<Adventure_Room_Environment>());
+        if (environment == undefined) {
+            console.error(`Environment type ${source_room.environment} not found while parsing ${file_path}`);
+            return;
+        }
+
         const entrance = {
             x: source_room.entrance[0],
             y: source_room.entrance[1]
@@ -552,6 +560,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             id: source_room.id as Adventure_Room_Id,
             name: source_room.name,
             type: room_type,
+            environment: environment,
             entrance_location: entrance,
             entities: entities,
             camera_restriction_zones: zones,
@@ -674,6 +683,7 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                 id: room.id,
                 name: room.name,
                 type: enum_to_string(room.type),
+                environment: enum_to_string(room.environment),
                 entrance: [room.entrance_location.x, room.entrance_location.y],
                 enemies: non_empty_or_none(enemies),
                 items: non_empty_or_none(items),
@@ -782,6 +792,7 @@ export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventur
             const current_room = ongoing.current_room;
 
             current_room.type = action.room_type;
+            current_room.environment = action.environment;
             current_room.name = action.name;
             current_room.entrance_location = action.entrance;
             current_room.camera_restriction_zones = action.zones;

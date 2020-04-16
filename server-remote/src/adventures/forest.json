@@ -4,6 +4,7 @@
             "id": 0,
             "name": "Forest Entrance",
             "type": "combat",
+            "environment": "night",
             "entrance": [
                 -13878.25,
                 6870.33447265625
@@ -171,6 +172,7 @@
             "id": 1,
             "name": "Resting place",
             "type": "rest",
+            "environment": "day",
             "entrance": [
                 -15473.046875,
                 7291.80419921875
@@ -255,6 +257,7 @@
             "id": 2,
             "name": "Cave 1",
             "type": "combat",
+            "environment": "night",
             "entrance": [
                 -13210.0888671875,
                 4470.6162109375

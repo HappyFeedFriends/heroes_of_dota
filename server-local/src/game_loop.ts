@@ -596,6 +596,7 @@ function game_loop() {
         adventure: {
             entities: [],
             exits: [],
+            environment: Adventure_Room_Environment.day,
             ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
             num_party_slots: 0,
             camera_restriction_zones: [],

@@ -76,6 +76,7 @@ type Adventure_World_Room_Exit = {
 }
 
 type Adventure_State = {
+    environment: Adventure_Room_Environment
     entities: Adventure_World_Entity[]
     current_right_click_target?: Adventure_World_Entity
     ongoing_adventure_id: Ongoing_Adventure_Id
@@ -590,6 +591,20 @@ function update_adventure(game: Game) {
         draw_zones_debug(game);
     }
 
+    switch (game.adventure.environment) {
+        case Adventure_Room_Environment.day: {
+            GameRules.SetTimeOfDay(0.27);
+            break;
+        }
+
+        case Adventure_Room_Environment.night: {
+            GameRules.SetTimeOfDay(0.77);
+            break;
+        }
+
+        default: unreachable(game.adventure.environment);
+    }
+
     update_adventure_camera(game.adventure, game.player);
 
     const right_click_target = game.adventure.current_right_click_target;
@@ -900,6 +915,7 @@ function enter_adventure_room(player: Main_Player, adventure: Adventure_State, r
         order_y: start.y
     }];
 
+    adventure.environment = room.environment;
     adventure.entities = room.entities.map(entity => create_adventure_entity(entity));
     adventure.exits = room.exits.map(exit => create_world_room_exit(exit));
     adventure.camera_restriction_zones = room.camera_restriction_zones;

@@ -410,6 +410,7 @@ type Editor_Action = {
     item: Adventure_Item_Id
 } | {
     type: Editor_Action_Type.set_room_details
+    environment: Adventure_Room_Environment
     zones: Camera_Restriction_Zone[]
     exits: Adventure_Room_Exit[]
 } | {
