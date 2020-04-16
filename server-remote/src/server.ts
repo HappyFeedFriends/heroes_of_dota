@@ -1721,6 +1721,18 @@ function register_dev_handlers() {
         });
     });
 
+    register_api_handler(Api_Request_Type.editor_get_entity_definition, req => {
+        return with_player_on_adventure(req, (player, state) => {
+            const entity = state.ongoing_adventure.entities.find(entity => entity.id == req.entity);
+
+            if (entity) {
+                return {
+                    definition: entity.definition
+                }
+            }
+        });
+    });
+
     register_api_handler(Api_Request_Type.editor_get_merchant_stock, req => {
         return with_player_on_adventure(req, (player, state) => {
             const merchant = state.ongoing_adventure.entities.find(entity => entity.id == req.merchant);

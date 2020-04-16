@@ -1323,6 +1323,23 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
                 facing: xy(facing[0], facing[1])
             });
         });
+
+        context_menu_button(`Duplicate here`, async () => {
+            const answer = await async_api_request(Api_Request_Type.editor_get_entity_definition, {
+                entity: selection.id,
+                access_token: get_access_token()
+            });
+
+            answer.definition.spawn_position = xy(click_world_position.x, click_world_position.y);
+
+            await dispatch_local_editor_action({
+                type: Editor_Action_Type.create_entity,
+                definition: answer.definition
+            });
+
+            drop_adventure_editor_selection(editor);
+        });
+
     } else {
         standard_buttons();
     }

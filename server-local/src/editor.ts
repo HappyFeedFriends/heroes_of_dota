@@ -179,6 +179,24 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
         }
 
         case Editor_Action_Type.create_entity: {
+            switch (event.definition.type) {
+                case Adventure_Entity_Type.enemy: {
+                    event.definition.creeps = from_client_array(event.definition.creeps);
+                    break;
+                }
+
+                case Adventure_Entity_Type.merchant: {
+                    const stock = event.definition.stock;
+
+                    stock.spells = from_client_array(stock.spells);
+                    stock.heroes = from_client_array(stock.heroes);
+                    stock.creeps = from_client_array(stock.creeps);
+                    stock.items = from_client_array(stock.items);
+
+                    break;
+                }
+            }
+
             const created_entity = api_request(Api_Request_Type.editor_create_entity, {
                 definition: event.definition,
                 access_token: game.token

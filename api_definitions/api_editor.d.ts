@@ -114,6 +114,14 @@ type Editor_Handlers = {
             name: string
         }[]
     }
+} | {
+    type: Api_Request_Type.editor_get_entity_definition
+    request: {
+        entity: Adventure_World_Entity_Id
+    } & With_Token
+    response: {
+        definition: Adventure_Entity_Definition
+    }
 }
 
 type Adventure_Editor_Action = {
