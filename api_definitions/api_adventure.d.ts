@@ -222,7 +222,7 @@ type Adventure_Entity_Definition_Base = {
 
 type Adventure_Entity_Definition = Adventure_Entity_Definition_Base & ({
     type: Adventure_Entity_Type.enemy
-    npc_type: Npc_Type
+    world_model: Creep_Type
     creeps: Creep_Type[]
     battleground: Battleground_Id
 } | {
@@ -247,7 +247,7 @@ type Adventure_Entity_Base = Adventure_Entity_Definition_Base & {
 
 type Adventure_Entity = Adventure_Entity_Base & ({
     type: Adventure_Entity_Type.enemy
-    npc_type: Npc_Type
+    world_model: Creep_Type
     creeps: Creep_Type[]
     battleground: Battleground_Id
     alive: boolean

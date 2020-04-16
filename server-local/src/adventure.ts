@@ -12,7 +12,7 @@ type Adventure_World_Entity_Base = {
 type Adventure_World_Enemy = Adventure_World_Entity_Base & { type: Adventure_Entity_Type.enemy } & ({
     alive: true
     handle: CDOTA_BaseNPC
-    npc_type: Npc_Type
+    traits: Creep_Traits
     has_noticed_player: boolean
     noticed_particle?: FX
     issued_movement_order_at: number
@@ -123,15 +123,15 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_World_Enti
         case Adventure_Entity_Type.enemy: {
             if (!entity.alive) return { ...base, type: entity.type, alive: false };
 
-            const definition = get_npc_definition(entity.npc_type);
-            const unit = create_adventure_unit(definition.model, definition.scale);
+            const traits = creep_traits_by_type(entity.world_model);
+            const unit = create_adventure_unit(traits.model, traits.scale);
 
             return {
                 ...base,
                 type: entity.type,
                 alive: true,
                 handle: unit,
-                npc_type: entity.npc_type,
+                traits: traits,
                 has_noticed_player: false,
                 noticed_particle: undefined,
                 issued_movement_order_at: 0,
@@ -169,8 +169,8 @@ function create_adventure_entity(entity: Adventure_Entity): Adventure_World_Enti
         case Adventure_Entity_Type.lost_creep: {
             if (!entity.alive) return { ...base, type: entity.type, alive: false };
 
-            const [model, scale] = creep_type_to_model_and_scale(Creep_Type.lane_creep);
-            const unit = create_adventure_unit(model, scale);
+            const traits = creep_traits_by_type(Creep_Type.lane_creep);
+            const unit = create_adventure_unit(traits.model, traits.scale);
 
             return {
                 ...base,
@@ -260,7 +260,7 @@ function update_adventure_enemy(game: Game, enemy: Adventure_World_Enemy) {
             enemy.noticed_particle = fx_by_unit("particles/map/msg_noticed.vpcf", enemy).follow_unit_overhead(0, enemy);
             enemy.noticed_player_at = now;
 
-            enemy_handle.EmitSound(get_npc_definition(enemy.npc_type).notice_sound);
+            enemy_handle.EmitSound(enemy.traits.sounds.notice);
         }
 
         if (from_enemy_to_player <= 96) {
@@ -274,10 +274,10 @@ function update_adventure_enemy(game: Game, enemy: Adventure_World_Enemy) {
                 add_activity_override({ handle: player_handle }, GameActivity_t.ACT_DOTA_ATTACK, 1.0);
 
                 const animation = fork(() => {
-                    enemy_handle.EmitSound(get_npc_definition(enemy.npc_type).attack_sound);
+                    enemy_handle.EmitSound(enemy.traits.sounds.pre_attack);
                     enemy_handle.StartGestureWithPlaybackRate(GameActivity_t.ACT_DOTA_ATTACK, 1);
                     wait(0.6);
-                    enemy_handle.EmitSound(get_npc_definition(enemy.npc_type).hit_sound);
+                    enemy_handle.EmitSound(enemy.traits.sounds.attack);
                     wait(0.5);
                     enemy_handle.FadeGesture(GameActivity_t.ACT_DOTA_ATTACK);
                 });

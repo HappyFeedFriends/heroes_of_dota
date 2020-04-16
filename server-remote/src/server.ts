@@ -660,7 +660,7 @@ function adventure_enemy_to_battle_participant(next_id: Id_Generator, id: Advent
         map_entity: {
             type: Map_Entity_Type.adventure_enemy,
             entity_id: id,
-            npc_type: definition.npc_type
+            world_model: definition.world_model
         },
         heroes: [],
         creeps: definition.creeps.map(creep => ({

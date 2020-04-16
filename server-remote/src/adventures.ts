@@ -341,7 +341,6 @@ export function load_all_adventures(): boolean {
 
 function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | undefined {
     const adventure = JSON.parse(readFileSync(file_path, "utf8")) as Adventure_File;
-    const npc_enum = enum_names_to_values<Npc_Type>();
     const creeps_enum = enum_names_to_values<Creep_Type>();
     const items_enum = enum_names_to_values<Adventure_Item_Id>();
     const entities_enum = enum_names_to_values<Adventure_Entity_Type>();
@@ -376,10 +375,10 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
         const entities: Adventure_Entity_Definition[] = [];
 
         for (const source_enemy of source_room.enemies || []) {
-            const npc_type = try_string_to_enum_value(source_enemy.type, npc_enum);
+            const npc_type = try_string_to_enum_value(source_enemy.type, creeps_enum);
 
             if (npc_type == undefined) {
-                console.error(`Npc type ${source_enemy.type} not found while parsing ${file_path}`);
+                console.error(`Creep type ${source_enemy.type} not found while parsing ${file_path}`);
                 return;
             }
 
@@ -399,7 +398,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             entities.push({
                 ...read_base(source_enemy),
                 type: Adventure_Entity_Type.enemy,
-                npc_type: npc_type,
+                world_model: npc_type,
                 battleground: source_enemy.battleground as Battleground_Id,
                 creeps: creeps
             })
@@ -599,7 +598,7 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                     case Adventure_Entity_Type.enemy: {
                         enemies.push({
                             ...base,
-                            type: enum_to_string(entity.npc_type),
+                            type: enum_to_string(entity.world_model),
                             creeps: entity.creeps.map(type => enum_to_string<Creep_Type>(type)),
                             battleground: entity.battleground
                         });

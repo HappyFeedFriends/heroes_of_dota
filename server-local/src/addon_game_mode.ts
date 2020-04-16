@@ -29,7 +29,7 @@ function Precache(context: CScriptPrecacheContext) {
     }
 
     for (const creep_type of enum_values<Creep_Type>()) {
-        precache_model_and_log(creep_type_to_model_and_scale(creep_type));
+        precache_model_and_log([creep_traits_by_type(creep_type).model, 1]);
     }
 
     for (const npc_type of enum_values<Npc_Type>()) {

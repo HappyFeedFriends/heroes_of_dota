@@ -392,7 +392,7 @@ type Battle_Participant_Map_Entity = {
 } | {
     type: Map_Entity_Type.adventure_enemy
     entity_id: Adventure_World_Entity_Id
-    npc_type: Npc_Type
+    world_model: Creep_Type
 }
 
 type Battle_Participant_Info = {

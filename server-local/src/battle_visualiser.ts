@@ -55,6 +55,7 @@ type Creep = Unit_Base & {
     supertype: Unit_Supertype.creep
     owner_remote_id: Battle_Player_Id
     type: Creep_Type
+    traits: Creep_Traits
 }
 
 type Unit = Hero | Monster | Creep
@@ -132,6 +133,17 @@ type Unit_Creation_Info = {
     type: Creep_Type
 } | {
     supertype: Unit_Supertype.monster
+}
+
+type Creep_Traits = {
+    model: string
+    scale: number
+    sounds: {
+        notice: string
+        attack: string
+        pre_attack: string
+        pain: string
+    }
 }
 
 declare let battle: Battle;
@@ -256,46 +268,83 @@ function hero_type_to_dota_unit_name(hero_type: Hero_Type): string {
     return `npc_dota_hero_${get_hero_dota_name(hero_type)}`;
 }
 
-function creep_type_to_model_and_scale(creep_type: Creep_Type): [string, number] {
+function creep_traits_by_type(creep_type: Creep_Type): Creep_Traits {
+    const default_sounds = {
+        pre_attack: "",
+        attack: "",
+        hit: "",
+        notice: "",
+        pain: ""
+    };
+
+    const default_traits = {
+        sounds: default_sounds,
+        scale: 1
+    };
+
+    const no_model = `models/development/invisiblebox.vmdl`;
+
     const neutrals = "models/creeps/neutral_creeps";
 
     switch (creep_type) {
-        case Creep_Type.satyr_small: return [
-            `${neutrals}/n_creep_satyr_c/n_creep_satyr_c.mdl`,
-            0.8
-        ];
-        case Creep_Type.satyr_big: return [
-            `${neutrals}/n_creep_satyr_a/n_creep_satyr_a.mdl`,
-            1
-        ];
-        case Creep_Type.lane_creep: return [
-            "models/creeps/lane_creeps/creep_radiant_melee/radiant_melee.mdl",
-            1
-        ];
-        case Creep_Type.pocket_tower: return [
-            "models/props_structures/rock_golem/tower_radiant_rock_golem.vmdl",
-            1
-        ];
-        case Creep_Type.small_spider: return [
-            "models/heroes/broodmother/spiderling.vmdl",
-            0.6
-        ];
-        case Creep_Type.spider_matriarch: return [
-            "models/items/broodmother/spiderling/virulent_matriarchs_spiderling/virulent_matriarchs_spiderling.vmdl",
-            0.6
-        ];
-        case Creep_Type.large_spider: return [
-            "models/items/broodmother/spiderling/elder_blood_heir_of_elder_blood/elder_blood_heir_of_elder_blood.vmdl",
-            0.6
-        ];
-        case Creep_Type.spiderling: return [
-            "models/heroes/broodmother/spiderling.vmdl",
-            0.4
-        ];
-        case Creep_Type.ember_fire_remnant: return [
-            `models/development/invisiblebox.vmdl`,
-            1
-        ];
+        case Creep_Type.pocket_tower: return {
+            ...default_traits,
+            model: "models/props_structures/rock_golem/tower_radiant_rock_golem.vmdl",
+            sounds: {
+                ...default_sounds,
+                pain: "pocket_tower_pain"
+            }
+        };
+
+        case Creep_Type.lane_creep: return {
+            ...default_traits,
+            model: "models/creeps/lane_creeps/creep_radiant_melee/radiant_melee.mdl",
+            sounds: {
+                ...default_sounds,
+                pre_attack: "Creep_Good_Melee.PreAttack",
+                attack: "Creep_Good_Melee.Attack"
+            }
+        };
+
+        case Creep_Type.satyr_big: return {
+            ...default_traits,
+            model: `${neutrals}/n_creep_satyr_a/n_creep_satyr_a.mdl`
+        };
+
+        case Creep_Type.satyr_small: return {
+            ...default_traits,
+            model: `${neutrals}/n_creep_satyr_c/n_creep_satyr_c.mdl`,
+            scale: 0.8
+        };
+
+        case Creep_Type.small_spider: return {
+            ...default_traits,
+            model: "models/heroes/broodmother/spiderling.vmdl",
+            scale: 0.6
+        };
+
+        case Creep_Type.large_spider: return {
+            ...default_traits,
+            model: "models/items/broodmother/spiderling/elder_blood_heir_of_elder_blood/elder_blood_heir_of_elder_blood.vmdl",
+            scale: 0.6
+        };
+
+        case Creep_Type.spider_matriarch: return {
+            ...default_traits,
+            model: "models/items/broodmother/spiderling/virulent_matriarchs_spiderling/virulent_matriarchs_spiderling.vmdl",
+            scale: 0.6
+        };
+
+        case Creep_Type.spiderling: return {
+            ...default_traits,
+            model: "models/heroes/broodmother/spiderling.vmdl",
+            scale: 0.4
+        };
+
+        case Creep_Type.ember_fire_remnant: return {
+            ...default_traits,
+            model: no_model
+        };
     }
 }
 
@@ -334,7 +383,8 @@ function create_world_handle_for_battle_unit(world_origin: Vector, info: Unit_Cr
         }
 
         case Unit_Supertype.creep: {
-            set_model_and_scale(creep_type_to_model_and_scale(info.type));
+            const traits = creep_traits_by_type(info.type);
+            set_model_and_scale([traits.model, traits.scale]);
 
             if (info.type == Creep_Type.pocket_tower) {
                 add_activity_override({ handle: handle }, GameActivity_t.ACT_DOTA_CUSTOM_TOWER_IDLE);
@@ -543,6 +593,7 @@ function spawn_creep_for_battle(type: Creep_Type, unit_id: Unit_Id, owner_id: Ba
         supertype: Unit_Supertype.creep,
         type: type,
         owner_remote_id: owner_id,
+        traits: creep_traits_by_type(type)
     };
 }
 
@@ -947,11 +998,7 @@ function get_ranged_attack_spec(unit: Unit): Ranged_Attack_Spec | undefined {
     }
 }
 
-function try_play_random_sound_for_hero(unit: Unit, supplier: (sounds: Hero_Sounds) => string[], target: Unit = unit) {
-    if (unit.supertype != Unit_Supertype.hero) {
-        return;
-    }
-
+function try_play_random_sound_for_hero(unit: Hero, supplier: (sounds: Hero_Sounds) => string[], target: Unit = unit) {
     // TODO use pseudo @Random
     const sounds = supplier(hero_sounds_by_hero_type(unit.type));
     const random_sound = sounds[RandomInt(0, sounds.length - 1)];
@@ -1069,9 +1116,8 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
             tracking_projectile_to_point(unit, cast.result.final_point, ranged_attack_spec.particle_path, ranged_attack_spec.projectile_speed);
         }
     } else {
-        // TODO @SoundSystem
-        if (unit.supertype == Unit_Supertype.creep && unit.type == Creep_Type.lane_creep) {
-            unit_emit_sound(unit, "Creep_Good_Melee.PreAttack");
+        if (unit.supertype == Unit_Supertype.creep) {
+            unit_emit_sound(unit, unit.traits.sounds.pre_attack);
         }
 
         try_play_sound_for_hero(unit, get_hero_pre_attack_sound);
@@ -1087,9 +1133,8 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
             shake_screen(target, Shake.weak);
             try_play_sound_for_hero(unit, get_hero_attack_sound);
 
-            // TODO @SoundSystem
-            if (unit.supertype == Unit_Supertype.creep && unit.type == Creep_Type.lane_creep) {
-                unit_emit_sound(unit, "Creep_Good_Melee.Attack");
+            if (unit.supertype == Unit_Supertype.creep) {
+                unit_emit_sound(unit, unit.traits.sounds.attack);
             }
         }
     }
@@ -2883,7 +2928,7 @@ function kill_unit(source: Unit, target: Unit) {
     }
 
     if (source.supertype != Unit_Supertype.monster && target.supertype != Unit_Supertype.monster) {
-        if (source.owner_remote_id == target.owner_remote_id) {
+        if (source.owner_remote_id == target.owner_remote_id && source.supertype == Unit_Supertype.hero) {
             try_play_random_sound_for_hero(source, sounds => sounds.deny);
         }
     }
@@ -2892,7 +2937,10 @@ function kill_unit(source: Unit, target: Unit) {
         try_remove_modifier_visuals(target, applied.modifier_handle_id);
     }
 
-    try_play_random_sound_for_hero(source, sounds => sounds.kill);
+    if (source.supertype == Unit_Supertype.hero) {
+        try_play_random_sound_for_hero(source, sounds => sounds.kill);
+    }
+
     apply_special_death_effects(target);
 
     target.handle.ForceKill(false);
@@ -2916,10 +2964,12 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
     } else if (value_delta < 0) {
         show_damage_effect_on_target(target);
 
-        // TODO @SoundSystem unify this into a singular sound system for all unit types
-        if (target.supertype == Unit_Supertype.creep && target.type == Creep_Type.pocket_tower) {
-            unit_emit_sound(target, "pocket_tower_pain");
-        } else {
+        if (target.supertype == Unit_Supertype.creep) {
+
+        }
+        if (target.supertype == Unit_Supertype.creep) {
+            unit_emit_sound(target, target.traits.sounds.pain);
+        } else if (target.supertype == Unit_Supertype.hero) {
             try_play_random_sound_for_hero(target, sounds => sounds.pain);
         }
 
@@ -3670,7 +3720,8 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
                     ...base,
                     supertype: Unit_Supertype.creep,
                     type: unit.type,
-                    owner_remote_id: unit.owner_id
+                    owner_remote_id: unit.owner_id,
+                    traits: creep_traits_by_type(unit.type)
                 };
             }
         }

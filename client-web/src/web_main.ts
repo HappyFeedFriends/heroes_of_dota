@@ -707,7 +707,10 @@ namespace clr {
         switch (player.map_entity.type) {
             case Map_Entity_Type.player: return txt(player_name_cache[player.id], player_color(player.id, 0.8));
 
-            case Map_Entity_Type.adventure_enemy:
+            case Map_Entity_Type.adventure_enemy: {
+                return txt(enum_to_string(player.map_entity.world_model), player_color(player.id, 0.8));
+            }
+
             case Map_Entity_Type.npc: {
                 return txt(enum_to_string(player.map_entity.npc_type), player_color(player.id, 0.8));
             }
@@ -1513,7 +1516,17 @@ function draw_battle_list(global_map: Game_On_Global_Map) {
 
     function entity_name(participant: Battle_Participant_Info): string {
         const entity = participant.map_entity;
-        return entity.type == Map_Entity_Type.player ? get_or_request_player_name(game, entity.player_id) : enum_to_string(entity.npc_type);
+        switch (entity.type) {
+            case Map_Entity_Type.player: return get_or_request_player_name(game, entity.player_id);
+
+            case Map_Entity_Type.adventure_enemy: {
+                return enum_to_string(entity.world_model);
+            }
+
+            case Map_Entity_Type.npc: {
+                return enum_to_string(entity.npc_type);
+            }
+        }
     }
 
     push_layout(Layout_Type.vertical);

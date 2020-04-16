@@ -95,7 +95,7 @@ function get_adventure_item_name(item: Adventure_Item): string {
 
 function get_adventure_entity_name(entity: Adventure_Entity): string {
     switch (entity.type) {
-        case Adventure_Entity_Type.enemy: return get_npc_name(entity.npc_type);
+        case Adventure_Entity_Type.enemy: return get_creep_name(entity.world_model);
         case Adventure_Entity_Type.lost_creep: return "Lost Creep";
         case Adventure_Entity_Type.shrine: return "Shrine";
         case Adventure_Entity_Type.gold_bag: return "Bag of Gold";

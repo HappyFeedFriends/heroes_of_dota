@@ -510,7 +510,7 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
     function entity_name() {
         switch (base.type) {
             case Adventure_Entity_Type.enemy: {
-                return enum_to_string(base.npc_type);
+                return enum_to_string(base.world_model);
             }
 
             case Adventure_Entity_Type.item_on_the_ground: {
@@ -1213,14 +1213,14 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         prepare_context_menu();
         context_menu_button("Back", standard_buttons);
 
-        for (const [npc_name, npc_type] of enum_names_to_values<Npc_Type>()) {
-            context_menu_button(`Create ${npc_name}`, () => {
+        for (const [creep_name, creep_type] of enum_names_to_values<Creep_Type>()) {
+            context_menu_button(`Create ${creep_name}`, () => {
                 dispatch_local_editor_action({
                     type: Editor_Action_Type.create_entity,
                     definition: {
                         type: Adventure_Entity_Type.enemy,
                         battleground: 0 as Battleground_Id,
-                        npc_type: npc_type,
+                        world_model: creep_type,
                         spawn_position: click,
                         spawn_facing: xy(1, 0),
                         creeps: []

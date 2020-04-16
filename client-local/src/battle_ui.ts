@@ -1817,7 +1817,11 @@ function update_current_turning_player_indicator() {
             break;
         }
 
-        case Map_Entity_Type.adventure_enemy:
+        case Map_Entity_Type.adventure_enemy: {
+            label.text = `${enum_to_string(map_entity.world_model)}'s turn`;
+            break;
+        }
+        
         case Map_Entity_Type.npc: {
             label.text = `${enum_to_string(map_entity.npc_type)}'s turn`;
             break;
