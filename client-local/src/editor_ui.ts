@@ -46,9 +46,10 @@ const enum Battleground_Brush_Type {
 
 const enum Adventure_Selection_Type {
     none,
+    multiple,
     entity,
     camera_restriction,
-    room_exit
+    room_exit,
 }
 
 type Adventure_Editor = {
@@ -111,6 +112,13 @@ type Adventure_Editor_Selection = {
 } | {
     type: Adventure_Selection_Type.room_exit
     exit: UI_Room_Exit
+} | {
+    type: Adventure_Selection_Type.multiple
+    entities: {
+        id: Adventure_World_Entity_Id
+        entity: EntityId
+        particle: ParticleId
+    }[]
 }
 
 type Battleground_Brush = Battleground_Select_Brush | Battleground_Crop_Grid_Brush | Battleground_Deployment_Brush | {
@@ -240,6 +248,12 @@ function drop_adventure_editor_selection(editor: Adventure_Editor) {
 
     if (editor.selection.type == Adventure_Selection_Type.camera_restriction) {
         destroy_fx(editor.selection.particle);
+    }
+
+    if (editor.selection.type == Adventure_Selection_Type.multiple) {
+        for (const entity of editor.selection.entities) {
+            destroy_fx(entity.particle);
+        }
     }
 
     editor.selection = {
@@ -537,6 +551,51 @@ function adventure_editor_select_entity(editor: Adventure_Editor, entity: Physic
             entity_id: base.id
         })
     }, "editor_entity_delete_button");
+}
+
+function adventure_editor_select_entity_multiple(editor: Adventure_Editor, entity: Physical_Adventure_Entity) {
+    const selected_entities = editor.selection.type == Adventure_Selection_Type.multiple ? editor.selection.entities : [];
+
+    if (editor.selection.type == Adventure_Selection_Type.entity) {
+        selected_entities.push({
+            id: editor.selection.id,
+            entity: editor.selection.entity,
+            particle: editor.selection.particle
+        });
+    }
+
+    if (editor.selection.type != Adventure_Selection_Type.none) {
+        drop_adventure_editor_selection(editor);
+    }
+
+    editor.selection = {
+        type: Adventure_Selection_Type.multiple,
+        entities: selected_entities
+    };
+
+    selected_entities.push({
+        id: entity.base.id,
+        entity: entity.world_entity_id,
+        particle: -1 as ParticleId
+    });
+
+    for (const selected of selected_entities) {
+        selected.particle = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_OVERHEAD_FOLLOW, selected.entity);
+        register_particle_for_reload(selected.particle);
+    }
+
+    const selection_label = $.CreatePanel("Label", entity_buttons, "editor_selected_entity");
+    selection_label.text = `Selected: ${selected_entities.length}`;
+
+    entity_button("Delete", () => {
+        for (const selected of selected_entities) {
+            dispatch_local_editor_action({
+                type: Editor_Action_Type.delete_entity,
+                entity_id: selected.id
+            })
+        }
+    }, "editor_entity_delete_button");
+
 }
 
 function hide_editor_context_menu() {
@@ -1559,7 +1618,12 @@ export function adventure_editor_filter_mouse_click(editor: Adventure_Editor, ev
             const entity_data = find_adventure_entity_by_world_index(entity_under_cursor);
 
             if (entity_data) {
-                adventure_editor_select_entity(editor, entity_data);
+                if (GameUI.IsShiftDown()) {
+                    adventure_editor_select_entity_multiple(editor, entity_data)
+                } else {
+                    adventure_editor_select_entity(editor, entity_data);
+                }
+
                 return true;
             }
         }
