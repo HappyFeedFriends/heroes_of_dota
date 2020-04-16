@@ -141,6 +141,7 @@ export default function run_transformer(program: ts.Program, options: Options): 
     const type_array: Type_Kind.array = 11;
     const type_any: Type_Kind.any = 12;
     const type_undefined: Type_Kind.undefined = 13;
+    const type_generic: Type_Kind.generic = 14;
 
     type Serialization_Context = {
         enums: Enum_Type[]
@@ -179,15 +180,14 @@ export default function run_transformer(program: ts.Program, options: Options): 
                 ], true);
             }
 
-            case type_any:
-            case type_undefined:
-            case type_string:
-            case type_number:
-            case type_boolean:
-            case type_number_literal:
-            case type_string_literal:
-            case type_boolean_literal: {
-                return any_to_literal(type);
+            case type_generic: {
+                const type_args = type.arguments.map(member_type => serialize_type(member_type, context));
+
+                return ts.createObjectLiteral([
+                    ts.createPropertyAssignment("kind", any_to_literal(type.kind)),
+                    ts.createPropertyAssignment("target", serialize_type(type.target, context)),
+                    ts.createPropertyAssignment("arguments", ts.createArrayLiteral(type_args))
+                ], true);
             }
 
             case type_intersection:
@@ -217,6 +217,17 @@ export default function run_transformer(program: ts.Program, options: Options): 
                     ts.createPropertyAssignment("kind", any_to_literal(type.kind)),
                     ts.createPropertyAssignment("type", serialize_type(type.type, context))
                 ], true);
+            }
+
+            case type_any:
+            case type_undefined:
+            case type_string:
+            case type_number:
+            case type_boolean:
+            case type_number_literal:
+            case type_string_literal:
+            case type_boolean_literal: {
+                return any_to_literal(type);
             }
         }
     }
@@ -306,6 +317,15 @@ export default function run_transformer(program: ts.Program, options: Options): 
                 return simple_type_to_type(type.ref, error_node);
             }
 
+            case SimpleTypeKind.GENERIC_ARGUMENTS: {
+                return {
+                    kind: type_generic,
+                    name: type.name,
+                    arguments: type.typeArguments.map(argument => simple_type_to_type(argument, error_node)),
+                    target: simple_type_to_type(type.target, error_node)
+                };
+            }
+
             case SimpleTypeKind.NUMBER_LITERAL:
             case SimpleTypeKind.STRING_LITERAL:
             case SimpleTypeKind.BOOLEAN_LITERAL:
@@ -314,11 +334,6 @@ export default function run_transformer(program: ts.Program, options: Options): 
             case SimpleTypeKind.NUMBER:
             case SimpleTypeKind.BOOLEAN: {
                 return primitive(type);
-            }
-
-            case SimpleTypeKind.GENERIC_ARGUMENTS: {
-                console.error("unsupported_generic_arguments");
-                return { kind: type_string_literal, value: "unsupported_generic_arguments" };
             }
 
             default: error_out(error_node, `Unsupported type kind ${type.kind}`);

@@ -14,7 +14,8 @@ declare const enum Type_Kind {
     enum = 10,
     array = 11,
     any = 12,
-    undefined = 13
+    undefined = 13,
+    generic = 14
 }
 
 type Type =
@@ -22,6 +23,7 @@ type Type =
     Union_Type |
     Intersection_Type |
     Enum_Member_Type |
+    Generic_Type |
     Primitive |
     Enum_Type |
     Array_Type |
@@ -63,6 +65,13 @@ type Array_Type = {
 
 type Any_Type = {
     kind: Type_Kind.any
+}
+
+type Generic_Type = {
+    kind: Type_Kind.generic
+    name?: string
+    target: Type
+    arguments: Type[]
 }
 
 type Primitive = {

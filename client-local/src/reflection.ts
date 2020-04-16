@@ -183,6 +183,23 @@ function deserialize_value(type: Type, from: any): any {
             return new_object;
         }
 
+        case Type_Kind.generic: {
+            // Record<Key, Value>
+            if (type.target.kind == Type_Kind.object && type.arguments.length == 2) {
+                const result: Record<string, any> = {};
+                const value_type = type.arguments[1];
+
+                for (const key of Object.keys(from)) {
+                    result[key] = deserialize_value(value_type, from[key]);
+                }
+
+                return result;
+            } else {
+                $.Msg("Unsupported generic type");
+                return;
+            }
+        }
+
         case Type_Kind.union: {
             const tags = find_union_tags(type);
             if (!tags || tags.length == 0) {

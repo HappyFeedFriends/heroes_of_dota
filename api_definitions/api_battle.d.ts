@@ -26,14 +26,14 @@ declare const enum Delta_Type {
     unit_move = 19,
     modifier_applied = 20,
     modifier_removed = 21,
-    set_ability_charges_remaining = 22,
+    set_ability_charges = 22,
     ability_effect_applied = 23,
     modifier_effect_applied = 24,
     timed_effect_expired = 25,
     rune_pick_up = 26,
     purchase_item = 27,
     equip_item = 28,
-    adventure_items_applied = 29,
+    modifier_applied_from_adventure_item = 29,
 
     end_turn = 50,
     game_start = 51,
@@ -487,16 +487,24 @@ type Delta_Modifier_Applied = {
     application: Modifier_Application
 }
 
+type Delta_Modifier_Applied_From_Adventure_Item = {
+    type: Delta_Type.modifier_applied_from_adventure_item
+    unit_id: Unit_Id
+    application: Modifier_Application
+    item: Adventure_Item_Id
+}
+
 type Delta_Modifier_Removed = {
     type: Delta_Type.modifier_removed
     modifier_handle_id: Modifier_Handle_Id
 }
 
 type Delta_Set_Ability_Charges_Remaining = {
-    type: Delta_Type.set_ability_charges_remaining
+    type: Delta_Type.set_ability_charges
     unit_id: Unit_Id
     ability_id: Ability_Id
-    charges_remaining: number
+    charges: number
+    only_set_remaining: boolean
 }
 
 type Delta_Ability_Effect_Applied<T extends Ability_Effect> = {
@@ -535,14 +543,6 @@ type Delta_Purchase_Item = {
 type Delta_Equip_Item = Equip_Item & {
     type: Delta_Type.equip_item
     unit_id: Unit_Id
-}
-
-type Delta_Adventure_Items_Applied = {
-    type: Delta_Type.adventure_items_applied
-    unit_id: Unit_Id
-    final_health: number
-    modifiers: Modifier_Application_From_Adventure_Item[]
-    start_effects: Adventure_Item_Combat_Start_Effect[]
 }
 
 type Delta_Shop_Spawn = {
@@ -638,7 +638,7 @@ type Delta =
     Delta_Level_Change |
     Delta_Modifier_Applied |
     Delta_Modifier_Removed |
-    Delta_Adventure_Items_Applied |
+    Delta_Modifier_Applied_From_Adventure_Item |
     Delta_Set_Ability_Charges_Remaining |
     Delta_Ability_Effect_Applied<Ability_Effect> |
     Delta_Modifier_Effect_Applied |
@@ -658,11 +658,6 @@ type Modifier_Application = {
     modifier_handle_id: Modifier_Handle_Id
     modifier: Modifier
     duration?: number
-}
-
-type Modifier_Application_From_Adventure_Item = {
-    item_id: Adventure_Item_Id
-    application: Modifier_Application
 }
 
 type Timed_Effect_Application = {

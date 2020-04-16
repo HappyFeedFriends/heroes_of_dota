@@ -872,10 +872,11 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
                     if (!remnant) break;
 
                     submit_battle_delta(battle, {
-                        type: Delta_Type.set_ability_charges_remaining,
+                        type: Delta_Type.set_ability_charges,
                         unit_id: unit.id,
                         ability_id: Ability_Id.ember_activate_fire_remnant,
-                        charges_remaining: 1
+                        charges: 1,
+                        only_set_remaining: true
                     });
 
                     submit_battle_delta(battle, {
@@ -1451,10 +1452,11 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
 
     function decrement_charges(unit: Unit, ability: Ability_Active): Delta_Set_Ability_Charges_Remaining {
         return {
-            type: Delta_Type.set_ability_charges_remaining,
+            type: Delta_Type.set_ability_charges,
             unit_id: unit.id,
             ability_id: ability.id,
-            charges_remaining: ability.charges_remaining - 1
+            charges: ability.charges_remaining - 1,
+            only_set_remaining: true
         }
     }
 
@@ -2289,17 +2291,51 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
             const spawned_hero = find_hero_by_id(battle, hero.id);
 
             if (spawned_hero) {
-                const modifiers = hero.modifiers.map(data => ({
-                    item_id: data.item,
-                    application: modifier(battle, data.modifier),
-                }));
+                for (const from_item of hero.modifiers) {
+                    submit_battle_delta(battle, {
+                        type: Delta_Type.modifier_applied_from_adventure_item,
+                        unit_id: hero.id,
+                        item: from_item.item,
+                        application: modifier(battle, from_item.modifier)
+                    });
+                }
+
+                for (const effect of hero.start_effects) {
+                    switch (effect.effect_id) {
+                        case Adventure_Combat_Start_Effect_Id.add_ability_charges: {
+                            for (const ability of spawned_hero.abilities) {
+                                if (ability.type != Ability_Type.passive && ability.available_since_level <= effect.for_abilities_with_level_less_or_equal) {
+                                    submit_battle_delta(battle, {
+                                        type: Delta_Type.set_ability_charges,
+                                        unit_id: hero.id,
+                                        ability_id: ability.id,
+                                        charges: ability.charges_remaining + effect.how_many,
+                                        only_set_remaining: false
+                                    });
+                                }
+                            }
+
+                            break;
+                        }
+
+                        case Adventure_Combat_Start_Effect_Id.level_up: {
+                            submit_battle_delta(battle, {
+                                type: Delta_Type.level_change,
+                                unit_id: hero.id,
+                                new_level: Math.min(Const.max_unit_level, spawned_hero.level + effect.how_many_levels)
+                            });
+
+                            break;
+                        }
+                    }
+                }
 
                 submit_battle_delta(battle, {
-                    type: Delta_Type.adventure_items_applied,
-                    unit_id: hero.id,
-                    modifiers: modifiers,
-                    start_effects: hero.start_effects,
-                    final_health: hero.health
+                    type: Delta_Type.health_change,
+                    source_unit_id: hero.id,
+                    target_unit_id: hero.id,
+                    new_value: hero.health,
+                    value_delta: 0
                 });
             }
         }
@@ -2338,10 +2374,11 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
         for (const ability of unit.abilities) {
             if (ability.type != Ability_Type.passive && ability.charges_remaining != ability.charges) {
                 submit_battle_delta(battle, {
-                    type: Delta_Type.set_ability_charges_remaining,
+                    type: Delta_Type.set_ability_charges,
                     unit_id: unit.id,
                     ability_id: ability.id,
-                    charges_remaining: (ability as Ability_Active).charges
+                    charges: ability.charges,
+                    only_set_remaining: true
                 });
             }
         }
@@ -2371,10 +2408,11 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
             const charges = parseInt(parts[2] || "20");
 
             submit_external_battle_delta(battle, {
-                type: Delta_Type.set_ability_charges_remaining,
+                type: Delta_Type.set_ability_charges,
                 unit_id: unit.id,
                 ability_id: unit.abilities[ability_index].id,
-                charges_remaining: charges
+                charges: charges,
+                only_set_remaining: true
             });
 
             break;
