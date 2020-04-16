@@ -1454,22 +1454,23 @@ function perform_adventure_party_action(action: Adventure_Party_Action) {
     $.Schedule(0, () => {
         log(`Merging local changes after ${party.current_head}`);
         merge_adventure_party_changes(party.current_head, predicted_changes);
-    });
 
-    api_request(Api_Request_Type.act_on_adventure_party, {
-        access_token: get_access_token(),
-        ...action,
-    }, response => {
-        log(`Merging remote changes`);
+        // We also have to put the API call in the schedule in cases remote changes arrive before the schedule expires...
+        api_request(Api_Request_Type.act_on_adventure_party, {
+            access_token: get_access_token(),
+            ...action,
+        }, response => {
+            log(`Merging remote changes`);
 
-        accept_adventure_party_response(response);
+            accept_adventure_party_response(response);
 
-        // The number of changes doesn't match so it's definitely a conflict
-        if (!response.snapshot && response.changes.length < predicted_changes.length) {
-            log(`\tChange number mismatch, restoring from snapshot`);
+            // The number of changes doesn't match so it's definitely a conflict
+            if (!response.snapshot && response.changes.length < predicted_changes.length) {
+                log(`\tChange number mismatch, restoring from snapshot`);
 
-            restore_ui_state_from_party_state();
-        }
+                restore_ui_state_from_party_state();
+            }
+        });
     });
 }
 
