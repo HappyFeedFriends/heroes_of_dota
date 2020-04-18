@@ -1225,7 +1225,7 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         context_menu_button("Back", standard_buttons);
 
         for (const [creep_name, creep_type] of enum_names_to_values<Creep_Type>()) {
-            context_menu_button(`Create ${creep_name}`, () => {
+            context_menu_button(`Create ${snake_case_to_capitalized_words(creep_name)}`, () => {
                 dispatch_local_editor_action({
                     type: Editor_Action_Type.create_entity,
                     definition: {

@@ -81,6 +81,7 @@ declare const enum Creep_Type {
     large_spider = 103,
     spider_matriarch = 104,
     spiderling = 105,
+    hardened_spider = 106,
 
     ember_fire_remnant = 1000
 }
@@ -193,6 +194,7 @@ type Unit_Definition = {
     health: number
     attack_damage: number
     move_points: number
+    armor?: number
     attack?: Ability_Definition_Active
     abilities?: Ability_Definition[]
     ability_bench?: Ability_Definition[]

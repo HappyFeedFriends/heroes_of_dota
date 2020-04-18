@@ -964,7 +964,7 @@ function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base 
         ability_overrides: [],
         status: starting_unit_status(),
         base: {
-            armor: 0,
+            armor: definition.armor != undefined ? definition.armor : 0,
             attack_damage: definition.attack_damage,
             max_health: definition.health,
             max_move_points: definition.move_points

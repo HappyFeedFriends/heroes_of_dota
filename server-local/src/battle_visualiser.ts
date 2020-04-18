@@ -146,6 +146,7 @@ type Creep_Traits = {
         pain: string
         death: string
     }
+    flinch_animation?: GameActivity_t
 }
 
 declare let battle: Battle;
@@ -331,13 +332,15 @@ function creep_traits_by_type(creep_type: Creep_Type): Creep_Traits {
         case Creep_Type.small_spider: return {
             sounds: spider_sounds,
             model: "models/heroes/broodmother/spiderling.vmdl",
-            scale: 0.6
+            scale: 0.6,
+            flinch_animation: GameActivity_t.ACT_DOTA_SPAWN
         };
 
         case Creep_Type.large_spider: return {
             sounds: spider_sounds,
             model: "models/items/broodmother/spiderling/elder_blood_heir_of_elder_blood/elder_blood_heir_of_elder_blood.vmdl",
             scale: 0.6,
+            flinch_animation: GameActivity_t.ACT_DOTA_SPAWN
         };
 
         case Creep_Type.spider_matriarch: return {
@@ -349,7 +352,15 @@ function creep_traits_by_type(creep_type: Creep_Type): Creep_Traits {
         case Creep_Type.spiderling: return {
             sounds: spider_sounds,
             model: "models/heroes/broodmother/spiderling.vmdl",
-            scale: 0.4
+            scale: 0.4,
+            flinch_animation: GameActivity_t.ACT_DOTA_SPAWN
+        };
+
+        case Creep_Type.hardened_spider: return {
+            sounds: spider_sounds,
+            model: "models/items/broodmother/spiderling/araknarok_broodmother_araknarok_spiderling/araknarok_broodmother_araknarok_spiderling.vmdl",
+            scale: 0.6,
+            flinch_animation: GameActivity_t.ACT_DOTA_SPAWN
         };
 
         case Creep_Type.ember_fire_remnant: return {
@@ -2996,8 +3007,8 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
         }
 
         if (target.supertype == Unit_Supertype.creep) {
-            if (target.type == Creep_Type.small_spider || target.type == Creep_Type.spiderling) {
-                add_activity_override(target, GameActivity_t.ACT_DOTA_SPAWN, 0.5);
+            if (target.traits.flinch_animation != undefined) {
+                add_activity_override(target, target.traits.flinch_animation, 0.5);
             }
         }
 

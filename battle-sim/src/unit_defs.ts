@@ -602,6 +602,15 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             }
         }
 
+        case Creep_Type.hardened_spider: return {
+            attack_damage: 3,
+            health: 5,
+            armor: 2,
+            move_points: 2,
+            attack: basic_attack(1),
+            abilities: []
+        };
+
         case Creep_Type.ember_fire_remnant: {
             return {
                 attack_damage: 0,

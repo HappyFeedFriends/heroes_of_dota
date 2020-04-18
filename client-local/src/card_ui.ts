@@ -81,20 +81,6 @@ function get_full_hero_icon_path(type: Hero_Type): string {
     return `file://{images}/heroes/npc_dota_hero_${get_hero_dota_name(type)}.png`;
 }
 
-function get_full_creep_icon_path(type: Creep_Type): string {
-    switch (type) {
-        case Creep_Type.pocket_tower: return "";
-        case Creep_Type.lane_creep: return "";
-        case Creep_Type.satyr_big: return "";
-        case Creep_Type.satyr_small: return "";
-        case Creep_Type.small_spider: return "";
-        case Creep_Type.large_spider: return "";
-        case Creep_Type.spider_matriarch: return "";
-        case Creep_Type.spiderling: return "";
-        case Creep_Type.ember_fire_remnant: return "";
-    }
-}
-
 function get_spell_card_art(spell_id: Spell_Id): string {
     function get_spell_card_art_file(spell_id: Spell_Id): string {
         switch (spell_id) {
