@@ -23,7 +23,7 @@ type Adventure_Room = {
     name: string
     entrance_location: XY
     entities: Adventure_Entity_Definition[]
-    environment: Adventure_Room_Environment
+    environment: Environment
     camera_restriction_zones: Camera_Restriction_Zone[]
     exits: Adventure_Room_Exit[]
 }
@@ -369,7 +369,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             return;
         }
 
-        const environment = try_string_to_enum_value(source_room.environment, enum_names_to_values<Adventure_Room_Environment>());
+        const environment = try_string_to_enum_value(source_room.environment, enum_names_to_values<Environment>());
         if (environment == undefined) {
             console.error(`Environment type ${source_room.environment} not found while parsing ${file_path}`);
             return;

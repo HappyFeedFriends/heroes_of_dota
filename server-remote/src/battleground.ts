@@ -8,6 +8,7 @@ type Persistent_Battleground = Battleground & {
 type Battleground_File = {
     name: string
     theme: string
+    environment: string
 
     world_origin: {
         x: number
@@ -101,6 +102,7 @@ export function make_new_battleground(name: string, world_origin: World_Origin, 
     const bg: Persistent_Battleground = {
         name: name,
         id: id,
+        environment: Environment.day,
         world_origin: world_origin,
         theme: theme,
         grid_size: { x: 10, y: 10 },
@@ -187,6 +189,7 @@ function battleground_to_file_object(battleground: Battleground) {
     const file: Battleground_File = {
         name: battleground.name,
         theme: enum_to_string(battleground.theme),
+        environment: enum_to_string(battleground.environment),
         world_origin: copy<Battleground_File["world_origin"]>(battleground.world_origin),
         grid_size: copy<Battleground_File["grid_size"]>(battleground.grid_size),
         deployment_zones: battleground.deployment_zones.map(zone => ({
@@ -270,9 +273,15 @@ function load_battleground_from_file(file_path: string, battleground: Battlegrou
     const item_ids = enum_names_to_values<Item_Id>();
 
     const theme = try_string_to_enum_value(battleground.theme, enum_names_to_values<Battleground_Theme>());
+    const environment = try_string_to_enum_value(battleground.environment, enum_names_to_values<Environment>());
 
     if (theme == undefined) {
         console.error(`Unrecognized battleground theme '${battleground.theme}' while parsing ${file_path}`);
+        return;
+    }
+
+    if (environment == undefined) {
+        console.error(`Unrecognized battleground environment '${battleground.environment}' while parsing ${file_path}`);
         return;
     }
 
@@ -349,6 +358,7 @@ function load_battleground_from_file(file_path: string, battleground: Battlegrou
     return {
         name: battleground.name,
         theme: theme,
+        environment: environment,
         world_origin: battleground.world_origin,
         grid_size: battleground.grid_size,
         deployment_zones: battleground.deployment_zones.map(zone => ({

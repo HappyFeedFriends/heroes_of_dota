@@ -422,6 +422,7 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                     width: battle.grid.size.x,
                     height: battle.grid.size.y
                 },
+                battleground_environment: battle.battleground.environment,
                 battleground_theme: battle.battleground.theme,
                 battle_world_origin: battle.battleground.world_origin,
                 disabled_cell_indices: battle.battleground.disabled_cells

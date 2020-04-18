@@ -3,7 +3,10 @@ type Editor_State = {
     camera_dummy: CDOTA_BaseNPC
     battleground_entities: Indexed_Entities
     theme: Battleground_Theme
+    environment: Environment
     auto_tree_id: Tree_Id
+    in_battleground_editor: boolean
+    last_updated_vision_at: number
 }
 
 type Editor_Battleground_Entity = Battleground_Spawn & {
@@ -334,6 +337,9 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
 
             update_editor_battleground(editor, origin, event.theme, from_client_array(event.spawns));
 
+            editor.environment = event.environment;
+            editor.in_battleground_editor = from_client_bool(event.in_battleground_editor);
+
             break;
         }
 
@@ -386,38 +392,33 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
     }
 }
 
-function subscribe_to_editor_events(game: Game) {
-    const camera_entity = CreateUnitByName("npc_dummy_unit", Vector(), true, null, null, DOTATeam_t.DOTA_TEAM_GOODGUYS);
-    camera_entity.AddNewModifier(camera_entity, undefined, "Modifier_Dummy", {});
+function update_editor(state: Editor_State) {
+    const should_update_vision = GameRules.GetGameTime() - state.last_updated_vision_at > 1;
 
-    const state: Editor_State =  {
+    if (state.map_revealed && should_update_vision) {
+        const radius = 3000;
+        const entity = PlayerResource.GetSelectedHeroEntity(0);
+        const center = entity.GetAbsOrigin();
+
+        for (let x = -3; x < 3; x++) {
+            for (let y = -3; y < 3; y++) {
+                AddFOWViewer(DOTATeam_t.DOTA_TEAM_GOODGUYS, center + Vector(x * radius, y * radius) as Vector, radius, 1, false);
+            }
+        }
+
+        state.last_updated_vision_at = GameRules.GetGameTime();
+    }
+}
+
+function create_editor(): Editor_State {
+    return {
         map_revealed: false,
-        camera_dummy: camera_entity,
+        camera_dummy: create_camera_entity(),
         battleground_entities: [],
         theme: Battleground_Theme.forest,
-        auto_tree_id: 0 as Tree_Id
+        environment: Environment.day,
+        auto_tree_id: 0 as Tree_Id,
+        in_battleground_editor: false,
+        last_updated_vision_at: 0
     };
-
-    register_local_api_handler(Local_Api_Request_Type.editor_action, event => {
-        perform_editor_action(game, state, event);
-        return {};
-    });
-
-    fork(() => {
-        while (true) {
-            if (state.map_revealed) {
-                const radius = 3000;
-                const entity = PlayerResource.GetSelectedHeroEntity(0);
-                const center = entity.GetAbsOrigin();
-
-                for (let x = -3; x < 3; x++) {
-                    for (let y = -3; y < 3; y++) {
-                        AddFOWViewer(DOTATeam_t.DOTA_TEAM_GOODGUYS, center + Vector(x * radius, y * radius) as Vector, radius, 1, false);
-                    }
-                }
-            }
-
-            wait(1);
-        }
-    })
 }

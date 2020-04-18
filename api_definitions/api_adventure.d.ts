@@ -129,11 +129,6 @@ declare const enum Adventure_Room_Type {
     rest = 1
 }
 
-declare const enum Adventure_Room_Environment {
-    day = 0,
-    night = 1
-}
-
 type Adventure_Handlers = {
     type: Api_Request_Type.start_adventure
     request: {
@@ -204,7 +199,7 @@ type Adventure_Handlers = {
 
 type Adventure_Room_Data = {
     entrance: XY
-    environment: Adventure_Room_Environment
+    environment: Environment
     entities: Adventure_Entity[]
     camera_restriction_zones: Camera_Restriction_Zone[]
     exits: Adventure_Room_Exit[]

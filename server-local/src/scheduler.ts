@@ -14,8 +14,11 @@ type Task = {
     is_waiting: boolean;
 }
 
-type Fork = {
-    has_finished: boolean
+type Fork<T> = {
+    has_finished: false
+} | {
+    has_finished: true
+    result: T
 }
 
 function update_scheduler() {
@@ -40,18 +43,23 @@ function update_scheduler() {
     });
 }
 
-function fork(code: () => void): Fork {
+function fork<T>(code: () => T): Fork<T> {
     const task: Task = {
         is_waiting: false
     };
 
-    const fork: Fork = {
+    const fork: Fork<T> = {
         has_finished: false
     };
 
     const routine = coroutine.create(() => {
-        code();
-        fork.has_finished = true;
+        const result = code();
+        const completed: Fork<T> = {
+            has_finished: true,
+            result: result
+        };
+
+        Object.assign(fork, completed);
     });
 
     scheduler.tasks.set(routine, task);
@@ -92,7 +100,7 @@ function wait_until(condition: () => boolean) {
     }
 }
 
-function wait_for_all_forks(forks: Fork[]) {
+function wait_for_all_forks<T>(forks: Fork<T>[]) {
     wait_until(() => forks.every(fork => fork.has_finished));
 }
 

@@ -74,6 +74,11 @@ declare const enum Battleground_Theme {
     mines = 3
 }
 
+declare const enum Environment {
+    day = 0,
+    night = 1
+}
+
 type Player_Id = number & { _player_id_brand: any };
 type Npc_Id = number & { _npc_id_brand: any };
 type Battle_Id = number & { _battle_id_brand: any };
@@ -122,6 +127,7 @@ type Player_State_In_Battle = {
     }
     participants: Battle_Participant_Info[]
     battle_world_origin: World_Origin
+    battleground_environment: Environment
     battleground_theme: Battleground_Theme
     disabled_cell_indices: Cell_Index[]
 }

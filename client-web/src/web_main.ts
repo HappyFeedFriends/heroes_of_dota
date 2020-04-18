@@ -1537,6 +1537,7 @@ function draw_battle_list(global_map: Game_On_Global_Map) {
         if (button(text)) {
             game_from_state({
                 battleground_theme: Battleground_Theme.forest,
+                battleground_environment: Environment.day,
                 battle_world_origin: { x: 0, y: 0, z: 0 },
                 state: Player_State.in_battle,
                 battle_id: battle.id,

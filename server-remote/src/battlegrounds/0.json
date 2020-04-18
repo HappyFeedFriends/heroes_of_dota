@@ -1,6 +1,7 @@
 {
     "name": "Default",
     "theme": "garden",
+    "environment": "day",
     "world_origin": {
         "x": -14464,
         "y": 12608,

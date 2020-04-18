@@ -1,6 +1,7 @@
 {
     "name": "Forest Small",
     "theme": "forest",
+    "environment": "day",
     "world_origin": {
         "x": -10576,
         "y": 13104,

@@ -1,6 +1,7 @@
 type Battle = {
     id: Battle_Id
     theme: Battleground_Theme
+    environment: Environment
     this_player_id: Battle_Player_Id
     random_seed: number
     participants: Battle_Participant_Info[]
@@ -928,7 +929,7 @@ function tide_ravage(game: Game, caster: Unit, cast: Delta_Ability_Tide_Ravage) 
         by_distance.push(target);
     }
 
-    const forks: Fork[] = [];
+    const forks: Fork<void>[] = [];
 
     for (let distance = 1; distance <= 5; distance++) {
         const by_distance = deltas_by_distance[distance];
@@ -1322,7 +1323,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             // TODO @VoiceOver
 
             const targets = filter_and_map_existing_units(cast.targets);
-            const forks: Fork[] = [];
+            const forks: Fork<void>[] = [];
 
             // @HardcodedConstant
             const distance = 3;
@@ -2603,7 +2604,7 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
                 .release();
 
             const spawn_at = source.position;
-            const forks: Fork[] = [];
+            const forks: Fork<void>[] = [];
 
             for (const summon of from_client_array(effect.summons)) {
                 forks.push(fork(() => {
@@ -3646,11 +3647,12 @@ function clean_battle_world_handles(battle: Battle) {
     battle.timed_effect_visuals = [];
 }
 
-function reinitialize_battle(world_origin: Vector, theme: Battleground_Theme, disabled_cells: Cell_Index[], camera_entity: CDOTA_BaseNPC) {
+function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC) {
     battle = {
         id: -1 as Battle_Id,
         this_player_id: -1 as Battle_Player_Id,
-        theme: theme,
+        theme: Battleground_Theme.forest,
+        environment: Environment.day,
         random_seed: 0,
         deltas: [],
         players: [],
@@ -3672,7 +3674,7 @@ function reinitialize_battle(world_origin: Vector, theme: Battleground_Theme, di
         camera_dummy: camera_entity,
         applied_modifier_visuals: [],
         timed_effect_visuals: [],
-        disabled_cells: disabled_cells
+        disabled_cells: []
     };
 }
 

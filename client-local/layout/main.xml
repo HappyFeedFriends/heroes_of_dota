@@ -32,7 +32,7 @@
         <include src="file://{resources}/styles/custom_game/hand.css" />
     </styles>
     <Panel class="main_panel" hittest="false">
-        <Panel id="chat" style="flow-children: down; x: 100px; y: 400px; width: 300px;">
+        <Panel id="chat" style="flow-children: down; x: 100px; y: 700px; width: 300px;">
             <Label text="Barrens chat" style="color: white; font-size: 22px;"/>
             <Panel id="chat_messages" style="flow-children: down; color: white; font-size: 16px;"/>
         </Panel>

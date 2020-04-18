@@ -76,7 +76,7 @@ type Adventure_World_Room_Exit = {
 }
 
 type Adventure_State = {
-    environment: Adventure_Room_Environment
+    environment: Environment
     entities: Adventure_World_Entity[]
     current_right_click_target?: Adventure_World_Entity
     ongoing_adventure_id: Ongoing_Adventure_Id
@@ -86,7 +86,11 @@ type Adventure_State = {
     last_ordered_dummy_to_move_at: number
     num_party_slots: number
     deciding_to_exit_at?: Adventure_World_Room_Exit
-    attacking_enemy?: Adventure_World_Enemy
+    attacking_enemy?: {
+        enemy: Adventure_World_Enemy
+        animation: Fork<void>
+        new_state: Fork<Player_State_Data | undefined>
+    }
 }
 
 const debug_camera = false;
@@ -265,12 +269,11 @@ function update_adventure_enemy(game: Game, enemy: Adventure_World_Enemy) {
         }
 
         if (from_enemy_to_player <= 96) {
-            if (!game.adventure.attacking_enemy) {
-                game.adventure.attacking_enemy = enemy;
-
+            const attack = game.adventure.attacking_enemy;
+            if (!attack) {
                 enemy_handle.Stop();
 
-                const stun = player_handle.AddNewModifier(player_handle, undefined, "Modifier_Stunned", {});
+                player_handle.AddNewModifier(player_handle, undefined, "Modifier_Stunned", {});
                 player_handle.FaceTowards(enemy_actual_location);
                 add_activity_override({ handle: player_handle }, GameActivity_t.ACT_DOTA_ATTACK, 1.0);
 
@@ -283,20 +286,23 @@ function update_adventure_enemy(game: Game, enemy: Adventure_World_Enemy) {
                     enemy_handle.FadeGesture(GameActivity_t.ACT_DOTA_ATTACK);
                 });
 
-                const new_state = api_request(Api_Request_Type.start_adventure_enemy_fight, {
+                const new_state = fork(() => api_request(Api_Request_Type.start_adventure_enemy_fight, {
                     enemy_entity_id: enemy.base.id,
                     access_token: game.token,
                     dedicated_server_key: get_dedicated_server_key()
-                });
+                }));
 
-                if (new_state) {
-                    wait_for_all_forks([ animation ]);
-
-                    try_submit_state_transition(game, new_state);
+                game.adventure.attacking_enemy = {
+                    enemy: enemy,
+                    animation: animation,
+                    new_state: new_state
+                };
+            } else if (attack.animation.has_finished && attack.new_state.has_finished) {
+                if (attack.new_state.result) {
+                    try_submit_state_transition(game, attack.new_state.result);
                 }
 
-                stun.Destroy();
-
+                player_handle.RemoveModifierByName("Modifier_Stunned");
                 game.adventure.attacking_enemy = undefined;
             }
         } else if (now - enemy.issued_movement_order_at > 0.1) {
@@ -591,20 +597,6 @@ function update_adventure(game: Game) {
         draw_zones_debug(game);
     }
 
-    switch (game.adventure.environment) {
-        case Adventure_Room_Environment.day: {
-            GameRules.SetTimeOfDay(0.27);
-            break;
-        }
-
-        case Adventure_Room_Environment.night: {
-            GameRules.SetTimeOfDay(0.77);
-            break;
-        }
-
-        default: unreachable(game.adventure.environment);
-    }
-
     update_adventure_camera(game.adventure, game.player);
 
     const right_click_target = game.adventure.current_right_click_target;
@@ -741,8 +733,10 @@ function adventure_interact_with_entity(game: Game, entity_id: Adventure_World_E
                 const hero_fx = fx_by_unit("particles/world_shrine/radiant_shrine_regen.vpcf", hero)
                     .to_unit_attach_point(0, hero, "attach_hitloc");
 
-                wait(3);
-                hero_fx.destroy_and_release(false);
+                fork(() => {
+                    wait(3);
+                    hero_fx.destroy_and_release(false);
+                });
             });
         }
 

@@ -24,6 +24,7 @@ let current_camera_target: Camera_Target = {};
 let editor_override_camera_target: Camera_Target | undefined = undefined;
 let reset_camera_override_at = 0;
 let suppress_camera_change = false;
+let target_environment = Environment.day;
 
 let state_transition: Player_State_Data | undefined = undefined;
 
@@ -319,7 +320,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         battle.camera_dummy.SetDayTimeVisionRange(0);
 
         clean_battle_world_handles(battle);
-        reinitialize_battle(battle.world_origin, battle.theme, battle.disabled_cells, battle.camera_dummy);
+        reinitialize_battle(battle.world_origin, battle.camera_dummy);
     }
 
     if (next_state.state == Player_State.on_global_map) {
@@ -332,7 +333,7 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         const origin = next_state.battle_world_origin;
 
         clean_battle_world_handles(battle);
-        reinitialize_battle(Vector(origin.x, origin.y, origin.z), next_state.battleground_theme, next_state.disabled_cell_indices, battle.camera_dummy);
+        reinitialize_battle(Vector(origin.x, origin.y, origin.z), battle.camera_dummy);
 
         battle.id = next_state.battle_id;
         battle.random_seed = next_state.random_seed;
@@ -343,6 +344,9 @@ function process_state_transition(game: Game, current_state: Player_State, next_
         }));
         battle.participants = next_state.participants;
         battle.grid_size = next_state.grid_size;
+        battle.environment = next_state.battleground_environment;
+        battle.theme = next_state.battleground_theme;
+        battle.disabled_cells = next_state.disabled_cell_indices;
         battle.is_over = false;
 
         const grid_w = next_state.grid_size.width;
@@ -516,6 +520,37 @@ function update_current_camera_target(game: Game) {
     }
 }
 
+function update_environment(game: Game, editor?: Editor_State) {
+    if (editor && editor.in_battleground_editor) {
+        set_time_of_day_from_environment(editor.environment);
+        return;
+    }
+
+    if (game.state == Player_State.in_battle) {
+        set_time_of_day_from_environment(battle.environment);
+    } else if (game.state == Player_State.on_adventure) {
+        set_time_of_day_from_environment(game.adventure.environment);
+    } else if (game.state == Player_State.on_global_map) {
+        set_time_of_day_from_environment(Environment.day);
+    }
+
+    function set_time_of_day_from_environment(env: Environment) {
+        switch (env) {
+            case Environment.day: {
+                GameRules.SetTimeOfDay(0.27);
+                break;
+            }
+
+            case Environment.night: {
+                GameRules.SetTimeOfDay(0.77);
+                break;
+            }
+
+            default: unreachable(env);
+        }
+    }
+}
+
 function main() {
     function link_modifier(name: string, path: string) {
         LinkLuaModifier(name, path, LuaModifierType.LUA_MODIFIER_MOTION_NONE);
@@ -558,9 +593,7 @@ function game_loop() {
     let player_id: PlayerID | undefined = undefined;
     let player_unit: CDOTA_BaseNPC_Hero | undefined = undefined;
 
-    const camera_entity = create_camera_entity();
-
-    reinitialize_battle(Vector(), Battleground_Theme.forest, [], camera_entity);
+    reinitialize_battle(Vector(), create_camera_entity());
 
     on_player_connected_async(id => player_id = id);
 
@@ -596,7 +629,7 @@ function game_loop() {
         adventure: {
             entities: [],
             exits: [],
-            environment: Adventure_Room_Environment.day,
+            environment: Environment.day,
             ongoing_adventure_id: -1 as Ongoing_Adventure_Id,
             num_party_slots: 0,
             camera_restriction_zones: [],
@@ -681,10 +714,17 @@ function game_loop() {
         return {};
     });
 
+    const editor = IsInToolsMode() ? create_editor() : undefined;
+
     if (IsInToolsMode()) {
         SendToServerConsole("r_farz 10000");
 
-        subscribe_to_editor_events(game);
+        if (editor) {
+            register_local_api_handler(Local_Api_Request_Type.editor_action, event => {
+                perform_editor_action(game, editor, event);
+                return {};
+            });
+        }
 
         register_local_api_handler(Local_Api_Request_Type.list_battle_locations, () => {
             function entity_to_battle_location(name: string, entity_name: string, theme: Battleground_Theme) {
@@ -753,19 +793,6 @@ function game_loop() {
     let end_state_fade_at = 0;
     let trying_to_transition = false;
 
-    // TODO get rid of coroutines in adventure code and transition this into the main loop
-    fork(() => {
-        while (true) {
-            if (game.state == Player_State.on_adventure) {
-                if (!trying_to_transition) {
-                    update_adventure(game);
-                }
-            }
-
-            wait_one_frame();
-        }
-    });
-
     fork(() => {
         while(true) {
             const should_wait_before_state_transition =
@@ -789,8 +816,21 @@ function game_loop() {
                 periodically_update_battle();
             }
 
+            if (game.state == Player_State.on_adventure) {
+                if (!trying_to_transition) {
+                    update_adventure(game);
+                }
+            }
+
             update_main_player_movement_history(player);
             update_current_camera_target(game);
+
+            if (editor) {
+                update_editor(editor);
+            }
+
+            update_environment(game, editor);
+
             wait_one_frame();
         }
     });

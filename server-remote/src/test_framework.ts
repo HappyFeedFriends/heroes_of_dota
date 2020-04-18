@@ -590,6 +590,7 @@ export function make_test_battle() {
         disabled_cells: [],
         grid_size: { x: 10, y: 10 },
         theme: Battleground_Theme.forest,
+        environment: Environment.day,
         deployment_zones: [deployment_zone],
         spawns: [],
         world_origin: { x: 0, y: 0, z: 0 }

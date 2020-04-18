@@ -397,7 +397,9 @@ type Editor_Action = {
     type: Editor_Action_Type.exit_adventure
 } | {
     type: Editor_Action_Type.submit_battleground
+    in_battleground_editor: boolean
     origin: World_Origin
+    environment: Environment
     theme: Battleground_Theme
     spawns: Battleground_Spawn[]
 } | {
@@ -410,7 +412,7 @@ type Editor_Action = {
     item: Adventure_Item_Id
 } | {
     type: Editor_Action_Type.set_room_details
-    environment: Adventure_Room_Environment
+    environment: Environment
     zones: Camera_Restriction_Zone[]
     exits: Adventure_Room_Exit[]
 } | {

@@ -57,7 +57,7 @@ type Adventure_Editor = {
     selection: Adventure_Editor_Selection
     camera_height_index: number
     room_type: Adventure_Room_Type
-    room_env: Adventure_Room_Environment
+    room_env: Environment
     room_name: string
     room_entrance_location: XYZ
     last_camera_position: XYZ
@@ -68,6 +68,7 @@ type Adventure_Editor = {
 
 type Battleground_Editor = {
     current_id: Battleground_Id
+    battleground_env: Environment
     theme: Battleground_Theme
     battleground_name: string
     type: Editor_Type.battleground
@@ -2068,6 +2069,7 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
         current_id: id,
         theme: battleground.theme,
         battleground_name: battleground.name,
+        battleground_env: battleground.environment,
         cells: [],
         grid_size: xy(grid_w, grid_h),
         spawns: [],
@@ -2254,10 +2256,10 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
 
     toolbar_button("Select theme", dropdown_menu_action(menu, async (parent, close_dropdown) => {
         const themes = enum_names_to_values<Battleground_Theme>();
-        const theme_buttons: [Battleground_Theme, Panel][] = [];
+        const buttons: [Battleground_Theme, Panel][] = [];
 
         function update_button_styles() {
-            for (let [button_theme, button] of theme_buttons) {
+            for (let [button_theme, button] of buttons) {
                 button.SetHasClass("selected", button_theme == new_editor.theme);
             }
         }
@@ -2271,7 +2273,33 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
                 update_button_styles();
             });
 
-            theme_buttons.push([theme, button]);
+            buttons.push([theme, button]);
+        }
+
+        toolbar_dropdown_button("Cancel", () => close_dropdown());
+
+        update_button_styles();
+    }));
+
+    toolbar_button("Select environment", dropdown_menu_action(menu, async (parent, close_dropdown) => {
+        const buttons: [Environment, Panel][] = [];
+
+        function update_button_styles() {
+            for (let [env, button] of buttons) {
+                button.SetHasClass("selected", env == new_editor.battleground_env);
+            }
+        }
+
+        for (const [name, env] of enum_names_to_values<Environment>()) {
+            const button = toolbar_dropdown_button(name, () => {
+                new_editor.battleground_env = env;
+
+                submit_battleground_state_to_server(new_editor);
+                submit_editor_battleground_for_repaint(new_editor);
+                update_button_styles();
+            });
+
+            buttons.push([env, button]);
         }
 
         toolbar_dropdown_button("Cancel", () => close_dropdown());
@@ -2454,7 +2482,7 @@ async function enter_adventure_editor(move_camera = false) {
     }));
 
     toolbar_button("Change environment", dropdown_menu_action(menu, (parent, close) => {
-        for (const [name, value] of enum_names_to_values<Adventure_Room_Environment>()) {
+        for (const [name, value] of enum_names_to_values<Environment>()) {
             toolbar_dropdown_button(name, () => {
                 new_editor.room_env = value;
                 update_env_label();
@@ -2484,8 +2512,10 @@ function cleanup_current_editor() {
             dispatch_local_editor_action({
                 type: Editor_Action_Type.submit_battleground,
                 origin: editor.grid_world_origin,
+                environment: editor.battleground_env,
                 theme: editor.theme,
-                spawns: []
+                spawns: [],
+                in_battleground_editor: false
             });
 
             battleground_editor_cleanup_cells(editor);
@@ -2559,6 +2589,7 @@ function submit_battleground_state_to_server(editor: Battleground_Editor) {
             theme: editor.theme,
             grid_size: editor.grid_size,
             deployment_zones: editor.deployment_zones,
+            environment: editor.battleground_env,
             spawns: flattened_spawns,
             disabled_cells: battleground_editor_disabled_cell_indices(editor)
         }
@@ -2572,8 +2603,10 @@ function submit_editor_battleground_for_repaint(editor: Battleground_Editor) {
     dispatch_local_editor_action({
         type: Editor_Action_Type.submit_battleground,
         origin: editor.grid_world_origin,
+        environment: editor.battleground_env,
         spawns: flattened_spawns,
-        theme: editor.theme
+        theme: editor.theme,
+        in_battleground_editor: true
     });
 }
 
