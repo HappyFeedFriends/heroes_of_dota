@@ -699,7 +699,8 @@ function game_loop() {
 
             return [
                 entity_to_battle_location("Forest 1", "bg_forest_1", Battleground_Theme.forest),
-                entity_to_battle_location("Forest 2", "bg_forest_2", Battleground_Theme.forest)
+                entity_to_battle_location("Forest 2", "bg_forest_2", Battleground_Theme.forest),
+                entity_to_battle_location("Mines 1", "mines_bg_origin", Battleground_Theme.mines)
             ]
         });
 

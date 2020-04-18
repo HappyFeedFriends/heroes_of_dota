@@ -489,7 +489,16 @@ function create_world_handle_for_tree(world_origin: Vector, theme: Battleground_
                 ],
                 skin: 0,
                 color_provider: (seed, id) => varying_color([80, 90, 30], seed, id)
-            }
+            };
+
+            case Battleground_Theme.mines: return {
+                models: [
+                    "models/props_nature/mushroom_wild001.vmdl",
+                    "models/props_nature/mushroom_wild002.vmdl"
+                ],
+                skin: 0,
+                color_provider: (seed, id) => varying_color([210, 210, 255], seed, id)
+            };
         }
     }
 

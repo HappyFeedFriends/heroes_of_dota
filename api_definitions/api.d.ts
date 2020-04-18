@@ -70,7 +70,8 @@ declare const enum Npc_Type {
 declare const enum Battleground_Theme {
     forest = 0,
     forest_dead = 1,
-    garden = 2
+    garden = 2,
+    mines = 3
 }
 
 type Player_Id = number & { _player_id_brand: any };
