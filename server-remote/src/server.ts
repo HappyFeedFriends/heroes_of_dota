@@ -443,6 +443,7 @@ function player_to_player_state_object(player: Map_Player): Player_State_Data {
                     entities: ongoing_adventure.entities,
                     camera_restriction_zones: room.camera_restriction_zones,
                     entrance: room.entrance_location,
+                    entrance_facing: room.entrance_facing,
                     exits: room.exits,
                     environment: room.environment
                 },
@@ -1377,6 +1378,7 @@ register_api_handler(Api_Request_Type.enter_adventure_room, req => {
         return {
             entities: entities,
             entrance: next_room.entrance_location,
+            entrance_facing: next_room.entrance_facing,
             environment: next_room.environment,
             camera_restriction_zones: next_room.camera_restriction_zones,
             exits: next_room.exits
@@ -1711,6 +1713,10 @@ function register_dev_handlers() {
                 entrance_location: {
                     x: current_room.entrance_location.x,
                     y: current_room.entrance_location.y
+                },
+                entrance_facing: {
+                    x: current_room.entrance_facing.x,
+                    y: current_room.entrance_facing.y
                 },
                 exits: current_room.exits.map(exit => ({
                     ...exit,

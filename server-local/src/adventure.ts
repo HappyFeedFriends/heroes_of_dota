@@ -897,6 +897,7 @@ function enter_adventure_room(player: Main_Player, adventure: Adventure_State, r
     const start = override_position ? Vector(override_position.x, override_position.y) : Vector(room.entrance.x, room.entrance.y);
 
     FindClearSpaceForUnit(player.hero_unit, start, true);
+    player.hero_unit.SetForwardVector(Vector(room.entrance_facing.x, room.entrance_facing.y));
     player.hero_unit.Interrupt();
     adventure.camera_dummy.SetAbsOrigin(player.hero_unit.GetAbsOrigin());
 

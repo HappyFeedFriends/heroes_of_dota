@@ -30,6 +30,10 @@ type Editor_Handlers = {
             x: number
             y: number
         }
+        entrance_facing: {
+            x: number
+            y: number
+        }
     }
 } | {
     type: Api_Request_Type.editor_create_entity
@@ -133,6 +137,10 @@ type Adventure_Editor_Action = {
     exits: Adventure_Room_Exit[]
     environment: Environment
     entrance: {
+        x: number
+        y: number
+    }
+    entrance_facing: {
         x: number
         y: number
     }

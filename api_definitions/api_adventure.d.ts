@@ -199,6 +199,7 @@ type Adventure_Handlers = {
 
 type Adventure_Room_Data = {
     entrance: XY
+    entrance_facing: XY
     environment: Environment
     entities: Adventure_Entity[]
     camera_restriction_zones: Camera_Restriction_Zone[]

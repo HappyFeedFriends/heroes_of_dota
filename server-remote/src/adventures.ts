@@ -22,6 +22,7 @@ type Adventure_Room = {
     id: Adventure_Room_Id
     name: string
     entrance_location: XY
+    entrance_facing: XY
     entities: Adventure_Entity_Definition[]
     environment: Environment
     camera_restriction_zones: Camera_Restriction_Zone[]
@@ -39,6 +40,7 @@ type Adventure_File = {
         name: string
         type: string
         entrance: [number, number]
+        entrance_facing: [number, number]
         environment: string
         enemies?: Array<File_Entity_Base & {
             type: string
@@ -380,6 +382,11 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             y: source_room.entrance[1]
         };
 
+        const entrance_facing = {
+            x: source_room.entrance_facing[0],
+            y: source_room.entrance_facing[1]
+        };
+
         const entities: Adventure_Entity_Definition[] = [];
 
         for (const source_enemy of source_room.enemies || []) {
@@ -562,6 +569,7 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
             type: room_type,
             environment: environment,
             entrance_location: entrance,
+            entrance_facing: entrance_facing,
             entities: entities,
             camera_restriction_zones: zones,
             exits: exits
@@ -685,6 +693,7 @@ function persist_adventure_to_file_system(adventure: Adventure) {
                 type: enum_to_string(room.type),
                 environment: enum_to_string(room.environment),
                 entrance: [room.entrance_location.x, room.entrance_location.y],
+                entrance_facing: [room.entrance_facing.x, room.entrance_facing.y],
                 enemies: non_empty_or_none(enemies),
                 items: non_empty_or_none(items),
                 gold_bags: non_empty_or_none(gold_bags),
@@ -791,6 +800,7 @@ export function apply_editor_action(ongoing: Ongoing_Adventure, action: Adventur
         case Adventure_Editor_Action_Type.set_room_details: {
             const current_room = ongoing.current_room;
 
+            current_room.entrance_facing = action.entrance_facing;
             current_room.type = action.room_type;
             current_room.environment = action.environment;
             current_room.name = action.name;

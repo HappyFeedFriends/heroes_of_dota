@@ -59,10 +59,14 @@ type Adventure_Editor = {
     room_type: Adventure_Room_Type
     room_env: Environment
     room_name: string
-    room_entrance_location: XYZ
     last_camera_position: XYZ
     camera_restriction_zones: UI_Camera_Restriction_Zone[]
-    entrance_indicator: World_Indicator
+    entrance: {
+        indicator: World_Indicator
+        particle: ParticleId
+        location: XYZ
+        facing: XY
+    }
     exits: UI_Room_Exit[]
 }
 
@@ -1155,11 +1159,16 @@ function adventure_editor_show_context_menu(editor: Adventure_Editor, click_worl
         context_menu_button(`Create ...`, entity_creation_buttons);
 
         context_menu_button(`Set entrance to here`, async () => {
-            const ground = await async_local_api_request(Local_Api_Request_Type.get_ground_z, click);
-            if (!ground.ok) return;
+            editor.entrance.location = click_world_position;
 
-            editor.room_entrance_location = xyz(click.x, click.y, ground.body.z);
+            submit_adventure_room_details_to_server(editor);
+        });
 
+        context_menu_button(`Orient entrance`, async () => {
+            const entrance = editor.entrance.location;
+            editor.entrance.facing = norm(sub(click, xy(entrance.x, entrance.y)));
+
+            update_adventure_entrance_particle_facing(editor);
             submit_adventure_room_details_to_server(editor);
         });
 
@@ -1633,7 +1642,7 @@ export function adventure_editor_filter_mouse_click(editor: Adventure_Editor, ev
         const cursor_world = get_screen_world_position(cursor);
 
         if (cursor_world) {
-            const room_exit = editor.exits.find(exit => len(sub(exit.at, cursor_world)) <= 100);
+            const room_exit = editor.exits.find(exit => exit.indicator.root.BHasHoverStyle());
 
             if (room_exit) {
                 adventure_editor_select_room_exit(editor, room_exit);
@@ -1868,7 +1877,7 @@ function periodically_update_editor_ui() {
             }
         }
 
-        position_panel_over_position_in_the_world(editor.entrance_indicator.root, editor.room_entrance_location, Align_H.center, Align_V.top);
+        position_panel_over_position_in_the_world(editor.entrance.indicator.root, editor.entrance.location, Align_H.center, Align_V.top);
 
         for (const exit of editor.exits) {
             position_panel_over_position_in_the_world(exit.indicator.root, exit.at, Align_H.center, Align_V.top);
@@ -2383,6 +2392,16 @@ function set_current_editor(new_editor: Editor) {
     update_state_from_editor_mode(current_state, new_editor);
 }
 
+function update_adventure_entrance_particle_facing(editor: Adventure_Editor) {
+    const entrance = editor.entrance;
+
+    Particles.SetParticleControl(entrance.particle, 2, [
+        entrance.location.x + entrance.facing.x,
+        entrance.location.y + entrance.facing.y,
+        entrance.location.z
+    ]);
+}
+
 async function enter_adventure_editor(move_camera = false) {
     const room = await async_api_request(Api_Request_Type.editor_get_room_details, {
         access_token: get_access_token()
@@ -2402,6 +2421,14 @@ async function enter_adventure_editor(move_camera = false) {
         })
     }
 
+    const room_entrance = xyz(room.entrance_location.x, room.entrance_location.y, ground.body.z);
+    const particle_path = "particles/ui_mouseactions/range_finder_directional_c.vpcf";
+    const entrance_particle = Particles.CreateParticle(particle_path, ParticleAttachment_t.PATTACH_WORLDORIGIN, 0);
+
+    Particles.SetParticleControl(entrance_particle, 0, xyz_to_array(room_entrance));
+
+    register_particle_for_reload(entrance_particle);
+
     const new_editor: Adventure_Editor = {
         type: Editor_Type.adventure,
         room_type: room.type,
@@ -2409,18 +2436,23 @@ async function enter_adventure_editor(move_camera = false) {
         room_env: room.environment,
         selection: { type: Adventure_Selection_Type.none },
         camera_height_index: 4,
-        room_entrance_location: xyz(room.entrance_location.x, room.entrance_location.y, ground.body.z),
         last_camera_position: xyz(0, 0, 0),
-        entrance_indicator: create_world_indicator(""),
+        entrance: {
+            indicator: create_world_indicator(""),
+            particle: entrance_particle,
+            location: room_entrance,
+            facing: room.entrance_facing
+        },
         camera_restriction_zones: [],
         exits: []
     };
 
+    update_adventure_entrance_particle_facing(new_editor);
     set_current_editor(new_editor);
 
     // A hack since we delete all world indicators in set_current_editor
-    new_editor.entrance_indicator = create_world_indicator("START");
-    new_editor.entrance_indicator.root.AddClass("editor_room_entrance_indicator");
+    new_editor.entrance.indicator = create_world_indicator("START");
+    new_editor.entrance.indicator.root.AddClass("editor_room_entrance_indicator");
 
     new_editor.camera_restriction_zones = await Promise.all(room.camera_restriction_zones.map(async zone => {
         const new_zone: UI_Camera_Restriction_Zone = {
@@ -2525,6 +2557,7 @@ function cleanup_current_editor() {
 
         case Editor_Type.adventure: {
             drop_adventure_editor_selection(editor);
+            destroy_fx(editor.entrance.particle);
 
             for (const zone of editor.camera_restriction_zones) {
                 zone.particles.forEach(destroy_fx);
@@ -2616,7 +2649,8 @@ function submit_adventure_room_details_to_server(editor: Adventure_Editor) {
         room_type: editor.room_type,
         name: editor.room_name,
         environment: editor.room_env,
-        entrance: editor.room_entrance_location,
+        entrance: editor.entrance.location,
+        entrance_facing: editor.entrance.facing,
         zones: editor.camera_restriction_zones.map(zone => ({
             points: zone.points
         })),
