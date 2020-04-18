@@ -63,8 +63,7 @@ declare const enum Map_Entity_Type {
 }
 
 declare const enum Npc_Type {
-    satyr = 0,
-    spider = 1
+    satyr = 0
 }
 
 declare const enum Battleground_Theme {

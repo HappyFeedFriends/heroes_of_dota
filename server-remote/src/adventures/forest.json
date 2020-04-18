@@ -43,6 +43,17 @@
                         0
                     ],
                     "item_id": "iron_branch"
+                },
+                {
+                    "position": [
+                        -14610.323242188,
+                        6597.0375976563
+                    ],
+                    "facing": [
+                        1,
+                        0
+                    ],
+                    "item_id": "iron_branch"
                 }
             ],
             "other_entities": [

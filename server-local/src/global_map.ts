@@ -42,14 +42,6 @@ function get_npc_definition(npc_type: Npc_Type): Npc_Definition {
             attack_sound: "",
             hit_sound: ""
         };
-
-        case Npc_Type.spider: return {
-            model: "models/heroes/broodmother/spiderling.vmdl",
-            scale: 0.7,
-            notice_sound: "map_spider_notice",
-            attack_sound: "map_spider_attack",
-            hit_sound: "map_spider_hit"
-        };
     }
 }
 

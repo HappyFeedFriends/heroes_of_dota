@@ -187,7 +187,7 @@
         ]
     }
 
-    map_spider_notice = {
+    spider_notice = {
         type = "dota_update_default"
         pitch_rand_min = -0.05
         pitch_rand_max = 0.05
@@ -197,7 +197,7 @@
         ]
     }
 
-    map_spider_attack = {
+    spider_pre_attack = {
         type = "dota_update_default"
         pitch_rand_min = -0.05
         pitch_rand_max = 0.05
@@ -208,7 +208,7 @@
         ]
     }
 
-    map_spider_hit = {
+    spider_attack = {
         type = "dota_update_default"
         pitch_rand_min = -0.05
         pitch_rand_max = 0.05
@@ -216,6 +216,31 @@
         [
             "sounds/weapons/hero/broodmother/attack01.vsnd",
             "sounds/weapons/hero/broodmother/attack02.vsnd"
+        ]
+    }
+
+    spider_pain = {
+        type = "dota_update_default"
+        pitch_rand_min = -0.05
+        pitch_rand_max = 0.05
+        vsnd_files =
+        [
+            "sounds/physics/damage/npc/gore_01.vsnd",
+            "sounds/physics/damage/npc/gore_02.vsnd",
+            "sounds/physics/damage/npc/gore_03.vsnd"
+        ]
+    }
+
+    spider_death = {
+        type = "dota_update_default"
+        pitch_rand_min = -0.05
+        pitch_rand_max = 0.05
+        vsnd_files =
+        [
+            "sounds/weapons/creep/greevil/attack01.vsnd",
+            "sounds/weapons/creep/greevil/attack02.vsnd",
+            "sounds/weapons/creep/greevil/attack03.vsnd",
+            "sounds/weapons/creep/greevil/attack04.vsnd"
         ]
     }
 

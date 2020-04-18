@@ -286,11 +286,11 @@ function creep_traits_by_type(creep_type: Creep_Type): Creep_Traits {
     };
 
     const spider_sounds = {
-        pre_attack: "map_spider_attack",
-        attack: "map_spider_hit",
-        notice: "map_spider_notice",
-        pain: "",
-        death: ""
+        pre_attack: "spider_pre_attack",
+        attack: "spider_attack",
+        notice: "spider_notice",
+        pain: "spider_pain",
+        death: "spider_death"
     };
 
     const no_model = `models/development/invisiblebox.vmdl`;
