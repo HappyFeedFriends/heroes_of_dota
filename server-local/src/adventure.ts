@@ -261,58 +261,63 @@ function update_adventure_enemy(game: Game, enemy: Adventure_World_Enemy) {
 
     if (from_spawn_to_player <= sight_range && player_can_see_enemy) {
         if (!enemy.has_noticed_player) {
-            enemy.has_noticed_player = true;
-            enemy.noticed_particle = fx_by_unit("particles/map/msg_noticed.vpcf", enemy).follow_unit_overhead(0, enemy);
-            enemy.noticed_player_at = now;
+            const path_to_player = GridNav.FindPathLength(enemy_spawn_location, player_location);
+            if (path_to_player <= sight_range) {
+                enemy.has_noticed_player = true;
+                enemy.noticed_particle = fx_by_unit("particles/map/msg_noticed.vpcf", enemy).follow_unit_overhead(0, enemy);
+                enemy.noticed_player_at = now;
 
-            enemy_handle.EmitSound(enemy.traits.sounds.notice);
+                enemy_handle.EmitSound(enemy.traits.sounds.notice);
+            }
         }
 
-        if (from_enemy_to_player <= 96) {
-            const attack = game.adventure.attacking_enemy;
-            if (!attack) {
-                enemy_handle.Stop();
+        if (enemy.has_noticed_player) {
+            if (from_enemy_to_player <= 96) {
+                const attack = game.adventure.attacking_enemy;
+                if (!attack) {
+                    enemy_handle.Stop();
 
-                player_handle.AddNewModifier(player_handle, undefined, "Modifier_Stunned", {});
-                player_handle.FaceTowards(enemy_actual_location);
-                add_activity_override({ handle: player_handle }, GameActivity_t.ACT_DOTA_ATTACK, 1.0);
+                    player_handle.AddNewModifier(player_handle, undefined, "Modifier_Stunned", {});
+                    player_handle.FaceTowards(enemy_actual_location);
+                    add_activity_override({handle: player_handle}, GameActivity_t.ACT_DOTA_ATTACK, 1.0);
 
-                const animation = fork(() => {
-                    enemy_handle.EmitSound(enemy.traits.sounds.pre_attack);
-                    enemy_handle.StartGestureWithPlaybackRate(GameActivity_t.ACT_DOTA_ATTACK, 1);
-                    wait(0.6);
-                    enemy_handle.EmitSound(enemy.traits.sounds.attack);
-                    wait(0.5);
-                    enemy_handle.FadeGesture(GameActivity_t.ACT_DOTA_ATTACK);
-                });
+                    const animation = fork(() => {
+                        enemy_handle.EmitSound(enemy.traits.sounds.pre_attack);
+                        enemy_handle.StartGestureWithPlaybackRate(GameActivity_t.ACT_DOTA_ATTACK, 1);
+                        wait(0.6);
+                        enemy_handle.EmitSound(enemy.traits.sounds.attack);
+                        wait(0.5);
+                        enemy_handle.FadeGesture(GameActivity_t.ACT_DOTA_ATTACK);
+                    });
 
-                const new_state = fork(() => api_request(Api_Request_Type.start_adventure_enemy_fight, {
-                    enemy_entity_id: enemy.base.id,
-                    access_token: game.token,
-                    dedicated_server_key: get_dedicated_server_key()
-                }));
+                    const new_state = fork(() => api_request(Api_Request_Type.start_adventure_enemy_fight, {
+                        enemy_entity_id: enemy.base.id,
+                        access_token: game.token,
+                        dedicated_server_key: get_dedicated_server_key()
+                    }));
 
-                game.adventure.attacking_enemy = {
-                    enemy: enemy,
-                    animation: animation,
-                    new_state: new_state
-                };
-            } else if (attack.animation.has_finished && attack.new_state.has_finished) {
-                if (attack.new_state.result) {
-                    try_submit_state_transition(game, attack.new_state.result);
+                    game.adventure.attacking_enemy = {
+                        enemy: enemy,
+                        animation: animation,
+                        new_state: new_state
+                    };
+                } else if (attack.animation.has_finished && attack.new_state.has_finished) {
+                    if (attack.new_state.result) {
+                        try_submit_state_transition(game, attack.new_state.result);
+                    }
+
+                    player_handle.RemoveModifierByName("Modifier_Stunned");
+                    game.adventure.attacking_enemy = undefined;
+                }
+            } else if (now - enemy.issued_movement_order_at > 0.1) {
+                if (now - enemy.noticed_player_at > 0.25) {
+                    enemy_handle.MoveToPosition(player_location);
+                } else {
+                    enemy_handle.FaceTowards(player_location);
                 }
 
-                player_handle.RemoveModifierByName("Modifier_Stunned");
-                game.adventure.attacking_enemy = undefined;
+                enemy.issued_movement_order_at = now;
             }
-        } else if (now - enemy.issued_movement_order_at > 0.1) {
-            if (now - enemy.noticed_player_at > 0.25) {
-                enemy_handle.MoveToPosition(player_location);
-            } else {
-                enemy_handle.FaceTowards(player_location);
-            }
-
-            enemy.issued_movement_order_at = now;
         }
     } else {
         enemy.has_noticed_player = false;
