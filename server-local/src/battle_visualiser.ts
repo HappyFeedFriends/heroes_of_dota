@@ -144,6 +144,7 @@ type Creep_Traits = {
         attack: string
         pre_attack: string
         pain: string
+        death: string
     }
 }
 
@@ -273,14 +274,22 @@ function creep_traits_by_type(creep_type: Creep_Type): Creep_Traits {
     const default_sounds = {
         pre_attack: "",
         attack: "",
-        hit: "",
         notice: "",
-        pain: ""
+        pain: "",
+        death: ""
     };
 
     const default_traits = {
         sounds: default_sounds,
         scale: 1
+    };
+
+    const spider_sounds = {
+        pre_attack: "map_spider_attack",
+        attack: "map_spider_hit",
+        notice: "map_spider_notice",
+        pain: "",
+        death: ""
     };
 
     const no_model = `models/development/invisiblebox.vmdl`;
@@ -293,7 +302,8 @@ function creep_traits_by_type(creep_type: Creep_Type): Creep_Traits {
             model: "models/props_structures/rock_golem/tower_radiant_rock_golem.vmdl",
             sounds: {
                 ...default_sounds,
-                pain: "pocket_tower_pain"
+                pain: "pocket_tower_pain",
+                death: "Building_RadiantTower.Destruction"
             }
         };
 
@@ -319,25 +329,25 @@ function creep_traits_by_type(creep_type: Creep_Type): Creep_Traits {
         };
 
         case Creep_Type.small_spider: return {
-            ...default_traits,
+            sounds: spider_sounds,
             model: "models/heroes/broodmother/spiderling.vmdl",
             scale: 0.6
         };
 
         case Creep_Type.large_spider: return {
-            ...default_traits,
+            sounds: spider_sounds,
             model: "models/items/broodmother/spiderling/elder_blood_heir_of_elder_blood/elder_blood_heir_of_elder_blood.vmdl",
-            scale: 0.6
+            scale: 0.6,
         };
 
         case Creep_Type.spider_matriarch: return {
-            ...default_traits,
+            sounds: spider_sounds,
             model: "models/items/broodmother/spiderling/virulent_matriarchs_spiderling/virulent_matriarchs_spiderling.vmdl",
             scale: 0.6
         };
 
         case Creep_Type.spiderling: return {
-            ...default_traits,
+            sounds: spider_sounds,
             model: "models/heroes/broodmother/spiderling.vmdl",
             scale: 0.4
         };
@@ -2908,8 +2918,6 @@ function apply_special_death_effects(target: Unit) {
     if (target.supertype == Unit_Supertype.creep && target.type == Creep_Type.pocket_tower) {
         target.handle.AddNoDraw();
 
-        unit_emit_sound(target, "Building_RadiantTower.Destruction");
-
         fx("particles/econ/world/towers/rock_golem/radiant_rock_golem_destruction.vpcf")
             .with_vector_value(0, target.handle.GetAbsOrigin())
             .with_forward_vector(1, target.handle.GetForwardVector())
@@ -2949,6 +2957,10 @@ function kill_unit(source: Unit, target: Unit) {
 
     if (source.supertype == Unit_Supertype.hero) {
         try_play_random_sound_for_hero(source, sounds => sounds.kill);
+    }
+
+    if (source.supertype == Unit_Supertype.creep) {
+        unit_emit_sound(source, source.traits.sounds.death);
     }
 
     apply_special_death_effects(target);
