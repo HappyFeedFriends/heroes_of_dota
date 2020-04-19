@@ -167,7 +167,8 @@ declare const enum Unit_Status {
     stunned = 2,
     disarmed = 3,
     out_of_the_game = 4,
-    unselectable = 5
+    unselectable = 5,
+    phased = 6
 }
 
 type Unit_Stats = {

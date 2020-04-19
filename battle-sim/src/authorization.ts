@@ -447,12 +447,12 @@ function authorize_order_unit(act_on_unit: Act_On_Unit_Permission): Order_Unit_A
     }
 }
 
-function authorize_move_order(order_unit: Order_Unit_Permission, to: XY, ignore_runes: boolean): Move_Order_Auth {
+function authorize_move_order(order_unit: Order_Unit_Permission, to: XY, flags: Pathing_Flag[]): Move_Order_Auth {
     const { battle, unit } = order_unit;
 
     if (is_unit_rooted(unit)) return { ok: false, kind: Move_Order_Error.rooted };
 
-    const path = can_find_path(battle, unit.position, to, ignore_runes);
+    const path = can_find_path(battle, unit, to, flags);
 
     if (!path.found) return { ok: false, kind: Move_Order_Error.path_not_found };
     if (path.cost > unit.move_points)  return { ok: false, kind: Move_Order_Error.not_enough_move_points };
@@ -469,15 +469,18 @@ function authorize_move_order_from_costs(order_unit: Order_Unit_Permission, to: 
 
     if (is_unit_rooted(unit)) return { ok: false, kind: Move_Order_Error.rooted };
 
-    const path = find_path_from_populated_costs(battle, costs, unit.position, to);
+    const to_index = grid_cell_index(battle.grid, to);
 
-    if (!path) return { ok: false, kind: Move_Order_Error.path_not_found };
-    if (path.length > unit.move_points)  return { ok: false, kind: Move_Order_Error.not_enough_move_points };
+    const cant_find_path = costs.cell_index_to_parent_index[to_index] == undefined;
+    if (cant_find_path) return { ok: false, kind: Move_Order_Error.path_not_found };
+
+    const path_length = costs.cell_index_to_cost[to_index];
+    if (path_length > unit.move_points)  return { ok: false, kind: Move_Order_Error.not_enough_move_points };
     if (xy_equal(unit.position, to)) return { ok: false, kind: Move_Order_Error.other };
 
     return {
         ...order_unit,
-        cost: path.length
+        cost: path_length
     }
 }
 

@@ -47,6 +47,19 @@ class Test_Battle {
         return new For_Player(this, this.battle.players[1]);
     }
 
+    spawn_rune(type: Rune_Type, at: XY) {
+        const id = this.battle.id_generator() as Rune_Id;
+
+        submit_external_battle_delta(this.battle, {
+            type: Delta_Type.rune_spawn,
+            at: at,
+            rune_type: type,
+            rune_id: id
+        });
+
+        return id;
+    }
+
     start() {
         submit_external_battle_delta(this.battle, {
             type: Delta_Type.game_start,
@@ -332,6 +345,16 @@ class For_Player_Unit {
         return this;
     }
 
+    order_pick_up_rune(rune_id: Rune_Id) {
+        try_take_turn_action(this.test.battle, this.player, {
+            type: Action_Type.pick_up_rune,
+            unit_id: this.unit.id,
+            rune_id: rune_id
+        });
+
+        return this;
+    }
+
     order_cast_no_target(ability: Ability_Id) {
         try_take_turn_action(this.test.battle, this.player, {
             type: Action_Type.use_no_target_ability,
@@ -477,6 +500,12 @@ class Assert_For_Player_Unit {
 
     has_max_health(expected: number) {
         do_assert(this.index, get_max_health(this.unit) == expected, `Expected ${expected} max health, actual ${get_max_health(this.unit)}`);
+
+        return this;
+    }
+
+    has_move_points(expected: number) {
+        do_assert(this.index, this.unit.move_points == expected, `Expected ${expected} move points, actual ${this.unit.move_points}`);
 
         return this;
     }

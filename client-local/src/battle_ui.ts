@@ -348,7 +348,7 @@ function update_related_visual_data_from_delta(delta: Delta, delta_paths: Move_D
             const rune = find_rune_by_id(battle, delta.rune_id);
             if (!rune) break;
 
-            const path = find_grid_path(unit.position, rune.position, true);
+            const path = find_grid_path(unit, rune.position, true);
             if (!path) break;
 
             fill_movement_data(unit, rune.position, path);
@@ -360,7 +360,7 @@ function update_related_visual_data_from_delta(delta: Delta, delta_paths: Move_D
             const unit = find_unit_by_id(battle, delta.unit_id);
             if (!unit) break;
 
-            const path = find_grid_path(unit.position, delta.to_position);
+            const path = find_grid_path(unit, delta.to_position, false);
             if (!path) break;
 
             fill_movement_data(unit, delta.to_position, path);
@@ -651,7 +651,8 @@ export function exit_battle_ui() {
     }
 }
 
-export function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | undefined {
+export function find_grid_path(unit: Unit, to: XY, ignore_runes: boolean): XY[] | undefined {
+    const from = unit.position;
     const cell_from = grid_cell_at(battle.grid, from);
     const cell_to = grid_cell_at(battle.grid, to);
 
@@ -660,7 +661,7 @@ export function find_grid_path(from: XY, to: XY, ignore_runes = false): XY[] | u
     }
 
     // TODO population can exit when reaching 'to' to work in a more efficient manner
-    const populated = populate_path_costs(battle, from, ignore_runes);
+    const populated = populate_unit_path_costs(battle, unit, ignore_runes);
     return find_path_from_populated_costs(battle, populated, from, to);
 }
 
@@ -713,7 +714,7 @@ function selection_to_grid_selection(): Grid_Selection {
         case Selection_Type.none: return none();
 
         case Selection_Type.unit: {
-            const selected_entity_path = populate_path_costs(battle, selection.unit.position);
+            const selected_entity_path = populate_unit_path_costs(battle, selection.unit, true)
 
             return {
                 type: Selection_Type.unit,
@@ -733,7 +734,7 @@ function selection_to_grid_selection(): Grid_Selection {
         case Selection_Type.shop: {
             return {
                 type: Selection_Type.shop,
-                path: populate_path_costs(battle, selection.unit.position),
+                path: populate_unit_path_costs(battle, selection.unit, false),
                 unit: selection.unit,
                 shop: selection.shop
             }
@@ -795,7 +796,7 @@ function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, 
 
     // TODO @Performance seems awfully inefficient if we have a lot of runes, consider populating paths twice and using that
     if (rune_in_cell) {
-        const path = can_find_path(battle, unit.position, rune_in_cell.position, true);
+        const path = can_find_path(battle, unit, rune_in_cell.position, unit_pathing_flags(unit, true));
 
         if (path.found && cost <= unit.move_points) {
             return [color_green, 35];
@@ -1821,7 +1822,7 @@ function update_current_turning_player_indicator() {
             label.text = `${enum_to_string(map_entity.world_model)}'s turn`;
             break;
         }
-        
+
         case Map_Entity_Type.npc: {
             label.text = `${enum_to_string(map_entity.npc_type)}'s turn`;
             break;

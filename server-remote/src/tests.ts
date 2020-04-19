@@ -56,6 +56,84 @@ function test_player_can_perform_a_simple_move_command() {
         .is_at(move_target);
 }
 
+function test_hero_can_pick_up_rune() {
+    const battle = test_battle();
+    const hero = battle.for_test_player().spawn_hero(Hero_Type.dark_seer, xy(1, 1));
+    const rune = battle.spawn_rune(Rune_Type.haste, xy(2, 2));
+
+    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(5, 5));
+    battle.start();
+
+    hero.order_pick_up_rune(rune);
+    hero.assert().has_modifier(Modifier_Id.rune_haste);
+}
+
+function test_hero_cant_move_on_rune() {
+    const battle = test_battle();
+    const hero_at = xy(1, 1);
+    const rune_at = xy(2, 1);
+    const hero = battle.for_test_player().spawn_hero(Hero_Type.dark_seer, hero_at);
+    hero.assert().has_move_points(3);
+
+    battle.spawn_rune(Rune_Type.haste, rune_at);
+
+    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(5, 5));
+    battle.start();
+
+    hero.order_move(rune_at);
+    hero.assert().is_at(hero_at);
+}
+
+function test_hero_cant_go_through_rune_to_pick_up_another_one() {
+    const battle = test_battle();
+    const hero_at = xy(1, 1);
+    const rune_one_at = xy(2, 1);
+    const rune_two_at = xy(3, 1);
+
+    const hero = battle.for_test_player().spawn_hero(Hero_Type.dark_seer, hero_at);
+    hero.assert().has_move_points(3);
+
+    battle.spawn_rune(Rune_Type.haste, rune_one_at);
+    const rune_two = battle.spawn_rune(Rune_Type.haste, rune_two_at);
+
+    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(5, 5));
+    battle.start();
+
+    hero.order_pick_up_rune(rune_two);
+    hero.assert().is_at(hero_at);
+}
+
+function test_hero_can_phase_through_units() {
+    const battle = test_battle();
+    const hero_at = xy(1, 1);
+    const unit_at = xy(2, 1);
+    const hero_to = xy(3, 1);
+    const hero = battle.for_test_player().spawn_hero(Hero_Type.dark_seer, hero_at);
+    hero.apply_modifier({ id: Modifier_Id.item_phase_boots, move_bonus: 0 });
+    hero.assert().has_move_points(3);
+
+    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, unit_at);
+    battle.start();
+
+    hero.order_move(hero_to);
+    hero.assert().is_at(hero_to).has_move_points(1);
+}
+
+function test_hero_cant_go_on_another_unit_even_if_phased() {
+    const battle = test_battle();
+    const hero_at = xy(1, 1);
+    const unit_at = xy(2, 1);
+    const hero = battle.for_test_player().spawn_hero(Hero_Type.dark_seer, hero_at);
+    hero.apply_modifier({ id: Modifier_Id.item_phase_boots, move_bonus: 0 });
+    hero.assert().has_move_points(3);
+
+    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, unit_at);
+    battle.start();
+
+    hero.order_move(unit_at);
+    hero.assert().is_at(hero_at);
+}
+
 function test_game_doesnt_end_on_matriarch_ability() {
     const battle = test_battle();
     const hero = battle.for_test_player().spawn_hero(Hero_Type.mirana, xy(1, 1));
@@ -369,6 +447,11 @@ run_tests([
     test_player_can_spawn_hero_from_hand,
     test_player_cant_spawn_hero_outside_deployment_zone,
     test_player_can_perform_a_simple_move_command,
+    test_hero_can_pick_up_rune,
+    test_hero_cant_move_on_rune,
+    test_hero_can_phase_through_units,
+    test_hero_cant_go_through_rune_to_pick_up_another_one,
+    test_hero_cant_go_on_another_unit_even_if_phased,
     test_game_doesnt_end_on_matriarch_ability,
     test_game_doesnt_end_on_matriarch_ability_simple,
     test_game_over_when_all_enemies_die,

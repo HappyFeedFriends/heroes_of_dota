@@ -1090,6 +1090,7 @@ register_api_handler(Api_Request_Type.attack_player, req => {
 
         transition_player_to_battle(player, battle);
         transition_player_to_battle(other_player, battle);
+        check_if_battle_is_over(battle);
 
         return player_to_player_state_object(player);
     });
@@ -1415,6 +1416,7 @@ register_api_handler(Api_Request_Type.start_adventure_enemy_fight, req => {
         battles.push(battle);
 
         transition_player_to_battle(player, battle);
+        check_if_battle_is_over(battle);
 
         return player_to_player_state_object(player);
     });
@@ -1687,6 +1689,7 @@ function register_dev_handlers() {
             battles.push(battle);
 
             transition_player_to_battle(player, battle, true);
+            check_if_battle_is_over(battle);
 
             return player_to_player_state_object(player);
         });

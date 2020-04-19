@@ -1465,7 +1465,8 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
             const order_unit_permission = authorize_unit_for_order(action.unit_id);
             if (!order_unit_permission.ok) return;
 
-            const move_order_permission = authorize_move_order(order_unit_permission, action.to, false);
+            const flags = unit_pathing_flags(order_unit_permission.unit, false);
+            const move_order_permission = authorize_move_order(order_unit_permission, action.to, flags);
             if (!move_order_permission.ok) return;
 
             submit_battle_delta(battle, {
@@ -1649,7 +1650,7 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
 
             const { hero, rune } = rune_pickup_permission;
 
-            const move_order_permission = authorize_move_order(order_unit_permission, rune.position, true);
+            const move_order_permission = authorize_move_order(order_unit_permission, rune.position, unit_pathing_flags(hero, true));
             if (!move_order_permission.ok) return;
 
             submit_battle_delta(battle, pick_up_rune(battle, hero, rune, move_order_permission.cost));
@@ -1757,7 +1758,14 @@ function get_gold_for_killing(battle: Battle_Record, target: Unit): number {
 }
 
 function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: Unit) {
-    type Attack_Intent_Result = Ability_Use_Permission | { ok: false, error: Attack_Intent_Error };
+    type Attack_Intent_Result = {
+        ok: true
+        use_ability: Ability_Use_Permission
+        order_unit: Order_Unit_Permission
+    } | {
+        ok: false
+        error: Attack_Intent_Error
+    };
 
     const enum Attack_Intent_Error {
         ok,
@@ -1790,7 +1798,11 @@ function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: 
         const ability_use_permission = authorize_ability_use(order_unit_permission, monster.attack.id);
         if (!ability_use_permission.ok) return error(Attack_Intent_Error.fail_and_continue_trying);
 
-        return ability_use_permission;
+        return {
+            ok: true,
+            use_ability: ability_use_permission,
+            order_unit: order_unit_permission
+        }
     };
 
     function check_and_update_attack_intent() {
@@ -1806,26 +1818,24 @@ function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: 
     const initial_intent = authorize_attack_intent();
     if (!initial_intent.ok) return;
 
-    const costs = populate_path_costs(battle, monster.position);
+    const costs = populate_unit_path_costs(battle, monster, false);
 
     for (const cell of battle.grid.cells) {
-        // TODO Use authorize_move_order (but we need to keep @Performance in check)
-        const index = grid_cell_index(battle.grid, cell.position);
-        const move_cost = costs.cell_index_to_cost[index];
-        if (move_cost == undefined || move_cost > monster.move_points) continue;
+        const move_order = authorize_move_order_from_costs(initial_intent.order_unit, cell.position, costs);
+        if (!move_order.ok) continue;
 
-        if (ability_targeting_fits(battle, initial_intent.ability.targeting, cell.position, target.position)) {
+        if (ability_targeting_fits(battle, initial_intent.use_ability.ability.targeting, cell.position, target.position)) {
             submit_battle_delta(battle, {
                 type: Delta_Type.unit_move,
                 to_position: cell.position,
                 unit_id: monster.id,
-                move_cost: move_cost
+                move_cost: move_order.cost
             });
 
             const post_move_intent = check_and_update_attack_intent();
             if (!post_move_intent.ok) break;
 
-            const use = authorize_ground_target_ability_use(post_move_intent, target.position);
+            const use = authorize_ground_target_ability_use(post_move_intent.use_ability, target.position);
             if (!use.ok) break;
 
             battle.monster_targets.set(monster, target);

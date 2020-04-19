@@ -101,6 +101,10 @@ function is_unit_disarmed(unit: Unit_Stats) {
     return unit.status[Unit_Status.disarmed];
 }
 
+function is_unit_phased(unit: Unit_Stats) {
+    return unit.status[Unit_Status.phased];
+}
+
 function starting_unit_status(): Record<Unit_Status, boolean> {
     return {
         [Unit_Status.rooted]: false,
@@ -108,7 +112,8 @@ function starting_unit_status(): Record<Unit_Status, boolean> {
         [Unit_Status.silenced]: false,
         [Unit_Status.disarmed]: false,
         [Unit_Status.unselectable]: false,
-        [Unit_Status.out_of_the_game]: false
+        [Unit_Status.out_of_the_game]: false,
+        [Unit_Status.phased]: false
     };
 }
 
@@ -338,6 +343,11 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
         ];
 
         case Modifier_Id.item_basher: return [
+        ];
+
+        case Modifier_Id.item_phase_boots: return [
+            field(Modifier_Field.move_points_bonus, modifier.move_bonus),
+            status(Unit_Status.phased)
         ];
 
         case Modifier_Id.item_iron_branch: return [

@@ -398,7 +398,7 @@ export function try_order_unit_to_pick_up_rune(unit: Unit, rune: Rune) {
     const rune_pickup_permission = authorize_rune_pickup_order(order_permission, rune.id);
     if (!rune_pickup_permission.ok) return show_action_error_ui(rune_pickup_permission, rune_pickup_error_reason);
 
-    const costs = populate_path_costs(battle, unit.position, true);
+    const costs = populate_unit_path_costs(battle, unit, true);
     const move_permission = authorize_move_order_from_costs(order_permission, rune.position, costs);
     if (!move_permission.ok) return process_move_permission_error(unit, costs, move_permission);
 
@@ -416,8 +416,8 @@ export function try_order_unit_to_move(unit: Unit, move_where: XY) {
     const order_permission = authorize_unit_order_with_error_ui(unit);
     if (!order_permission) return;
 
-    const costs = populate_path_costs(battle, unit.position, false);
-    const move_permission = authorize_move_order(order_permission, move_where, false);
+    const costs = populate_unit_path_costs(battle, unit, false);
+    const move_permission = authorize_move_order_from_costs(order_permission, move_where, costs);
     if (!move_permission.ok) return process_move_permission_error(unit, costs, move_permission);
 
     try_emit_random_hero_sound(unit, sounds => sounds.move);

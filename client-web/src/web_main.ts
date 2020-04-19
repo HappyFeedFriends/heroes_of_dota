@@ -525,7 +525,7 @@ function on_cell_right_clicked(game: Game_In_Battle, player: Battle_Player, x: n
                     }
                 }
             } else if (right_clicked_rune) {
-                const can_go = can_find_path_and_go(game.battle, selected_unit.position, xy(x, y), selected_unit.move_points, true);
+                const can_go = can_find_path_and_go(game.battle, selected_unit, xy(x, y), selected_unit.move_points, true);
 
                 if (can_go) {
                     take_battle_action(game, {
@@ -535,7 +535,7 @@ function on_cell_right_clicked(game: Game_In_Battle, player: Battle_Player, x: n
                     });
                 }
             } else {
-                const can_go = can_find_path_and_go(game.battle, selected_unit.position, xy(x, y), selected_unit.move_points);
+                const can_go = can_find_path_and_go(game.battle, selected_unit, xy(x, y), selected_unit.move_points);
 
                 if (can_go) {
                     take_battle_action(game, {
@@ -617,8 +617,8 @@ function get_hero_name(type: Hero_Type): string {
     }
 }
 
-function can_find_path_and_go(battle: Battle, from: XY, to: XY, maximum_distance: number, ignore_runes?: boolean): boolean {
-    const path = can_find_path(battle, from, to, ignore_runes);
+function can_find_path_and_go(battle: Battle, unit: Unit, to: XY, maximum_distance: number, ignore_runes = false): boolean {
+    const path = can_find_path(battle, unit, to, unit_pathing_flags(unit, ignore_runes));
 
     if (path.found) {
         return path.cost <= maximum_distance;
@@ -636,7 +636,7 @@ function highlight_cells_unit_can_go_to(battle: Battle, unit: Unit) {
 
     for (let x = min_x; x < max_x; x++) {
         for (let y = min_y; y < max_y; y++) {
-            const can_go = can_find_path_and_go(battle, xy, {x: x, y: y}, unit.move_points);
+            const can_go = can_find_path_and_go(battle, unit, {x: x, y: y}, unit.move_points);
 
             if (can_go) {
                 game.ctx.fillStyle = "rgba(0, 255, 0, 0.1)";
@@ -1336,7 +1336,7 @@ function draw_grid(game: Game_In_Battle, player?: Battle_Player, highlighted_abi
             const unit = find_unit_by_id(game.battle, game.selection.unit_id);
 
             if (unit) {
-                const can_go = can_find_path_and_go(game.battle, unit.position, xy, unit.move_points, true);
+                const can_go = can_find_path_and_go(game.battle, unit, xy, unit.move_points, true);
 
                 if (can_go) {
                     game.ctx.fillStyle = "rgba(0, 255, 0, 0.1)";
