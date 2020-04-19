@@ -154,6 +154,7 @@
                 <Panel id="right_flare"/>
             </Panel>
             <Panel hittest="false" id="adventure_card_tooltips"/>
+            <Panel id="adventure_bag_item_tooltip"/>
 
             <Panel id="adventure_popup_container" class="popup_container" hittest="false"/>
             <Panel id="adventure_fade" hittest="false"/>

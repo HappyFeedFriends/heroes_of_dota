@@ -18,6 +18,7 @@ const adventure_ui = {
     currency_label: adventure_ui_root.FindChildTraverse("currency_remaining") as LabelPanel,
     bag_drop_layer: adventure_ui_root.FindChildTraverse("adventure_party_bag_drop_layer"),
     fade: adventure_ui_root.FindChildTraverse("adventure_fade"),
+    bag_item_tooltip: adventure_ui_root.FindChildTraverse("adventure_bag_item_tooltip"),
     tooltip: {
         ...create_adventure_card_tooltip(adventure_ui_root.FindChildTraverse("adventure_card_tooltips")),
         css_class: ""
@@ -220,7 +221,7 @@ const party: Party_UI = {
         bag: [],
         slots: []
     },
-    drag_state: default_inventory_drag_state(),
+    drag_state: { dragging: false },
     thanks_started_playing_at: 0
 };
 
@@ -244,10 +245,6 @@ export function find_adventure_entity_by_id(id: Adventure_World_Entity_Id): Phys
 }
 
 hide_adventure_tooltip();
-
-function default_inventory_drag_state(): Inventory_Drag_State {
-    return { dragging: false }
-}
 
 function create_adventure_card_tooltip(root: Panel) {
     const parent = $.CreatePanel("Panel", root, "card_tooltip");
@@ -313,30 +310,171 @@ function compute_hero_display_stats(hero: Hero_Type, state: Adventure_Hero_State
     }
 }
 
-function show_and_prepare_adventure_tooltip(parent: Panel, css_class: string) {
+function show_bag_item_tooltip(item_panel: Panel, item: Adventure_Item) {
+    const root = adventure_ui.bag_item_tooltip;
+    root.RemoveAndDeleteChildren();
+
+    prepare_tooltip_to_be_shown_next_frame(root, item_panel);
+
+    function text(content: string) {
+        const text = $.CreatePanel("Label", root, "");
+        text.text = content;
+    }
+
+    text(get_adventure_item_name(item));
+
+    function modifier_tooltip(modifier: Modifier) {
+        const changes = calculate_modifier_changes(modifier);
+
+        for (const change of changes) {
+            switch (change.type) {
+                case Modifier_Change_Type.field_change: {
+                    text(`${change.delta > 0 ? "+" : ""}${change.delta} ${enum_to_string(change.field)}`);
+
+                    break;
+                }
+
+                case Modifier_Change_Type.ability_override: {
+                    text(`Swap ${enum_to_string(change.original_ability)} to ${enum_to_string(change.override_with)}`);
+
+                    break;
+                }
+
+                case Modifier_Change_Type.apply_status: {
+                    text("Status: " + enum_to_string(change.status));
+
+                    break;
+                }
+
+                case Modifier_Change_Type.apply_special_state: {
+                    text("Special: " + enum_to_string(change.state));
+
+                    break;
+                }
+
+                default: unreachable(change);
+            }
+        }
+    }
+
+    function effect_tooltip(effect: Adventure_Item_Effect) {
+        switch (effect.type) {
+            case Adventure_Item_Effect_Type.in_combat: {
+                text("Permanent:");
+                modifier_tooltip(effect.modifier);
+                break;
+            }
+
+            case Adventure_Item_Effect_Type.combat_start: {
+                text("At the start of each combat:");
+
+                switch (effect.effect_id) {
+                    case Adventure_Combat_Start_Effect_Id.level_up: {
+                        text(`Gain ${effect.how_many_levels} level`);
+                        break;
+                    }
+
+                    case Adventure_Combat_Start_Effect_Id.add_ability_charges: {
+                        text(`All abilities of level ${effect.for_abilities_with_level_less_or_equal} and less gain ${effect.how_many} charge`);
+                        break;
+                    }
+
+                    default: unreachable(effect);
+                }
+
+                break;
+            }
+
+            case Adventure_Item_Effect_Type.post_combat: {
+                text("After combat:");
+
+                switch (effect.effect_id) {
+                    case Adventure_Post_Combat_Effect_Id.restore_health: {
+                        text(`Restore ${effect.how_much} health`);
+                        break;
+                    }
+
+                    default: unreachable(effect.effect_id);
+                }
+
+                break;
+            }
+
+            default: unreachable(effect);
+        }
+    }
+
+    switch (item.type) {
+        case Adventure_Item_Type.consumable: {
+            switch (item.action.type) {
+                case Adventure_Consumable_Action_Type.add_effect: {
+                    effect_tooltip(item.action.effect);
+
+                    break;
+                }
+
+                case Adventure_Consumable_Action_Type.restore_health: {
+                    text(`Restore ${item.action.how_much} health`);
+                    break;
+                }
+
+                default: unreachable(item.action);
+            }
+
+            break;
+        }
+
+        case Adventure_Item_Type.equipment: {
+            for (const effect of item.effects) {
+                effect_tooltip(effect);
+            }
+
+            break;
+        }
+
+        default: unreachable(item);
+    }
+}
+
+function hide_bag_item_tooltip() {
+    adventure_ui.bag_item_tooltip.style.opacity = "0";
+}
+
+function position_tooltip_panel(tooltip: Panel, over_what: Panel) {
     const screen_ratio = Game.GetScreenHeight() / 1080;
-    const window_position = parent.GetPositionWithinWindow();
+    const window_position = over_what.GetPositionWithinWindow();
 
-    // Unfortunately actuallayoutwidth/height are not updated before a panel is shown so we have to hardcode the values
-    const card_width = 150 * 1.25;
-    const card_height = 225 * 1.25;
+    const tooltip_width = tooltip.actuallayoutwidth / screen_ratio;
+    const tooltip_height = tooltip.actuallayoutheight / screen_ratio;
 
-    const tooltip = adventure_ui.tooltip.container;
+    const position_x = Math.round((window_position.x + over_what.actuallayoutwidth / 2) / screen_ratio - tooltip_width / 2);
+    const position_y = Math.round(window_position.y / screen_ratio - tooltip_height) - 50;
+
+    tooltip.style.x = position_x + "px";
+    tooltip.style.y = position_y + "px";
+}
+
+function prepare_tooltip_to_be_shown_next_frame(tooltip: Panel, over_what: Panel) {
+    // First barely display it to let it get laid out, then position it in the next frame
+    tooltip.style.opacity = "0.01";
+
+    $.Schedule(0, () => {
+        position_tooltip_panel(tooltip, over_what);
+
+        tooltip.style.opacity = "1";
+    });
+}
+
+function show_and_prepare_adventure_tooltip(parent: Panel, css_class: string) {
+    prepare_tooltip_to_be_shown_next_frame(adventure_ui.tooltip.container, parent);
+
     const card = adventure_ui.tooltip.card;
-
-    tooltip.style.opacity = "1";
 
     card.RemoveClass(adventure_ui.tooltip.css_class);
     card.AddClass(css_class);
     card.RemoveAndDeleteChildren();
 
     adventure_ui.tooltip.css_class = css_class;
-
-    const position_x = Math.round((window_position.x + parent.actuallayoutwidth / 2) / screen_ratio - card_width / 2);
-    const position_y = Math.round(window_position.y / screen_ratio - card_height) - 50;
-
-    tooltip.style.x = position_x + "px";
-    tooltip.style.y = position_y + "px";
 }
 
 function set_up_adventure_slot_tooltip(panel: Panel, css_class: string, filler: (tooltip: Panel) => void) {
@@ -380,6 +518,11 @@ function add_bag_item(item: Adventure_Item, slot_index = party.bag.items.length)
     };
 
     register_slot_drag_events(item_panel, item, Drag_Source.bag);
+
+    item_panel.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, hide_bag_item_tooltip);
+    item_panel.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
+        show_bag_item_tooltip(item_panel, slot.item);
+    });
 
     party.bag.items[slot_index] = slot;
 
