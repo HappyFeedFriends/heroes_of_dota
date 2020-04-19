@@ -84,6 +84,7 @@ function get_adventure_item_name(item: Adventure_Item): string {
         case Adventure_Item_Id.ring_of_tarrasque: return "Ring of Tarrasque";
         case Adventure_Item_Id.heart_of_tarrasque: return get_item_name(Item_Id.heart_of_tarrasque);
         case Adventure_Item_Id.tome_of_aghanim: return "Tome of Aghanim";
+        case Adventure_Item_Id.spider_legs: return "Spider Legs";
 
         case Adventure_Item_Id.healing_salve: return "Healing Salve";
         case Adventure_Item_Id.enchanted_mango: return get_item_name(Item_Id.enchanted_mango);

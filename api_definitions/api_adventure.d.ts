@@ -79,6 +79,7 @@ declare const enum Adventure_Item_Id {
     ring_of_tarrasque = 12,
     heart_of_tarrasque = 13,
     tome_of_aghanim = 14,
+    spider_legs = 15,
 
     healing_salve = 100,
     enchanted_mango = 101,

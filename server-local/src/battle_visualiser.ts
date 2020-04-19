@@ -1628,6 +1628,8 @@ function modifier_to_visuals(target: Unit, modifier: Modifier): Modifier_Visuals
         case Modifier_Id.item_satanic: return follow("particles/items2_fx/satanic_buff.vpcf");
         case Modifier_Id.item_mask_of_madness: return follow("particles/items2_fx/mask_of_madness.vpcf");
         case Modifier_Id.item_armlet: return follow("particles/items_fx/armlet.vpcf");
+        case Modifier_Id.item_phase_boots: return follow("particles/items2_fx/phase_boots.vpcf");
+        case Modifier_Id.item_spider_legs: return from_fx(fx_follow_unit("particles/items5_fx/spider_legs_buff.vpcf", target).follow_unit_origin(1, target));
         case Modifier_Id.spell_euls_scepter: return from_buff("Modifier_Euls_Scepter");
         case Modifier_Id.spell_buckler: return follow("particles/items_fx/buckler.vpcf");
         case Modifier_Id.spell_drums_of_endurance: return follow("particles/items_fx/drum_of_endurance_buff.vpcf");

@@ -345,6 +345,7 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
         case Modifier_Id.item_basher: return [
         ];
 
+        case Modifier_Id.item_spider_legs:
         case Modifier_Id.item_phase_boots: return [
             field(Modifier_Field.move_points_bonus, modifier.move_bonus),
             status(Unit_Status.phased)

@@ -25,6 +25,7 @@ declare const enum Modifier_Id {
     item_octarine_core = 112,
     item_basher = 113,
     item_phase_boots = 114,
+    item_spider_legs = 115,
 
     spell_euls_scepter = 200,
     spell_buckler = 201,
@@ -116,7 +117,7 @@ type Modifier = {
     armor_bonus: number
     moves_bonus: number
 } | {
-    id: Modifier_Id.item_phase_boots
+    id: Modifier_Id.item_phase_boots | Modifier_Id.item_spider_legs
     move_bonus: number
 } | {
     id: Modifier_Id.spell_euls_scepter

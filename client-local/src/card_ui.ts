@@ -23,6 +23,7 @@ function get_adventure_item_icon_by_id(id: Adventure_Item_Id): string {
         case Adventure_Item_Id.ring_of_tarrasque: return default_icon("ring_of_tarrasque");
         case Adventure_Item_Id.heart_of_tarrasque: return get_item_icon(Item_Id.heart_of_tarrasque);
         case Adventure_Item_Id.tome_of_aghanim: return default_icon("tome_of_aghanim");
+        case Adventure_Item_Id.spider_legs: return default_icon("spider_legs");
 
         case Adventure_Item_Id.enchanted_mango: return default_icon("enchanted_mango");
         case Adventure_Item_Id.healing_salve: return default_icon("salve");

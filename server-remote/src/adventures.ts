@@ -268,6 +268,7 @@ function item_cost(id: Adventure_Item_Id): number {
         case Adventure_Item_Id.ring_of_tarrasque: return 10;
         case Adventure_Item_Id.heart_of_tarrasque: return 10;
         case Adventure_Item_Id.tome_of_aghanim: return 10;
+        case Adventure_Item_Id.spider_legs: return 10;
 
         case Adventure_Item_Id.healing_salve: return 5;
         case Adventure_Item_Id.enchanted_mango: return 5;
@@ -1074,6 +1075,18 @@ export function adventure_item_id_to_item(ongoing: Ongoing_Adventure, item_id: A
                 type: Adventure_Item_Effect_Type.combat_start,
                 effect_id: Adventure_Combat_Start_Effect_Id.level_up,
                 how_many_levels: 1
+            }]
+        };
+
+        case Adventure_Item_Id.spider_legs: return {
+            ...equipment,
+            item_id: item_id,
+            effects: [{
+                type: Adventure_Item_Effect_Type.in_combat,
+                modifier: {
+                    id: Modifier_Id.item_spider_legs,
+                    move_bonus: 3
+                }
             }]
         };
 
