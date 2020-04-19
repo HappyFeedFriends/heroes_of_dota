@@ -131,6 +131,7 @@ type UI_Unit_Data = UI_Hero_Data | UI_Monster_Data | UI_Creep_Data;
 
 type UI_Battle = Battle & {
     id: Battle_Id
+    started_at_delta_head: number
     entity_id_to_unit_data: Record<EntityId, UI_Unit_Data>
     entity_id_to_rune_id: Record<number, Rune_Id>
     entity_id_to_shop_id: Record<number, Shop_Id>
@@ -457,6 +458,10 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
         collapse_delta(battle, delta);
         drain_battle_event_queue(battle);
 
+        if (delta.type == Delta_Type.game_start) {
+            battle.started_at_delta_head = battle.delta_head;
+        }
+
         if (delta.type == Delta_Type.hero_spawn) {
             const spawned_hero = find_hero_by_id(battle, delta.unit_id);
 
@@ -485,8 +490,9 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
     update_current_turning_player_indicator();
 
     const visualiser_head = get_visualiser_delta_head();
+    const head_relative_to_battle_start = battle.delta_head - battle.started_at_delta_head;
 
-    if (visualiser_head != undefined && battle.delta_head - visualiser_head > 40) {
+    if (visualiser_head != undefined && head_relative_to_battle_start - visualiser_head > 40) {
         fire_event(To_Server_Event_Type.fast_forward, make_battle_snapshot());
     } else if (deltas.length > 0) {
         fire_event(To_Server_Event_Type.put_deltas, {
@@ -573,6 +579,7 @@ export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
     battle = {
         ...base,
         id: new_data.id,
+        started_at_delta_head: 0,
         this_player: this_player,
         cell_index_to_unit: [],
         cell_index_to_rune: [],
