@@ -8,7 +8,7 @@
         <include src="file://{resources}/scripts/custom_game/text.js" />
         <include src="file://{resources}/scripts/custom_game/grid.js" />
         <include src="file://{resources}/scripts/custom_game/hero_sounds.js" />
-        <include src="file://{resources}/scripts/custom_game/card_ui.js" />
+        <include src="file://{resources}/scripts/custom_game/components.js" />
 
         <include src="file://{resources}/scripts/custom_game/battle_sim.js" />
         <include src="file://{resources}/scripts/custom_game/party_sim.js" />
@@ -25,11 +25,12 @@
         <include src="file://{resources}/styles/custom_game/images.css" />
 
         <include src="file://{resources}/styles/custom_game/shared.css" />
+        <include src="file://{resources}/styles/custom_game/components.css" />
         <include src="file://{resources}/styles/custom_game/global_map.css" />
         <include src="file://{resources}/styles/custom_game/adventure.css" />
         <include src="file://{resources}/styles/custom_game/battle.css" />
         <include src="file://{resources}/styles/custom_game/editor.css" />
-        <include src="file://{resources}/styles/custom_game/hand.css" />
+        <include src="file://{resources}/styles/custom_game/cards.css" />
     </styles>
     <Panel class="main_panel" hittest="false">
         <Panel id="chat" style="flow-children: down; x: 100px; y: 700px; width: 300px;">

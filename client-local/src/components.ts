@@ -148,7 +148,8 @@ function create_unit_card_ui_base(container: Panel, name: string, art_file: stri
 
     unit_name.text = name;
 
-    const stat_panel = $.CreatePanel("Panel", container, "hero_card_stats");
+    const stat_panel = $.CreatePanel("Panel", container, "");
+    stat_panel.AddClass("hero_card_stats");
     stat_panel.SetHasClass("no_armor", armor == 0);
 
     create_stat_container(stat_panel, "health", health);
@@ -182,7 +183,7 @@ function create_deck_card_panel(parent: Panel, type: string, text: string, image
     card.AddClass(type);
 
     const flash = $.CreatePanel("Panel", card, "");
-    flash.AddClass("animate_add_to_deck_flash");
+    flash.AddClass("animate_panel_flash");
 
     const label = $.CreatePanel("Label", card, "name");
     label.text = text;

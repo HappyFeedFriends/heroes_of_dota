@@ -74,7 +74,7 @@
     }
   }
 
-  #hero_card_stats {
+  .hero_card_stats {
     flow-children: right;
     align: center bottom;
     border-radius: 6px 6px 0 0;
@@ -123,40 +123,5 @@
     //height: 300px;
     ui-scale: 125%;
     z-index: 10;
-  }
-}
-
-#hero_card_stats {
-  .stat_container {
-    flow-children: right;
-    margin: 2px;
-
-    #icon {
-      background-size: cover;
-      width: 12px;
-      height: 12px;
-      vertical-align: middle;
-    }
-
-    #value {
-      font-family: @font-mono;
-      font-size: 16px;
-      color: white;
-      text-align: center;
-    }
-  }
-
-  #attack.stat_container #value { text-shadow: 0px 0px 2px 2.0 #aa0000aa; }
-  #health.stat_container #value { text-shadow: 0px 0px 2px 2.0 rgb(17, 162, 0); }
-  #move_points.stat_container #value { text-shadow: 0px 0px 2px 1.0 rgb(162, 154, 0); }
-  #armor.stat_container #value { text-shadow: 0px 0px 2px 1.0 rgb(134, 153, 162); }
-
-  #attack.stat_container #icon { background-image: @icon-attack-damage; }
-  #health.stat_container #icon { background-image: @icon-health; }
-  #armor.stat_container #icon { background-image: @icon-armor; }
-  #move_points.stat_container #icon { background-image: @icon-move-points; }
-
-  &.no_armor #armor.stat_container {
-    visibility: collapse;
   }
 }

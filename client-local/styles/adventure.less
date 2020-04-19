@@ -8,7 +8,7 @@
   height: 138px;
 }
 
-@slot-side: 24px;
+@slot-side: 28px;
 
 .dragged_inventory_slot {
   width: @slot-side * 2;
@@ -137,7 +137,7 @@
               border-right: 1px solid black;
               box-shadow: inset 0px 0px 8px black;
 
-              #hero_card_stats {
+              .hero_card_stats {
                 z-index: 0;
 
                 align: right top;
@@ -188,7 +188,7 @@
                   wash-color: #bf0000;
                 }
 
-                #hero_card_stats {
+                .hero_card_stats {
                   visibility: collapse;
                 }
 
@@ -205,7 +205,6 @@
                 z-index: 1;
 
                 .slot {
-                  margin: 1px;
                   width: @slot-side;
                   height: @slot-side;
                   border: 1px solid #111;
@@ -231,6 +230,12 @@
                     visibility: collapse;
                   }
                 }
+              }
+
+              #effects {
+                align: left bottom;
+                margin-bottom: 30px;
+                width: 100%;
               }
 
               #adventure_card_art {

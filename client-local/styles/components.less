@@ -1,0 +1,220 @@
+@import "utils";
+
+.effects_bar {
+  .effect {
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    background-size: auto 100%;
+    border: 1px solid #111;
+    box-shadow: 0px 0px 2px black;
+    transition-property: position, opacity;
+    transition-duration: 0.3s;
+    opacity: 1;
+
+    @offset: 14px;
+
+    &.position_0 {
+      x: @offset * 0;
+      z-index: 3;
+    }
+
+    &.position_1 {
+      x: @offset * 1;
+      z-index: 2;
+    }
+
+    &.position_2 {
+      x: @offset * 2;
+      z-index: 1;
+    }
+
+    &.disappearing {
+      opacity: 0;
+      x: @offset * 3;
+    }
+  }
+}
+
+.hero_card_stats {
+  .stat_container {
+    flow-children: right;
+    margin: 2px;
+
+    #icon {
+      background-size: cover;
+      width: 12px;
+      height: 12px;
+      vertical-align: middle;
+    }
+
+    #value {
+      font-family: @font-mono;
+      font-size: 16px;
+      color: white;
+      text-align: center;
+    }
+  }
+
+  #attack.stat_container #value { text-shadow: 0px 0px 2px 2.0 #aa0000aa; }
+  #health.stat_container #value { text-shadow: 0px 0px 2px 2.0 rgb(17, 162, 0); }
+  #move_points.stat_container #value { text-shadow: 0px 0px 2px 1.0 rgb(162, 154, 0); }
+  #armor.stat_container #value { text-shadow: 0px 0px 2px 1.0 rgb(134, 153, 162); }
+
+  #attack.stat_container #icon { background-image: @icon-attack-damage; }
+  #health.stat_container #icon { background-image: @icon-health; }
+  #armor.stat_container #icon { background-image: @icon-armor; }
+  #move_points.stat_container #icon { background-image: @icon-move-points; }
+
+  &.no_armor #armor.stat_container {
+    visibility: collapse;
+  }
+}
+
+.deck_card {
+  width: 100%;
+  height: 40px;
+  background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
+  background-size: 100% 100%;
+  border-bottom: 1px solid #111111;
+
+  transition-property: position;
+  transition-duration: 0.06s;
+
+  &.hero {
+    background-color: @hero-card-header-color;
+  }
+
+  &.spell {
+    background-color: @spell-card-header-color;
+  }
+
+  &.creep {
+    background-color: @creep-card-header-color;
+  }
+
+  &:hover {
+    brightness: 1.4;
+
+    #name {
+      transform: translateX(3px);
+    }
+  }
+
+  &:active {
+    brightness: 2;
+
+    #name {
+      transform: translateX(5px);
+    }
+  }
+
+  > #image {
+    horizontal-align: right;
+    height: 100%;
+    width: 80px;
+    opacity-mask: url("s2r://panorama/images/masks/gradient_rightleft_png.vtex");
+  }
+
+  &.hero > #image {
+    background-size: auto 130%;
+    background-position: 50% 50%;
+  }
+
+  &.spell > #image {
+    background-size: 170% auto;
+    background-position: 50% 50%;
+  }
+
+  &.creep > #image {
+    background-size: 300% auto;
+    background-position: 50% 20%;
+  }
+
+  > #name {
+    padding: 5px 0;
+
+    transition-property: transform, position;
+    transition-duration: 0.1s;
+    white-space: nowrap;
+
+    font-family: @font-regular;
+    font-stretch: condensed;
+    font-size: 22px;
+    color: #ececec;
+    margin-left: 16px;
+    text-shadow: 0px 0px 2px 2.0 #333333ff;
+  }
+}
+
+.loading_spinner {
+  width: 29px;
+  height: 29px;
+
+  transition: opacity 0.1s linear 0s;
+  opacity: 0;
+
+  animation-name: loading_spinner_animation;
+  animation-duration: 1.0s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+
+  background-image: url("file://{images}/status_icons/loadingthrobber_round.png");
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  background-size: 100% 100%;
+}
+
+.animate_panel_flash {
+  width: 100%;
+  height: 100%;
+  animation-name: flash_panel_animation;
+  animation-duration: 0.2s;
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+}
+
+@loading_spinner_animation: 'loading_spinner_animation';
+@keyframes @loading_spinner_animation {
+  0% {
+    transform: rotateZ(360deg);
+  }
+
+  50% {
+    transform: rotateZ(180deg);
+  }
+
+  100% {
+    transform: rotateZ(0deg);
+  }
+}
+
+@define flash_start: #ffffff00;
+@define flash_stop: #ffffffbb;
+
+@flash_panel_animation: 'flash_panel_animation';
+@keyframes @flash_panel_animation {
+  0% {
+    opacity: 0;
+    background-color: gradient(linear, 0% 100%, 100% 0%, from(flash_start), color-stop(-0.1, flash_stop), color-stop(0.0, flash_stop), to(flash_start));
+  }
+
+  20% {
+    opacity: 1;
+    background-color: gradient(linear, 0% 100%, 100% 0%, from(flash_start), color-stop(-0.1, flash_stop), color-stop(0.0, flash_stop), to(flash_start));
+  }
+
+  50% {
+    background-color: gradient(linear, 0% 100%, 100% 0%, from(flash_start), color-stop(0.45, flash_stop), color-stop(0.55, flash_stop), to(flash_start));
+  }
+
+  80% {
+    opacity: 1;
+    background-color: gradient(linear, 0% 100%, 100% 0%, from(flash_start), color-stop(1, flash_stop), color-stop(1.1, flash_stop), to(flash_start));
+  }
+
+  100% {
+    opacity: 0;
+    background-color: gradient(linear, 0% 100%, 100% 0%, from(flash_start), color-stop(1, flash_stop), color-stop(1.2, flash_stop), to(flash_start));
+  }
+}

@@ -49,7 +49,7 @@ try_for_each_file("client-local/styles", (path, file_name) => {
     console.log(`Compiling ${file_name}`);
     exec(`lessc ${path} ${styles_folder}/${just_name}.css`, (err, stdio, stderr) => {
         if (err) {
-            console.error(`exec error: ${error}`);
+            console.error(`exec error: ${err}`);
             return;
         }
 
