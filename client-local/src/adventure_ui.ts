@@ -123,12 +123,7 @@ type Inventory_Item_UI = {
 
 type Effects_UI = {
     root: Panel
-    elements: Effect_UI[]
-}
-
-type Effect_UI = {
-    effect: Adventure_Item_Effect_From_Source
-    panel?: Panel
+    elements: Effect_UI<Adventure_Item_Effect_From_Source>[]
 }
 
 type Bag_UI = {
@@ -564,35 +559,10 @@ function create_slot_stat_indicators(parent: Panel, stats: Display_Stats) {
     };
 }
 
-function update_effects_ui(ui: Effects_UI) {
-    const effects_to_show = 3;
-
-    for (let index = ui.elements.length - 1; index >= 0; index--) {
-        const position = ui.elements.length - index - 1;
-        const element = ui.elements[index];
-        const should_be_shown = position < effects_to_show;
-
-        if (should_be_shown && !element.panel) {
-            element.panel = $.CreatePanel("Panel", ui.root, "");
-            element.panel.AddClass("effect");
-
-            safely_set_panel_background_image(element.panel, get_adventure_item_icon_by_id(element.effect.source_item_id));
-        }
-
-        if (element.panel) {
-            for (let other_position = 0; other_position < effects_to_show; other_position++) {
-                element.panel.SetHasClass("position_" + other_position, other_position == position);
-            }
-
-            element.panel.SetHasClass("disappearing", !should_be_shown);
-        }
-
-        if (!should_be_shown && element.panel) {
-            element.panel.DeleteAsync(0.5);
-            element.panel = undefined;
-        }
-    }
-
+function update_slot_effects_ui(slot: Adventure_Party_Hero_Slot_UI) {
+    update_effects_elements(slot.effects.root, slot.effects.elements, (parent, effect) => {
+        safely_set_panel_background_image(parent, get_adventure_item_icon_by_id(effect.source_item_id))
+    });
 }
 
 function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: Hero_Type, base_health: number, state: Adventure_Hero_State): Adventure_Party_Slot_UI {
@@ -626,8 +596,6 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
     };
 
     effects_parent.AddClass("effects_bar");
-
-    update_effects_ui(effects_ui);
 
     const stats = compute_hero_display_stats(hero, state, base_health);
     const stats_ui = create_slot_stat_indicators(base.card_panel, stats);
@@ -687,6 +655,8 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
             stat_armor: stats_ui.armor
         }
     } as const;
+
+    update_slot_effects_ui(slot);
 
     set_up_adventure_slot_tooltip(base.container, "hero", tooltip => {
         const stats = compute_hero_display_stats(slot.hero, extract_hero_state(slot), slot.base_health);
@@ -1883,7 +1853,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             if (!slot) break;
             if (slot.type != Adventure_Party_Slot_Type.hero) break;
 
-            const new_effect: Effect_UI = { effect: change.effect };
+            const new_effect: Effect_UI<Adventure_Item_Effect_From_Source> = { effect: change.effect };
             slot.effects.elements.push(new_effect);
 
             switch (change.effect.source_item_id) {
@@ -1900,7 +1870,7 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                 }
             }
 
-            update_effects_ui(slot.effects);
+            update_slot_effects_ui(slot);
             maybe_animate_hero_stat_change_after_state_change(slot);
             flash_panel(slot.container);
 
@@ -1919,12 +1889,13 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
             const element = slot.effects.elements[change.effect_index];
 
             if (element.panel) {
+                element.panel.AddClass("being_removed");
                 element.panel.DeleteAsync(0.5);
             }
 
             slot.effects.elements.splice(change.effect_index, 1);
 
-            update_effects_ui(slot.effects);
+            update_slot_effects_ui(slot);
             maybe_animate_hero_stat_change_after_state_change(slot);
             flash_panel(slot.container);
 

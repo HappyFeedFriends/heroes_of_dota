@@ -1,6 +1,9 @@
 @import "utils";
 
 .effects_bar {
+  height: 60px;
+  width: 100%;
+
   .effect {
     border-radius: 50%;
     width: 28px;
@@ -8,9 +11,10 @@
     background-size: auto 100%;
     border: 1px solid #111;
     box-shadow: 0px 0px 2px black;
-    transition-property: position, opacity;
+    transition-property: position, opacity, transform;
     transition-duration: 0.3s;
     opacity: 1;
+    vertical-align: bottom;
 
     @offset: 14px;
 
@@ -32,6 +36,11 @@
     &.disappearing {
       opacity: 0;
       x: @offset * 3;
+    }
+
+    &.being_removed {
+      opacity: 0;
+      transform: translateY(-30px);
     }
   }
 }

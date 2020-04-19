@@ -107,8 +107,8 @@ type UI_Unit_Data_Base = {
     stat_max_move_points: Stat_Indicator
     stat_max_health: Stat_Indicator
 
-    modifiers: Modifier_Handle_Id[]
     modifier_bar: Panel
+    modifier_elements: Effect_UI<Modifier_Handle_Id>[]
 
     stats: Unit_Stats
 }
@@ -1173,6 +1173,7 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
         const bar = $.CreatePanel("Panel", root, "");
 
         bar.AddClass("unit_modifier_bar");
+        bar.AddClass("effects_bar");
 
         return bar;
     }
@@ -1224,7 +1225,8 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
             stat_move_points: move_points,
             stat_max_move_points: max_move_points,
             stat_max_health: max_health,
-            modifier_bar: modifiers
+            modifier_bar: modifiers,
+            modifier_elements: []
         }
     }
 
@@ -1269,7 +1271,35 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
         ui.level = new_data.level;
     }
 
-    ui.modifiers = new_data.modifiers;
+    const new_modifiers: Effect_UI<Modifier_Handle_Id>[] = [];
+
+    for (const handle of new_data.modifiers) {
+        const existing = ui.modifier_elements.find(existing_element => existing_element.effect == handle);
+
+        if (existing) {
+            $.Msg(`Handle ${handle} found, pushing existing`);
+            new_modifiers.push(existing);
+        } else {
+            $.Msg(`Handle ${handle} doesn't exist yet, pushing new`);
+            new_modifiers.push({ effect: handle });
+        }
+    }
+
+    for (const existing of ui.modifier_elements) {
+        // @Performance a tad inefficient, but it's going to be fine if our lists are somewhat small
+        const exists_in_new_list = new_modifiers.some(new_modifier => new_modifier.effect == existing.effect);
+
+        if (!exists_in_new_list) {
+            $.Msg(`Handle ${existing.effect} doesn't exist anymore, deleting`);
+
+            if (existing.panel) {
+                existing.panel.AddClass("being_removed");
+                existing.panel.DeleteAsync(0.5);
+            }
+        }
+    }
+
+    ui.modifier_elements = new_modifiers;
     ui.stats = new_data;
     ui.hidden = new_data.hidden;
 
@@ -1290,10 +1320,6 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
         update_level_bar(ui.level_bar, ui.level);
     }
 
-    for (const child of ui.modifier_bar.Children()) {
-        child.DeleteAsync(0);
-    }
-
     function try_find_and_update_associated_unit() {
         const unit = find_unit_by_id(battle, ui.id);
 
@@ -1302,18 +1328,15 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
 
             ui.stat_bar_panel.SetHasClass("enemy", !player_owns_unit(battle.this_player, unit));
 
-            for (const modifier_handle of ui.modifiers) {
+            update_effects_elements(ui.modifier_bar, ui.modifier_elements, (parent, modifier_handle) => {
                 const modifier = unit.modifiers.find(modifier => modifier.handle_id == modifier_handle);
-                if (!modifier) continue;
+                if (!modifier) {
+                    $.Msg(`Modifier handle ${modifier_handle} not found`);
+                    return;
+                }
 
-                const modifier_panel = $.CreatePanel("Panel", ui.modifier_bar, "");
-                const modifier_image = $.CreatePanel("Image", modifier_panel, "image");
-
-                modifier_image.SetImage(get_modifier_icon(modifier));
-                modifier_image.SetScaling(ScalingFunction.STRETCH_TO_FIT_Y_PRESERVE_ASPECT);
-
-                modifier_panel.AddClass("modifier");
-            }
+                safely_set_panel_background_image(parent, get_modifier_icon(modifier));
+            });
         } else {
             $.Schedule(0, try_find_and_update_associated_unit);
         }
@@ -2090,7 +2113,7 @@ function update_stat_bar_positions() {
         const entity_id = Number(entity_id_string); // TODO holy shit why javascript, why
         const unit_data = battle.entity_id_to_unit_data[entity_id_string];
 
-        position_panel_over_entity_in_the_world(unit_data.modifier_bar, entity_id, 30, 30);
+        position_panel_over_entity_in_the_world(unit_data.modifier_bar, entity_id, 30, 120);
         position_panel_over_entity_in_the_world(unit_data.stat_bar_panel, entity_id, 30, -40);
     }
 }

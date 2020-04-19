@@ -1,3 +1,8 @@
+type Effect_UI<T> = {
+    effect: T
+    panel?: Panel
+}
+
 function get_adventure_item_icon_by_id(id: Adventure_Item_Id): string {
     function custom_icon(name: string) {
         return `file://{images}/custom_game/items/${name}.png`;
@@ -192,4 +197,34 @@ function create_deck_card_panel(parent: Panel, type: string, text: string, image
     safely_set_panel_background_image(image, image_path);
 
     return card;
+}
+
+function update_effects_elements<T>(root: Panel, elements: Effect_UI<T>[], initialize_element: (parent: Panel, effect: T) => void) {
+    const effects_to_show = 3;
+
+    for (let index = elements.length - 1; index >= 0; index--) {
+        const position = elements.length - index - 1;
+        const element = elements[index];
+        const should_be_shown = position < effects_to_show;
+
+        if (should_be_shown && !element.panel) {
+            element.panel = $.CreatePanel("Panel", root, "");
+            element.panel.AddClass("effect");
+
+            initialize_element(element.panel, element.effect);
+        }
+
+        if (element.panel) {
+            for (let other_position = 0; other_position < effects_to_show; other_position++) {
+                element.panel.SetHasClass("position_" + other_position, other_position == position);
+            }
+
+            element.panel.SetHasClass("disappearing", !should_be_shown);
+        }
+
+        if (!should_be_shown && element.panel) {
+            element.panel.DeleteAsync(0.5);
+            element.panel = undefined;
+        }
+    }
 }
