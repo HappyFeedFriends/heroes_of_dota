@@ -183,6 +183,19 @@
   animation-iteration-count: 1;
 }
 
+.tooltip_with_arrow {
+  flow-children: down;
+
+  #arrow {
+    horizontal-align: center;
+    width: 48px;
+    height: 32px;
+    background-image: url("s2r://panorama/images/tooltips/tooltip_arrow_top_customgames_psd.vtex");
+    background-size: 100% 100%;
+    transform: scaleY(-1);
+  }
+}
+
 @loading_spinner_animation: 'loading_spinner_animation';
 @keyframes @loading_spinner_animation {
   0% {

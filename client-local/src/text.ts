@@ -56,7 +56,7 @@ function get_item_name(item: Item_Id): string {
         case Item_Id.mask_of_madness: return "Mask of Madness";
         case Item_Id.armlet: return "Armlet";
         case Item_Id.boots_of_speed: return "Boots of Speed";
-        case Item_Id.blades_of_attack: return "Blade of Attack";
+        case Item_Id.blades_of_attack: return "Blades of Attack";
         case Item_Id.belt_of_strength: return "Belt of Strength";
         case Item_Id.morbid_mask: return "Morbid Mask";
         case Item_Id.chainmail: return "Chainmail";

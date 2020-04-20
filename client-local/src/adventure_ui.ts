@@ -247,7 +247,9 @@ export function find_adventure_entity_by_id(id: Adventure_World_Entity_Id): Phys
 hide_adventure_tooltip();
 
 function create_adventure_card_tooltip(root: Panel) {
-    const parent = $.CreatePanel("Panel", root, "card_tooltip");
+    const parent = $.CreatePanel("Panel", root, "");
+    parent.AddClass("tooltip_with_arrow");
+
     const card = create_card_container_ui(parent, true);
     card.style.transitionDuration = "0s";
 
@@ -314,40 +316,68 @@ function show_bag_item_tooltip(item_panel: Panel, item: Adventure_Item) {
     const root = adventure_ui.bag_item_tooltip;
     root.RemoveAndDeleteChildren();
 
+    const content = $.CreatePanel("Panel", root, "content");
+    $.CreatePanel("Panel", root, "arrow");
+
     prepare_tooltip_to_be_shown_next_frame(root, item_panel);
 
-    function text(content: string) {
-        const text = $.CreatePanel("Label", root, "");
+    function text(parent: Panel, content: string) {
+        const text = $.CreatePanel("Label", parent, "");
+        text.AddClass("text");
+        text.html = true;
         text.text = content;
     }
 
-    text(get_adventure_item_name(item));
+    function header(parent: Panel, name: string) {
+        const header = $.CreatePanel("Label", parent, "");
+        header.AddClass("header");
+        header.text = name;
+    }
 
-    function modifier_tooltip(modifier: Modifier) {
+    function new_section() {
+        const panel = $.CreatePanel("Panel", content, "");
+        panel.AddClass("section");
+        return panel;
+    }
+
+    const title = $.CreatePanel("Panel", content, "title");
+    title.AddClass("title");
+
+    const title_icon = $.CreatePanel("Image", title, "icon");
+    title_icon.SetImage(get_adventure_item_icon(item));
+
+    const title_text = $.CreatePanel("Label", title, "text");
+    title_text.text = get_adventure_item_name(item);
+
+    function emphasize(text: any) {
+        return `<font color="white"><b>${text}</b></font>`
+    }
+
+    function modifier_tooltip(parent: Panel, modifier: Modifier) {
         const changes = calculate_modifier_changes(modifier);
 
         for (const change of changes) {
             switch (change.type) {
                 case Modifier_Change_Type.field_change: {
-                    text(`${change.delta > 0 ? "+" : ""}${change.delta} ${enum_to_string(change.field)}`);
+                    text(parent, `${change.delta > 0 ? "+" : ""}${emphasize(change.delta)}</font> ${enum_to_string(change.field)}`);
 
                     break;
                 }
 
                 case Modifier_Change_Type.ability_override: {
-                    text(`Swap ${enum_to_string(change.original_ability)} to ${enum_to_string(change.override_with)}`);
+                    text(parent, `Swap ${emphasize(enum_to_string(change.original_ability))} to ${emphasize(enum_to_string(change.override_with))}`);
 
                     break;
                 }
 
                 case Modifier_Change_Type.apply_status: {
-                    text("Status: " + enum_to_string(change.status));
+                    text(parent, "Status: " + emphasize(enum_to_string(change.status)));
 
                     break;
                 }
 
                 case Modifier_Change_Type.apply_special_state: {
-                    text("Special: " + enum_to_string(change.state));
+                    text(parent, "Special: " + emphasize(enum_to_string(change.state)));
 
                     break;
                 }
@@ -360,22 +390,24 @@ function show_bag_item_tooltip(item_panel: Panel, item: Adventure_Item) {
     function effect_tooltip(effect: Adventure_Item_Effect) {
         switch (effect.type) {
             case Adventure_Item_Effect_Type.in_combat: {
-                text("Permanent:");
-                modifier_tooltip(effect.modifier);
+                const section = new_section();
+                header(section, "During combat");
+                modifier_tooltip(section, effect.modifier);
                 break;
             }
 
             case Adventure_Item_Effect_Type.combat_start: {
-                text("At the start of each combat:");
+                const section = new_section();
+                header(section, "At the start of each combat");
 
                 switch (effect.effect_id) {
                     case Adventure_Combat_Start_Effect_Id.level_up: {
-                        text(`Gain ${effect.how_many_levels} level`);
+                        text(section, `Gain ${emphasize(effect.how_many_levels)} level`);
                         break;
                     }
 
                     case Adventure_Combat_Start_Effect_Id.add_ability_charges: {
-                        text(`All abilities of level ${effect.for_abilities_with_level_less_or_equal} and less gain ${effect.how_many} charge`);
+                        text(section, `All abilities of level ${emphasize(effect.for_abilities_with_level_less_or_equal)} and less gain +${emphasize(effect.how_many)} charge`);
                         break;
                     }
 
@@ -386,11 +418,12 @@ function show_bag_item_tooltip(item_panel: Panel, item: Adventure_Item) {
             }
 
             case Adventure_Item_Effect_Type.post_combat: {
-                text("After combat:");
+                const section = new_section();
+                header(section, "After each combat");
 
                 switch (effect.effect_id) {
                     case Adventure_Post_Combat_Effect_Id.restore_health: {
-                        text(`Restore ${effect.how_much} health`);
+                        text(section, `Restore ${emphasize(effect.how_much)} health`);
                         break;
                     }
 
@@ -406,6 +439,9 @@ function show_bag_item_tooltip(item_panel: Panel, item: Adventure_Item) {
 
     switch (item.type) {
         case Adventure_Item_Type.consumable: {
+            const section = new_section();
+            header(section, "Consumable");
+
             switch (item.action.type) {
                 case Adventure_Consumable_Action_Type.add_effect: {
                     effect_tooltip(item.action.effect);
@@ -414,7 +450,7 @@ function show_bag_item_tooltip(item_panel: Panel, item: Adventure_Item) {
                 }
 
                 case Adventure_Consumable_Action_Type.restore_health: {
-                    text(`Restore ${item.action.how_much} health`);
+                    text(section, `Restore ${emphasize(item.action.how_much)} health`);
                     break;
                 }
 
@@ -448,7 +484,7 @@ function position_tooltip_panel(tooltip: Panel, over_what: Panel) {
     const tooltip_height = tooltip.actuallayoutheight / screen_ratio;
 
     const position_x = Math.round((window_position.x + over_what.actuallayoutwidth / 2) / screen_ratio - tooltip_width / 2);
-    const position_y = Math.round(window_position.y / screen_ratio - tooltip_height) - 50;
+    const position_y = Math.round(window_position.y / screen_ratio - tooltip_height) - 20;
 
     tooltip.style.x = position_x + "px";
     tooltip.style.y = position_y + "px";
@@ -544,6 +580,7 @@ function set_drag_state(state: Inventory_Drag_State) {
 
     if (state.dragging) {
         hide_adventure_tooltip();
+        hide_bag_item_tooltip();
 
         adventure_ui.party_container.AddClass("dragging_item");
     } else {
@@ -728,6 +765,22 @@ function fill_adventure_hero_slot(container: Panel, slot_index: number, hero: He
         };
 
         update_hero_inventory_item_ui(item_ui, slot_index, item_index, item_in_slot);
+
+        item_panel.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
+            if (item_ui.item != undefined) {
+                hide_adventure_tooltip();
+                show_bag_item_tooltip(container, item_ui.item);
+            }
+        });
+
+        item_panel.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, () => {
+            hide_bag_item_tooltip();
+
+            if (container.BHasHoverStyle()) {
+                adventure_ui.tooltip.container.style.opacity = "1";
+            }
+        });
+
 
         item_panels.push(item_ui);
     }

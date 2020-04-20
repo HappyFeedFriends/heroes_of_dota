@@ -323,19 +323,6 @@
   #adventure_card_tooltips {
     width: 100%;
     height: 100%;
-
-    #card_tooltip {
-      flow-children: down;
-
-      #arrow {
-        horizontal-align: center;
-        width: 48px;
-        height: 32px;
-        background-image: url("s2r://panorama/images/tooltips/tooltip_arrow_top_customgames_psd.vtex");
-        background-size: 100% 100%;
-        transform: scaleY(-1);
-      }
-    }
   }
 
   .popup_container {
@@ -773,15 +760,71 @@
 }
 
 #adventure_bag_item_tooltip {
-  padding: 8px;
-  background-color: #111;
-  flow-children: down;
+  #content {
+    z-index: 1;
+    padding: 8px;
+    background-color: #111;
+    flow-children: down;
+    width: 300px;
 
-  Label {
-    color: white;
-    font-family: @font-regular;
-    font-size: 18px;
+    box-shadow: 0px 0px 4px black;
+
+    #title {
+      padding: 8px;
+      flow-children: right;
+
+      #icon {
+        width: 66px;
+        height: 48px;
+        box-shadow: 0px 0px 4px black;
+        margin-right: 8px;
+      }
+
+      #text {
+        font-size: 22px;
+        font-family: @font-regular;
+        font-weight: bold;
+        font-stretch: expanded;
+        color: white;
+        text-transform: uppercase;
+      }
+    }
+
+    .section {
+      background-color: gradient(linear, 0% 0%, 0% 100%, from(#171d2f), to(#1b2437));
+      flow-children: down;
+      width: 100%;
+      margin-top: 8px;
+
+      .header {
+        font-size: 18px;
+        font-family: @font-regular;
+        font-weight: bold;
+        background-image: url("s2r://panorama/images/hud/item_tooltip_active_psd.vtex");
+        background-color: gradient(linear, 0% 0%, 0% 100%, from(#171d2f), to(#1b2437));
+        background-repeat: no-repeat;
+        color: #9ea5d8;
+        text-shadow: 2px 2px 0px 1.0 #00000090;
+        //text-shadow: 2px 2px 0px 2.0 black;
+        width: 100%;
+        padding-left: 8px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+      }
+
+      .text {
+        padding: 4px;
+        padding-left: 8px;
+        font-size: 19px;
+        font-family: @font-regular;
+        color: #8190a2;
+      }
+    }
   }
+}
+
+b {
+  font-weight: bolder;
 }
 
 @adventure_slot_damage_animation: 'adventure_slot_damage_animation';
