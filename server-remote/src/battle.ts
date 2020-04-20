@@ -1043,8 +1043,20 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
     }
 }
 
-function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_Item {
-    switch (item.id) {
+function submit_item_equip(battle: Battle_Record, hero: Hero, item_id: Item_Id): void {
+    function apply_item_modifier(modifier_data: Modifier): Delta {
+        return {
+            type: Delta_Type.modifier_applied,
+            unit_id: hero.id,
+            source: {
+                type: Source_Type.item,
+                item: item_id
+            },
+            application: modifier(battle, modifier_data)
+        };
+    }
+
+    switch (item_id) {
         case Item_Id.refresher_shard: {
             const changes: {
                 ability_id: Ability_Id,
@@ -1060,220 +1072,174 @@ function equip_item(battle: Battle_Record, hero: Hero, item: Item): Delta_Equip_
                 }
             }
 
-            return {
+            submit_battle_delta(battle, {
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
-                item_id: item.id,
+                item_id: item_id,
                 charge_changes: changes
-            }
+            });
+
+            break;
         }
 
         case Item_Id.enchanted_mango: {
             for (const ability of hero.abilities) {
                 if (ability.type != Ability_Type.passive && ability.available_since_level == 1) {
-                    return {
+                    submit_battle_delta(battle, {
                         type: Delta_Type.equip_item,
                         unit_id: hero.id,
-                        item_id: item.id,
+                        item_id: item_id,
                         change: {
                             ability_id: ability.id,
-                            charges_remaining: ability.charges_remaining + item.bonus_charges
+                            charges_remaining: ability.charges_remaining + 1
                         }
-                    }
+                    });
                 }
             }
 
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                change: undefined
-            }
-        }
-
-        case Item_Id.boots_of_travel: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.move_speed,
-                    bonus: item.move_points_bonus
-                })
-            }
-        }
-
-        case Item_Id.boots_of_speed: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.move_speed,
-                    bonus: item.move_points_bonus
-                })
-            }
-        }
-
-        case Item_Id.blades_of_attack: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.attack_damage,
-                    bonus: item.damage_bonus
-                })
-            }
-        }
-
-        case Item_Id.divine_rapier: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.attack_damage,
-                    bonus: item.damage_bonus
-                })
-            }
-        }
-
-        case Item_Id.assault_cuirass: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.armor,
-                    bonus: item.armor_bonus
-                })
-            }
+            break;
         }
 
         case Item_Id.tome_of_knowledge: {
-            return {
+            submit_battle_delta(battle, {
                 type: Delta_Type.equip_item,
                 unit_id: hero.id,
-                item_id: item.id,
+                item_id: item_id,
                 new_level: Math.min(hero.level + 1, Const.max_unit_level)
-            }
+            });
+
+            break;
+        }
+
+        case Item_Id.boots_of_travel: {
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.move_speed,
+                bonus: 3
+            }));
+
+            break;
+        }
+
+        case Item_Id.boots_of_speed: {
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.move_speed,
+                bonus: 1
+            }));
+
+            break;
+        }
+
+        case Item_Id.blades_of_attack: {
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.attack_damage,
+                bonus: 2
+            }));
+
+            break;
+        }
+
+        case Item_Id.divine_rapier: {
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.attack_damage,
+                bonus: 8
+            }));
+
+            break;
+        }
+
+        case Item_Id.assault_cuirass: {
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.armor,
+                bonus: 4
+            }));
+
+            break;
         }
 
         case Item_Id.heart_of_tarrasque: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.item_heart_of_tarrasque,
-                    health: item.health_bonus,
-                    regeneration_per_turn: item.regeneration_per_turn
-                })
-            }
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.item_heart_of_tarrasque,
+                health: 10,
+                regeneration_per_turn: 1
+            }));
+
+            break;
         }
 
         case Item_Id.satanic: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, { id: Modifier_Id.item_satanic })
-            }
+            submit_battle_delta(battle, apply_item_modifier({ id: Modifier_Id.item_satanic }));
+
+            break;
         }
 
         case Item_Id.mask_of_madness: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.item_mask_of_madness,
-                    attack: item.damage_bonus
-                })
-            }
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.item_mask_of_madness,
+                attack: 4
+            }));
+
+            break;
         }
 
         case Item_Id.armlet: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.item_armlet,
-                    health: item.health_bonus,
-                    health_loss_per_turn: item.health_loss_per_turn
-                })
-            }
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.item_armlet,
+                health: 10,
+                health_loss_per_turn: 1
+            }));
+
+            break;
         }
 
         case Item_Id.belt_of_strength: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.health,
-                    bonus: item.health_bonus
-                })
-            }
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.health,
+                bonus: 4
+            }));
+
+            break;
         }
 
         case Item_Id.morbid_mask: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.item_morbid_mask,
-                    health_restored_per_attack: item.health_restored_per_attack
-                })
-            }
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.item_morbid_mask,
+                health_restored_per_attack: 1
+            }));
+
+            break;
         }
 
         case Item_Id.octarine_core: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, { id: Modifier_Id.item_octarine_core })
-            }
+            submit_battle_delta(battle, apply_item_modifier({ id: Modifier_Id.item_octarine_core }));
+
+            break;
         }
 
         case Item_Id.chainmail: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.armor,
-                    bonus: item.armor_bonus
-                })
-            }
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.armor,
+                bonus: 1
+            }));
+
+            break;
         }
 
         case Item_Id.basher: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, { id: Modifier_Id.item_basher })
-            }
+            submit_battle_delta(battle, apply_item_modifier({ id: Modifier_Id.item_basher }));
+
+            break;
         }
 
         case Item_Id.iron_branch: {
-            return {
-                type: Delta_Type.equip_item,
-                unit_id: hero.id,
-                item_id: item.id,
-                modifier: modifier(battle, {
-                    id: Modifier_Id.item_iron_branch,
-                    moves_bonus: item.stat_bonus,
-                    attack_bonus: item.stat_bonus,
-                    health_bonus: item.stat_bonus,
-                    armor_bonus: item.stat_bonus
-                })
-            }
+            submit_battle_delta(battle, apply_item_modifier({
+                id: Modifier_Id.item_iron_branch,
+                moves_bonus: 1,
+                attack_bonus: 1,
+                health_bonus: 1,
+                armor_bonus: 1
+            }));
+
+            break;
         }
 
     }
@@ -1626,17 +1592,17 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
             const purchase_permission = authorize_item_purchase(use_shop_permission, action.item_id);
             if (!purchase_permission.ok) return;
 
-            const { hero, shop, item } = purchase_permission;
+            const { hero, shop, item, cost } = purchase_permission;
 
             submit_battle_delta(battle, {
                 type: Delta_Type.purchase_item,
                 unit_id: hero.id,
                 shop_id: shop.id,
-                item_id: item.id,
-                gold_cost: item.gold_cost
+                item_id: item,
+                gold_cost: cost
             });
 
-            submit_battle_delta(battle, equip_item(battle, hero, item));
+            submit_item_equip(battle, hero, item);
 
             break;
         }
@@ -2303,10 +2269,13 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
             if (spawned_hero) {
                 for (const from_item of hero.modifiers) {
                     submit_battle_delta(battle, {
-                        type: Delta_Type.modifier_applied_from_adventure_item,
+                        type: Delta_Type.modifier_applied,
                         unit_id: hero.id,
-                        item: from_item.item,
-                        application: modifier(battle, from_item.modifier)
+                        application: modifier(battle, from_item.modifier),
+                        source: {
+                            type: Source_Type.adventure_item,
+                            item: from_item.item
+                        }
                     });
                 }
 
@@ -2583,7 +2552,8 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
             const items = parse_enum_query(parts[1], enum_names_to_values<Item_Id>());
 
             for (const item of items) {
-                submit_external_battle_delta(battle, equip_item(battle, unit, item_id_to_item(item)));
+                submit_item_equip(battle, unit, item);
+                try_check_battle_over(battle);
             }
 
             break;

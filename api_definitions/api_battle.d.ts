@@ -33,7 +33,6 @@ declare const enum Delta_Type {
     rune_pick_up = 26,
     purchase_item = 27,
     equip_item = 28,
-    modifier_applied_from_adventure_item = 29,
 
     end_turn = 50,
     game_start = 51,
@@ -488,13 +487,7 @@ type Delta_Modifier_Applied = {
     type: Delta_Type.modifier_applied
     unit_id: Unit_Id
     application: Modifier_Application
-}
-
-type Delta_Modifier_Applied_From_Adventure_Item = {
-    type: Delta_Type.modifier_applied_from_adventure_item
-    unit_id: Unit_Id
-    application: Modifier_Application
-    item: Adventure_Item_Id
+    source: Modifier_Application_Source
 }
 
 type Delta_Modifier_Removed = {
@@ -641,7 +634,6 @@ type Delta =
     Delta_Level_Change |
     Delta_Modifier_Applied |
     Delta_Modifier_Removed |
-    Delta_Modifier_Applied_From_Adventure_Item |
     Delta_Set_Ability_Charges_Remaining |
     Delta_Ability_Effect_Applied<Ability_Effect> |
     Delta_Modifier_Effect_Applied |
@@ -656,6 +648,16 @@ type Delta =
     Delta_End_Turn |
     Delta_Game_Start |
     Delta_Game_Over
+
+type Modifier_Application_Source = {
+    type: Source_Type.none
+} | {
+    type: Source_Type.adventure_item
+    item: Adventure_Item_Id
+} | {
+    type: Source_Type.item
+    item: Item_Id
+}
 
 type Modifier_Application = {
     modifier_handle_id: Modifier_Handle_Id

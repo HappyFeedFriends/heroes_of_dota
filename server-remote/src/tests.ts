@@ -2,6 +2,14 @@ import {do_assert, run_tests, test_battle} from "./test_framework";
 import {load_all_adventures} from "./adventures";
 import {load_all_battlegrounds} from "./battleground";
 
+function test_battle_with_ally_and_enemy(hero: Hero_Type, at: XY) {
+    const battle = test_battle();
+    const ally = battle.for_test_player().spawn_hero(hero, at);
+    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(7, 7));
+
+    return [battle, ally] as const;
+}
+
 function test_player_can_spawn_hero_from_hand() {
     const battle = test_battle();
 
@@ -40,13 +48,8 @@ function test_player_cant_spawn_hero_outside_deployment_zone() {
 }
 
 function test_player_can_perform_a_simple_move_command() {
-    const battle = test_battle();
     const move_target = xy(3, 1);
-
-    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(5, 5));
-
-    const hero = battle.for_test_player()
-        .spawn_hero(Hero_Type.dark_seer, xy(1, 1));
+    const [battle, hero] = test_battle_with_ally_and_enemy(Hero_Type.dark_seer, xy(1, 1));
 
     battle.start();
 
@@ -57,11 +60,8 @@ function test_player_can_perform_a_simple_move_command() {
 }
 
 function test_hero_can_pick_up_rune() {
-    const battle = test_battle();
-    const hero = battle.for_test_player().spawn_hero(Hero_Type.dark_seer, xy(1, 1));
+    const [battle, hero] = test_battle_with_ally_and_enemy(Hero_Type.dark_seer, xy(1, 1));
     const rune = battle.spawn_rune(Rune_Type.haste, xy(2, 2));
-
-    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(5, 5));
     battle.start();
 
     hero.order_pick_up_rune(rune);
@@ -69,15 +69,12 @@ function test_hero_can_pick_up_rune() {
 }
 
 function test_hero_cant_move_on_rune() {
-    const battle = test_battle();
     const hero_at = xy(1, 1);
+    const [battle, hero] = test_battle_with_ally_and_enemy(Hero_Type.dark_seer, hero_at);
     const rune_at = xy(2, 1);
-    const hero = battle.for_test_player().spawn_hero(Hero_Type.dark_seer, hero_at);
     hero.assert().has_move_points(3);
 
     battle.spawn_rune(Rune_Type.haste, rune_at);
-
-    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(5, 5));
     battle.start();
 
     hero.order_move(rune_at);
@@ -85,18 +82,17 @@ function test_hero_cant_move_on_rune() {
 }
 
 function test_hero_cant_go_through_rune_to_pick_up_another_one() {
-    const battle = test_battle();
     const hero_at = xy(1, 1);
     const rune_one_at = xy(2, 1);
     const rune_two_at = xy(3, 1);
 
-    const hero = battle.for_test_player().spawn_hero(Hero_Type.dark_seer, hero_at);
+    const [battle, hero] = test_battle_with_ally_and_enemy(Hero_Type.dark_seer, hero_at);
+
     hero.assert().has_move_points(3);
 
     battle.spawn_rune(Rune_Type.haste, rune_one_at);
     const rune_two = battle.spawn_rune(Rune_Type.haste, rune_two_at);
 
-    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(5, 5));
     battle.start();
 
     hero.order_pick_up_rune(rune_two);
@@ -208,12 +204,8 @@ function test_game_over_when_all_enemies_die_simple() {
 }
 
 function test_ember_spirit_fire_remnant_ability_swap_working_correctly() {
-    const battle = test_battle();
-    const hero = battle.for_test_player()
-        .spawn_hero(Hero_Type.ember_spirit, xy(1, 1))
-        .set_level(3);
-
-    battle.for_enemy_player().spawn_creep(Creep_Type.lane_creep, xy(5, 5));
+    const [battle, hero] = test_battle_with_ally_and_enemy(Hero_Type.ember_spirit, xy(1, 1));
+    hero.set_level(3);
 
     battle.start();
 
@@ -391,10 +383,7 @@ function test_pathing_is_blocked_by_units() {
 }
 
 function test_shaker_fissure_expires_correctly() {
-    const battle = test_battle();
-    const ally = battle.for_test_player().spawn_hero(Hero_Type.earthshaker, xy(1, 1));
-
-    battle.for_enemy_player().spawn_hero(Hero_Type.luna, xy(7, 7));
+    const [battle, ally] = test_battle_with_ally_and_enemy(Hero_Type.earthshaker, xy(1, 1));
 
     battle.start();
 
@@ -427,6 +416,57 @@ function test_shaker_fissure_expires_correctly() {
         .grid_free_at(xy(3, 1))
         .grid_free_at(xy(4, 1))
         .grid_free_at(xy(5, 1));
+}
+
+function test_hero_can_buy_shop_item() {
+    const [battle, ally] = test_battle_with_ally_and_enemy(Hero_Type.earthshaker, xy(1, 1));
+    battle.start();
+
+    const player = battle.for_test_player();
+    const item = Item_Id.armlet;
+    const shop = battle.spawn_shop([ item ], xy(2, 2));
+
+    player.assert().has_gold(0);
+    player.change_gold(20);
+
+    ally.order_purchase_item(shop, item);
+
+    player.assert().has_gold(20 - item_gold_cost(item));
+
+    ally.assert().has_modifier(Modifier_Id.item_armlet);
+}
+
+function test_hero_cant_buy_shop_item_out_of_range() {
+    const hero_at = xy(1, 1);
+    const [battle, ally] = test_battle_with_ally_and_enemy(Hero_Type.earthshaker, hero_at);
+    battle.start();
+
+    const player = battle.for_test_player();
+    const item = Item_Id.armlet;
+    const shop = battle.spawn_shop([ item ], xy(hero_at.x + Const.shop_range + 1, hero_at.y + Const.shop_range + 1));
+
+    player.assert().has_gold(0);
+    player.change_gold(20);
+
+    ally.order_purchase_item(shop, item);
+
+    player.assert().has_gold(20);
+
+    ally.assert().doesnt_have_modifier(Modifier_Id.item_armlet);
+}
+
+function test_hero_cant_buy_shop_item_no_gold() {
+    const [battle, ally] = test_battle_with_ally_and_enemy(Hero_Type.earthshaker, xy(1, 1));
+    battle.start();
+
+    const player = battle.for_test_player();
+    const item = Item_Id.armlet;
+    const shop = battle.spawn_shop([ item ], xy(2, 2));
+
+    player.assert().has_gold(0);
+    ally.order_purchase_item(shop, item);
+    player.assert().has_gold(0);
+    ally.assert().doesnt_have_modifier(Modifier_Id.item_armlet);
 }
 
 function test_load_all_adventures() {
@@ -464,5 +504,8 @@ run_tests([
     test_eul_scepter_modifier_on_enemy,
     test_eul_scepter_modifier_on_ally,
     test_pathing_is_blocked_by_units,
-    test_shaker_fissure_expires_correctly
+    test_shaker_fissure_expires_correctly,
+    test_hero_can_buy_shop_item,
+    test_hero_cant_buy_shop_item_out_of_range,
+    test_hero_cant_buy_shop_item_no_gold
 ]);

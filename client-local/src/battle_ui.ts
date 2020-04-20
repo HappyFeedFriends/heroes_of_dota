@@ -1085,26 +1085,27 @@ function create_ui_shop_data(shop: Shop): UI_Shop_Data {
         const item_image = $.CreatePanel("Image", item_button, "image");
         const item_cost = $.CreatePanel("Label", item_button, "cost");
 
-        item_image.SetImage(get_item_icon(item.id));
+        item_image.SetImage(get_item_icon(item));
 
         item_button.AddClass("item_button");
         item_button.SetPanelEvent(PanelEvent.ON_RIGHT_CLICK, () => {
             if (selection.type == Selection_Type.shop) {
-                try_purchase_item(selection.unit, selection.shop, item.id, () => item_button.AddClass("unavailable"));
+                try_purchase_item(selection.unit, selection.shop, item, () => item_button.AddClass("unavailable"));
             }
         });
 
         item_button.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
-            $.DispatchEvent("DOTAShowTextTooltip", item_button, get_item_tooltip(item));
+            // TODO re-implement this
+            // $.DispatchEvent("DOTAShowTextTooltip", item_button, get_item_tooltip(item));
         });
 
         item_button.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, () => {
             $.DispatchEvent("DOTAHideTextTooltip");
         });
 
-        item_cost.text = item.gold_cost.toString();
+        item_cost.text = item_gold_cost(item).toString(10);
 
-        item_button_map[item.id] = item_button;
+        item_button_map[item] = item_button;
     }
 
     return {
@@ -1516,6 +1517,7 @@ function drop_card_selection() {
     }
 }
 
+/* TODO re-implement this
 function get_item_tooltip(i: Item): string {
     switch (i.id) {
         case Item_Id.assault_cuirass: return `+${i.armor_bonus} armor`;
@@ -1538,6 +1540,7 @@ function get_item_tooltip(i: Item): string {
         case Item_Id.iron_branch: return `+${i.stat_bonus} move points<br/>+${i.stat_bonus} attack<br/>+${i.stat_bonus} health<br/>+${i.stat_bonus} armor`;
     }
 }
+*/
 
 function get_ability_tooltip(caster: Unit, a: Ability): string {
     switch (a.id) {

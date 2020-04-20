@@ -159,7 +159,8 @@ type Purchase_Item_Permission = {
     ok: true
     hero: Hero
     shop: Shop
-    item: Item
+    item: Item_Id
+    cost: number
 }
 
 type Order_Unit_Permission = Act_On_Unit_Permission & {
@@ -419,16 +420,18 @@ function authorize_item_purchase(use_shop: Use_Shop_Permission, item_id: Item_Id
 
     const { hero, shop } = use_shop;
 
-    const item = shop.items.find(item => item.id == item_id);
+    const index = shop.items.indexOf(item_id);
+    if (index == -1) return error(Purchase_Item_Error.other);
 
-    if (!item) return error(Purchase_Item_Error.other);
-    if (hero.owner.gold < item.gold_cost) return error(Purchase_Item_Error.not_enough_gold);
+    const cost = item_gold_cost(item_id);
+    if (hero.owner.gold < cost) return error(Purchase_Item_Error.not_enough_gold);
 
     return {
         ok: true,
         hero: hero,
         shop: shop,
-        item: item
+        item: item_id,
+        cost: cost
     }
 }
 

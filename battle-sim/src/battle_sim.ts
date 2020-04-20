@@ -131,7 +131,6 @@ type Hero =  Unit_Base & {
     supertype: Unit_Supertype.hero
     owner: Battle_Player;
     level: number
-    items: Item[]
 }
 
 type Monster = Unit_Base & {
@@ -154,7 +153,7 @@ type Shop = {
     id: Shop_Id
     type: Shop_Type
     position: XY
-    items: Item[]
+    items: Item_Id[]
 }
 
 type Tree = {
@@ -1735,8 +1734,6 @@ function collapse_unit_target_spell_use(battle: Battle, caster: Battle_Player, t
 }
 
 function collapse_item_equip(battle: Battle, hero: Hero, equip: Equip_Item) {
-    const source = item_source(equip.item_id);
-
     switch (equip.item_id) {
         case Item_Id.refresher_shard: {
             for (const change of equip.charge_changes) {
@@ -1764,81 +1761,6 @@ function collapse_item_equip(battle: Battle, hero: Hero, equip: Equip_Item) {
 
         case Item_Id.tome_of_knowledge: {
             hero.level = equip.new_level;
-            break;
-        }
-
-        case Item_Id.blades_of_attack: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.assault_cuirass: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.divine_rapier: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break
-        }
-
-        case Item_Id.heart_of_tarrasque: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break
-        }
-
-        case Item_Id.satanic: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break
-        }
-
-        case Item_Id.boots_of_travel: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break
-        }
-
-        case Item_Id.boots_of_speed: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break
-        }
-
-        case Item_Id.mask_of_madness: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break
-        }
-
-        case Item_Id.armlet: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.belt_of_strength: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.morbid_mask: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.chainmail: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.octarine_core: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.basher: {
-            apply_modifier(battle, source, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.iron_branch: {
-            apply_modifier(battle, source, hero, equip.modifier);
             break;
         }
 
@@ -1919,8 +1841,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                 supertype: Unit_Supertype.hero,
                 type: delta.hero_type,
                 owner: owner,
-                level: 1,
-                items: []
+                level: 1
             };
 
             battle.units.push(hero);
@@ -2000,7 +1921,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             battle.shops.push({
                 id: delta.shop_id,
                 type: delta.shop_type,
-                items: delta.item_pool.map(item_id => item_id_to_item(item_id)),
+                items: delta.item_pool,
                 position: delta.at
             });
 
@@ -2120,16 +2041,15 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             const unit = find_unit_by_id(battle, delta.unit_id);
             if (!unit) break;
 
-            apply_modifier(battle, no_source(), unit, delta.application);
+            const get_source: () => Source = () => {
+                switch (delta.source.type) {
+                    case Source_Type.adventure_item: return adventure_item_source(delta.source.item);
+                    case Source_Type.item: return item_source(delta.source.item);
+                    case Source_Type.none: return no_source();
+                }
+            };
 
-            break;
-        }
-
-        case Delta_Type.modifier_applied_from_adventure_item: {
-            const unit = find_unit_by_id(battle, delta.unit_id);
-            if (!unit) break;
-
-            apply_modifier(battle, adventure_item_source(delta.item), unit, delta.application);
+            apply_modifier(battle, get_source(), unit, delta.application);
 
             break;
         }
@@ -2244,8 +2164,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             if (!unit) break;
             if (!shop) break;
 
-            const item_index = shop.items.findIndex(item => item.id == delta.item_id);
-
+            const item_index = shop.items.indexOf(delta.item_id);
             if (item_index == -1) break;
 
             shop.items.splice(item_index, 1);
@@ -2258,10 +2177,6 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             const hero = find_hero_by_id(battle, delta.unit_id);
 
             if (hero) {
-                const item = item_id_to_item(delta.item_id);
-
-                hero.items.push(item);
-
                 collapse_item_equip(battle, hero, delta);
             }
 

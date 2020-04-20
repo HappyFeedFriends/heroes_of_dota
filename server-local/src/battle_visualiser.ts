@@ -1699,8 +1699,30 @@ function update_unit_state_from_modifiers(unit: Unit) {
     update_state_visuals(unit);
 }
 
-function apply_modifier(game: Game, target: Unit, application: Modifier_Application) {
+function get_item_equip_sound(item: Item_Id): string | undefined {
+    switch (item) {
+        case Item_Id.satanic: return "equip_satanic";
+        case Item_Id.mask_of_madness: return "DOTA_Item.MaskOfMadness.Activate";
+        case Item_Id.armlet: return "DOTA_Item.Armlet.Activate";
+    }
+}
+
+function apply_modifier(game: Game, target: Unit, application: Modifier_Application, source?: Modifier_Application_Source) {
     print(`Apply and record ${application.modifier_handle_id} to ${target.handle.GetName()}`);
+
+    if (source && source.type == Source_Type.item) {
+        unit_emit_sound(target, "Item.PickUpShop");
+
+        if (target.supertype == Unit_Supertype.hero) {
+            try_play_random_sound_for_hero(target, sounds => sounds.purchase);
+        }
+
+        const item_sound = get_item_equip_sound(source.item);
+
+        if (item_sound) {
+            unit_emit_sound(target, item_sound);
+        }
+    }
 
     try_apply_modifier_visuals(target, application.modifier_handle_id, application.modifier);
 
@@ -2732,42 +2754,6 @@ function play_rune_pickup_delta(game: Game, unit: Hero, delta: Delta_Rune_Pick_U
 
 function apply_item_equip_effects(game: Game, hero: Hero, equip: Equip_Item) {
     switch (equip.item_id) {
-        case Item_Id.assault_cuirass: {
-            apply_modifier(game, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.boots_of_travel: {
-            apply_modifier(game, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.boots_of_speed: {
-            apply_modifier(game, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.blades_of_attack: {
-            apply_modifier(game, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.divine_rapier: {
-            apply_modifier(game, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.heart_of_tarrasque: {
-            apply_modifier(game, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.satanic: {
-            apply_modifier(game, hero, equip.modifier);
-            unit_emit_sound(hero, "equip_satanic");
-            break;
-        }
-
         case Item_Id.tome_of_knowledge: {
             change_hero_level(game, hero, equip.new_level);
             break;
@@ -2777,52 +2763,6 @@ function apply_item_equip_effects(game: Game, hero: Hero, equip: Equip_Item) {
             fx("particles/items2_fx/refresher.vpcf").to_unit_attach_point(0, hero, "attach_hitloc").release();
             unit_emit_sound(hero, "equip_refresher");
 
-            break;
-        }
-
-        case Item_Id.mask_of_madness: {
-            apply_modifier(game, hero, equip.modifier);
-            unit_emit_sound(hero, "DOTA_Item.MaskOfMadness.Activate");
-
-            break;
-        }
-
-        case Item_Id.armlet: {
-            apply_modifier(game, hero, equip.modifier);
-            unit_emit_sound(hero, "DOTA_Item.Armlet.Activate");
-
-            break;
-        }
-
-        case Item_Id.belt_of_strength: {
-            apply_modifier(game, hero, equip.modifier);
-
-            break;
-        }
-
-        case Item_Id.morbid_mask: {
-            apply_modifier(game, hero, equip.modifier);
-
-            break;
-        }
-
-        case Item_Id.chainmail: {
-            apply_modifier(game, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.octarine_core: {
-            apply_modifier(game, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.basher: {
-            apply_modifier(game, hero, equip.modifier);
-            break;
-        }
-
-        case Item_Id.iron_branch: {
-            apply_modifier(game, hero, equip.modifier);
             break;
         }
 
@@ -3517,12 +3457,11 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             break;
         }
 
-        case Delta_Type.modifier_applied_from_adventure_item:
         case Delta_Type.modifier_applied: {
             const unit = find_unit_by_id(delta.unit_id);
             if (!unit) break;
 
-            apply_modifier(game, unit, delta.application);
+            apply_modifier(game, unit, delta.application, delta.source);
 
             break;
         }

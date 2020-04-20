@@ -60,6 +60,21 @@ class Test_Battle {
         return id;
     }
 
+    spawn_shop(items: Item_Id[], at: XY) {
+        const id = this.battle.id_generator() as Shop_Id;
+
+        submit_external_battle_delta(this.battle, {
+            type: Delta_Type.shop_spawn,
+            at: at,
+            facing: xy(1, 0),
+            shop_id: id,
+            shop_type: Shop_Type.normal,
+            item_pool: items
+        });
+
+        return id;
+    }
+
     start() {
         submit_external_battle_delta(this.battle, {
             type: Delta_Type.game_start,
@@ -169,6 +184,16 @@ class For_Player {
         }
 
         return new Hero_Search_Result(this.test, hero);
+    }
+
+    change_gold(delta: number) {
+        submit_external_battle_delta(this.test.battle, {
+            type: Delta_Type.gold_change,
+            change: delta,
+            player_id: this.player.id
+        });
+
+        return this;
     }
 
     assert(): Assert_For_Player {
@@ -315,7 +340,8 @@ class For_Player_Unit {
                 modifier_handle_id: id,
                 modifier: modifier,
                 duration: duration
-            }
+            },
+            source: { type: Source_Type.none }
         });
 
         return id;
@@ -371,6 +397,17 @@ class For_Player_Unit {
             unit_id: this.unit.id,
             ability_id: ability,
             to: at
+        });
+
+        return this;
+    }
+
+    order_purchase_item(shop: Shop_Id, item: Item_Id) {
+        try_take_turn_action(this.test.battle, this.player, {
+            type: Action_Type.purchase_item,
+            shop_id: shop,
+            item_id: item,
+            unit_id: this.unit.id
         });
 
         return this;
@@ -450,6 +487,12 @@ class Assert_For_Player {
         const actual_winner = this.test.battle.state.winner;
 
         do_assert(this.index, actual_winner == this.player, `Expected player ${this.player.id} to be the winner, actual: ${actual_winner ? actual_winner.id : "none"}`);
+
+        return this;
+    }
+
+    has_gold(how_much: number) {
+        do_assert(this.index, this.player.gold == how_much, `Expected player to have ${how_much} gold, actual: ${this.player.gold}`);
 
         return this;
     }
