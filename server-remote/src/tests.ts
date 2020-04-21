@@ -130,6 +130,19 @@ function test_hero_cant_go_on_another_unit_even_if_phased() {
     hero.assert().is_at(hero_at);
 }
 
+function test_hero_can_phase_through_units_only() {
+    const hero_at = xy(1, 1);
+    const shop_at = xy(2, 1);
+    const hero_to = xy(3, 1);
+    const [battle, hero] = test_battle_with_ally_and_enemy(Hero_Type.dark_seer, hero_at);
+    hero.apply_modifier({ id: Modifier_Id.item_phase_boots, move_bonus: 0 });
+    hero.assert().has_move_points(3);
+    battle.spawn_shop([], shop_at);
+    battle.start();
+    hero.order_move(hero_to);
+    hero.assert().is_at(hero_at);
+}
+
 function test_game_doesnt_end_on_matriarch_ability() {
     const battle = test_battle();
     const hero = battle.for_test_player().spawn_hero(Hero_Type.mirana, xy(1, 1));
@@ -490,6 +503,7 @@ run_tests([
     test_hero_can_pick_up_rune,
     test_hero_cant_move_on_rune,
     test_hero_can_phase_through_units,
+    test_hero_can_phase_through_units_only,
     test_hero_cant_go_through_rune_to_pick_up_another_one,
     test_hero_cant_go_on_another_unit_even_if_phased,
     test_game_doesnt_end_on_matriarch_ability,

@@ -566,8 +566,10 @@ function path_iterator_check_neighbor(iter: Path_Iterator, for_cost: number, nei
         }
     }
 
-    if (path_iterator_flag(iter, Pathing_Flag.pass_through_units)) {
-        if (neighbor_occupied) {
+    if (neighbor_occupied && path_iterator_flag(iter, Pathing_Flag.pass_through_units)) {
+        const unit = unit_at(iter.battle, neighbor.position);
+
+        if (unit != undefined) {
             iter.indices_already_checked[neighbor_index] = true;
 
             return { result: Neighbor_Check_Result.can_pass_through, index: neighbor_index };
