@@ -904,15 +904,23 @@ function fill_entity_popup_content(popup: Basic_Popup, entity: Adventure_Entity)
         }
 
         case Adventure_Entity_Type.item_on_the_ground: {
-            const item_name = get_adventure_item_name(entity.item);
-
             popup.set_header_text("Item found");
-            popup.set_content_text(snake_case_to_capitalized_words(item_name));
+            popup.set_content_text(get_adventure_item_name(entity.item));
 
             const icon = $.CreatePanel("Image", popup.content, "");
             icon.AddClass("item_icon");
             icon.SetImage(get_adventure_item_icon(entity.item));
             icon.SetScaling(ScalingFunction.STRETCH_TO_COVER_PRESERVE_ASPECT);
+
+            icon.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
+                show_item_tooltip(icon, entity.item);
+                adventure_ui.item_tooltip.AddClass("in_popup");
+            });
+
+            icon.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, () => {
+                hide_item_tooltip();
+                adventure_ui.item_tooltip.RemoveClass("in_popup");
+            });
 
             break;
         }

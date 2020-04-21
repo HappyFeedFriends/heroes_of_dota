@@ -66,9 +66,12 @@ function find_member_of_union_by_tags(tags: Union_Tag[], value_store: any): Obje
     to_the_next_tag:
     for (const tag of tags) {
         for (const discriminator of tag.discriminated_by) {
-            const value_type = discriminator.type.type;
+            const value_types = discriminator.any_of;
+            const compare_to = value_store[discriminator.name];
 
-            if (value_type.kind == Type_Kind.number_literal && value_type.value == value_store[discriminator.name]) {
+            // $.Msg("Compare ", value_types.map(a => a.type.kind == Type_Kind.number_literal ? a.type.value : "").join(", "), " to ", compare_to);
+
+            if (value_types.some(vt => vt.type.kind == Type_Kind.number_literal && vt.type.value == compare_to)) {
                 // ok
             } else {
                 continue to_the_next_tag;
@@ -83,7 +86,7 @@ type Union_Tag = {
     discriminates_to: Object_Type
     discriminated_by: Array<{
         name: string
-        type: Enum_Member_Type
+        any_of: Enum_Member_Type[]
     }>
 }
 
@@ -103,34 +106,53 @@ function find_union_tags(union: Union_Type): Union_Tag[] | undefined {
     type Object_Member = {
         object: Object_Type
         member_name: string
-        member_type: Enum_Member_Type
+        member_type: Enum_Member_Type[]
     }
 
-    const member_counter: Record<string, Object_Member[]> = {};
+    const members_by_name: Record<string, Object_Member[]> = {};
+
+    function enum_members_from_object_member(member: Member_Named): Enum_Member_Type[] | undefined {
+        if (member.type.kind == Type_Kind.union) {
+            const result: Enum_Member_Type[] = [];
+
+            for (const type of member.type.types) {
+                if (type.kind != Type_Kind.enum_member) {
+                    return;
+                }
+
+                result.push(type);
+            }
+
+            return result;
+        } else if (member.type.kind == Type_Kind.enum_member) {
+            return [ member.type ]
+        }
+    }
 
     for (const object of all_object_types) {
         for (const member of object.members) {
-            if (member.type.kind != Type_Kind.enum_member) continue;
+            const enum_members = enum_members_from_object_member(member);
+            if (!enum_members) continue;
 
-            let members = member_counter[member.name];
+            let members = members_by_name[member.name];
 
             if (!members) {
                 members = [];
-                member_counter[member.name] = members;
+                members_by_name[member.name] = members;
             }
 
             members.push({
                 object: object,
                 member_name: member.name,
-                member_type: member.type
+                member_type: enum_members
             });
         }
     }
 
     const result: Union_Tag[] = [];
 
-    for (const member_name of Object.keys(member_counter)) {
-        const member_values = member_counter[member_name];
+    for (const member_name of Object.keys(members_by_name)) {
+        const member_values = members_by_name[member_name];
 
         for (const member_value of member_values) {
             const existing_tag = result.find(tag => tag.discriminates_to == member_value.object);
@@ -138,14 +160,14 @@ function find_union_tags(union: Union_Type): Union_Tag[] | undefined {
             if (existing_tag) {
                 existing_tag.discriminated_by.push({
                     name: member_value.member_name,
-                    type: member_value.member_type
+                    any_of: member_value.member_type
                 });
             } else {
                 result.push({
                     discriminates_to: member_value.object,
                     discriminated_by: [{
                         name: member_value.member_name,
-                        type: member_value.member_type
+                        any_of: member_value.member_type
                     }]
                 })
             }
@@ -216,6 +238,11 @@ function deserialize_value(type: Type, from: any): any {
         }
 
         case Type_Kind.union: {
+            // member: Enum.a | Enum.b
+            if (type.types.every(t => t.kind == Type_Kind.enum_member)) {
+                return from;
+            }
+
             const tags = find_union_tags(type);
             if (!tags || tags.length == 0) {
                 $.Msg("Unable to find union tags");

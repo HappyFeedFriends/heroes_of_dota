@@ -728,6 +728,7 @@
     background-color: black;
     transition-property: opacity;
     transition-duration: 0.4s;
+    z-index: 50;
 
     &.active {
       opacity: 1;
@@ -757,6 +758,10 @@
       color: rgb(244, 214, 106);
     }
   }
+}
+
+#adventure_item_tooltip.in_popup {
+  z-index: 10;
 }
 
 @adventure_slot_damage_animation: 'adventure_slot_damage_animation';
