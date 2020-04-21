@@ -1561,29 +1561,6 @@ function changes_equal(left: Adventure_Party_Change, right: Adventure_Party_Chan
     return objects_equal(left, right);
 }
 
-function deep_copy<T extends any>(source: T): T {
-    if (source == null) {
-        return source;
-    }
-
-    if (typeof source == "object") {
-        if (Array.isArray(source)) {
-            return source.map((value: any) => deep_copy(value));
-        } else {
-            const result: Record<any, any> = {};
-            const keys = Object.keys(source);
-
-            for (const key of keys) {
-                result[key] = deep_copy(source[key]);
-            }
-
-            return result;
-        }
-    } else {
-        return source;
-    }
-}
-
 function merge_adventure_party_changes(head_before_merge: number, changes: Adventure_Party_Change[]) {
     log(`\tReceived ${changes.length} party changes, inserting after ${head_before_merge}`);
 

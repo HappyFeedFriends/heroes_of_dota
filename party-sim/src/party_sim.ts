@@ -362,6 +362,28 @@ function adventure_party_action_to_changes(party: Party_Snapshot, action: Advent
     return changes;
 }
 
+function deep_copy<T extends any>(source: T): T {
+    if (source == null) {
+        return source;
+    }
+
+    if (typeof source == "object") {
+        if (Array.isArray(source)) {
+            return source.map((value: any) => deep_copy(value));
+        } else {
+            const result: Record<any, any> = {};
+            const keys = Object.keys(source);
+
+            for (const key of keys) {
+                result[key] = deep_copy(source[key]);
+            }
+
+            return result;
+        }
+    } else {
+        return source;
+    }
+}
 
 function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Change) {
     switch (change.type) {
@@ -372,7 +394,7 @@ function collapse_party_change(party: Party_Snapshot, change: Adventure_Party_Ch
         }
 
         case Adventure_Party_Change_Type.set_slot: {
-            party.slots[change.slot_index] = change.slot;
+            party.slots[change.slot_index] = deep_copy(change.slot);
 
             break;
         }
