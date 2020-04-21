@@ -43,8 +43,8 @@
         </Panel>
 
         <Panel id="battle_ui" hittest="false" class="ui_state">
-            <Panel id="control_panel">
-                <Panel id="heroes_panel">
+            <Panel id="hero_control">
+                <Panel id="heroes_panel" class="control_panel">
                     <Panel id="background"/>
                     <Panel id="inset_shadow"/>
                     <Panel id="hero_rows">
@@ -59,11 +59,18 @@
                 <Panel id="image"/>
             </Panel>
 
-            <Label id="current_turning_player_label"/>
+            <Panel id="game_control">
+                <Panel id="left_flare"/>
+                <Panel id="controls" class="control_panel">
+                    <Panel id="background"/>
+                    <Panel id="inset_shadow"/>
 
-            <Button id="end_turn_button">
-                <Label text="End turn"/>
-            </Button>
+                    <Button id="end_turn_button">
+                        <Label id="turn_label" text="End turn"/>
+                    </Button>
+                </Panel>
+            </Panel>
+
 
             <Panel id="stat_bar_container" hittest="false"/>
 
@@ -154,7 +161,7 @@
                 <Panel id="right_flare"/>
             </Panel>
             <Panel hittest="false" id="adventure_card_tooltips"/>
-            <Panel id="adventure_bag_item_tooltip" class="tooltip_with_arrow" hittest="false" hittestchildren="false"/>
+            <Panel id="adventure_item_tooltip" class="effect_tooltip tooltip_with_arrow" hittest="false" hittestchildren="false"/>
 
             <Panel id="adventure_popup_container" class="popup_container" hittest="false"/>
             <Panel id="adventure_fade" hittest="false"/>

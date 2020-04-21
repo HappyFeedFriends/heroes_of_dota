@@ -58,7 +58,24 @@
   }
 }
 
-#control_panel {
+.control_panel {
+  > #background {
+    background-image: url("s2r://panorama/images/hud/reborn/ability_bg_psd.vtex");
+    background-size: 100% 100%;
+    width: 100%;
+    height: 100%;
+  }
+
+  > #inset_shadow {
+    background-image: url("s2r://panorama/images/hud/reborn/ability_inset_shadow_psd.vtex");
+    background-size: 100%;
+    width: 10px;
+    height: 100%;
+    z-index: 100;
+  }
+}
+
+#hero_control {
   flow-children: right;
   align: left bottom;
 
@@ -71,13 +88,8 @@
     }
 
     > #inset_shadow {
-      background-image: url("s2r://panorama/images/hud/reborn/ability_inset_shadow_psd.vtex");
-      background-size: 100%;
-      width: 10px;
-      height: 100%;
       transform: scaleX(-1);
       align: right center;
-      z-index: 100;
     }
 
     #hero_rows {
@@ -262,6 +274,66 @@
     transform: scaleX(-1);
     width: 52px;
     height: 138px;
+  }
+}
+
+#game_control {
+  flow-children: right;
+  align: right bottom;
+
+  #left_flare {
+    vertical-align: bottom;
+    background-image: url("s2r://panorama/images/hud/reborn/side_flare_tall_psd.vtex");
+    background-size: 100%;
+    width: 52px;
+    height: 138px;
+  }
+
+  #controls {
+    vertical-align: bottom;
+
+    #end_turn_button {
+      width: 220px;
+      height: 50px;
+      background-color: gradient( linear, 0% 0%, 0% 100%, from( #5f7ee9 ), to(#4e68c0) );
+      background-image: url("s2r://panorama/images/backgrounds/background_play_button_2x_png.vtex");
+      box-shadow: fill #111 -4px -4px 8px 9px;
+      background-size: 328px 50px;
+      align: right bottom;
+      margin: 40px;
+
+      border-top: 1px solid #ffffff44;
+      border-right: 1px solid #00000088;
+      border-left: 1px solid #ffffff44;
+      border-bottom: 1px solid #00000088;
+
+      &:hover:not(.cant_end_turn) {
+        background-color: #5f7ee9;
+
+        Label {
+          color: #e1e1e1;
+        }
+      }
+
+      &:active:not(.cant_end_turn) {
+        background-color: #5f7ee9;
+        transform: translateX(1px) translateY(1px);
+      }
+
+      &.cant_end_turn {
+        wash-color: gray;
+      }
+
+      #turn_label {
+        font-family: @font-title;
+        font-size: 28px;
+        text-transform: uppercase;
+        color: white;
+        align: center center;
+        text-align: center;
+        text-shadow: 2px 2px 0px 2.0 #333;
+      }
+    }
   }
 }
 
@@ -714,44 +786,6 @@
       opacity: 1;
     }
   }
-}
-
-#end_turn_button {
-  width: 200px;
-  height: 50px;
-  background-color: #688bff;
-  align: right bottom;
-  margin: 40px;
-
-  &:hover {
-    background-color: #5f7ee9;
-
-    Label {
-      color: #e1e1e1;
-    }
-  }
-
-  &:active {
-    background-color: #5f7ee9;
-    transform: translateX(1px) translateY(1px);
-  }
-
-  Label {
-    font-family: @font-title;
-    color: white;
-    align: center center;
-    text-align: center center;
-    font-size: 24px;
-  }
-}
-
-#current_turning_player_label {
-  color: white;
-  font-family: @font-regular;
-  font-size: 32px;
-  align: right bottom;
-  margin-right: 40px;
-  margin-bottom: 100px;
 }
 
 .animate_damage {

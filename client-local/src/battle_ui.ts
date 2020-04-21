@@ -230,6 +230,7 @@ let ui_shop_data: UI_Shop_Data[] = [];
 
 const current_targeted_ability_ui = $("#current_targeted_ability");
 const card_selection_overlay = $("#card_selection_overlay");
+const end_turn_button = $("#end_turn_button");
 
 export const control_panel: Control_Panel = {
     panel: $("#hero_rows"),
@@ -487,7 +488,7 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
         }
     }
 
-    update_current_turning_player_indicator();
+    update_end_turn_button();
 
     const visualiser_head = get_visualiser_delta_head();
     const head_relative_to_battle_start = battle.delta_head - battle.started_at_delta_head;
@@ -1278,10 +1279,8 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
         const existing = ui.modifier_elements.find(existing_element => existing_element.effect == handle);
 
         if (existing) {
-            $.Msg(`Handle ${handle} found, pushing existing`);
             new_modifiers.push(existing);
         } else {
-            $.Msg(`Handle ${handle} doesn't exist yet, pushing new`);
             new_modifiers.push({ effect: handle });
         }
     }
@@ -1291,8 +1290,6 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
         const exists_in_new_list = new_modifiers.some(new_modifier => new_modifier.effect == existing.effect);
 
         if (!exists_in_new_list) {
-            $.Msg(`Handle ${existing.effect} doesn't exist anymore, deleting`);
-
             if (existing.panel) {
                 existing.panel.AddClass("being_removed");
                 existing.panel.DeleteAsync(0.5);
@@ -1836,33 +1833,9 @@ function add_spawned_hero_to_control_panel(hero: Hero) {
     control_panel.hero_rows.push(new_row);
 }
 
-function update_current_turning_player_indicator() {
-    const label = $("#current_turning_player_label") as LabelPanel;
-    const map_entity = battle.turning_player.map_entity;
-
-    switch (map_entity.type) {
-        case Map_Entity_Type.player: {
-            label.text = `...'s turn`;
-
-            async_get_player_name(map_entity.player_id, name => {
-                label.text = `${name}'s turn`;
-            });
-
-            break;
-        }
-
-        case Map_Entity_Type.adventure_enemy: {
-            label.text = `${enum_to_string(map_entity.world_model)}'s turn`;
-            break;
-        }
-
-        case Map_Entity_Type.npc: {
-            label.text = `${enum_to_string(map_entity.npc_type)}'s turn`;
-            break;
-        }
-
-        default: unreachable(map_entity);
-    }
+function update_end_turn_button() {
+    const player_act_permission = authorize_action_by_player(battle, battle.this_player);
+    end_turn_button.SetHasClass("cant_end_turn", !player_act_permission.ok);
 }
 
 function update_hero_control_panel_state(row: Hero_Row, hero: Hero) {
@@ -2742,7 +2715,10 @@ function setup_custom_ability_hotkeys() {
     bind_ability_at_index_to_command("AbilityUltimate", 3);
 }
 
-$("#end_turn_button").SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+end_turn_button.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+    const player_act_permission = authorize_action_by_player(battle, battle.this_player);
+    if (!player_act_permission.ok) return show_player_action_error_ui(player_act_permission);
+
     take_battle_action({
         type: Action_Type.end_turn
     });
