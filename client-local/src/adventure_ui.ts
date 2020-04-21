@@ -986,11 +986,16 @@ function show_merchant_popup(merchant: Adventure_Merchant): Merchant_Popup {
         button.AddClass("adventure_popup_button");
         $.CreatePanel("Label", button, "text").text = "LEAVE";
 
+        const purchasable_elements: Purchasable_Element[] = [];
+
         function close() {
+            for (const element of purchasable_elements) {
+                element.root.ClearPanelEvent(PanelEvent.ON_MOUSE_OVER); // Disabling tooltips
+                element.root.ClearPanelEvent(PanelEvent.ON_MOUSE_OUT);
+            }
+
             close_and_delete_current_popup(background, popup);
         }
-
-        const purchasable_elements: Purchasable_Element[] = [];
 
         return {
             type: Popup_Type.merchant,
@@ -1147,8 +1152,6 @@ function show_merchant_popup(merchant: Adventure_Merchant): Merchant_Popup {
 
         return a.cost - b.cost;
     }
-
-    popup.purchasable_elements = [];
 
     for (const card of merchant.stock.cards.sort(compare_entries)) {
         const element = purchasable_card(card);
