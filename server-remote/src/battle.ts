@@ -290,8 +290,16 @@ function perform_spell_cast_ground_target(battle: Battle_Record, player: Battle_
     }
 }
 
-function calculate_basic_attack_damage_to_target(source: Unit, target: Unit) {
-    return Math.max(0, get_attack_damage(source) - get_armor(target));
+function basic_attack_health_change(source: Unit, target: Unit): Basic_Attack_Health_Change {
+    const armor = get_armor(target);
+    const attack = get_attack_damage(source);
+    const damage = Math.max(0, get_attack_damage(source) - armor);
+    const blocked = Math.min(attack, armor);
+
+    return {
+        blocked_by_armor: blocked,
+        ...unit_health_change(target, -damage)
+    }
 }
 
 function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: Ability_Ground_Target, target: XY): void {
@@ -306,15 +314,12 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
             const scan = query_first_unit_in_line(battle, unit.position, target, ability.targeting.line_length);
 
             if (scan.hit) {
-                const damage = calculate_basic_attack_damage_to_target(unit, scan.unit);
-
                 submit_battle_delta(battle, {
                     ...base,
                     ability_id: ability.id,
                     result: {
                         hit: true,
-                        target_unit_id: scan.unit.id,
-                        damage_dealt: health_change(scan.unit, -damage)
+                        target: basic_attack_health_change(unit, scan.unit)
                     }
                 });
             } else {
@@ -408,7 +413,7 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
 
         case Ability_Id.dragon_knight_elder_dragon_form_attack: {
             const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting)
-                .map(target => unit_health_change(target, -calculate_basic_attack_damage_to_target(unit, target)));
+                .map(target => basic_attack_health_change(unit, target));
 
             submit_battle_delta(battle, {
                 ...base,
@@ -859,7 +864,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
             submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
-                targets: targets.map(target => unit_health_change(target, -calculate_basic_attack_damage_to_target(unit, target)))
+                targets: targets.map(target => basic_attack_health_change(unit, target))
             });
 
             break;
@@ -2000,13 +2005,11 @@ function resolve_end_turn_effects(battle: Battle_Record) {
 
         if (!target) return;
 
-        const damage = calculate_basic_attack_damage_to_target(unit, target);
-
         submit_battle_delta(battle, apply_ability_effect_delta({
             ability_id: Ability_Id.pocket_tower_attack,
             source_unit_id: unit.id,
             target_unit_id: target.id,
-            damage_dealt: health_change(target, -damage)
+            damage_dealt: basic_attack_health_change(unit, target)
         }));
     });
 

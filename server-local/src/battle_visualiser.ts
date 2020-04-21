@@ -569,7 +569,7 @@ function unit_base(unit_id: Unit_Id, info: Unit_Creation_Info, definition: Unit_
         id: unit_id,
         position: at,
         base: {
-            armor: 0,
+            armor: definition.armor != undefined ? definition.armor : 0,
             attack_damage: definition.attack_damage,
             max_health: definition.health,
             max_move_points: definition.move_points
@@ -1129,15 +1129,15 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
         }
 
         if (is_attack_hit(cast.result)) {
-            const target_unit = find_unit_by_id(cast.result.target_unit_id);
+            const target_unit = find_unit_by_id(cast.result.target.target_unit_id);
 
             if (!target_unit) {
-                log_chat_debug_message(`Error: unit ${cast.result.target_unit_id} not found`);
+                log_chat_debug_message(`Error: unit ${cast.result.target.target_unit_id} not found`);
                 return;
             }
 
             tracking_projectile_to_unit(unit, target_unit, ranged_attack_spec.particle_path, ranged_attack_spec.projectile_speed);
-            change_health(game, unit, target_unit, cast.result.damage_dealt);
+            change_health(game, unit, target_unit, cast.result.target.change, cast.result.target.blocked_by_armor);
             try_play_sound_for_hero(unit, get_hero_ranged_impact_sound, target_unit);
 
             if (ranged_attack_spec.shake_on_impact) {
@@ -1155,10 +1155,10 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
         unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK);
 
         if (is_attack_hit(cast.result)) {
-            const target_unit = find_unit_by_id(cast.result.target_unit_id);
+            const target_unit = find_unit_by_id(cast.result.target.target_unit_id);
 
             if (target_unit) {
-                change_health(game, unit, target_unit, cast.result.damage_dealt);
+                change_health(game, unit, target_unit, cast.result.target.change, cast.result.target.blocked_by_armor);
             }
 
             shake_screen(target, Shake.weak);
@@ -1324,7 +1324,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
                 const target_unit = find_unit_by_id(target.target_unit_id);
 
                 if (target_unit) {
-                    change_health(game, unit, target_unit, target.change);
+                    change_health(game, unit, target_unit, target.change, target.blocked_by_armor);
                 }
             }
 
@@ -2235,7 +2235,7 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
 
                 target.particle.destroy_and_release(false);
 
-                change_health(game, unit, target.unit, target.change);
+                change_health(game, unit, target.unit, target.change, target.blocked_by_armor);
             }
 
             remnant_fx.destroy_and_release(false);
@@ -2607,7 +2607,7 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
 
         case Ability_Id.pocket_tower_attack: {
             const source = find_unit_by_id(effect.source_unit_id);
-            const target = find_unit_by_id(effect.target_unit_id);
+            const target = find_unit_by_id(effect.damage_dealt.target_unit_id);
 
             if (source && target) {
                 turn_unit_towards_target(source, target.position);
@@ -2620,8 +2620,8 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
                 unit_emit_sound(source, "pocket_tower_attack");
                 tracking_projectile_from_point_to_unit(source.handle.GetAbsOrigin() + Vector(0, 0, 200) as Vector, target, attack_particle, 1600);
                 shake_screen(target.position, Shake.medium);
+                change_health(game, source, target, effect.damage_dealt.change, effect.damage_dealt.blocked_by_armor);
                 add_activity_override(source, GameActivity_t.ACT_DOTA_CUSTOM_TOWER_IDLE);
-                change_health(game, source, target, effect.damage_dealt);
                 unit_emit_sound(target, "Tower.HeroImpact");
             }
 
@@ -2922,26 +2922,25 @@ function kill_unit(source: Unit, target: Unit) {
     target.dead = true;
 }
 
-function change_health(game: Game, source: Unit, target: Unit, change: Health_Change) {
-    function number_particle(amount: number, r: number, g: number, b: number) {
-        fx("particles/msg_damage.vpcf")
-            .to_unit_origin(0, target)
-            .with_point_value(1, 0, amount)
-            .with_point_value(2, Math.max(1, amount / 1.5), 2)
-            .with_point_value(3, r, g, b)
-            .release()
-    }
+function number_particle(target: Handle_Provider, amount: number, r: number, g: number, b: number) {
+    fx("particles/msg_damage.vpcf")
+        .to_unit_origin(0, target)
+        .with_point_value(1, 0, amount)
+        .with_point_value(2, Math.max(1, amount / 1.5), 2)
+        .with_point_value(3, r, g, b)
+        .release()
+}
 
+function change_health(game: Game, source: Unit, target: Unit, change: Health_Change, blocked_by_armor = 0) {
     const value_delta = change.value_delta;
 
-    if (value_delta > 0) {
-        number_particle(value_delta,100, 255, 50);
-    } else if (value_delta < 0) {
+    if (blocked_by_armor > 0) {
+        unit_emit_sound(target, "armor_impact");
+    }
+
+    if (value_delta < 0) {
         show_damage_effect_on_target(target);
 
-        if (target.supertype == Unit_Supertype.creep) {
-
-        }
         if (target.supertype == Unit_Supertype.creep) {
             unit_emit_sound(target, target.traits.sounds.pain);
         } else if (target.supertype == Unit_Supertype.hero) {
@@ -2953,9 +2952,13 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
                 add_activity_override(target, target.traits.flinch_animation, 0.5);
             }
         }
-
-        number_particle(-value_delta, 250, 70, 70);
     }
+
+    fire_event(To_Client_Event_Type.health_change_popup, {
+        over_unit: target.id,
+        change: value_delta,
+        blocked_by_armor: blocked_by_armor
+    });
 
     target.health = Math.max(0, Math.min(get_max_health(target), change.new_value));
 

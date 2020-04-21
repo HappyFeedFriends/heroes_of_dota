@@ -24,7 +24,8 @@ declare const enum To_Client_Event_Type {
     log_chat_debug_message = 6,
     adventure_display_room_exit_popup = 7,
     grid_highlight_deployment_zone = 8,
-    pre_state_change_screen_fade = 9
+    pre_state_change_screen_fade = 9,
+    health_change_popup = 10
 }
 
 declare const enum Prefixes {
@@ -118,6 +119,13 @@ type To_Client_Event = {
 } | {
     type: To_Client_Event_Type.pre_state_change_screen_fade
     payload: {}
+} | {
+    type: To_Client_Event_Type.health_change_popup
+    payload: {
+        over_unit: Unit_Id
+        change: number
+        blocked_by_armor: number
+    }
 }
 
 type Local_Api_Request = {

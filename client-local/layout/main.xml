@@ -76,6 +76,8 @@
 
             <Panel id="shop_panels_container" hittest="false"/>
 
+            <Panel id="popups" hittest="false"/>
+
             <Panel id="card_selection_overlay">
                 <Panel id="container">
                     <Label id="title" text="Select a target"/>

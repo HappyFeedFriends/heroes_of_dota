@@ -1270,10 +1270,10 @@ function collapse_ability_effect(battle: Battle, effect: Ability_Effect) {
 
         case Ability_Id.pocket_tower_attack: {
             const source = find_unit_by_id(battle, effect.source_unit_id);
-            const target = find_unit_by_id(battle, effect.target_unit_id);
+            const target = find_unit_by_id(battle, effect.damage_dealt.target_unit_id);
 
             if (source && target) {
-                change_health(battle, unit_source(source, effect.ability_id), target, effect.damage_dealt);
+                change_health(battle, unit_source(source, effect.ability_id), target, effect.damage_dealt.change);
             }
 
             break;
@@ -1524,10 +1524,10 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
     switch (cast.ability_id) {
         case Ability_Id.basic_attack: {
             if (cast.result.hit) {
-                const target = find_unit_by_id(battle, cast.result.target_unit_id);
+                const target = find_unit_by_id(battle, cast.result.target.target_unit_id);
 
                 if (target) {
-                    change_health(battle, source, target, cast.result.damage_dealt);
+                    change_health(battle, source, target, cast.result.target.change);
                 }
             }
 

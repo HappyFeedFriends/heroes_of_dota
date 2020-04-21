@@ -399,8 +399,11 @@ type Delta_Use_No_Target_Ability =
 
 type Basic_Attack_Hit = {
     hit: true
-    target_unit_id: Unit_Id
-    damage_dealt: Health_Change
+    target: Basic_Attack_Health_Change
+}
+
+type Basic_Attack_Health_Change = Unit_Health_Change & {
+    blocked_by_armor: number
 }
 
 type Delta_Ability_Basic_Attack = Delta_Ground_Target_Ability_Base & {
@@ -523,8 +526,7 @@ type Ability_Effect_Dark_Seer_Ion_Shell = {
 type Ability_Effect_Pocket_Tower_Attack = {
     ability_id: Ability_Id.pocket_tower_attack
     source_unit_id: Unit_Id
-    target_unit_id: Unit_Id
-    damage_dealt: Health_Change
+    damage_dealt: Basic_Attack_Health_Change
 }
 
 type Ablity_Effect_Monster_Lifesteal = {
@@ -569,7 +571,7 @@ type Delta_Ability_Dragon_Knight_Elder_Dragon_Form = Delta_Use_No_Target_Ability
 
 type Delta_Ability_Dragon_Knight_Elder_Dragon_Form_Attack = Delta_Ground_Target_Ability_Base & {
     ability_id: Ability_Id.dragon_knight_elder_dragon_form_attack
-    targets: Unit_Health_Change[]
+    targets: Basic_Attack_Health_Change[]
 }
 
 type Delta_Ability_Lion_Hex = Delta_Unit_Target_Ability_Base & {
@@ -599,7 +601,7 @@ type Delta_Ability_Ember_Searing_Chains = Delta_Use_No_Target_Ability_Base & {
 
 type Delta_Ability_Ember_Sleight_Of_Fist = Delta_Use_No_Target_Ability_Base & {
     ability_id: Ability_Id.ember_sleight_of_fist
-    targets: Unit_Health_Change[]
+    targets: Basic_Attack_Health_Change[]
 }
 
 type Delta_Ability_Ember_Fire_Remnant = Delta_Ground_Target_Ability_Base & {

@@ -53,6 +53,16 @@
         soundlevel = 84
     }
 
+    armor_impact = {
+        type = "dota_update_default"
+        vsnd_files = [
+            "sounds/weapons/hero/shared/large_blade/ring01.vsnd",
+            "sounds/weapons/hero/shared/large_blade/ring02.vsnd",
+            "sounds/weapons/hero/shared/large_blade/ring03.vsnd",
+            "sounds/weapons/hero/shared/large_blade/ring04.vsnd"
+        ]
+    }
+
     equip_satanic = {
         type = "dota_update_default"
         vsnd_files =

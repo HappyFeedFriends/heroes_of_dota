@@ -230,6 +230,7 @@ let ui_shop_data: UI_Shop_Data[] = [];
 const current_targeted_ability_ui = $("#current_targeted_ability");
 const card_selection_overlay = $("#card_selection_overlay");
 const end_turn_button = $("#end_turn_button");
+const popups = $("#popups");
 
 export const control_panel: Control_Panel = {
     panel: $("#hero_rows"),
@@ -2600,6 +2601,33 @@ function highlight_grid_for_unit_ability_with_predicate(unit_id: Unit_Id, abilit
     highlight_outline_temporarily(battle.grid, outline, color_red, 0.75);
 }
 
+function show_health_change_popup(unit_id: Unit_Id, change: number, blocked_by_armor: number) {
+    const unit_data = find_unit_entity_data_by_unit_id(battle, unit_id);
+    if (!unit_data) return;
+
+    const parent = $.CreatePanel("Panel", popups, "");
+    parent.AddClass("health_change_popup");
+    parent.AddClass("active");
+
+    const health_label = $.CreatePanel("Label", parent, "health");
+    health_label.text = (change > 0 ? "+" : "") + change.toString(10);
+    health_label.SetHasClass("damage", change < 0);
+    health_label.SetHasClass("heal", change > 0);
+
+    if (blocked_by_armor) {
+        const armor_label = $.CreatePanel("Label", parent, "armor");
+        armor_label.text = blocked_by_armor.toString(10);
+
+        $.CreatePanel("Panel", parent, "armor_icon");
+    }
+
+    const [entity_id] = unit_data;
+
+    position_panel_over_entity_in_the_world(parent, entity_id, -30, 150);
+
+    parent.DeleteAsync(1.5);
+}
+
 subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_targeted_ability, event => {
     highlight_grid_for_unit_ability_with_predicate(
         event.unit_id,
@@ -2738,3 +2766,6 @@ periodically_update_stat_bar_display();
 periodically_request_battle_deltas_when_in_battle();
 subscribe_to_custom_event(To_Client_Event_Type.show_start_turn_ui, show_start_turn_ui);
 subscribe_to_custom_event(To_Client_Event_Type.show_game_over_ui, event => show_game_over_ui(event.result));
+subscribe_to_custom_event(To_Client_Event_Type.health_change_popup, event => {
+    show_health_change_popup(event.over_unit, event.change, event.blocked_by_armor);
+});
