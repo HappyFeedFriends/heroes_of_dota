@@ -112,3 +112,43 @@ function get_combat_result_string(result: Combat_Result): string {
         case Combat_Result.draw: return "draw";
     }
 }
+
+function get_field_name(field: Modifier_Field) {
+    switch (field) {
+        case Modifier_Field.armor_bonus: return "armor";
+        case Modifier_Field.health_bonus: return "health";
+        case Modifier_Field.attack_bonus: return "attack";
+        case Modifier_Field.move_points_bonus: return "moves";
+    }
+}
+
+function get_status_text(status: Unit_Status) {
+    switch (status) {
+        case Unit_Status.rooted: return "rooted";
+        case Unit_Status.silenced: return "silenced";
+        case Unit_Status.stunned: return "stunned";
+        case Unit_Status.disarmed: return "disarmed";
+        case Unit_Status.out_of_the_game: return "out of the game";
+        case Unit_Status.unselectable: return "unselectable";
+        case Unit_Status.phased: return "phased";
+    }
+}
+
+function em(text: any) {
+    return `<span class="tooltip_emphasis"><b>${text}</b></span>`
+}
+
+function get_special_modifier_text(modifier: Modifier) {
+    const health = (how_much: number) => {
+        return `${em(how_much)}${field_ui(Modifier_Field.health_bonus)}`;
+    };
+
+    switch (modifier.id) {
+        case Modifier_Id.item_armlet: return `Lose ${health(modifier.health_loss_per_turn)} at the end of each turn. Non-lethal`;
+        case Modifier_Id.item_basher: return `Basic attack ${em("stuns")} targets for 1 turn`;
+        case Modifier_Id.item_morbid_mask: return `Basic attack restores ${health(modifier.health_restored_per_attack)}`;
+        case Modifier_Id.item_octarine_core: return `Abilties restore ${health(1)} per each point of damage dealt`;
+        case Modifier_Id.item_satanic: return `Basic attack restores ${health(1)} per each point of damage dealt`;
+        case Modifier_Id.item_heart_of_tarrasque: return `Restore ${health(modifier.regeneration_per_turn)} at the end of each turn`;
+    }
+}

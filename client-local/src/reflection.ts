@@ -183,6 +183,21 @@ function deserialize_value(type: Type, from: any): any {
             return new_object;
         }
 
+        case Type_Kind.intersection: {
+            // Special case: nominal id types aka number & { _brand: any }
+            if (type.types.some(type => type.kind == Type_Kind.number)) {
+                return from;
+            }
+
+            const collapsed = collapse_intersection(type);
+            if (!collapsed) {
+                $.Msg("Failed to collapse intersection");
+                return;
+            }
+
+            return deserialize_value(collapsed, from);
+        }
+
         case Type_Kind.generic: {
             // Record<Key, Value>
             if (type.target.kind == Type_Kind.object && type.arguments.length == 2) {
@@ -218,7 +233,9 @@ function deserialize_value(type: Type, from: any): any {
             break;
         }
 
-        default: return from;
+        default: {
+            return from;
+        }
     }
 }
 

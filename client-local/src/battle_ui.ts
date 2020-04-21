@@ -17,7 +17,6 @@ import {
 import {
     subscribe_to_custom_event,
     subscribe_to_game_net_table_key,
-    async_get_player_name,
     api_request,
     get_access_token,
     fire_event,
@@ -2098,10 +2097,12 @@ function periodically_update_ui() {
     $.Schedule(0, periodically_update_ui);
 
     if (current_state != Player_State.in_battle) return;
+
+    update_stat_bar_positions();
+
     if (battle.state.status == Battle_Status.finished) return;
 
     update_current_ability_based_on_cursor_state();
-    update_stat_bar_positions();
     update_hovered_cell();
     update_hand();
 

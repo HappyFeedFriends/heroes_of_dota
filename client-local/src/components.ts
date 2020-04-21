@@ -3,6 +3,13 @@ type Effect_UI<T> = {
     panel?: Panel
 }
 
+type Effect_Tooltip = {
+    content: Panel
+    text(section: Panel, text: string): void
+    section(): Panel
+    header(parent: Panel, name: string): void
+}
+
 function get_adventure_item_icon_by_id(id: Adventure_Item_Id): string {
     function custom_icon(name: string) {
         return `file://{images}/custom_game/items/${name}.png`;
@@ -227,4 +234,123 @@ function update_effects_elements<T>(root: Panel, elements: Effect_UI<T>[], initi
             element.panel = undefined;
         }
     }
+}
+
+function create_effect_tooltip(root: Panel): Effect_Tooltip {
+    const content = $.CreatePanel("Panel", root, "content");
+
+    function text(parent: Panel, content: string) {
+        const text = $.CreatePanel("Label", parent, "");
+        text.AddClass("text");
+        text.html = true;
+        text.text = content;
+    }
+
+    function new_section() {
+        const panel = $.CreatePanel("Panel", content, "");
+        panel.AddClass("section");
+        return panel;
+    }
+
+    function header(parent: Panel, name: string) {
+        const header = $.CreatePanel("Label", parent, "");
+        header.AddClass("header");
+        header.text = name;
+    }
+
+    return {
+        content: content,
+        section: new_section,
+        text: text,
+        header: header
+    }
+}
+
+function field_ui(field: Modifier_Field) {
+    function field_icon(field: Modifier_Field) {
+        function field_icon_class(field: Modifier_Field) {
+            switch (field) {
+                case Modifier_Field.armor_bonus: return "armor";
+                case Modifier_Field.health_bonus: return "health";
+                case Modifier_Field.attack_bonus: return "attack";
+                case Modifier_Field.move_points_bonus: return "moves";
+            }
+        }
+
+        return `<img class="tooltip_icon ${field_icon_class(field)}" src=""/>`;
+    }
+
+    return `${field_icon(field)} ${get_field_name(field)}`;
+}
+
+function assemble_modifier_tooltip_strings(modifier: Modifier): string[] {
+    const result: string[] = [];
+
+    const special_text = get_special_modifier_text(modifier);
+    if (special_text) {
+        result.push(special_text);
+    }
+
+    const changes = calculate_modifier_changes(modifier);
+
+    for (const change of changes) {
+        switch (change.type) {
+            case Modifier_Change_Type.field_change: {
+                result.push(`${change.delta > 0 ? "+" : ""}${em(change.delta)}${field_ui(change.field)}`);
+                break;
+            }
+
+            case Modifier_Change_Type.ability_override: {
+                result.push(`Swap ${em(enum_to_string(change.original_ability))} to ${em(enum_to_string(change.override_with))}`);
+                break;
+            }
+
+            case Modifier_Change_Type.apply_status: {
+                result.push(`Bearer is ${em(get_status_text(change.status))}`);
+                break;
+            }
+
+            case Modifier_Change_Type.apply_special_state: {
+                result.push("Special: " + em(enum_to_string(change.state)));
+                break;
+            }
+
+            default: unreachable(change);
+        }
+    }
+
+    return result;
+}
+
+function fill_modifier_tooltip_section(tooltip: Effect_Tooltip, section: Panel, modifier: Modifier) {
+    const strings = assemble_modifier_tooltip_strings(modifier);
+
+    for (const string of strings) {
+        tooltip.text(section, string);
+    }
+}
+
+function position_tooltip_panel(tooltip: Panel, over_what: Panel) {
+    const screen_ratio = Game.GetScreenHeight() / 1080;
+    const window_position = over_what.GetPositionWithinWindow();
+
+    const tooltip_width = tooltip.actuallayoutwidth / screen_ratio;
+    const tooltip_height = tooltip.actuallayoutheight / screen_ratio;
+
+    const position_x = Math.round((window_position.x + over_what.actuallayoutwidth / 2) / screen_ratio - tooltip_width / 2);
+    const position_y = Math.round(window_position.y / screen_ratio - tooltip_height) - 20;
+
+    tooltip.style.x = position_x + "px";
+    tooltip.style.y = position_y + "px";
+}
+
+function prepare_tooltip_to_be_shown_next_frame(tooltip: Panel, over_what: Panel) {
+    // First barely display it to let it get laid out, then position it in the next frame
+    tooltip.style.opacity = "0.01";
+
+    $.Schedule(0, () => {
+        position_tooltip_panel(tooltip, over_what);
+
+        tooltip.style.opacity = "1";
+    });
 }
