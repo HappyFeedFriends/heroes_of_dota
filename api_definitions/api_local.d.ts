@@ -25,7 +25,8 @@ declare const enum To_Client_Event_Type {
     adventure_display_room_exit_popup = 7,
     grid_highlight_deployment_zone = 8,
     pre_state_change_screen_fade = 9,
-    health_change_popup = 10
+    health_change_popup = 10,
+    adventure_item_effect_popup = 11
 }
 
 declare const enum Prefixes {
@@ -125,6 +126,12 @@ type To_Client_Event = {
         over_unit: Unit_Id
         change: number
         blocked_by_armor: number
+    }
+} | {
+    type: To_Client_Event_Type.adventure_item_effect_popup
+    payload: {
+        over_unit: Unit_Id
+        item_id: Adventure_Item_Id
     }
 }
 

@@ -1707,7 +1707,23 @@ function get_item_equip_sound(item: Item_Id): string | undefined {
     }
 }
 
-function apply_modifier(game: Game, target: Unit, application: Modifier_Application, source?: Modifier_Application_Source) {
+function fire_change_source_effect(target: Unit, source: Change_Source) {
+    if (source.type == Source_Type.adventure_item) {
+        fire_event(To_Client_Event_Type.adventure_item_effect_popup, {
+            over_unit: target.id,
+            item_id: source.item
+        });
+
+        if (source.item == Adventure_Item_Id.mystic_staff) {
+            fx_by_unit("particles/units/heroes/hero_keeper_of_the_light/keeper_chakra_magic.vpcf", target)
+                .with_vector_value(0, target.handle.GetAbsOrigin() + Vector(0, 0, 300) as Vector)
+                .follow_unit_origin(1, target)
+                .release();
+        }
+    }
+}
+
+function apply_modifier(game: Game, target: Unit, application: Modifier_Application, source?: Change_Source) {
     print(`Apply and record ${application.modifier_handle_id} to ${target.handle.GetName()}`);
 
     if (source && source.type == Source_Type.item) {
@@ -3016,12 +3032,17 @@ function move_unit(game: Game, unit: Unit, points: XY[]) {
     }
 }
 
-function change_hero_level(game: Game, hero: Hero, new_level: number) {
+function change_hero_level(game: Game, hero: Hero, new_level: number, source?: Change_Source) {
     hero.level = new_level;
 
     unit_emit_sound(hero, "hero_level_up");
     fx_by_unit("particles/generic_hero_status/hero_levelup.vpcf", hero).release();
     try_play_random_sound_for_hero(hero, sounds => sounds.level_up);
+
+    if (source) {
+        fire_change_source_effect(hero, source);
+        wait(0.2);
+    }
 
     update_game_net_table(game);
 }
@@ -3443,7 +3464,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             const hero = find_hero_by_id(delta.unit_id);
 
             if (hero) {
-                change_hero_level(game, hero, delta.new_level);
+                change_hero_level(game, hero, delta.new_level, delta.source);
                 update_game_net_table(game);
                 wait(1);
             }
@@ -3511,7 +3532,17 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
         case Delta_Type.draw_spell_card: break;
         case Delta_Type.draw_hero_card: break;
         case Delta_Type.use_card: break;
-        case Delta_Type.set_ability_charges: break;
+        case Delta_Type.set_ability_charges: {
+            const target = find_unit_by_id(delta.unit_id);
+            if (!target) break;
+
+            if (delta.source) {
+                fire_change_source_effect(target, delta.source);
+                wait(0.2);
+            }
+
+            break;
+        }
 
         case Delta_Type.game_start: {
             battle.has_started = true;

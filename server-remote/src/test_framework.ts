@@ -427,7 +427,8 @@ class For_Player_Hero extends For_Player_Unit {
         submit_external_battle_delta(this.test.battle, {
             type: Delta_Type.level_change,
             unit_id: this.unit.id,
-            new_level: level
+            new_level: level,
+            source: { type: Source_Type.none }
         });
 
         return this;

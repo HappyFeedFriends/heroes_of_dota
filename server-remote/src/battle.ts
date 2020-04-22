@@ -22,12 +22,17 @@ export type Adventure_Item_Modifier = {
     modifier: Modifier
 }
 
+export type Adventure_Spawn_Effect = {
+    item: Adventure_Item_Id
+    effect: Adventure_Item_Combat_Start_Effect
+}
+
 type Hero_Spawn = {
     id: Unit_Id
     type: Hero_Type
     health: number
     modifiers: Adventure_Item_Modifier[]
-    start_effects: Adventure_Item_Combat_Start_Effect[]
+    start_effects: Adventure_Spawn_Effect[]
 }
 
 type Creep_Spawn = {
@@ -881,7 +886,8 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
                         unit_id: unit.id,
                         ability_id: Ability_Id.ember_activate_fire_remnant,
                         charges: 1,
-                        only_set_remaining: true
+                        only_set_remaining: true,
+                        source: { type: Source_Type.none }
                     });
 
                     submit_battle_delta(battle, {
@@ -1427,7 +1433,8 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
             unit_id: unit.id,
             ability_id: ability.id,
             charges: ability.charges_remaining - 1,
-            only_set_remaining: true
+            only_set_remaining: true,
+            source: { type: Source_Type.none }
         }
     }
 
@@ -1847,7 +1854,8 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                         submit_battle_delta(battle, {
                             type: Delta_Type.level_change,
                             unit_id: attacker.id,
-                            new_level: attacker.level + 1
+                            new_level: attacker.level + 1,
+                            source: { type: Source_Type.none }
                         });
                     }
                 }
@@ -2282,7 +2290,8 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
                     });
                 }
 
-                for (const effect of hero.start_effects) {
+                for (const at_start of hero.start_effects) {
+                    const effect = at_start.effect;
                     switch (effect.effect_id) {
                         case Adventure_Combat_Start_Effect_Id.add_ability_charges: {
                             for (const ability of spawned_hero.abilities) {
@@ -2292,7 +2301,8 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
                                         unit_id: hero.id,
                                         ability_id: ability.id,
                                         charges: ability.charges_remaining + effect.how_many,
-                                        only_set_remaining: false
+                                        only_set_remaining: false,
+                                        source: { type: Source_Type.adventure_item, item: at_start.item}
                                     });
                                 }
                             }
@@ -2304,7 +2314,8 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
                             submit_battle_delta(battle, {
                                 type: Delta_Type.level_change,
                                 unit_id: hero.id,
-                                new_level: Math.min(Const.max_unit_level, spawned_hero.level + effect.how_many_levels)
+                                new_level: Math.min(Const.max_unit_level, spawned_hero.level + effect.how_many_levels),
+                                source: { type: Source_Type.adventure_item, item: at_start.item}
                             });
 
                             break;
@@ -2360,7 +2371,8 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
                     unit_id: unit.id,
                     ability_id: ability.id,
                     charges: ability.charges,
-                    only_set_remaining: true
+                    only_set_remaining: true,
+                    source: { type: Source_Type.none }
                 });
             }
         }
@@ -2394,7 +2406,8 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
                 unit_id: unit.id,
                 ability_id: unit.abilities[ability_index].id,
                 charges: charges,
-                only_set_remaining: true
+                only_set_remaining: true,
+                source: { type: Source_Type.none }
             });
 
             break;
@@ -2426,6 +2439,7 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
                 type: Delta_Type.level_change,
                 unit_id: selected_unit_id,
                 new_level: new_lvl,
+                source: { type: Source_Type.none }
             });
 
             break;

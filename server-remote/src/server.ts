@@ -19,6 +19,7 @@ import {get_nearby_neutrals} from "./npc_controller";
 
 import {
     Adventure_Item_Modifier,
+    Adventure_Spawn_Effect,
     Battle_Participant,
     Battle_Record,
     start_battle,
@@ -562,7 +563,7 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                 if (actual_health > 0) {
                     const id = next_id() as Unit_Id;
                     const modifiers: Adventure_Item_Modifier[] = [];
-                    const start_effects: Adventure_Item_Combat_Start_Effect[] = [];
+                    const start_effects: Adventure_Spawn_Effect[] = [];
 
                     for (const item of slot.items) {
                         if (item && item.type == Adventure_Item_Type.equipment) {
@@ -575,7 +576,10 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
                                 }
 
                                 if (effect.type == Adventure_Item_Effect_Type.combat_start) {
-                                    start_effects.push(effect);
+                                    start_effects.push({
+                                        item: item.item_id,
+                                        effect: effect
+                                    });
                                 }
                             }
                         }
@@ -583,7 +587,10 @@ function player_to_adventure_battle_participant(next_id: Id_Generator, id: Playe
 
                     for (const effect of slot.effects) {
                         if (effect.type == Adventure_Item_Effect_Type.combat_start) {
-                            start_effects.push(effect);
+                            start_effects.push({
+                                item: effect.source_item_id,
+                                effect: effect
+                            });
                         }
 
                         if (effect.type == Adventure_Item_Effect_Type.in_combat) {

@@ -2607,6 +2607,7 @@ function show_health_change_popup(unit_id: Unit_Id, change: number, blocked_by_a
 
     const parent = $.CreatePanel("Panel", popups, "");
     parent.AddClass("health_change_popup");
+    parent.AddClass("popup");
     parent.AddClass("active");
 
     const health_label = $.CreatePanel("Label", parent, "health");
@@ -2626,6 +2627,28 @@ function show_health_change_popup(unit_id: Unit_Id, change: number, blocked_by_a
     position_panel_over_entity_in_the_world(parent, entity_id, -30, 150);
 
     parent.DeleteAsync(1.5);
+}
+
+function show_adventure_item_effect_popup(unit_id: Unit_Id, item_id: Adventure_Item_Id) {
+    const unit_data = find_unit_entity_data_by_unit_id(battle, unit_id);
+    if (!unit_data) return;
+
+    const parent = $.CreatePanel("Panel", popups, "");
+    parent.AddClass("adventure_item_popup");
+    parent.AddClass("popup");
+    parent.AddClass("active");
+
+    const icon = $.CreatePanel("Image", parent, "icon");
+    icon.SetImage(get_adventure_item_icon_by_id(item_id));
+
+    const label = $.CreatePanel("Label", parent, "text");
+    label.text = get_adventure_item_name_by_id(item_id);
+
+    const [entity_id] = unit_data;
+
+    position_panel_over_entity_in_the_world(parent, entity_id, -30, 150);
+
+    parent.DeleteAsync(2);
 }
 
 subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_targeted_ability, event => {
@@ -2768,4 +2791,7 @@ subscribe_to_custom_event(To_Client_Event_Type.show_start_turn_ui, show_start_tu
 subscribe_to_custom_event(To_Client_Event_Type.show_game_over_ui, event => show_game_over_ui(event.result));
 subscribe_to_custom_event(To_Client_Event_Type.health_change_popup, event => {
     show_health_change_popup(event.over_unit, event.change, event.blocked_by_armor);
+});
+subscribe_to_custom_event(To_Client_Event_Type.adventure_item_effect_popup, event => {
+    show_adventure_item_effect_popup(event.over_unit, event.item_id);
 });

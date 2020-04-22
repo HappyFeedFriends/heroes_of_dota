@@ -68,7 +68,11 @@ function get_item_name(item: Item_Id): string {
 }
 
 function get_adventure_item_name(item: Adventure_Item): string {
-    switch (item.item_id) {
+    return get_adventure_item_name_by_id(item.item_id)
+}
+
+function get_adventure_item_name_by_id(item_id: Adventure_Item_Id) {
+    switch (item_id) {
         case Adventure_Item_Id.boots_of_travel: return get_item_name(Item_Id.boots_of_travel);
         case Adventure_Item_Id.assault_cuirass: return get_item_name(Item_Id.assault_cuirass);
         case Adventure_Item_Id.divine_rapier: return get_item_name(Item_Id.divine_rapier);

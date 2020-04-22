@@ -481,13 +481,14 @@ type Delta_Level_Change = {
     type: Delta_Type.level_change
     unit_id: Unit_Id
     new_level: number
+    source: Change_Source
 }
 
 type Delta_Modifier_Applied = {
     type: Delta_Type.modifier_applied
     unit_id: Unit_Id
     application: Modifier_Application
-    source: Modifier_Application_Source
+    source: Change_Source
 }
 
 type Delta_Modifier_Removed = {
@@ -501,6 +502,7 @@ type Delta_Set_Ability_Charges_Remaining = {
     ability_id: Ability_Id
     charges: number
     only_set_remaining: boolean
+    source: Change_Source
 }
 
 type Delta_Ability_Effect_Applied<T extends Ability_Effect> = {
@@ -649,7 +651,7 @@ type Delta =
     Delta_Game_Start |
     Delta_Game_Over
 
-type Modifier_Application_Source = {
+type Change_Source = {
     type: Source_Type.none
 } | {
     type: Source_Type.adventure_item
