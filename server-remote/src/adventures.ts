@@ -1,4 +1,4 @@
-import {readFileSync, writeFileSync, readdirSync} from "fs";
+import {readFileSync, writeFileSync, mkdirSync, existsSync} from "fs";
 import {try_string_to_enum_value, unreachable} from "./common";
 import {Entry_With_Weight, Random} from "./random";
 
@@ -35,41 +35,43 @@ type File_Entity_Base = {
 }
 
 type Adventure_File = {
-    rooms: Array<{
-        id: number
-        name: string
+    rooms: number[]
+}
+
+type Room_File = {
+    id: number
+    name: string
+    type: string
+    entrance: [number, number]
+    entrance_facing: [number, number]
+    environment: string
+    enemies?: Array<File_Entity_Base & {
         type: string
-        entrance: [number, number]
-        entrance_facing: [number, number]
-        environment: string
-        enemies?: Array<File_Entity_Base & {
-            type: string
-            creeps: string[]
-            battleground: number
-        }>
-        items?: Array<File_Entity_Base & {
-            item_id: string
-        }>
-        gold_bags?: Array<File_Entity_Base & {
-            amount: number
-        }>
-        merchants?: Array<File_Entity_Base & {
-            model: string
-            heroes: string[]
-            creeps: string[]
-            spells: string[]
-            items: string[]
-        }>
-        other_entities?: Array<File_Entity_Base & {
-            type: string
-        }>
-        camera_restriction_zones?: Array<{
-            points: [number, number][]
-        }>
-        exits?: Array<{
-            at: [number, number]
-            to: number
-        }>
+        creeps: string[]
+        battleground: number
+    }>
+    items?: Array<File_Entity_Base & {
+        item_id: string
+    }>
+    gold_bags?: Array<File_Entity_Base & {
+        amount: number
+    }>
+    merchants?: Array<File_Entity_Base & {
+        model: string
+        heroes: string[]
+        creeps: string[]
+        spells: string[]
+        items: string[]
+    }>
+    other_entities?: Array<File_Entity_Base & {
+        type: string
+    }>
+    camera_restriction_zones?: Array<{
+        points: [number, number][]
+    }>
+    exits?: Array<{
+        at: [number, number]
+        to: number
     }>
 }
 
@@ -304,32 +306,56 @@ export function create_room_entities(ongoing: Ongoing_Adventure, room: Adventure
 }
 
 export function load_all_adventures(): boolean {
-    const files = readdirSync(storage_dir_path);
     const adventures_enum = enum_names_to_values<Adventure_Id>();
     const new_adventures: Adventure[] = [];
 
-    for (const full_name of files) {
-        if (!full_name.endsWith(".json")) {
-            console.error(`Garbage file '${full_name}' in ${storage_dir_path}`);
+    for (const [name, id] of adventures_enum) {
+        console.log(`Loading adventure: '${name}'`);
+
+        const directory = `${storage_dir_path}/${name}`;
+
+        if (!existsSync(directory)) {
+            console.error(`Adventure folder ${directory} not found`);
             return false;
         }
 
-        const just_name = full_name.substring(0, full_name.lastIndexOf("."));
-        const id = try_string_to_enum_value(just_name, adventures_enum);
+        const main_file = `${directory}/adventure.json`;
 
-        if (id == undefined) {
-            console.error(`Adventure with id ${just_name} not found`);
+        if (!existsSync(main_file)) {
+            console.error(`Main adventure file ${main_file} not found`);
             return false;
         }
 
-        console.log(`Loading adventure: '${just_name}'`);
+        const contents = JSON.parse(readFileSync(main_file, "utf8")) as Adventure_File;
+        const rooms: Adventure_Room[] = [];
 
-        const full_path = `${storage_dir_path}/${full_name}`;
-        const rooms = read_adventure_rooms_from_file(full_path);
+        for (const room_id of contents.rooms) {
+            const room_path = `${directory}/room_${room_id}.json`;
+            if (!existsSync(room_path)) {
+                console.error(`Room file ${room_path} not found`);
+                return false;
+            }
 
-        if (!rooms) {
-            console.error(`Error while loading adventure from ${full_path}`);
-            return false;
+            const room_file = JSON.parse(readFileSync(room_path, "utf8")) as Room_File;
+            const room = adventure_room_from_file(room_file, room_path);
+
+            if (!room) {
+                console.error(`Failed to load room ${room_id}`);
+                return false;
+            }
+
+            rooms.push(room);
+
+            console.log(`Loaded room '${room.name}'`);
+        }
+
+        for (const room of rooms) {
+            for (const exit of room.exits) {
+                if (!rooms.some(queried => queried.id == exit.to)) {
+                    console.error(`Exit from ${room.name} to #${exit.to} not found`);
+                    return false;
+                }
+            }
         }
 
         new_adventures.push({
@@ -344,13 +370,10 @@ export function load_all_adventures(): boolean {
     return true;
 }
 
-function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | undefined {
-    const adventure = JSON.parse(readFileSync(file_path, "utf8")) as Adventure_File;
+function adventure_room_from_file(source_room: Room_File, file_path: string) {
     const creeps_enum = enum_names_to_values<Creep_Type>();
     const items_enum = enum_names_to_values<Adventure_Item_Id>();
     const entities_enum = enum_names_to_values<Adventure_Entity_Type>();
-
-    const rooms: Adventure_Room[] = [];
 
     function read_base(source: File_Entity_Base) {
         return {
@@ -365,228 +388,215 @@ function read_adventure_rooms_from_file(file_path: string): Adventure_Room[] | u
         };
     }
 
-    for (const source_room of adventure.rooms) {
-        const room_type = try_string_to_enum_value(source_room.type, enum_names_to_values<Adventure_Room_Type>());
-        if (room_type == undefined) {
-            console.error(`Room type ${source_room.type} not found while parsing ${file_path}`);
+    const room_type = try_string_to_enum_value(source_room.type, enum_names_to_values<Adventure_Room_Type>());
+    if (room_type == undefined) {
+        console.error(`Room type ${source_room.type} not found while parsing ${file_path}`);
+        return;
+    }
+
+    const environment = try_string_to_enum_value(source_room.environment, enum_names_to_values<Environment>());
+    if (environment == undefined) {
+        console.error(`Environment type ${source_room.environment} not found while parsing ${file_path}`);
+        return;
+    }
+
+    const entrance = {
+        x: source_room.entrance[0],
+        y: source_room.entrance[1]
+    };
+
+    const entrance_facing = {
+        x: source_room.entrance_facing[0],
+        y: source_room.entrance_facing[1]
+    };
+
+    const entities: Adventure_Entity_Definition[] = [];
+
+    for (const source_enemy of source_room.enemies || []) {
+        const npc_type = try_string_to_enum_value(source_enemy.type, creeps_enum);
+
+        if (npc_type == undefined) {
+            console.error(`Creep type ${source_enemy.type} not found while parsing ${file_path}`);
             return;
         }
 
-        const environment = try_string_to_enum_value(source_room.environment, enum_names_to_values<Environment>());
-        if (environment == undefined) {
-            console.error(`Environment type ${source_room.environment} not found while parsing ${file_path}`);
-            return;
-        }
+        const creeps: Creep_Type[] = [];
 
-        const entrance = {
-            x: source_room.entrance[0],
-            y: source_room.entrance[1]
-        };
+        for (const creep of source_enemy.creeps) {
+            const creep_type = try_string_to_enum_value(creep, creeps_enum);
 
-        const entrance_facing = {
-            x: source_room.entrance_facing[0],
-            y: source_room.entrance_facing[1]
-        };
-
-        const entities: Adventure_Entity_Definition[] = [];
-
-        for (const source_enemy of source_room.enemies || []) {
-            const npc_type = try_string_to_enum_value(source_enemy.type, creeps_enum);
-
-            if (npc_type == undefined) {
-                console.error(`Creep type ${source_enemy.type} not found while parsing ${file_path}`);
+            if (creep_type == undefined) {
+                console.error(`Creep type ${creep} not found while parsing ${file_path}`);
                 return;
             }
 
-            const creeps: Creep_Type[] = [];
-
-            for (const creep of source_enemy.creeps) {
-                const creep_type = try_string_to_enum_value(creep, creeps_enum);
-
-                if (creep_type == undefined) {
-                    console.error(`Creep type ${creep} not found while parsing ${file_path}`);
-                    return;
-                }
-
-                creeps.push(creep_type);
-            }
-
-            entities.push({
-                ...read_base(source_enemy),
-                type: Adventure_Entity_Type.enemy,
-                world_model: npc_type,
-                battleground: source_enemy.battleground as Battleground_Id,
-                creeps: creeps
-            })
+            creeps.push(creep_type);
         }
 
-        for (const source_entity of source_room.items || []) {
-            const item = try_string_to_enum_value(source_entity.item_id, items_enum);
+        entities.push({
+            ...read_base(source_enemy),
+            type: Adventure_Entity_Type.enemy,
+            world_model: npc_type,
+            battleground: source_enemy.battleground as Battleground_Id,
+            creeps: creeps
+        })
+    }
+
+    for (const source_entity of source_room.items || []) {
+        const item = try_string_to_enum_value(source_entity.item_id, items_enum);
+
+        if (!item) {
+            console.error(`Item type ${item_source} not found while parsing ${file_path}`);
+            return;
+        }
+
+        entities.push({
+            ...read_base(source_entity),
+            type: Adventure_Entity_Type.item_on_the_ground,
+            item: item
+        });
+    }
+
+    for (const source_bag of source_room.gold_bags || []) {
+        entities.push({
+            ...read_base(source_bag),
+            type: Adventure_Entity_Type.gold_bag,
+            amount: source_bag.amount
+        });
+    }
+
+    for (const source of source_room.merchants || []) {
+        const model = try_string_to_enum_value(source.model, enum_names_to_values<Adventure_Merchant_Model>());
+
+        if (model == undefined) {
+            console.error(`Model type ${source.model} not found while parsing ${file_path}`);
+            return;
+        }
+
+        const spells: Spell_Id[] = [];
+        const creeps: Creep_Type[] = [];
+        const heroes: Hero_Type[] = [];
+        const items: Adventure_Item_Id[] = [];
+
+        for (const spell_string of source.spells) {
+            const spell_id = try_string_to_enum_value(spell_string, enum_names_to_values<Spell_Id>());
+
+            if (spell_id == undefined) {
+                console.error(`Spell id ${spell_id} not found while parsing ${file_path}`);
+                return;
+            }
+
+            spells.push(spell_id);
+        }
+
+        for (const hero_string of source.heroes) {
+            const hero_type = try_string_to_enum_value(hero_string, enum_names_to_values<Hero_Type>());
+
+            if (hero_type == undefined) {
+                console.error(`Hero type ${hero_type} not found while parsing ${file_path}`);
+                return;
+            }
+
+            heroes.push(hero_type);
+        }
+
+        for (const creep_string of source.creeps) {
+            const creep_type = try_string_to_enum_value(creep_string, creeps_enum);
+
+            if (creep_type == undefined) {
+                console.error(`Creep type ${creep_type} not found while parsing ${file_path}`);
+                return;
+            }
+
+            creeps.push(creep_type);
+        }
+
+        for (const item_source of source.items) {
+            const item = try_string_to_enum_value(item_source, items_enum);
 
             if (!item) {
                 console.error(`Item type ${item_source} not found while parsing ${file_path}`);
                 return;
             }
 
-            entities.push({
-                ...read_base(source_entity),
-                type: Adventure_Entity_Type.item_on_the_ground,
-                item: item
-            });
+            items.push(item);
         }
 
-        for (const source_bag of source_room.gold_bags || []) {
-            entities.push({
-                ...read_base(source_bag),
-                type: Adventure_Entity_Type.gold_bag,
-                amount: source_bag.amount
-            });
-        }
-
-        for (const source of source_room.merchants || []) {
-            const model = try_string_to_enum_value(source.model, enum_names_to_values<Adventure_Merchant_Model>());
-
-            if (model == undefined) {
-                console.error(`Model type ${source.model} not found while parsing ${file_path}`);
-                return;
+        entities.push({
+            ...read_base(source),
+            type: Adventure_Entity_Type.merchant,
+            model: model,
+            stock: {
+                items,
+                creeps,
+                heroes,
+                spells,
             }
-
-            const spells: Spell_Id[] = [];
-            const creeps: Creep_Type[] = [];
-            const heroes: Hero_Type[] = [];
-            const items: Adventure_Item_Id[] = [];
-
-            for (const spell_string of source.spells) {
-                const spell_id = try_string_to_enum_value(spell_string, enum_names_to_values<Spell_Id>());
-
-                if (spell_id == undefined) {
-                    console.error(`Spell id ${spell_id} not found while parsing ${file_path}`);
-                    return;
-                }
-
-                spells.push(spell_id);
-            }
-
-            for (const hero_string of source.heroes) {
-                const hero_type = try_string_to_enum_value(hero_string, enum_names_to_values<Hero_Type>());
-
-                if (hero_type == undefined) {
-                    console.error(`Hero type ${hero_type} not found while parsing ${file_path}`);
-                    return;
-                }
-
-                heroes.push(hero_type);
-            }
-
-            for (const creep_string of source.creeps) {
-                const creep_type = try_string_to_enum_value(creep_string, creeps_enum);
-
-                if (creep_type == undefined) {
-                    console.error(`Creep type ${creep_type} not found while parsing ${file_path}`);
-                    return;
-                }
-
-                creeps.push(creep_type);
-            }
-
-            for (const item_source of source.items) {
-                const item = try_string_to_enum_value(item_source, items_enum);
-
-                if (!item) {
-                    console.error(`Item type ${item_source} not found while parsing ${file_path}`);
-                    return;
-                }
-
-                items.push(item);
-            }
-
-            entities.push({
-                ...read_base(source),
-                type: Adventure_Entity_Type.merchant,
-                model: model,
-                stock: {
-                    items,
-                    creeps,
-                    heroes,
-                    spells,
-                }
-            });
-        }
-
-        for (const source_entity of source_room.other_entities || []) {
-            const entity_type = try_string_to_enum_value(source_entity.type, entities_enum);
-
-            if (entity_type == undefined) {
-                console.error(`Entity type ${source_entity.type} not found while parsing ${file_path}`);
-                return;
-            }
-
-            switch (entity_type) {
-                case Adventure_Entity_Type.shrine:
-                case Adventure_Entity_Type.lost_creep: {
-                    const to_entity = (): Adventure_Entity_Definition => {
-                        switch (entity_type) {
-                            case Adventure_Entity_Type.lost_creep: return {
-                                type: entity_type,
-                                ...read_base(source_entity),
-                            };
-
-                            case Adventure_Entity_Type.shrine: return {
-                                type: entity_type,
-                                ...read_base(source_entity),
-                            };
-                        }
-                    };
-
-                    entities.push(to_entity());
-                    break;
-                }
-
-                default: {
-                    console.error(`Unsupported entity type ${source_entity.type} while parsing ${file_path}`);
-                    return;
-                }
-            }
-        }
-
-        const zones: Camera_Restriction_Zone[] = [];
-        for (const source_zone of source_room.camera_restriction_zones || []) {
-            zones.push({
-                points: source_zone.points.map(p => xy(...p))
-            })
-        }
-
-        const exits: Adventure_Room_Exit[] = [];
-        for (const exit of source_room.exits || []) {
-            exits.push({
-                at: xy(...exit.at),
-                to: exit.to as Adventure_Room_Id
-            })
-        }
-
-        rooms.push({
-            id: source_room.id as Adventure_Room_Id,
-            name: source_room.name,
-            type: room_type,
-            environment: environment,
-            entrance_location: entrance,
-            entrance_facing: entrance_facing,
-            entities: entities,
-            camera_restriction_zones: zones,
-            exits: exits
         });
     }
 
-    for (const room of rooms) {
-        for (const exit of room.exits) {
-            if (!rooms.some(queried => queried.id == exit.to)) {
-                console.error(`Exit from ${room.name} to #${exit.to} not found while parsing ${file_path}`);
+    for (const source_entity of source_room.other_entities || []) {
+        const entity_type = try_string_to_enum_value(source_entity.type, entities_enum);
+
+        if (entity_type == undefined) {
+            console.error(`Entity type ${source_entity.type} not found while parsing ${file_path}`);
+            return;
+        }
+
+        switch (entity_type) {
+            case Adventure_Entity_Type.shrine:
+            case Adventure_Entity_Type.lost_creep: {
+                const to_entity = (): Adventure_Entity_Definition => {
+                    switch (entity_type) {
+                        case Adventure_Entity_Type.lost_creep: return {
+                            type: entity_type,
+                            ...read_base(source_entity),
+                        };
+
+                        case Adventure_Entity_Type.shrine: return {
+                            type: entity_type,
+                            ...read_base(source_entity),
+                        };
+                    }
+                };
+
+                entities.push(to_entity());
+                break;
+            }
+
+            default: {
+                console.error(`Unsupported entity type ${source_entity.type} while parsing ${file_path}`);
                 return;
             }
         }
     }
 
-    return rooms;
+    const zones: Camera_Restriction_Zone[] = [];
+    for (const source_zone of source_room.camera_restriction_zones || []) {
+        zones.push({
+            points: source_zone.points.map(p => xy(...p))
+        })
+    }
+
+    const exits: Adventure_Room_Exit[] = [];
+    for (const exit of source_room.exits || []) {
+        exits.push({
+            at: xy(...exit.at),
+            to: exit.to as Adventure_Room_Id
+        })
+    }
+
+    return {
+        id: source_room.id as Adventure_Room_Id,
+        name: source_room.name,
+        type: room_type,
+        environment: environment,
+        entrance_location: entrance,
+        entrance_facing: entrance_facing,
+        entities: entities,
+        camera_restriction_zones: zones,
+        exits: exits
+    };
 }
 
 function persist_adventure_to_file_system(adventure: Adventure) {
@@ -594,123 +604,135 @@ function persist_adventure_to_file_system(adventure: Adventure) {
         return source.length == 0 ? undefined : source;
     }
 
-    const file: Adventure_File = {
-        rooms: adventure.rooms.map(room => {
-            type File_Room = Adventure_File["rooms"][0];
+    const folder_path = `${storage_dir_path}/${enum_to_string(adventure.id)}`;
 
-            const enemies: File_Room["enemies"] = [];
-            const other_entities: File_Room["other_entities"] = [];
-            const gold_bags: File_Room["gold_bags"] = [];
-            const items: File_Room["items"] = [];
-            const merchants: File_Room["merchants"] = [];
-            const camera_restriction_zones: File_Room["camera_restriction_zones"] = [];
-            const exits: File_Room["exits"] = [];
+    if (!existsSync(folder_path)) {
+        mkdirSync(folder_path);
+    }
 
-            for (const entity of room.entities) {
-                const base: File_Entity_Base = {
-                    position: [entity.spawn_position.x, entity.spawn_position.y],
-                    facing: [entity.spawn_facing.x, entity.spawn_facing.y],
-                };
-
-                switch (entity.type) {
-                    case Adventure_Entity_Type.enemy: {
-                        enemies.push({
-                            ...base,
-                            type: enum_to_string(entity.world_model),
-                            creeps: entity.creeps.map(type => enum_to_string<Creep_Type>(type)),
-                            battleground: entity.battleground
-                        });
-
-                        break;
-                    }
-
-                    case Adventure_Entity_Type.item_on_the_ground: {
-                        items.push({
-                            ...base,
-                            item_id: enum_to_string(entity.item)
-                        });
-
-                        break;
-                    }
-
-                    case Adventure_Entity_Type.gold_bag: {
-                        gold_bags.push({
-                            ...base,
-                            amount: entity.amount
-                        });
-
-                        break;
-                    }
-
-                    case Adventure_Entity_Type.merchant: {
-                        const merchant_items: string[] = [];
-
-                        for (const item of entity.stock.items) {
-                            merchant_items.push(enum_to_string(item));
-                        }
-
-                        merchants.push({
-                            ...base,
-                            model: enum_to_string(entity.model),
-                            items: merchant_items,
-                            creeps: entity.stock.creeps.map(creep => enum_to_string(creep)),
-                            heroes: entity.stock.heroes.map(hero => enum_to_string(hero)),
-                            spells: entity.stock.spells.map(spell => enum_to_string(spell))
-                        });
-
-                        break;
-                    }
-
-                    case Adventure_Entity_Type.lost_creep:
-                    case Adventure_Entity_Type.shrine: {
-                        other_entities.push({
-                            ...base,
-                            type: enum_to_string(entity.type)
-                        });
-
-                        break;
-                    }
-
-                    default: unreachable(entity);
-                }
-            }
-
-            for (const zone of room.camera_restriction_zones) {
-                camera_restriction_zones.push({
-                    points: zone.points.map(p => [p.x, p.y])
-                });
-            }
-
-            for (const exit of room.exits) {
-                exits.push({
-                    to: exit.to,
-                    at: [exit.at.x, exit.at.y]
-                });
-            }
-
-            return {
-                id: room.id,
-                name: room.name,
-                type: enum_to_string(room.type),
-                environment: enum_to_string(room.environment),
-                entrance: [room.entrance_location.x, room.entrance_location.y],
-                entrance_facing: [room.entrance_facing.x, room.entrance_facing.y],
-                enemies: non_empty_or_none(enemies),
-                items: non_empty_or_none(items),
-                gold_bags: non_empty_or_none(gold_bags),
-                merchants: non_empty_or_none(merchants),
-                other_entities: non_empty_or_none(other_entities),
-                camera_restriction_zones: non_empty_or_none(camera_restriction_zones),
-                exits: non_empty_or_none(exits)
-            };
-        })
+    const main_file = `${folder_path}/adventure.json`;
+    const adventure_file: Adventure_File = {
+        rooms: adventure.rooms.map(room => room.id)
     };
 
-    const path = `${storage_dir_path}/${enum_to_string(adventure.id)}.json`;
+    writeFileSync(main_file, JSON.stringify(adventure_file, (key, value) => value, "    "));
 
-    console.log(`Saving ${path}`);
+    for (const room of adventure.rooms) {
+        const file = room_to_file(room);
+        const file_path = `${folder_path}/room_${room.id}.json`;
 
-    writeFileSync(path, JSON.stringify(file, (key, value) => value, "    "));
+        writeFileSync(file_path, JSON.stringify(file, (key, value) => value, "    "));
+
+        console.log(`Saving ${file_path}`);
+    }
+
+    function room_to_file(room: Adventure_Room) {
+        const enemies: Room_File["enemies"] = [];
+        const other_entities: Room_File["other_entities"] = [];
+        const gold_bags: Room_File["gold_bags"] = [];
+        const items: Room_File["items"] = [];
+        const merchants: Room_File["merchants"] = [];
+        const camera_restriction_zones: Room_File["camera_restriction_zones"] = [];
+        const exits: Room_File["exits"] = [];
+
+        for (const entity of room.entities) {
+            const base: File_Entity_Base = {
+                position: [entity.spawn_position.x, entity.spawn_position.y],
+                facing: [entity.spawn_facing.x, entity.spawn_facing.y],
+            };
+
+            switch (entity.type) {
+                case Adventure_Entity_Type.enemy: {
+                    enemies.push({
+                        ...base,
+                        type: enum_to_string(entity.world_model),
+                        creeps: entity.creeps.map(type => enum_to_string<Creep_Type>(type)),
+                        battleground: entity.battleground
+                    });
+
+                    break;
+                }
+
+                case Adventure_Entity_Type.item_on_the_ground: {
+                    items.push({
+                        ...base,
+                        item_id: enum_to_string(entity.item)
+                    });
+
+                    break;
+                }
+
+                case Adventure_Entity_Type.gold_bag: {
+                    gold_bags.push({
+                        ...base,
+                        amount: entity.amount
+                    });
+
+                    break;
+                }
+
+                case Adventure_Entity_Type.merchant: {
+                    const merchant_items: string[] = [];
+
+                    for (const item of entity.stock.items) {
+                        merchant_items.push(enum_to_string(item));
+                    }
+
+                    merchants.push({
+                        ...base,
+                        model: enum_to_string(entity.model),
+                        items: merchant_items,
+                        creeps: entity.stock.creeps.map(creep => enum_to_string(creep)),
+                        heroes: entity.stock.heroes.map(hero => enum_to_string(hero)),
+                        spells: entity.stock.spells.map(spell => enum_to_string(spell))
+                    });
+
+                    break;
+                }
+
+                case Adventure_Entity_Type.lost_creep:
+                case Adventure_Entity_Type.shrine: {
+                    other_entities.push({
+                        ...base,
+                        type: enum_to_string(entity.type)
+                    });
+
+                    break;
+                }
+
+                default: unreachable(entity);
+            }
+        }
+
+        for (const zone of room.camera_restriction_zones) {
+            camera_restriction_zones.push({
+                points: zone.points.map(p => [p.x, p.y])
+            });
+        }
+
+        for (const exit of room.exits) {
+            exits.push({
+                to: exit.to,
+                at: [exit.at.x, exit.at.y]
+            });
+        }
+
+        return {
+            id: room.id,
+            name: room.name,
+            type: enum_to_string(room.type),
+            environment: enum_to_string(room.environment),
+            entrance: [room.entrance_location.x, room.entrance_location.y],
+            entrance_facing: [room.entrance_facing.x, room.entrance_facing.y],
+            enemies: non_empty_or_none(enemies),
+            items: non_empty_or_none(items),
+            gold_bags: non_empty_or_none(gold_bags),
+            merchants: non_empty_or_none(merchants),
+            other_entities: non_empty_or_none(other_entities),
+            camera_restriction_zones: non_empty_or_none(camera_restriction_zones),
+            exits: non_empty_or_none(exits)
+        };
+    }
 }
 
 export function find_available_purchase_by_id(adventure: Ongoing_Adventure, merchant_id: Adventure_World_Entity_Id, purchase_id: Adventure_Party_Entity_Id): Purchase_Search_Result | undefined {

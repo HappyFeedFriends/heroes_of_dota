@@ -1,0 +1,98 @@
+{
+    "id": 1,
+    "name": "Resting place",
+    "type": "rest",
+    "environment": "day",
+    "entrance": [
+        -15473.046875,
+        7291.80419921875
+    ],
+    "entrance_facing": [
+        0.09735511088110313,
+        0.9952497085582733
+    ],
+    "merchants": [
+        {
+            "position": [
+                -15828.9765625,
+                8085.6528320313
+            ],
+            "facing": [
+                1,
+                0
+            ],
+            "model": "normal",
+            "items": [
+                "healing_salve",
+                "enchanted_mango",
+                "iron_branch"
+            ],
+            "creeps": [],
+            "heroes": [],
+            "spells": [
+                "drums_of_endurance",
+                "town_portal_scroll",
+                "euls_scepter",
+                "refresher_orb"
+            ]
+        },
+        {
+            "position": [
+                -14568.8671875,
+                8072.0908203125
+            ],
+            "facing": [
+                -0.9738056063652,
+                -0.22738203406334
+            ],
+            "model": "smith",
+            "items": [
+                "blades_of_attack",
+                "belt_of_strength",
+                "chainmail",
+                "boots_of_speed"
+            ],
+            "creeps": [],
+            "heroes": [],
+            "spells": [
+                "buckler",
+                "drums_of_endurance"
+            ]
+        }
+    ],
+    "camera_restriction_zones": [
+        {
+            "points": [
+                [
+                    -13693.6533203125,
+                    8588.87109375
+                ],
+                [
+                    -13453.869140625,
+                    8693.2255859375
+                ],
+                [
+                    -14134.06640625,
+                    11191.6826171875
+                ],
+                [
+                    -16315.6943359375,
+                    11492.560546875
+                ],
+                [
+                    -16408.03515625,
+                    8823.0712890625
+                ]
+            ]
+        }
+    ],
+    "exits": [
+        {
+            "to": 0,
+            "at": [
+                -15284.794921875,
+                9235.4765625
+            ]
+        }
+    ]
+}
