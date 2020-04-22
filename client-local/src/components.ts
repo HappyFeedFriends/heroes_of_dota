@@ -10,6 +10,12 @@ type Effect_Tooltip = {
     header(parent: Panel, name: string): void
 }
 
+const enum Deck_Card {
+    hero,
+    creep,
+    spell
+}
+
 function get_adventure_item_icon_by_id(id: Adventure_Item_Id): string {
     function custom_icon(name: string) {
         return `file://{images}/custom_game/items/${name}.png`;
@@ -189,10 +195,30 @@ function create_spell_card_ui_base(container: Panel, spell: Spell_Id, spell_text
     text.text = spell_text;
 }
 
-function create_deck_card_panel(parent: Panel, type: string, text: string, image_path: string) {
+function create_hero_deck_card_panel(parent: Panel, hero: Hero_Type) {
+    return create_deck_card_panel(parent, Deck_Card.hero, get_hero_name(hero), get_full_hero_icon_path(hero));
+}
+
+function create_creep_deck_card_panel(parent: Panel, creep: Creep_Type) {
+    return create_deck_card_panel(parent, Deck_Card.creep, get_creep_name(creep), get_creep_card_art(creep));
+}
+
+function create_spell_deck_card_panel(parent: Panel, spell: Spell_Id) {
+    return create_deck_card_panel(parent, Deck_Card.spell, get_spell_name(spell), get_spell_card_art(spell));
+}
+
+function create_deck_card_panel(parent: Panel, type: Deck_Card, text: string, image_path: string) {
+    function type_to_css(): string {
+        switch (type) {
+            case Deck_Card.hero: return "hero";
+            case Deck_Card.spell: return "spell";
+            case Deck_Card.creep: return "creep";
+        }
+    }
+
     const card = $.CreatePanel("Panel", parent, "");
     card.AddClass("deck_card");
-    card.AddClass(type);
+    card.AddClass(type_to_css());
 
     const flash = $.CreatePanel("Panel", card, "");
     flash.AddClass("animate_panel_flash");

@@ -405,13 +405,6 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
         return item_button;
     }
 
-    function hero_button(container: Panel, hero: Hero_Type) {
-        const hero_button = $.CreatePanel("Image", container, "");
-        hero_button.AddClass("hero_button");
-        hero_button.SetImage(get_full_hero_icon_path(hero));
-        return hero_button;
-    }
-
     function wrapping_container(parent: Panel) {
         const container = $.CreatePanel("Panel", parent, "");
         container.AddClass("wrapping_container");
@@ -422,10 +415,9 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
 
     entity_button("Heroes", dropdown_menu_action(menu, async parent => {
         const stock = await async_stock;
-        const container = wrapping_container(parent);
 
         for (const hero of enum_values<Hero_Type>()) {
-            const button = hero_button(container, hero);
+            const button = create_hero_deck_card_panel(entity_buttons_dropdown, hero);
             stock_updating_button(button, stock.heroes, hero);
         }
     }));
@@ -434,7 +426,7 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
         const stock = await async_stock;
 
         for (const creep of enum_values<Creep_Type>()) {
-            const button = entity_dropdown_button(get_creep_name(creep), () => {});
+            const button = create_creep_deck_card_panel(entity_buttons_dropdown, creep);
             stock_updating_button(button, stock.creeps, creep);
         }
     }));
@@ -443,7 +435,7 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
         const stock = await async_stock;
 
         for (const spell of enum_values<Spell_Id>()) {
-            const button = entity_dropdown_button(get_spell_name(spell), () => {});
+            const button = create_spell_deck_card_panel(entity_buttons_dropdown, spell);
             stock_updating_button(button, stock.spells, spell);
         }
     }));
@@ -462,26 +454,27 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
     function fill_current_stock_ui(parent: Panel) {
         const stock = merchant.stock;
 
-        const hero_container = wrapping_container(parent);
         for (const card of stock.cards) {
             if (card.type == Adventure_Merchant_Card_Type.hero) {
-                hero_button(hero_container, card.hero);
+                create_hero_deck_card_panel(entity_buttons_dropdown, card.hero);
             }
         }
 
         for (const card of stock.cards) {
             if (card.type == Adventure_Merchant_Card_Type.creep) {
-                entity_dropdown_button(get_creep_name(card.creep), () => {});
+                create_creep_deck_card_panel(entity_buttons_dropdown, card.creep);
             }
         }
 
         for (const card of stock.cards) {
             if (card.type == Adventure_Merchant_Card_Type.spell) {
-                entity_dropdown_button(get_spell_name(card.spell), () => {});
+                create_spell_deck_card_panel(entity_buttons_dropdown, card.spell);
             }
         }
 
         const item_container = wrapping_container(parent);
+        item_container.style.horizontalAlign = "center";
+
         for (const item of stock.items) {
             item_button(item_container, get_adventure_item_icon(item.data));
         }

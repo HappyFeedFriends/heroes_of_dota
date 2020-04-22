@@ -2954,11 +2954,13 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
         }
     }
 
-    fire_event(To_Client_Event_Type.health_change_popup, {
-        over_unit: target.id,
-        change: value_delta,
-        blocked_by_armor: blocked_by_armor
-    });
+    if (battle.has_started) {
+        fire_event(To_Client_Event_Type.health_change_popup, {
+            over_unit: target.id,
+            change: value_delta,
+            blocked_by_armor: blocked_by_armor
+        });
+    }
 
     target.health = Math.max(0, Math.min(get_max_health(target), change.new_value));
 

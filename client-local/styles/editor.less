@@ -139,6 +139,22 @@
         vertical-align: bottom;
         flow-children: down;
 
+        .deck_card {
+          width: 250px;
+
+          .animate_panel_flash {
+            visibility: collapse;
+          }
+
+          &.selected {
+            brightness: 2;
+
+            #name {
+              transform: translateX(3px);
+            }
+          }
+        }
+
         .editor_entity_dropdown_button {
           margin: 1px;
           width: 220px;
@@ -153,7 +169,7 @@
 
         .wrapping_container {
           flow-children: right-wrap;
-          width: 300px;
+          max-width: 300px;
 
           .hero_button, .item_button {
             margin: 2px;

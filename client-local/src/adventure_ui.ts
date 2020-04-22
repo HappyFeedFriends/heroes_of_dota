@@ -1311,7 +1311,7 @@ function show_combat_result_popup(resources: Combat_Resources): Combat_Result_Po
         $.CreatePanel("Panel", parent, "spell_used");
     }
 
-    function create_deck_card_with_death_overlay(parent: Panel, type: string, text: string, image_path: string, dead: boolean) {
+    function create_deck_card_with_death_overlay(parent: Panel, type: Deck_Card, text: string, image_path: string, dead: boolean) {
         const card_panel = create_deck_card_panel(parent, type, text, image_path);
         card_panel.SetHasClass("dead", dead);
         const death_overlay = $.CreatePanel("Panel", card_panel, "death_overlay");
@@ -1323,19 +1323,19 @@ function show_combat_result_popup(resources: Combat_Resources): Combat_Result_Po
         for (const resource of resources) {
             switch (resource.type) {
                 case Adventure_Party_Slot_Type.hero: {
-                    create_deck_card_with_death_overlay(container_column, "hero", get_hero_name(resource.hero), get_full_hero_icon_path(resource.hero), resource.dead);
+                    create_deck_card_with_death_overlay(container_column, Deck_Card.hero, get_hero_name(resource.hero), get_full_hero_icon_path(resource.hero), resource.dead);
                     fill_health_change(changes_column, resource.health_change, resource.dead);
                     break;
                 }
 
                 case Adventure_Party_Slot_Type.creep: {
-                    create_deck_card_with_death_overlay(container_column, "creep", get_creep_name(resource.creep), get_creep_card_art(resource.creep), resource.dead);
+                    create_deck_card_with_death_overlay(container_column, Deck_Card.creep, get_creep_name(resource.creep), get_creep_card_art(resource.creep), resource.dead);
                     fill_health_change(changes_column, resource.health_change, resource.dead);
                     break;
                 }
 
                 case Adventure_Party_Slot_Type.spell: {
-                    create_deck_card_with_death_overlay(container_column, "spell", get_spell_name(resource.spell), get_spell_card_art(resource.spell), true);
+                    create_deck_card_with_death_overlay(container_column, Deck_Card.spell, get_spell_name(resource.spell), get_spell_card_art(resource.spell), true);
                     fill_spell_use(changes_column);
                     break;
                 }

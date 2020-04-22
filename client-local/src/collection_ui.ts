@@ -214,8 +214,8 @@ function refresh_collection_hero_page(page: Collection_Page) {
 
 function create_deck_card_panel_from_card(card: Collection_Card) {
     switch (card.type) {
-        case Card_Type.spell: create_deck_spell_card_panel(card.spell); break;
-        case Card_Type.hero: create_deck_hero_card_panel(card.hero); break;
+        case Card_Type.spell: add_deck_spell_card_panel(card.spell); break;
+        case Card_Type.hero: add_deck_hero_card_panel(card.hero); break;
     }
 }
 
@@ -235,8 +235,8 @@ function add_panel_to_deck_list<T>(panel: Panel, element: T, list: T[]) {
     });
 }
 
-function create_deck_hero_card_panel(hero: Hero_Type) {
-    const panel = create_deck_card_panel(deck_heroes_root, "hero", get_hero_name(hero), get_full_hero_icon_path(hero));
+function add_deck_hero_card_panel(hero: Hero_Type) {
+    const panel = create_hero_deck_card_panel(deck_heroes_root, hero);
     const card = {
         type: hero,
         panel: panel
@@ -245,8 +245,8 @@ function create_deck_hero_card_panel(hero: Hero_Type) {
     add_panel_to_deck_list(panel, card, deck_ui.heroes);
 }
 
-function create_deck_spell_card_panel(spell: Spell_Id) {
-    const panel = create_deck_card_panel(deck_spells_root, "spell", get_spell_name(spell), get_spell_card_art(spell));
+function add_deck_spell_card_panel(spell: Spell_Id) {
+    const panel = create_spell_deck_card_panel(deck_spells_root, spell);
     const card = {
         id: spell,
         panel: panel
@@ -274,11 +274,11 @@ function refresh_deck_contents(deck: Deck_Contents) {
     deck_ui.spells = [];
 
     for (const hero of deck.heroes) {
-        create_deck_hero_card_panel(hero);
+        add_deck_hero_card_panel(hero);
     }
 
     for (const spell of deck.spells) {
-        create_deck_spell_card_panel(spell);
+        add_deck_spell_card_panel(spell);
     }
 
     refresh_card_availability();
