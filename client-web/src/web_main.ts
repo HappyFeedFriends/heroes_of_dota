@@ -51,6 +51,7 @@ type Game_In_Battle = Game_Base & {
     spectating: boolean
     ai_data: Debug_AI_Data | undefined
     show_ai_data: boolean
+    disabled_cells: Record<number, boolean>
 }
 
 type Game = Game_In_Battle | Game_On_Global_Map | Game_On_Adventure | Game_Not_Logged_In;
@@ -1148,19 +1149,19 @@ function draw_grid(game: Game_In_Battle, player?: Battle_Player, highlighted_abi
     ctx.strokeStyle = "black";
     ctx.lineWidth = 2;
     ctx.translate(cursor.x, cursor.y);
-    ctx.beginPath();
 
-    for (let x = 0; x <= grid_size.x; x++) {
-        ctx.moveTo(x * cell_size, 0);
-        ctx.lineTo(x * cell_size, grid_size.y * cell_size);
+    for (let x = 0; x < grid_size.x; x++) {
+        for (let y = 0; y < grid_size.y; y++) {
+            const index = grid_cell_index_raw(game.battle.grid, x, y);
+            if (index == undefined) continue;
+
+            const is_disabled = game.disabled_cells[index];
+
+            if (!is_disabled) {
+                ctx.strokeRect(x * cell_size, y * cell_size, cell_size, cell_size);
+            }
+        }
     }
-
-    for (let y = 0; y <= grid_size.y; y++) {
-        ctx.moveTo(0, y * cell_size);
-        ctx.lineTo(grid_size.x * cell_size, y * cell_size);
-    }
-
-    ctx.stroke();
 
     if (player && game.selection.type == Selection_Type.card) {
         const zone = player.deployment_zone;
@@ -1611,7 +1612,18 @@ function draw_room_entity_list(game: Game_On_Adventure) {
     push_layout(Layout_Type.vertical);
 
     for (const entity of game.room_entities) {
-        if (button(`${enum_to_string(entity.type)}`)) {
+        const name = entity.type == Adventure_Entity_Type.enemy ?
+            `Enemy: ${enum_to_string(entity.world_model)}` :
+            enum_to_string(entity.type);
+
+        if (button(name)) {
+            if (entity.type == Adventure_Entity_Type.enemy) {
+                api_request(Api_Request_Type.start_adventure_enemy_fight, {
+                    enemy_entity_id: entity.id,
+                    access_token: game.access_token,
+                    dedicated_server_key: ""
+                });
+            }
         }
 
         push_size(4);
@@ -1940,7 +1952,8 @@ async function game_from_state(player_state: Player_State_Data, game_base: Game_
                 battle_log: battle_log,
                 spectating: false,
                 ai_data: undefined,
-                show_ai_data: false
+                show_ai_data: false,
+                disabled_cells: disabled_cell_index(player_state.disabled_cell_indices)
             };
         }
 
