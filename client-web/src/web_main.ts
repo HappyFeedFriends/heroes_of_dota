@@ -1069,20 +1069,20 @@ async function process_battle_events_to_log(log: Colored_Line[], event: Battle_E
         }
 
         case Battle_Event_Type.modifier_applied: {
-            const { source, target, modifier } = event;
+            const { target, modifier } = event;
 
             const lines = [
-                clr.source_name(source),
+                clr.source_name(modifier.source),
                 clr.plain(" applies "),
                 clr.txt(enum_to_string(modifier.modifier.id), "gray"),
                 clr.plain(" to "),
                 clr.unit_name(target)
             ];
 
-            if (modifier.duration) {
+            if (modifier.duration_remaining != undefined) {
                 lines.push(
                     clr.plain(" for "),
-                    clr.txt(modifier.duration.toString(), "gray"),
+                    clr.txt(modifier.duration_remaining.toString(), "gray"),
                     clr.plain(" turns")
                 );
             }

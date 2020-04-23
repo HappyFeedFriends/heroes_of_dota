@@ -88,9 +88,8 @@ type Battle_Event = {
     dead: boolean
 } | {
     type: Battle_Event_Type.modifier_applied
-    source: Source
     target: Unit
-    modifier: Modifier_Application
+    modifier: Applied_Modifier
 } | {
     type: Battle_Event_Type.card_added_to_hand
     player: Battle_Player
@@ -1145,9 +1144,8 @@ function apply_modifier(battle: Battle, source: Source, target: Unit, applicatio
 
     push_event(battle, {
         type: Battle_Event_Type.modifier_applied,
-        source: source,
         target: target,
-        modifier: application
+        modifier: applied
     });
 }
 

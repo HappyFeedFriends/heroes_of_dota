@@ -136,6 +136,7 @@ type UI_Battle = Battle & {
     entity_id_to_shop_id: Record<number, Shop_Id>
     unit_id_to_facing: Record<number, XY>
     shop_id_to_facing: Record<number, XY>
+    modifier_handle_id_to_modifier: Record<number, Applied_Modifier>
     cell_index_to_unit: Unit[]
     cell_index_to_rune: Rune[]
     outline_particles: ParticleId[]
@@ -565,6 +566,12 @@ function on_battle_event(battle: UI_Battle, event: Battle_Event) {
             };
         }
     }
+
+    if (event.type == Battle_Event_Type.modifier_applied) {
+        // @Performance they are never removed and carry behind a lot of data
+        // consider adding a modifier removed event and tracking visualizer delta to determine the point of removal
+        battle.modifier_handle_id_to_modifier[event.modifier.handle_id] = event.modifier;
+    }
 }
 
 export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
@@ -589,6 +596,7 @@ export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
         entity_id_to_shop_id: {},
         unit_id_to_facing: {},
         shop_id_to_facing: {},
+        modifier_handle_id_to_modifier: {},
         outline_particles: [],
         shop_range_outline_particles: [],
         zone_highlight_particles: [],
@@ -1304,6 +1312,16 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
     ui.modifier_bar.SetHasClass("hidden", ui.hidden);
     ui.stat_bar_panel.SetHasClass("hidden", ui.hidden);
 
+    update_effects_elements(ui.modifier_bar, ui.modifier_elements, (parent, modifier_handle) => {
+        const modifier = battle.modifier_handle_id_to_modifier[modifier_handle];
+        if (!modifier) {
+            $.Msg(`Modifier handle ${modifier_handle} not found`);
+            return;
+        }
+
+        safely_set_panel_background_image(parent, get_modifier_icon(modifier));
+    });
+
     const health_stat_value = ui.stat_health.value_provider(ui.stats);
 
     if (health_stat_value != ui.stat_health.displayed_value) {
@@ -1325,16 +1343,6 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
             try_update_stat_bar_display(ui, true);
 
             ui.stat_bar_panel.SetHasClass("enemy", !player_owns_unit(battle.this_player, unit));
-
-            update_effects_elements(ui.modifier_bar, ui.modifier_elements, (parent, modifier_handle) => {
-                const modifier = unit.modifiers.find(modifier => modifier.handle_id == modifier_handle);
-                if (!modifier) {
-                    $.Msg(`Modifier handle ${modifier_handle} not found`);
-                    return;
-                }
-
-                safely_set_panel_background_image(parent, get_modifier_icon(modifier));
-            });
         } else {
             $.Schedule(0, try_find_and_update_associated_unit);
         }
