@@ -723,6 +723,19 @@ function adventure_interact_with_entity(game: Game, entity_id: Adventure_World_E
                 .release();
         }
 
+        if (entity.type == Adventure_Entity_Type.lost_creep) {
+            fx("particles/adventures/lost_creep_disappearing.vpcf")
+                .to_unit_origin(0, entity)
+                .with_forward_vector(0, entity.handle.GetForwardVector())
+                .release();
+        }
+
+        if (entity.type == Adventure_Entity_Type.item_on_the_ground) {
+            fx("particles/ui/ui_game_start_hero_spawn.vpcf")
+                .to_unit_origin(0, entity)
+                .release();
+        }
+
         game.adventure.entities[entity_index] = update_entity_state(entity, state_update.updated_entity);
 
         fire_event(To_Client_Event_Type.adventure_receive_party_changes, {
