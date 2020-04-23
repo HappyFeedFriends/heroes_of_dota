@@ -141,6 +141,7 @@ type Creep = Unit_Base & {
     type: Creep_Type
     supertype: Unit_Supertype.creep
     owner: Battle_Player
+    is_a_summon: boolean
 }
 
 type Rune = {
@@ -1092,12 +1093,13 @@ function unit_spawn_event(source: Source, unit: Unit, at: XY): Battle_Event {
     }
 }
 
-function create_creep(battle: Battle, source: Source, owner: Battle_Player, unit_id: Unit_Id, type: Creep_Type, at: XY): Creep {
+function create_creep(battle: Battle, source: Source, owner: Battle_Player, unit_id: Unit_Id, type: Creep_Type, at: XY, summoned: boolean): Creep {
     const creep: Creep = {
         ...unit_base(unit_id, creep_definition_by_type(type), at),
         supertype: Unit_Supertype.creep,
         type: type,
         owner: owner,
+        is_a_summon: summoned
     };
 
     battle.units.push(creep);
@@ -1298,7 +1300,7 @@ function collapse_ability_effect(battle: Battle, effect: Ability_Effect) {
                 const owner = find_player_by_id(battle, summon.owner_id);
 
                 if (owner) {
-                    create_creep(battle, unit_source(source, effect.ability_id), owner, summon.unit_id, summon.creep_type, summon.at);
+                    create_creep(battle, unit_source(source, effect.ability_id), owner, summon.unit_id, summon.creep_type, summon.at, true);
                 }
             }
 
@@ -1606,7 +1608,7 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
             // TODO Figure out how to fix this stuff, how come we can't make monsters which spawn other things?
             if (caster.supertype == Unit_Supertype.monster) return;
 
-            const remnant = create_creep(battle, source, caster.owner, cast.remnant.id, cast.remnant.type, cast.target_position);
+            const remnant = create_creep(battle, source, caster.owner, cast.remnant.id, cast.remnant.type, cast.target_position, true);
             apply_modifier(battle, source, remnant, cast.remnant.modifier);
             apply_modifier(battle, source, caster, cast.modifier);
 
@@ -1655,7 +1657,7 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
 
         case Spell_Id.call_to_arms: {
             for (const summon of cast.summons) {
-                create_creep(battle, source, caster, summon.unit_id, summon.unit_type, summon.at);
+                create_creep(battle, source, caster, summon.unit_id, summon.unit_type, summon.at, true);
             }
 
             break;
@@ -1668,7 +1670,7 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
 function collapse_ground_target_spell_use(battle: Battle, caster: Battle_Player, at: XY, cast: Delta_Use_Ground_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.pocket_tower: {
-            create_creep(battle, player_source(caster), caster, cast.new_unit_id, cast.new_unit_type, at);
+            create_creep(battle, player_source(caster), caster, cast.new_unit_id, cast.new_unit_type, at, true);
 
             break;
         }
@@ -1874,7 +1876,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             const owner = find_player_by_id(battle, delta.owner_id);
             if (!owner) break;
 
-            const creep = create_creep(battle, no_source(), owner, delta.unit_id, delta.creep_type, delta.at_position);
+            const creep = create_creep(battle, no_source(), owner, delta.unit_id, delta.creep_type, delta.at_position, false);
             creep.health = delta.health;
 
             break;

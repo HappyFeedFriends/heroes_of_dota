@@ -1841,7 +1841,10 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
             }
 
             if (dead) {
-                if (!are_units_allies(attacker, target) && attacker.supertype != Unit_Supertype.monster) {
+                const are_enemies = !are_units_allies(attacker, target);
+                const target_is_a_summon = target.supertype == Unit_Supertype.creep && target.is_a_summon;
+
+                if (are_enemies && !target_is_a_summon && attacker.supertype != Unit_Supertype.monster) {
                     const bounty = get_gold_for_killing(battle, target);
 
                     submit_battle_delta(battle, {
