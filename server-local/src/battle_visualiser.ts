@@ -2957,6 +2957,14 @@ function change_health(game: Game, source: Unit, target: Unit, change: Health_Ch
     if (value_delta < 0) {
         show_damage_effect_on_target(target);
 
+        const direction = (target.handle.GetAbsOrigin() - source.handle.GetAbsOrigin() as Vector).Normalized();
+
+        fx_by_unit("particles/generic_gameplay/generic_hit_blood.vpcf", target)
+            .follow_unit_origin(0, target)
+            .with_point_value(1, 1.5) // Amount of blood
+            .with_vector_value(2, direction * 1000 as Vector)
+            .release();
+
         if (target.supertype == Unit_Supertype.creep) {
             unit_emit_sound(target, target.traits.sounds.pain);
         } else if (target.supertype == Unit_Supertype.hero) {
