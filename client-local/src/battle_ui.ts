@@ -2073,6 +2073,7 @@ function try_update_stat_bar_display(ui_data: UI_Unit_Data, force = false) {
     try_update_stat_indicator(ui_data.stat_max_move_points);
 
     ui_data.stat_bar_panel.SetHasClass("dead", ui_data.stat_health.displayed_value == 0);
+    ui_data.modifier_bar.SetHasClass("dead", ui_data.stat_health.displayed_value == 0);
 }
 
 function position_panel_over_entity_in_the_world(panel: Panel, entity_id: EntityId, offset_x: number, offset_z: number) {
