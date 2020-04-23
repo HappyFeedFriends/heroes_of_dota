@@ -39,6 +39,7 @@ type Unit_Base = Unit_Stats & {
     modifiers: Modifier_Data[]
     dead: boolean
     hidden: boolean
+    hidden_from_snapshot: boolean
 }
 
 type Hero = Unit_Base & {
@@ -585,7 +586,8 @@ function unit_base(unit_id: Unit_Id, info: Unit_Creation_Info, definition: Unit_
         move_points: definition.move_points,
         modifiers: [],
         dead: false,
-        hidden: false
+        hidden: false,
+        hidden_from_snapshot: false
     };
 }
 
@@ -2429,6 +2431,7 @@ function play_unit_target_spell_delta(game: Game, caster: Battle_Player, target:
     switch (cast.spell_id) {
         case Spell_Id.buyback: {
             target.dead = false;
+            target.hidden_from_snapshot = false;
 
             battle_emit_sound("buyback_use");
             change_gold(game, caster, cast.gold_change);
@@ -2844,6 +2847,10 @@ function update_state_visuals(unit: Unit) {
         if (applied.modifier.id == Modifier_Id.returned_to_hand) {
             unit_hidden = true;
         }
+    }
+
+    if (unit.hidden_from_snapshot) {
+        unit_hidden = true;
     }
 
     unit.hidden = unit_hidden;
@@ -3706,6 +3713,7 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
             handle: create_world_handle_for_battle_unit(battle.world_origin, unit, unit.position, unit.facing),
             modifiers: from_client_array(unit.modifiers),
             hidden: false, // We will update it in update_state_visuals,
+            hidden_from_snapshot: unit.health <= 0,
 
             health: unit.health,
             move_points: unit.move_points,
@@ -3773,6 +3781,12 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
 
     for (const effect of snapshot.effects) {
         create_timed_effect(effect.handle_id, effect.content);
+    }
+
+    for (const unit of battle.units) {
+        if (unit.hidden_from_snapshot) {
+            unit.handle.AddNoDraw();
+        }
     }
 
     battle.delta_head = snapshot.delta_head;

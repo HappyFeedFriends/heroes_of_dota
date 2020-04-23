@@ -494,7 +494,7 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
     const visualiser_head = get_visualiser_delta_head();
     const head_relative_to_battle_start = battle.delta_head - battle.started_at_delta_head;
 
-    if (visualiser_head != undefined && head_relative_to_battle_start - visualiser_head > 40) {
+    if (visualiser_head != undefined && head_relative_to_battle_start - visualiser_head > 20) {
         fire_event(To_Server_Event_Type.fast_forward, make_battle_snapshot());
     } else if (deltas.length > 0) {
         fire_event(To_Server_Event_Type.put_deltas, {
@@ -1439,7 +1439,6 @@ function make_battle_snapshot(): Battle_Snapshot {
             content: effect.content
         })),
         units: battle.units
-            .filter(unit => !unit.dead)
             .map(unit => {
                 const snapshot_base = {
                     ...copy(unit as Unit_Stats),
