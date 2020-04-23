@@ -3171,7 +3171,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
                 const facing = { x: owner.deployment_zone.face.x, y: owner.deployment_zone.face.y };
                 const unit = spawn_creep_for_battle(delta.creep_type, delta.unit_id, delta.owner_id, delta.at_position, facing);
                 unit.health = delta.health;
-                unit.handle.ForcePlayActivityOnce(GameActivity_t.ACT_DOTA_SPAWN);
+                add_activity_override(unit, GameActivity_t.ACT_DOTA_SPAWN, 0.7);
                 return unit;
             });
 
