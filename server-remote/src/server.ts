@@ -876,16 +876,17 @@ function report_battle_over(battle: Battle_Record, winner_entity?: Battle_Partic
                     }
                 }
 
-                for (let effect_index = 0; effect_index < slot.effects.length; effect_index++) {
-                    const effect = slot.effects[effect_index];
-
-                    if (!effect.permanent) {
-                        push_party_change(player.party, {
-                            type: Adventure_Party_Change_Type.remove_effect,
-                            hero_slot_index: slot_index,
-                            effect_index: effect_index
-                        });
+                while (true) {
+                    const effect_index = slot.effects.findIndex(effect => !effect.permanent);
+                    if (effect_index == -1) {
+                        break;
                     }
+
+                    push_party_change(player.party, {
+                        type: Adventure_Party_Change_Type.remove_effect,
+                        hero_slot_index: slot_index,
+                        effect_index: effect_index
+                    });
                 }
             }
         }
