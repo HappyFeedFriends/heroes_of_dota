@@ -353,4 +353,16 @@
         type = "dota_src1_2d"
         vsnd_files = "sounds/items/tome_of_knowledge.vsnd"
     }
+
+    consume_potion = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/ui/bottle_pour.vsnd"
+    }
+
+    consume_strengthening_balm = {
+        type = "dota_src1_2d"
+        pitch_rand_min = 0.35
+        pitch_rand_max = 0.35
+        vsnd_files = "sounds/items/healing_salve.vsnd"
+    }
 }

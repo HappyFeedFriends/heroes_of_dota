@@ -328,6 +328,7 @@ function show_item_tooltip(over_what: Panel, item: Adventure_Item) {
 
     const title_icon = $.CreatePanel("Image", title, "icon");
     title_icon.SetImage(get_adventure_item_icon(item));
+    title_icon.SetScaling(ScalingFunction.STRETCH_TO_FIT_X_PRESERVE_ASPECT);
 
     const title_text = $.CreatePanel("Label", title, "text");
     title_text.text = get_adventure_item_name(item);
@@ -464,7 +465,7 @@ function fill_adventure_empty_slot(container: Panel): Adventure_Party_Slot_UI {
 }
 
 function add_bag_item(item: Adventure_Item, slot_index = party.bag.items.length): Bag_Item_UI {
-    const item_panel = $.CreatePanel("Panel", party.bag.panel, "");
+    const item_panel = $.CreatePanel("Image", party.bag.panel, "");
     item_panel.AddClass("item");
     item_panel.SetDraggable(true);
     safely_set_panel_background_image(item_panel, get_adventure_item_icon(item));
@@ -910,7 +911,7 @@ function fill_entity_popup_content(popup: Basic_Popup, entity: Adventure_Entity)
             const icon = $.CreatePanel("Image", popup.content, "");
             icon.AddClass("item_icon");
             icon.SetImage(get_adventure_item_icon(entity.item));
-            icon.SetScaling(ScalingFunction.STRETCH_TO_COVER_PRESERVE_ASPECT);
+            // icon.SetScaling(ScalingFunction.STRETCH_TO_COVER_PRESERVE_ASPECT);
 
             icon.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
                 show_item_tooltip(icon, entity.item);
@@ -1980,6 +1981,19 @@ function play_adventure_party_change(change: Adventure_Party_Change): Adventure_
                     Game.EmitSound("consume_mango");
                     break;
                 }
+
+                case Adventure_Item_Id.potion_of_iron:
+                case Adventure_Item_Id.elixir_of_vitality:
+                case Adventure_Item_Id.spider_blood_extract: {
+                    Game.EmitSound("consume_potion");
+                    break;
+                }
+
+                case Adventure_Item_Id.strengthening_balm: {
+                    Game.EmitSound("consume_strengthening_balm");
+                    break;
+                }
+
             }
 
             update_slot_effects_ui(slot);

@@ -48,6 +48,10 @@ function get_adventure_item_icon_by_id(id: Adventure_Item_Id): string {
         case Adventure_Item_Id.tome_of_knowledge: return default_icon("tome_of_knowledge");
         case Adventure_Item_Id.tome_of_agility: return custom_icon("book_of_agility");
         case Adventure_Item_Id.tome_of_strength: return custom_icon("book_of_strength");
+        case Adventure_Item_Id.elixir_of_vitality: return custom_icon("elixir_of_vitality");
+        case Adventure_Item_Id.potion_of_iron: return custom_icon("potion_of_iron");
+        case Adventure_Item_Id.spider_blood_extract: return custom_icon("spider_blood_extract");
+        case Adventure_Item_Id.strengthening_balm: return custom_icon("strengthening_balm");
     }
 }
 

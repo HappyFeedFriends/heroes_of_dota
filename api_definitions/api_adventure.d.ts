@@ -85,7 +85,11 @@ declare const enum Adventure_Item_Id {
     enchanted_mango = 101,
     tome_of_knowledge = 102,
     tome_of_strength = 103,
-    tome_of_agility = 104
+    tome_of_agility = 104,
+    elixir_of_vitality = 105,
+    potion_of_iron = 106,
+    spider_blood_extract = 107,
+    strengthening_balm = 108
 }
 
 declare const enum Adventure_Combat_Start_Effect_Id {

@@ -95,6 +95,10 @@ function get_adventure_item_name_by_id(item_id: Adventure_Item_Id) {
         case Adventure_Item_Id.tome_of_knowledge: return get_item_name(Item_Id.tome_of_knowledge);
         case Adventure_Item_Id.tome_of_strength: return "Tome of Strength";
         case Adventure_Item_Id.tome_of_agility: return "Tome of Agility";
+        case Adventure_Item_Id.elixir_of_vitality: return "Elixir of Vitality";
+        case Adventure_Item_Id.potion_of_iron: return "Potion of Iron";
+        case Adventure_Item_Id.spider_blood_extract: return "Spider Blood Extract";
+        case Adventure_Item_Id.strengthening_balm: return "Strengthening Balm";
     }
 }
 

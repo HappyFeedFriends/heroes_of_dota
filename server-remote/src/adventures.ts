@@ -277,7 +277,10 @@ function item_cost(id: Adventure_Item_Id): number {
         case Adventure_Item_Id.tome_of_knowledge: return 5;
         case Adventure_Item_Id.tome_of_strength: return 5;
         case Adventure_Item_Id.tome_of_agility: return 5;
-
+        case Adventure_Item_Id.elixir_of_vitality: return 5;
+        case Adventure_Item_Id.potion_of_iron: return 5;
+        case Adventure_Item_Id.spider_blood_extract: return 5;
+        case Adventure_Item_Id.strengthening_balm: return 5;
     }
 }
 
@@ -944,6 +947,14 @@ export function adventure_item_id_to_item(ongoing: Ongoing_Adventure, item_id: A
         };
     }
 
+    function add_effect(effect: Adventure_Item_Effect, permanent: boolean): Adventure_Consumable_Action {
+        return {
+            type: Adventure_Consumable_Action_Type.add_effect,
+            effect: effect,
+            permanent: permanent
+        };
+    }
+
     switch (item_id) {
         case Adventure_Item_Id.boots_of_travel: return {
             ...equipment,
@@ -1103,42 +1114,31 @@ export function adventure_item_id_to_item(ongoing: Ongoing_Adventure, item_id: A
         case Adventure_Item_Id.spider_legs: return {
             ...equipment,
             item_id: item_id,
-            effects: [{
-                type: Adventure_Item_Effect_Type.in_combat,
-                modifier: {
-                    id: Modifier_Id.item_spider_legs,
-                    move_bonus: 3
-                }
-            }]
+            effects: [in_combat_effect({
+                id: Modifier_Id.item_spider_legs,
+                move_bonus: 3
+            })]
         };
 
         case Adventure_Item_Id.enchanted_mango: return {
             ...consumable,
             item_id: item_id,
-            action: {
-                type: Adventure_Consumable_Action_Type.add_effect,
-                permanent: false,
-                effect: {
-                    type: Adventure_Item_Effect_Type.combat_start,
-                    effect_id: Adventure_Combat_Start_Effect_Id.add_ability_charges,
-                    for_abilities_with_level_less_or_equal: 1,
-                    how_many: 1
-                }
-            }
+            action: add_effect({
+                type: Adventure_Item_Effect_Type.combat_start,
+                effect_id: Adventure_Combat_Start_Effect_Id.add_ability_charges,
+                for_abilities_with_level_less_or_equal: 1,
+                how_many: 1
+            }, false)
         };
 
         case Adventure_Item_Id.tome_of_knowledge: return {
             ...consumable,
             item_id: item_id,
-            action: {
-                type: Adventure_Consumable_Action_Type.add_effect,
-                permanent: false,
-                effect: {
-                    type: Adventure_Item_Effect_Type.combat_start,
-                    effect_id: Adventure_Combat_Start_Effect_Id.level_up,
-                    how_many_levels: 1
-                }
-            }
+            action: add_effect({
+                type: Adventure_Item_Effect_Type.combat_start,
+                effect_id: Adventure_Combat_Start_Effect_Id.level_up,
+                how_many_levels: 1
+            }, false)
         };
 
         case Adventure_Item_Id.healing_salve: return {
@@ -1154,33 +1154,37 @@ export function adventure_item_id_to_item(ongoing: Ongoing_Adventure, item_id: A
         case Adventure_Item_Id.tome_of_strength: return {
             ...consumable,
             item_id: item_id,
-            action: {
-                type: Adventure_Consumable_Action_Type.add_effect,
-                permanent: true,
-                effect: {
-                    type: Adventure_Item_Effect_Type.in_combat,
-                    modifier: {
-                        id: Modifier_Id.health,
-                        bonus: 2
-                    }
-                }
-            }
+            action: add_effect(in_combat_effect({ id: Modifier_Id.health, bonus: 2 }), true)
         };
 
         case Adventure_Item_Id.tome_of_agility: return {
             ...consumable,
             item_id: item_id,
-            action: {
-                type: Adventure_Consumable_Action_Type.add_effect,
-                permanent: true,
-                effect: {
-                    type: Adventure_Item_Effect_Type.in_combat,
-                    modifier: {
-                        id: Modifier_Id.attack_damage,
-                        bonus: 1
-                    }
-                }
-            }
+            action: add_effect(in_combat_effect({ id: Modifier_Id.attack_damage, bonus: 1 }), true)
+        };
+
+        case Adventure_Item_Id.elixir_of_vitality: return {
+            ...consumable,
+            item_id: item_id,
+            action: add_effect(in_combat_effect({ id: Modifier_Id.health, bonus: 3 }), false)
+        };
+
+        case Adventure_Item_Id.potion_of_iron: return {
+            ...consumable,
+            item_id: item_id,
+            action: add_effect(in_combat_effect({ id: Modifier_Id.armor, bonus: 2 }), false)
+        };
+
+        case Adventure_Item_Id.spider_blood_extract: return {
+            ...consumable,
+            item_id: item_id,
+            action: add_effect(in_combat_effect({ id: Modifier_Id.move_speed, bonus: 2 }), false)
+        };
+
+        case Adventure_Item_Id.strengthening_balm: return {
+            ...consumable,
+            item_id: item_id,
+            action: add_effect(in_combat_effect({ id: Modifier_Id.attack_damage, bonus: 2 }), false)
         };
     }
 }
