@@ -1890,7 +1890,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             hero.modifiers.splice(in_hand_modifier, 1);
 
             update_unit_state_from_modifiers(hero);
-            move_unit(battle, hero, delta.at_position);
+            hero.position = delta.at_position;
             occupy_cell_at(battle, delta.at_position);
 
             break;
