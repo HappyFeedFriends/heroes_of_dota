@@ -2201,6 +2201,10 @@ function periodically_update_stat_bar_display() {
 }
 
 export function battle_filter_mouse_click(event: MouseEvent, button: MouseButton | WheelScroll): boolean {
+    function valid_unit_at(at: XY) {
+        return battle.units.find(unit => xy_equal(at, unit.position) && authorize_act_on_known_unit(battle, unit).ok);
+    }
+
     if (event == "pressed" || event == "doublepressed") {
         if (battle.state.status == Battle_Status.finished) return true;
 
@@ -2293,7 +2297,7 @@ export function battle_filter_mouse_click(event: MouseEvent, button: MouseButton
                 click_behaviors == CLICK_BEHAVIORS.DOTA_CLICK_BEHAVIOR_ATTACK;
 
             if (wants_to_perform_automatic_action) {
-                const unit_at_cursor_position = unit_at(battle, battle_position);
+                const unit_at_cursor_position = valid_unit_at(battle_position);
                 const rune_at_cursor_position = rune_at(battle, battle_position);
 
                 if (unit_at_cursor_position) {

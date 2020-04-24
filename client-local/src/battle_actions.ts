@@ -255,7 +255,6 @@ export function try_attack_target(source: Unit, target: XY, flash_ground_on_erro
     }
 
     const ability_use_permission = authorize_ability_use_with_error_ui(source, source.attack);
-
     if (!ability_use_permission) return;
 
     if (source.attack.type == Ability_Type.target_ground) {
