@@ -18,8 +18,7 @@ declare const enum Delta_Type {
     use_unit_target_ability = 13,
     use_no_target_ability = 14,
 
-    draw_hero_card = 15,
-    draw_spell_card = 16,
+    draw_card = 15,
     use_card = 17,
 
     hero_spawn_from_hand = 18,
@@ -510,18 +509,17 @@ type Delta_Ability_Effect_Applied<T extends Ability_Effect> = {
     effect: T
 }
 
-type Delta_Draw_Hero_Card = {
-    type: Delta_Type.draw_hero_card
+type Delta_Draw_Card = {
+    type: Delta_Type.draw_card
     player_id: Battle_Player_Id
     card_id: Card_Id
-    hero_type: Hero_Type
-}
-
-type Delta_Draw_Spell_Card = {
-    type: Delta_Type.draw_spell_card
-    player_id: Battle_Player_Id
-    card_id: Card_Id
-    spell_id: Spell_Id
+    content: {
+        type: Card_Type.hero
+        hero: Hero_Type
+    } | {
+        type: Card_Type.spell
+        spell: Spell_Id
+    }
 }
 
 type Delta_Use_Card = {
@@ -641,8 +639,7 @@ type Delta =
     Delta_Modifier_Effect_Applied |
     Delta_Timed_Effect_Expired |
     Delta_Rune_Pick_Up |
-    Delta_Draw_Hero_Card |
-    Delta_Draw_Spell_Card |
+    Delta_Draw_Card |
     Delta_Use_Card |
     Delta_Purchase_Item |
     Delta_Equip_Item |

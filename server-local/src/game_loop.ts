@@ -206,6 +206,7 @@ function game_net_table(game: Game): Game_Net_Table {
                 battle: {
                     id: battle.id,
                     battle_player_id: battle.this_player_id,
+                    this_player_hand: battle.this_player_hand,
                     participants: battle.participants,
                     players: battle.players.map(player => ({
                         id: player.id,
@@ -664,6 +665,7 @@ function game_loop() {
     on_custom_event_async(To_Server_Event_Type.fast_forward, event => {
         fast_forward_from_snapshot(battle, {
             has_started: from_client_bool(event.has_started),
+            player_hand: from_client_array(event.player_hand),
             players: from_client_array(event.players),
             effects: from_client_array(event.effects),
             units: from_client_array(event.units),

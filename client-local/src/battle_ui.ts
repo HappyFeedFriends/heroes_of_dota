@@ -132,11 +132,12 @@ type UI_Battle = Battle & {
     id: Battle_Id
     started_at_delta_head: number
     entity_id_to_unit_data: Record<EntityId, UI_Unit_Data>
-    entity_id_to_rune_id: Record<number, Rune_Id>
-    entity_id_to_shop_id: Record<number, Shop_Id>
+    entity_id_to_rune_id: Record<number, Rune_Id | undefined>
+    entity_id_to_shop_id: Record<number, Shop_Id | undefined>
     unit_id_to_facing: Record<number, XY>
     shop_id_to_facing: Record<number, XY>
-    modifier_handle_id_to_modifier: Record<number, Applied_Modifier>
+    modifier_handle_id_to_modifier: Record<number, Applied_Modifier | undefined>
+    card_id_to_card: Record<number, Card | undefined>
     cell_index_to_unit: Unit[]
     cell_index_to_rune: Rune[]
     outline_particles: ParticleId[]
@@ -238,7 +239,8 @@ export const control_panel: Control_Panel = {
     hero_rows: []
 };
 
-const hand: Card_Panel[] = [];
+let actual_cards_in_hand: Card_Id[] = [];
+let hand: Card_Panel[] = [];
 
 let card_error_shown_at = 0;
 
@@ -392,21 +394,6 @@ function update_related_visual_data_from_delta(delta: Delta, delta_paths: Move_D
             break;
         }
 
-        case Delta_Type.use_card: {
-            if (delta.player_id == battle.this_player.id) {
-                const card_index = hand.findIndex(card => card.card.id == delta.card_id);
-
-                if (card_index != -1) {
-                    const card = hand[card_index];
-                    card.panel.DeleteAsync(0);
-
-                    hand.splice(card_index, 1);
-                }
-            }
-
-            break;
-        }
-
         case Delta_Type.purchase_item: {
             const shop_ui = ui_shop_data.find(shop_ui => shop_ui.id == delta.shop_id);
 
@@ -552,7 +539,10 @@ function on_battle_event(battle: UI_Battle, event: Battle_Event) {
 
     if (event.type == Battle_Event_Type.card_added_to_hand) {
         if (event.player == battle.this_player) {
-            add_card_panel(event.card);
+            // @Performance they are never cleared
+            battle.card_id_to_card[event.card.id] = event.card;
+
+            hand = update_hand_elements(actual_cards_in_hand);
         }
     }
 
@@ -597,6 +587,7 @@ export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
         unit_id_to_facing: {},
         shop_id_to_facing: {},
         modifier_handle_id_to_modifier: {},
+        card_id_to_card: {},
         outline_particles: [],
         shop_range_outline_particles: [],
         zone_highlight_particles: [],
@@ -1277,35 +1268,39 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
 }
 
 function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_Data) {
+    function update_modifier_elements() {
+        const new_modifiers: Effect_UI<Modifier_Handle_Id>[] = [];
+
+        for (const handle of new_data.modifiers) {
+            const existing = ui.modifier_elements.find(existing_element => existing_element.effect == handle);
+
+            if (existing) {
+                new_modifiers.push(existing);
+            } else {
+                new_modifiers.push({ effect: handle });
+            }
+        }
+
+        for (const existing of ui.modifier_elements) {
+            // @Performance a tad inefficient, but it's going to be fine if our lists are somewhat small
+            const exists_in_new_list = new_modifiers.some(new_modifier => new_modifier.effect == existing.effect);
+
+            if (!exists_in_new_list) {
+                if (existing.panel) {
+                    existing.panel.AddClass("being_removed");
+                    existing.panel.DeleteAsync(0.5);
+                }
+            }
+        }
+
+        return new_modifiers;
+    }
+
     if (ui.supertype == Unit_Supertype.hero && new_data.supertype == Unit_Supertype.hero) {
         ui.level = new_data.level;
     }
 
-    const new_modifiers: Effect_UI<Modifier_Handle_Id>[] = [];
-
-    for (const handle of new_data.modifiers) {
-        const existing = ui.modifier_elements.find(existing_element => existing_element.effect == handle);
-
-        if (existing) {
-            new_modifiers.push(existing);
-        } else {
-            new_modifiers.push({ effect: handle });
-        }
-    }
-
-    for (const existing of ui.modifier_elements) {
-        // @Performance a tad inefficient, but it's going to be fine if our lists are somewhat small
-        const exists_in_new_list = new_modifiers.some(new_modifier => new_modifier.effect == existing.effect);
-
-        if (!exists_in_new_list) {
-            if (existing.panel) {
-                existing.panel.AddClass("being_removed");
-                existing.panel.DeleteAsync(0.5);
-            }
-        }
-    }
-
-    ui.modifier_elements = new_modifiers;
+    ui.modifier_elements = update_modifier_elements();
     ui.stats = new_data;
     ui.hidden = new_data.hidden;
 
@@ -1355,8 +1350,39 @@ function dispose_of_unit_stat_bar_data(data: UI_Unit_Data) {
     data.stat_bar_panel.DeleteAsync(0);
 }
 
+function update_hand_elements(source: Card_Id[]) {
+    const new_hand: Card_Panel[] = [];
+
+    for (const card_id of source) {
+        const existing = hand.find(existing_element => existing_element.card.id == card_id);
+
+        if (existing) {
+            new_hand.push(existing);
+        } else {
+            const source_card = battle.card_id_to_card[card_id];
+            if (source_card) {
+                new_hand.push(create_card_panel(source_card));
+            }
+        }
+    }
+
+    for (const current of hand) {
+        // @Performance a tad inefficient, but it's going to be fine if our lists are somewhat small
+        const exists_in_new_list = new_hand.some(new_card => new_card.card.id == current.card.id);
+
+        if (!exists_in_new_list) {
+            delete_card_panel_element(current);
+        }
+    }
+
+    return new_hand;
+}
+
 function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In_Battle) {
     ui_player_data = state.battle.players;
+
+    actual_cards_in_hand = state.battle.this_player_hand;
+    hand = update_hand_elements(actual_cards_in_hand);
 
     battle.entity_id_to_rune_id = {};
 
@@ -1430,6 +1456,7 @@ function move_order_particle(world_position: XYZ) {
 function make_battle_snapshot(): Battle_Snapshot {
     return {
         has_started: battle.state.status == Battle_Status.in_progress,
+        player_hand: hand.map(ui => ui.card.id),
         players: battle.players.map(player => ({
             id: player.id,
             gold: player.gold
@@ -2295,6 +2322,7 @@ export function battle_filter_mouse_click(event: MouseEvent, button: MouseButton
 function create_card_ui(root: Panel, card: Card) {
     const container = create_card_container_ui(root, false, card.type);
     container.style.position = `${Const.hand_base_x - 400}px ${Const.hand_base_y}px 0`;
+    container.AddClass("smooth_position_change");
 
     switch (card.type) {
         case Card_Type.hero: {
@@ -2331,7 +2359,7 @@ function create_card_ui(root: Panel, card: Card) {
     return container;
 }
 
-function add_card_panel(card: Card) {
+function create_card_panel(card: Card): Card_Panel {
     const ui = create_card_ui($("#hand_ui"), card);
     const card_panel: Card_Panel = {
         panel: ui,
@@ -2347,7 +2375,7 @@ function add_card_panel(card: Card) {
         card_panel.hovered = false;
     });
 
-    hand.push(card_panel);
+    return card_panel;
 }
 
 function get_hovered_battle_position(): XY | undefined {
@@ -2456,6 +2484,30 @@ function recreate_overlay_unit_selection(selection: Card_Selection) {
     }
 }
 
+function delete_card_panel_element(card_panel: Card_Panel) {
+    card_panel.panel.RemoveClass("smooth_position_change");
+    card_panel.panel.AddClass("disappearing_transition");
+    card_panel.panel.AddClass("disappearing");
+    card_panel.panel.DeleteAsync(0.4);
+}
+
+function try_delete_card_from_hand(card_id: Card_Id) {
+    const index = hand.findIndex(existing => existing.card.id == card_id);
+    if (index == -1) {
+        return;
+    }
+
+    const card_panel = hand[index];
+
+    if (selection.type == Selection_Type.card && selection.card_panel == card_panel) {
+        drop_card_selection();
+    }
+
+    hand.splice(index, 1);
+
+    delete_card_panel_element(card_panel);
+}
+
 function update_hand() {
     const cursor = GameUI.GetCursorPosition();
     const [ cursor_x, cursor_y ] = cursor;
@@ -2466,26 +2518,9 @@ function update_hand() {
         if (hover.type == Hover_Type.cell || hover.type == Hover_Type.unit) {
             const card = selection.card_panel.card;
 
-            try_use_card(card, hover, () => {
-                for (let index = 0; index < hand.length; index++) {
-                    if (hand[index].card.id == card.id) {
-                        const card_panel = hand[index];
-
-                        if (selection.type == Selection_Type.card && selection.card_panel == card_panel) {
-                            drop_card_selection();
-                        }
-
-                        hand.splice(index, 1);
-
-                        card_panel.panel.AddClass("override");
-                        card_panel.panel.AddClass("disappearing_transition");
-                        card_panel.panel.AddClass("disappearing");
-                        card_panel.panel.DeleteAsync(0.4);
-
-                        break;
-                    }
-                }
-            });
+            if (try_use_card(card, hover)) {
+                try_delete_card_from_hand(card.id);
+            }
         }
 
         drop_card_selection();

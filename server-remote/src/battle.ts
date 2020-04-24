@@ -1689,21 +1689,27 @@ function spawn_tree(id: Tree_Id, at_position: XY): Delta_Tree_Spawn {
     }
 }
 
-function draw_hero_card(battle: Battle_Record, player: Battle_Player, hero_type: Hero_Type): Delta_Draw_Hero_Card {
+function draw_hero_card(battle: Battle_Record, player: Battle_Player, hero_type: Hero_Type): Delta_Draw_Card {
     return {
-        type: Delta_Type.draw_hero_card,
+        type: Delta_Type.draw_card,
         player_id: player.id,
-        hero_type: hero_type,
-        card_id: get_next_entity_id(battle) as Card_Id
+        card_id: get_next_entity_id(battle) as Card_Id,
+        content: {
+            type: Card_Type.hero,
+            hero: hero_type
+        }
     }
 }
 
-function draw_spell_card(card_id: Card_Id, player: Battle_Player, spell_id: Spell_Id): Delta_Draw_Spell_Card {
+function draw_spell_card(card_id: Card_Id, player: Battle_Player, spell_id: Spell_Id): Delta_Draw_Card {
     return {
-        type: Delta_Type.draw_spell_card,
+        type: Delta_Type.draw_card,
         player_id: player.id,
-        spell_id: spell_id,
-        card_id: card_id
+        card_id: card_id,
+        content: {
+            type: Card_Type.spell,
+            spell: spell_id
+        }
     }
 }
 

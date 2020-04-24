@@ -3,6 +3,7 @@ type Battle = {
     theme: Battleground_Theme
     environment: Environment
     this_player_id: Battle_Player_Id
+    this_player_hand: Card_Id[]
     random_seed: number
     participants: Battle_Participant_Info[]
     players: Battle_Player[]
@@ -2437,6 +2438,7 @@ function play_unit_target_spell_delta(game: Game, caster: Battle_Player, target:
             change_gold(game, caster, cast.gold_change);
             change_health(game, target, target, cast.heal);
             apply_modifier(game, target, cast.modifier);
+            add_card_to_hand(cast.new_card_id);
 
             break;
         }
@@ -2454,6 +2456,7 @@ function play_unit_target_spell_delta(game: Game, caster: Battle_Player, target:
             unit_emit_sound(target, "Portal.Hero_Disappear");
             change_health(game, target, target, cast.heal);
             apply_modifier(game, target, cast.modifier);
+            add_card_to_hand(cast.new_card_id);
 
             loop_sound.stop();
             teleport_gesture.fade();
@@ -3072,6 +3075,10 @@ function change_gold(game: Game, player: Battle_Player, change: number) {
     update_game_net_table(game);
 }
 
+function add_card_to_hand(card: Card_Id) {
+    battle.this_player_hand.push(card);
+}
+
 function on_modifier_removed(unit: Unit, modifier_id: Modifier_Id) {
     if (modifier_id == Modifier_Id.spell_euls_scepter) {
         const handle = unit.handle;
@@ -3544,9 +3551,24 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             break;
         }
 
-        case Delta_Type.draw_spell_card: break;
-        case Delta_Type.draw_hero_card: break;
-        case Delta_Type.use_card: break;
+        case Delta_Type.draw_card: {
+            if (delta.player_id == battle.this_player_id) {
+                add_card_to_hand(delta.card_id);
+                update_game_net_table(game);
+            }
+
+            break;
+        }
+
+        case Delta_Type.use_card: {
+            const card_index = battle.this_player_hand.indexOf(delta.card_id);
+            if (card_index == -1) break;
+
+            battle.this_player_hand.splice(card_index, 1);
+            update_game_net_table(game);
+            break;
+        }
+
         case Delta_Type.set_ability_charges: {
             const target = find_unit_by_id(delta.unit_id);
             if (!target) break;
@@ -3666,6 +3688,7 @@ function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC)
     battle = {
         id: -1 as Battle_Id,
         this_player_id: -1 as Battle_Player_Id,
+        this_player_hand: [],
         theme: Battleground_Theme.forest,
         environment: Environment.day,
         random_seed: 0,
@@ -3699,6 +3722,7 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
     clean_battle_world_handles(battle);
 
     battle.has_started = snapshot.has_started;
+    battle.this_player_hand = snapshot.player_hand;
 
     battle.players = snapshot.players.map(player => ({
         id: player.id,

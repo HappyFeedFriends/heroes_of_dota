@@ -493,7 +493,7 @@ function try_use_card_spell(spell: Card_Spell, hover: Hover_State_Unit | Hover_S
     }
 }
 
-export function try_use_card(card: Card, hover: Hover_State_Unit | Hover_State_Cell, success_callback: () => void) {
+export function try_use_card(card: Card, hover: Hover_State_Unit | Hover_State_Cell) {
     const action_permission = authorize_action_by_player(battle, battle.this_player);
     if (!action_permission.ok) return show_player_action_error_ui(action_permission);
 
@@ -511,9 +511,9 @@ export function try_use_card(card: Card, hover: Hover_State_Unit | Hover_State_C
                 type: Action_Type.use_hero_card,
                 card_id: card.id,
                 at: hover.cell
-            }, success_callback);
+            });
 
-            break;
+            return true;
         }
 
         case Card_Type.existing_hero: {
@@ -526,16 +526,16 @@ export function try_use_card(card: Card, hover: Hover_State_Unit | Hover_State_C
                 type: Action_Type.use_existing_hero_card,
                 card_id: card.id,
                 at: hover.cell
-            }, success_callback);
+            });
 
-            break;
+            return true;
         }
 
         case Card_Type.spell: {
             const action = try_use_card_spell(card, hover, action_permission, card_use_permission);
 
             if (action) {
-                take_battle_action(action, success_callback);
+                take_battle_action(action);
             }
 
             break;

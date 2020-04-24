@@ -103,7 +103,7 @@
     opacity: 0;
   }
 
-  &.disappearing_transition.override {
+  &.disappearing_transition {
     transition-property: transform, opacity;
     transition-duration: 0.2s;
     transition-timing-function: ease-out;
@@ -122,7 +122,7 @@
   box-shadow: #151515 0 0 8px 0;
   border-radius: 2px;
 
-  &:not(:hover) {
+  &.smooth_position_change:not(:hover) {
     transition-property: transform, position;
     transition-duration: 0.15s;
     transition-timing-function: ease-out;

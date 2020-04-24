@@ -109,10 +109,13 @@ class For_Player {
         const id = this.test.battle.id_generator() as Card_Id;
 
         submit_external_battle_delta(this.test.battle, {
-            type: Delta_Type.draw_hero_card,
+            type: Delta_Type.draw_card,
             card_id: id,
             player_id: this.player.id,
-            hero_type: hero
+            content: {
+                type: Card_Type.hero,
+                hero: hero
+            }
         });
 
         return new For_Player_Hero_Card(this.test, this.player, id);
@@ -122,10 +125,13 @@ class For_Player {
         const id = this.test.battle.id_generator() as Card_Id;
 
         submit_external_battle_delta(this.test.battle, {
-            type: Delta_Type.draw_spell_card,
+            type: Delta_Type.draw_card,
             card_id: id,
             player_id: this.player.id,
-            spell_id: spell
+            content: {
+                type: Card_Type.spell,
+                spell: spell
+            }
         });
 
         return new For_Player_Spell_Card(this.test, this.player, id);

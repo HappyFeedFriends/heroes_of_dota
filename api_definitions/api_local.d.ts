@@ -255,6 +255,7 @@ type Game_Net_Table_In_Battle = Player_Net_Table_Base & {
         battle_player_id: Battle_Player_Id
         participants: Battle_Participant_Info[]
         players: Visualizer_Player_Data[]
+        this_player_hand: Card_Id[]
         world_origin: {
             x: number
             y: number
@@ -338,6 +339,7 @@ type Timed_Effect_Snapshot = {
 
 type Battle_Snapshot = {
     has_started: boolean
+    player_hand: Card_Id[]
     effects: Timed_Effect_Snapshot[]
     players: Player_Snapshot[]
     units: Unit_Snapshot[]

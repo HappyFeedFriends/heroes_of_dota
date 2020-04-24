@@ -2114,28 +2114,31 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             break;
         }
 
-        case Delta_Type.draw_hero_card: {
+        case Delta_Type.draw_card: {
             const player = find_player_by_id(battle, delta.player_id);
+            if (!player) break;
 
-            if (player) {
-                add_card_to_hand(battle, player, {
-                    type: Card_Type.hero,
-                    id: delta.card_id,
-                    hero_type: delta.hero_type
-                });
-            }
+            switch (delta.content.type) {
+                case Card_Type.hero: {
+                    add_card_to_hand(battle, player, {
+                        type: Card_Type.hero,
+                        id: delta.card_id,
+                        hero_type: delta.content.hero
+                    });
 
-            break;
-        }
+                    break;
+                }
 
-        case Delta_Type.draw_spell_card: {
-            const player = find_player_by_id(battle, delta.player_id);
+                case Card_Type.spell: {
+                    add_card_to_hand(battle, player, {
+                        id: delta.card_id,
+                        ...spell_definition_by_id(delta.content.spell)
+                    });
 
-            if (player) {
-                add_card_to_hand(battle, player, {
-                    id: delta.card_id,
-                    ...spell_definition_by_id(delta.spell_id)
-                });
+                    break;
+                }
+
+                default: unreachable(delta.content);
             }
 
             break;
@@ -2143,18 +2146,13 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
         case Delta_Type.use_card: {
             const player = find_player_by_id(battle, delta.player_id);
-
             if (!player) break;
 
-            for (let index = 0; index < player.hand.length; index++) {
-                if (player.hand[index].id == delta.card_id) {
-                    player.hand.splice(index, 1);
+            const card_index = player.hand.findIndex(in_hand => in_hand.id == delta.card_id);
+            if (card_index == -1) break;
 
-                    player.has_used_a_card_this_turn = true;
-
-                    break;
-                }
-            }
+            player.hand.splice(card_index, 1);
+            player.has_used_a_card_this_turn = true;
 
             break;
         }
