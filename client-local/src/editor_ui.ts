@@ -398,10 +398,19 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
         });
     }
 
-    function item_button(container: Panel, icon: string) {
+    function item_button(container: Panel, id: Adventure_Item_Id) {
         const item_button = $.CreatePanel("Image", container, "");
         item_button.AddClass("item_button");
-        item_button.SetImage(icon);
+        item_button.SetImage(get_adventure_item_icon_by_id(id));
+        item_button.SetScaling(ScalingFunction.STRETCH_TO_FIT_X_PRESERVE_ASPECT);
+        item_button.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => {
+            $.DispatchEvent("DOTAShowTextTooltip", item_button, get_adventure_item_name_by_id(id));
+        });
+
+        item_button.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, () => {
+            $.DispatchEvent("DOTAHideTextTooltip");
+        });
+
         return item_button;
     }
 
@@ -446,7 +455,7 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
         const container = wrapping_container(parent);
 
         for (const item of all_items) {
-            const button = item_button(container, get_adventure_item_icon_by_id(item));
+            const button = item_button(container, item);
             stock_updating_button(button, stock.items, item);
         }
     }));
@@ -476,7 +485,7 @@ async function create_adventure_merchant_buttons(editor: Adventure_Editor, entit
         item_container.style.horizontalAlign = "center";
 
         for (const item of stock.items) {
-            item_button(item_container, get_adventure_item_icon(item.data));
+            item_button(item_container, item.data.item_id);
         }
     }
 

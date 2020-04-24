@@ -171,7 +171,7 @@
 
         <Panel id="editor_ui" hittest="false" class="ui_state">
             <Panel id="editor_buttons"/>
-            <Panel id="editor_indicator">
+            <Panel id="editor_indicator" hittest="false">
                 <Panel id="editor_toolbar">
                     <Panel id="editor_toolbar_buttons"/>
                     <Panel id="editor_toolbar_dropdown"/>
@@ -181,7 +181,7 @@
                     <Panel id="editor_entity_dropdown"/>
                 </Panel>
                 <Panel id="editor_brushes"/>
-                <Panel id="editor_world_indicators"/>
+                <Panel id="editor_world_indicators" hittest="false"/>
                 <Panel id="editor_context_menu">
                 </Panel>
             </Panel>
