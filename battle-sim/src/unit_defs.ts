@@ -17,7 +17,7 @@ declare function passive_ability<T extends Ability_Definition_Passive>(stats: Pa
 // That works instead of active/passive ability and allows us to collapse many types
 // declare function ability<T extends Ability_Id>(id: T, stats: Omit<Find_By_Id<Ability_Definition, T>, keyof Ability_Active_Discriminator>): Find_By_Id<Ability_Definition, T>;
 
-function target_line(length: number, selector: Ability_Target_Selector = single_target()): Ability_Targeting_Line {
+function target_line(length: number, selector: Ability_Area_Selector = single_target()): Ability_Targeting_Line {
     return {
         type: Ability_Targeting_Type.line,
         line_length: length,
@@ -29,34 +29,34 @@ function target_line(length: number, selector: Ability_Target_Selector = single_
     }
 }
 
-function single_target(): Ability_Target_Selector_Single_Target {
+function single_target(): Ability_Area_Selector {
     return {
         type: Ability_Target_Selector_Type.single_target
     }
 }
 
-function first_unit_in_line(length: number): Ability_Target_Selector_First_In_Line {
+function first_unit_in_line(length: number): Ability_Area_Selector {
     return {
         type: Ability_Target_Selector_Type.first_in_line,
         length: length
     }
 }
 
-function targets_in_rectangle(radius: number): Ability_Target_Selector_Rectangle {
+function targets_in_rectangle(radius: number): Ability_Area_Selector {
     return {
         type: Ability_Target_Selector_Type.rectangle,
         area_radius: radius
     }
 }
 
-function targets_in_line(length: number): Ability_Target_Selector_Line {
+function targets_in_line(length: number): Ability_Area_Selector {
     return {
         type: Ability_Target_Selector_Type.line,
         length: length
     }
 }
 
-function target_in_manhattan_distance(distance: number, selector: Ability_Target_Selector = single_target(), ...flags: Ability_Targeting_Flag[]): Ability_Targeting_Target_In_Manhattan_Distance {
+function target_in_manhattan_distance(distance: number, selector: Ability_Area_Selector = single_target(), ...flags: Ability_Targeting_Flag[]): Ability_Targeting_Target_In_Manhattan_Distance {
     const result_flags: Ability_Targeting_Flag_Field = {
         [Ability_Targeting_Flag.include_caster]: false,
         [Ability_Targeting_Flag.only_free_cells]: false
@@ -74,7 +74,7 @@ function target_in_manhattan_distance(distance: number, selector: Ability_Target
     }
 }
 
-function target_rect_area_around_caster(area_radius: number, selector: Ability_Target_Selector = single_target()): Ability_Targeting_Rectangular_Area_Around_Caster {
+function target_rect_area_around_caster(area_radius: number, selector: Ability_Area_Selector = single_target()): Ability_Targeting_Rectangular_Area_Around_Caster {
     return {
         type: Ability_Targeting_Type.rectangular_area_around_caster,
         area_radius: area_radius,
@@ -128,7 +128,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 abilities: [
                     active_ability<Ability_Pudge_Hook>({
                         available_since_level: 1,
-                        targeting: target_line(5, first_unit_in_line(5)),
+                        targeting: target_line(5),
                         flags: [],
                         charges: 1,
                         damage: 5

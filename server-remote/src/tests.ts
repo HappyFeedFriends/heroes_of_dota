@@ -146,13 +146,12 @@ function test_hero_can_phase_through_units_only() {
 function test_game_doesnt_end_on_matriarch_ability() {
     const battle = test_battle();
     const hero = battle.for_test_player().spawn_hero(Hero_Type.mirana, xy(1, 1));
-
-    battle.for_enemy_player().spawn_creep(Creep_Type.spider_matriarch, xy(3, 1));
+    const matriarch = battle.for_enemy_player().spawn_creep(Creep_Type.spider_matriarch, xy(3, 1));
 
     battle.start();
 
     hero.apply_modifier({ id: Modifier_Id.attack_damage, bonus: 100 });
-    hero.order_cast_on_ground(Ability_Id.basic_attack, xy(3, 1));
+    hero.order_cast_unit_target(Ability_Id.basic_attack, matriarch.unit);
 
     battle.for_enemy_player().creep_by_type(Creep_Type.spiderling).assert_found();
     battle.assert().is_not_over();
@@ -188,8 +187,8 @@ function test_game_over_when_all_enemies_die() {
     first_hero.apply_modifier({ id: Modifier_Id.attack_damage, bonus: 100 });
     second_hero.apply_modifier({ id: Modifier_Id.attack_damage, bonus: 100 });
 
-    first_hero.order_cast_on_ground(Ability_Id.basic_attack, xy(2, 1));
-    second_hero.order_cast_on_ground(Ability_Id.basic_attack, xy(2, 2));
+    first_hero.order_cast_unit_target(Ability_Id.basic_attack, first_enemy.unit);
+    second_hero.order_cast_unit_target(Ability_Id.basic_attack, second_enemy.unit);
 
     first_enemy.assert().is_dead();
     second_enemy.assert().is_dead();

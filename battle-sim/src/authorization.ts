@@ -177,21 +177,21 @@ type Rune_Pickup_Order_Permission = {
 }
 
 type Ability_Use_Permission = Order_Unit_Permission & {
-    ability: Ability_Active;
+    ability: Ability_Active
 }
 
 type Unit_Target_Ability_Use_Permission = {
     ok: true
     unit: Unit
     target: Unit
-    ability: Ability_Unit_Target & { charges_remaining: number }
+    ability: Ability_Unit_Target
 }
 
 type Ground_Target_Ability_Use_Permission = {
     ok: true
     unit: Unit
     target: Cell
-    ability: Ability_Ground_Target & { charges_remaining: number }
+    ability: Ability_Ground_Target
 }
 
 type Auth<Ok, Error> = Ok | Action_Error<Error>

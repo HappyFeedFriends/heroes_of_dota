@@ -116,7 +116,7 @@ type Unit_Base = Unit_Stats & {
     dead: boolean;
     position: XY;
     has_taken_an_action_this_turn: boolean;
-    attack?: Ability;
+    attack?: Ability_Active
     abilities: Ability[]
     ability_bench: Ability[]
     modifiers: Applied_Modifier[]
@@ -168,16 +168,22 @@ type Applied_Modifier = {
     duration_remaining?: number
 }
 
-type Ability_Passive = Ability_Definition_Passive;
-type Ability_Active = Ability_Definition_Active & {
+type With_Charges = {
     charges_remaining: number;
 }
 
-type Ability = Ability_Passive | Ability_Active;
+type Ability_Ground_Target = Ability_Definition_Ground_Target & With_Charges
+type Ability_Unit_Target = Ability_Definition_Unit_Target & With_Charges
+type Ability_No_Target = Ability_Definition_No_Target & With_Charges
+
+type Ability_Passive = Ability_Definition_Passive
+type Ability_Active = Ability_Ground_Target | Ability_Unit_Target | Ability_No_Target
+
+type Ability = Ability_Passive | Ability_Active
 
 type Cost_Population_Result = {
-    cell_index_to_cost: number[];
-    cell_index_to_parent_index: Cell_Index[];
+    cell_index_to_cost: number[]
+    cell_index_to_parent_index: Cell_Index[]
 }
 
 type Grid<T extends Cell_Like> = {
@@ -777,7 +783,7 @@ function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, fr
     }
 }
 
-function ability_selector_fits(battle: Battle, selector: Ability_Target_Selector, from: XY, to: XY, check_at: XY): boolean {
+function ability_selector_fits(battle: Battle, selector: Ability_Area_Selector, from: XY, to: XY, check_at: XY): boolean {
     function points_on_the_same_line(a: XY, b: XY, c: XY) {
         return are_points_on_the_same_line(a, b) && are_points_on_the_same_line(a, c) && are_points_on_the_same_line(b, c);
     }
@@ -925,17 +931,20 @@ function find_unit_ability(unit: Unit, ability_id: Ability_Id): Ability | undefi
 
 function replace_ability(unit: Unit, ability_id_to_bench: Ability_Id, currently_benched_ability_id: Ability_Id) {
     const benched_ability_index = unit.ability_bench.findIndex(ability => ability.id == currently_benched_ability_id);
-
     if (benched_ability_index == -1) return;
 
     if (unit.attack && ability_id_to_bench == unit.attack.id) {
+        const replace_with = unit.ability_bench[benched_ability_index];
         const old_attack = unit.attack;
-        unit.attack = unit.ability_bench[benched_ability_index];
-        unit.ability_bench[benched_ability_index] = old_attack;
+
+        if (replace_with.type != Ability_Type.passive) {
+            unit.attack = replace_with;
+            unit.ability_bench[benched_ability_index] = old_attack;
+        }
+
         return;
     } else {
         const ability_to_bench_index = unit.abilities.findIndex(ability => ability.id == ability_id_to_bench);
-
         if (ability_to_bench_index == -1) return;
 
         const ability_to_bench = unit.abilities[ability_to_bench_index];
@@ -1054,7 +1063,7 @@ function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base 
     return {
         id: id,
         position: at,
-        attack: definition.attack ? ability_definition_to_ability(definition.attack) : undefined,
+        attack: definition.attack ? ability_definition_to_ability(definition.attack) as Ability_Active : undefined,
         move_points: definition.move_points,
         health: definition.health,
         dead: false,
@@ -1353,6 +1362,25 @@ function collapse_unit_target_ability_use(battle: Battle, caster: Unit, target: 
     const source = unit_source(caster, cast.ability_id);
 
     switch (cast.ability_id) {
+        case Ability_Id.basic_attack: {
+            change_health(battle, source, target, cast.target.change);
+
+            break;
+        }
+
+        case Ability_Id.pudge_hook: {
+            move_unit(battle, target, cast.move_target_to);
+            change_health(battle, source, target, cast.damage_dealt);
+
+            break;
+        }
+
+        case Ability_Id.mirana_arrow: {
+            apply_modifier(battle, source, target, cast.stun);
+
+            break;
+        }
+
         case Ability_Id.pudge_dismember: {
             change_health(battle, source, caster, cast.health_restored);
             change_health(battle, source, target, cast.damage_dealt);
@@ -1522,31 +1550,6 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
     const source = unit_source(caster, cast.ability_id);
 
     switch (cast.ability_id) {
-        case Ability_Id.basic_attack: {
-            if (cast.result.hit) {
-                const target = find_unit_by_id(battle, cast.result.target.target_unit_id);
-
-                if (target) {
-                    change_health(battle, source, target, cast.result.target.change);
-                }
-            }
-
-            break;
-        }
-
-        case Ability_Id.pudge_hook: {
-            if (cast.result.hit) {
-                const target = find_unit_by_id(battle, cast.result.target_unit_id);
-
-                if (target) {
-                    move_unit(battle, target, cast.result.move_target_to);
-                    change_health(battle, source, target, cast.result.damage_dealt);
-                }
-            }
-
-            break;
-        }
-
         case Ability_Id.skywrath_mystic_flare: {
             change_health_multiple(battle, source, cast.targets);
             break;
@@ -1564,18 +1567,6 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
 
         case Ability_Id.lion_impale: {
             change_health_and_apply_modifier_multiple(battle, source, cast.targets);
-            break;
-        }
-
-        case Ability_Id.mirana_arrow: {
-            if (cast.result.hit) {
-                const target = find_unit_by_id(battle, cast.result.stun.target_unit_id);
-
-                if (target) {
-                    apply_modifier(battle, source, target, cast.result.stun.modifier);
-                }
-            }
-
             break;
         }
 
@@ -2018,7 +2009,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             end_turn(battle, next_player);
 
             for (const unit of battle.units) {
-                if (unit.attack && unit.attack.type != Ability_Type.passive) {
+                if (unit.attack) {
                     unit.attack.charges_remaining = unit.attack.charges;
                 }
 

@@ -49,6 +49,79 @@ declare const enum Ability_Flag {
     does_not_consume_action = 0
 }
 
+type Ability_Definition_Ground_Target = Find_By_Type<Ability_Definition, Ability_Type.target_ground>
+type Ability_Definition_Unit_Target = Find_By_Type<Ability_Definition, Ability_Type.target_unit>
+type Ability_Definition_No_Target = Find_By_Type<Ability_Definition, Ability_Type.no_target>
+
+type Ability_Definition_Active =
+    Ability_Definition_Ground_Target |
+    Ability_Definition_Unit_Target |
+    Ability_Definition_No_Target
+
+type Ability_Definition_Passive = Find_By_Type<Ability_Definition, Ability_Type.passive>
+
+type Ability_Definition =
+    Ability_Basic_Attack |
+
+    Ability_Skywrath_Concussive_Shot |
+    Ability_Skywrath_Ancient_Seal |
+    Ability_Skywrath_Mystic_Flare |
+
+    Ability_Dragon_Knight_Breathe_Fire |
+    Ability_Dragon_Knight_Dragon_Tail |
+    Ability_Dragon_Knight_Elder_Dragon_Form |
+    Ability_Dragon_Knight_Elder_Dragon_Form_Attack |
+
+    Ability_Lion_Impale |
+    Ability_Lion_Hex |
+    Ability_Lion_Finger_Of_Death |
+
+    Ability_Mirana_Starfall |
+    Ability_Mirana_Arrow |
+    Ability_Mirana_Leap |
+
+    Ability_Venge_Magic_Missile |
+    Ability_Venge_Wave_Of_Terror |
+    Ability_Venge_Nether_Swap |
+
+    Ability_Dark_Seer_Surge |
+    Ability_Dark_Seer_Ion_Shell |
+    Ability_Dark_Seer_Vacuum |
+
+    Ability_Shaker_Fissure |
+    Ability_Shaker_Enchant_Totem |
+    Ability_Shaker_Echo_Slam |
+
+    Ability_Pudge_Hook |
+    Ability_Pudge_Rot |
+    Ability_Pudge_Dismember |
+
+    Ability_Tide_Gush |
+    Ability_Tide_Anchor_Smash |
+    Ability_Tide_Ravage |
+
+    Ability_Luna_Lucent_Beam |
+    Ability_Luna_Moon_Glaive |
+    Ability_Luna_Eclipse |
+
+    Ability_Ember_Searing_Chains |
+    Ability_Ember_Sleight_Of_Fist |
+    Ability_Ember_Fire_Remnant |
+    Ability_Ember_Activate_Fire_Remnant |
+
+    Ability_Pocket_Tower_Attack |
+    Ability_Deployment_Zone |
+    Ability_Monster_Lifesteal |
+    Ability_Monster_Spawn_Spiderlings
+
+type Ability_Effect =
+    Ability_Effect_Luna_Moon_Glaive |
+    Ability_Effect_Mirana_Starfall |
+    Ability_Effect_Dark_Seer_Ion_Shell |
+    Ability_Effect_Pocket_Tower_Attack |
+    Ablity_Effect_Monster_Lifesteal |
+    Ablity_Effect_Monster_Spawn_Spiderlings
+
 type Ability_Definition_Active_Base = {
     available_since_level: number
     charges: number
@@ -63,13 +136,13 @@ type Ability_Definition_Passive_Base = {
 
 type Ability_Basic_Attack = Ability_Definition_Active_Base & {
     id: Ability_Id.basic_attack
-    type: Ability_Type.target_ground
+    type: Ability_Type.target_unit
     targeting: Ability_Targeting_Line
 }
 
 type Ability_Pudge_Hook = Ability_Definition_Active_Base & {
     id: Ability_Id.pudge_hook
-    type: Ability_Type.target_ground
+    type: Ability_Type.target_unit
     targeting: Ability_Targeting_Line
     damage: number
 }
@@ -192,7 +265,7 @@ type Ability_Mirana_Starfall = Ability_Definition_Active_Base & {
 
 type Ability_Mirana_Arrow = Ability_Definition_Active_Base & {
     id: Ability_Id.mirana_arrow
-    type: Ability_Type.target_ground
+    type: Ability_Type.target_unit
     targeting: Ability_Targeting_Line
 }
 
@@ -295,137 +368,78 @@ type Ability_Monster_Spawn_Spiderlings = Ability_Definition_Passive_Base & {
     how_many: number
 }
 
-type Ability_Ground_Target =
-    Ability_Basic_Attack |
-    Ability_Pudge_Hook |
-    Ability_Skywrath_Mystic_Flare |
-    Ability_Dragon_Knight_Breathe_Fire |
-    Ability_Dragon_Knight_Elder_Dragon_Form_Attack |
-    Ability_Lion_Impale |
-    Ability_Mirana_Arrow |
-    Ability_Mirana_Leap |
-    Ability_Venge_Wave_Of_Terror |
-    Ability_Dark_Seer_Vacuum |
-    Ability_Ember_Fire_Remnant |
-    Ability_Shaker_Fissure
-
-type Ability_Unit_Target =
-    Ability_Pudge_Dismember |
-    Ability_Tide_Gush |
-    Ability_Luna_Lucent_Beam |
-    Ability_Skywrath_Ancient_Seal |
-    Ability_Dragon_Knight_Dragon_Tail |
-    Ability_Lion_Hex |
-    Ability_Lion_Finger_Of_Death |
-    Ability_Venge_Magic_Missile |
-    Ability_Venge_Nether_Swap |
-    Ability_Dark_Seer_Ion_Shell |
-    Ability_Dark_Seer_Surge
-
-type Ability_No_Target =
-    Ability_Pudge_Rot |
-    Ability_Tide_Anchor_Smash |
-    Ability_Tide_Ravage |
-    Ability_Luna_Eclipse |
-    Ability_Skywrath_Concussive_Shot |
-    Ability_Dragon_Knight_Elder_Dragon_Form |
-    Ability_Mirana_Starfall |
-    Ability_Ember_Searing_Chains |
-    Ability_Ember_Sleight_Of_Fist |
-    Ability_Ember_Activate_Fire_Remnant |
-    Ability_Shaker_Enchant_Totem |
-    Ability_Shaker_Echo_Slam
-
-type Ability_Definition_Active = Ability_Ground_Target | Ability_Unit_Target | Ability_No_Target
-
-type Ability_Definition_Passive =
-    Ability_Luna_Moon_Glaive |
-    Ability_Pocket_Tower_Attack |
-    Ability_Deployment_Zone |
-    Ability_Monster_Lifesteal |
-    Ability_Monster_Spawn_Spiderlings
-
-type Ability_Definition = Ability_Definition_Active | Ability_Definition_Passive
-
-type Ability_Effect =
-    Ability_Effect_Luna_Moon_Glaive |
-    Ability_Effect_Mirana_Starfall |
-    Ability_Effect_Dark_Seer_Ion_Shell |
-    Ability_Effect_Pocket_Tower_Attack |
-    Ablity_Effect_Monster_Lifesteal |
-    Ablity_Effect_Monster_Spawn_Spiderlings
-
-type Delta_Ground_Target_Ability =
+type Delta_Cast_Ability =
     Delta_Ability_Basic_Attack |
+
     Delta_Ability_Pudge_Hook |
+    Delta_Ability_Pudge_Rot |
+    Delta_Ability_Pudge_Dismember |
+
+    Delta_Ability_Tide_Gush |
+    Delta_Ability_Tide_Anchor_Smash |
+    Delta_Ability_Tide_Ravage |
+
+    Delta_Ability_Skywrath_Concussive_Shot |
+    Delta_Ability_Skywrath_Ancient_Seal |
     Delta_Ability_Skywrath_Mystic_Flare |
+
     Delta_Ability_Dragon_Knight_Breathe_Fire |
+    Delta_Ability_Dragon_Knight_Dragon_Tail |
+    Delta_Ability_Dragon_Knight_Elder_Dragon_Form |
     Delta_Ability_Dragon_Knight_Elder_Dragon_Form_Attack |
+
+    Delta_Ability_Lion_Hex |
     Delta_Ability_Lion_Impale |
+    Delta_Ability_Lion_Finger_Of_Death |
+
+    Delta_Ability_Mirana_Starfall |
     Delta_Ability_Mirana_Arrow |
     Delta_Ability_Mirana_Leap |
-    Delta_Ability_Venge_Wave_Of_Terror |
-    Delta_Ability_Dark_Seer_Vacuum |
-    Delta_Ability_Ember_Fire_Remnant |
-    Delta_Ability_Shaker_Fissure
 
-type Delta_Unit_Target_Ability =
-    Delta_Ability_Pudge_Dismember |
-    Delta_Ability_Tide_Gush |
     Delta_Ability_Luna_Lucent_Beam |
-    Delta_Ability_Skywrath_Ancient_Seal |
-    Delta_Ability_Dragon_Knight_Dragon_Tail |
-    Delta_Ability_Lion_Hex |
-    Delta_Ability_Lion_Finger_Of_Death |
+    Delta_Ability_Luna_Eclipse |
+
     Delta_Ability_Venge_Magic_Missile |
+    Delta_Ability_Venge_Wave_Of_Terror |
     Delta_Ability_Venge_Nether_Swap |
+
+    Delta_Ability_Ember_Searing_Chains |
+    Delta_Ability_Ember_Sleight_Of_Fist |
+    Delta_Ability_Ember_Fire_Remnant |
+    Delta_Ability_Ember_Activate_Fire_Remnant |
+
+    Delta_Ability_Shaker_Fissure |
+    Delta_Ability_Shaker_Enchant_Totem |
+    Delta_Ability_Shaker_Echo_Slam |
+
+    Delta_Ability_Dark_Seer_Vacuum |
     Delta_Ability_Dark_Seer_Ion_Shell |
     Delta_Ability_Dark_Seer_Surge
 
-type Delta_Use_No_Target_Ability =
-    Delta_Ability_Pudge_Rot |
-    Delta_Ability_Tide_Anchor_Smash |
-    Delta_Ability_Tide_Ravage |
-    Delta_Ability_Luna_Eclipse |
-    Delta_Ability_Skywrath_Concussive_Shot |
-    Delta_Ability_Dragon_Knight_Elder_Dragon_Form |
-    Delta_Ability_Mirana_Starfall |
-    Delta_Ability_Ember_Searing_Chains |
-    Delta_Ability_Ember_Sleight_Of_Fist |
-    Delta_Ability_Ember_Activate_Fire_Remnant |
-    Delta_Ability_Shaker_Enchant_Totem |
-    Delta_Ability_Shaker_Echo_Slam
 
+type Delta_Ground_Target_Ability = Find_By_Type<Delta_Cast_Ability, Delta_Type.use_ground_target_ability>
+type Delta_Unit_Target_Ability = Find_By_Type<Delta_Cast_Ability, Delta_Type.use_unit_target_ability>
+type Delta_Use_No_Target_Ability = Find_By_Type<Delta_Cast_Ability, Delta_Type.use_no_target_ability>
 
-type Basic_Attack_Hit = {
-    hit: true
-    target: Basic_Attack_Health_Change
+type Basic_Attack_Health_Change = {
+    blocked_by_armor: number
+    change: Health_Change
 }
 
-type Basic_Attack_Health_Change = Unit_Health_Change & {
+type Basic_Attack_Unit_Health_Change = Unit_Health_Change & {
     blocked_by_armor: number
 }
 
-type Delta_Ability_Basic_Attack = Delta_Ground_Target_Ability_Base & {
+type Delta_Ability_Basic_Attack = Delta_Unit_Target_Ability_Base & {
     ability_id: Ability_Id.basic_attack
-    result: Basic_Attack_Hit | Line_Ability_Miss
+    target: Basic_Attack_Health_Change
 }
 
-type Pudge_Hook_Hit = {
-    hit: true
+type Delta_Ability_Pudge_Hook = Delta_Unit_Target_Ability_Base & {
+    ability_id: Ability_Id.pudge_hook
     target_unit_id: Unit_Id
     damage_dealt: Health_Change
     move_target_to: XY
-}
-
-type Line_Ability_Miss = {
-    hit: false
-    final_point: XY
-}
-
-type Delta_Ability_Pudge_Hook = Delta_Ground_Target_Ability_Base & {
-    ability_id: Ability_Id.pudge_hook
-    result: Pudge_Hook_Hit | Line_Ability_Miss
 }
 
 type Delta_Ability_Pudge_Rot = Delta_Use_No_Target_Ability_Base & {
@@ -439,8 +453,8 @@ type Health_Change = {
 }
 
 type Unit_Health_Change = {
-    target_unit_id: Unit_Id;
-    change: Health_Change;
+    target_unit_id: Unit_Id
+    change: Health_Change
 }
 
 type Unit_Modifier_Application = {
@@ -526,7 +540,7 @@ type Ability_Effect_Dark_Seer_Ion_Shell = {
 type Ability_Effect_Pocket_Tower_Attack = {
     ability_id: Ability_Id.pocket_tower_attack
     source_unit_id: Unit_Id
-    damage_dealt: Basic_Attack_Health_Change
+    damage_dealt: Basic_Attack_Unit_Health_Change
 }
 
 type Ablity_Effect_Monster_Lifesteal = {
@@ -571,7 +585,7 @@ type Delta_Ability_Dragon_Knight_Elder_Dragon_Form = Delta_Use_No_Target_Ability
 
 type Delta_Ability_Dragon_Knight_Elder_Dragon_Form_Attack = Delta_Ground_Target_Ability_Base & {
     ability_id: Ability_Id.dragon_knight_elder_dragon_form_attack
-    targets: Basic_Attack_Health_Change[]
+    targets: Basic_Attack_Unit_Health_Change[]
 }
 
 type Delta_Ability_Lion_Hex = Delta_Unit_Target_Ability_Base & {
@@ -601,7 +615,7 @@ type Delta_Ability_Ember_Searing_Chains = Delta_Use_No_Target_Ability_Base & {
 
 type Delta_Ability_Ember_Sleight_Of_Fist = Delta_Use_No_Target_Ability_Base & {
     ability_id: Ability_Id.ember_sleight_of_fist
-    targets: Basic_Attack_Health_Change[]
+    targets: Basic_Attack_Unit_Health_Change[]
 }
 
 type Delta_Ability_Ember_Fire_Remnant = Delta_Ground_Target_Ability_Base & {
@@ -623,14 +637,9 @@ type Delta_Ability_Ember_Activate_Fire_Remnant = Delta_Use_No_Target_Ability_Bas
     }
 }
 
-type Mirana_Arrow_Hit = {
-    hit: true
-    stun: Unit_Modifier_Application
-}
-
-type Delta_Ability_Mirana_Arrow = Delta_Ground_Target_Ability_Base & {
+type Delta_Ability_Mirana_Arrow = Delta_Unit_Target_Ability_Base & {
     ability_id: Ability_Id.mirana_arrow
-    result: Mirana_Arrow_Hit | Line_Ability_Miss
+    stun: Modifier_Application
 }
 
 type Delta_Ability_Mirana_Leap = Delta_Ground_Target_Ability_Base & {

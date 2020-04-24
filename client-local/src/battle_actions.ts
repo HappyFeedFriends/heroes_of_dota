@@ -248,110 +248,109 @@ export function authorize_ability_use_with_error_ui(unit: Unit, ability: Ability
     return ability_use;
 }
 
-export function try_attack_target(source: Unit, target: XY, flash_ground_on_error: boolean) {
-    if (!source.attack) {
-        show_error_ui(custom_error("Can't attack"));
-        return;
+function highlight_ability_range(unit: Unit, targeting: Ability_Targeting) {
+    const cell_index_to_highlight: boolean[] = [];
+
+    for (const cell of battle.grid.cells) {
+        const index = grid_cell_index(battle.grid, cell.position);
+
+        if (ability_targeting_fits(battle, targeting, unit.position, cell.position)) {
+            cell_index_to_highlight[index] = true;
+        }
     }
 
-    const ability_use_permission = authorize_ability_use_with_error_ui(source, source.attack);
-    if (!ability_use_permission) return;
+    highlight_outline_temporarily(battle.grid, cell_index_to_highlight, color_red, 0.2);
+}
 
-    if (source.attack.type == Ability_Type.target_ground) {
-        const attack_use_permission = authorize_ground_target_ability_use(ability_use_permission, target);
+export function try_use_no_target_ability(unit: Unit, ability: Ability_No_Target): boolean {
+    const ability_select_permission = authorize_ability_use_with_error_ui(unit, ability);
+    if (!ability_select_permission) return false;
 
-        if (attack_use_permission.ok) {
-            try_emit_random_hero_sound(source, sounds => sounds.attack);
+    if (ability == unit.attack) {
+        try_emit_random_hero_sound(unit, sounds => sounds.attack);
+    }
 
-            take_battle_action({
-                type: Action_Type.ground_target_ability,
-                ability_id: source.attack.id,
-                unit_id: source.id,
-                to: target
-            })
-        } else {
-            show_action_error_ui(attack_use_permission, ground_target_ability_use_error_reason);
+    take_battle_action({
+        type: Action_Type.use_no_target_ability,
+        unit_id: unit.id,
+        ability_id: ability.id
+    });
 
-            if (flash_ground_on_error && attack_use_permission.kind == Ground_Target_Ability_Use_Error.not_in_range) {
-                const cell_index_to_highlight: boolean[] = [];
+    return true;
+}
 
-                for (const cell of battle.grid.cells) {
-                    const index = grid_cell_index(battle.grid, cell.position);
+export function try_use_ground_target_ability(unit: Unit, ability: Ability_Ground_Target, at_position: XY, highlight_ground_on_error = false): boolean {
+    const ability_select_permission = authorize_ability_use_with_error_ui(unit, ability);
+    if (!ability_select_permission) return false;
 
-                    if (ability_targeting_fits(battle, source.attack.targeting, source.position, cell.position)) {
-                        cell_index_to_highlight[index] = true;
-                    }
-                }
+    const ability_use_permission = authorize_ground_target_ability_use(ability_select_permission, at_position);
 
-                highlight_outline_temporarily(battle.grid, cell_index_to_highlight, color_red, 0.2);
-            }
+    if (ability_use_permission.ok) {
+        if (ability == unit.attack) {
+            try_emit_random_hero_sound(unit, sounds => sounds.attack);
         }
+
+        take_battle_action({
+            type: Action_Type.ground_target_ability,
+            unit_id: unit.id,
+            ability_id: ability.id,
+            to: at_position
+        });
+
+        return true;
+    } else {
+        show_action_error_ui(ability_use_permission, ground_target_ability_use_error_reason);
+
+        if (highlight_ground_on_error && ability_use_permission.kind == Ground_Target_Ability_Use_Error.not_in_range) {
+            highlight_ability_range(unit, ability.targeting);
+        }
+
+        return false;
     }
 }
 
-export function try_use_targeted_ability(unit: Unit, ability: Ability, at_position: XY, cursor_entity_unit?: Unit): boolean {
+export function try_use_unit_targeted_ability(unit: Unit, ability: Ability_Unit_Target, cursor_entity_unit?: Unit, highlight_ground_on_error = false): boolean {
     const ability_select_permission = authorize_ability_use_with_error_ui(unit, ability);
-
     if (!ability_select_permission) return false;
 
-    switch (ability.type) {
-        case Ability_Type.target_ground: {
-            const ability_use_permission = authorize_ground_target_ability_use(ability_select_permission, at_position);
-
-            if (ability_use_permission.ok) {
-                take_battle_action({
-                    type: Action_Type.ground_target_ability,
-                    unit_id: unit.id,
-                    ability_id: ability.id,
-                    to: at_position
-                });
-            } else {
-                show_action_error_ui(ability_use_permission, ground_target_ability_use_error_reason);
-
-                return false;
-            }
-
-            break;
+    function try_emit_ability_voice_line() {
+        if (ability == unit.attack) {
+            try_emit_random_hero_sound(unit, sounds => sounds.attack);
         }
-
-        case Ability_Type.target_unit: {
-            if (!cursor_entity_unit) {
-                show_error_ui(custom_error("Select a target"));
-                return false;
-            }
-
-            const act_on_target_permission = authorize_act_on_known_unit(battle, cursor_entity_unit);
-
-            if (!act_on_target_permission.ok) {
-                show_action_error_ui(act_on_target_permission, act_on_unit_error_reason);
-                return false;
-            }
-
-            const ability_use_permission = authorize_unit_target_ability_use(ability_select_permission, act_on_target_permission);
-
-            if (ability_use_permission.ok) {
-                take_battle_action({
-                    type: Action_Type.unit_target_ability,
-                    unit_id: unit.id,
-                    ability_id: ability.id,
-                    target_id: cursor_entity_unit.id
-                });
-            } else {
-                show_action_error_ui(ability_use_permission, unit_target_ability_use_error_reason);
-
-                return false;
-            }
-        }
-
-        case Ability_Type.no_target:
-        case Ability_Type.passive: {
-            break;
-        }
-
-        default: unreachable(ability);
     }
 
-    return true;
+    if (!cursor_entity_unit) {
+        show_error_ui(custom_error("Select a target"));
+        return false;
+    }
+
+    const act_on_target_permission = authorize_act_on_known_unit(battle, cursor_entity_unit);
+    if (!act_on_target_permission.ok) {
+        show_action_error_ui(act_on_target_permission, act_on_unit_error_reason);
+        return false;
+    }
+
+    const ability_use_permission = authorize_unit_target_ability_use(ability_select_permission, act_on_target_permission);
+
+    if (ability_use_permission.ok) {
+        try_emit_ability_voice_line();
+        take_battle_action({
+            type: Action_Type.unit_target_ability,
+            unit_id: unit.id,
+            ability_id: ability.id,
+            target_id: cursor_entity_unit.id
+        });
+
+        return true;
+    } else {
+        show_action_error_ui(ability_use_permission, unit_target_ability_use_error_reason);
+
+        if (highlight_ground_on_error && ability_use_permission.kind == Unit_Target_Ability_Use_Error.not_in_range) {
+            highlight_ability_range(unit, ability.targeting);
+        }
+
+        return false;
+    }
 }
 
 function highlight_move_path(unit: Unit, to: XY, costs: Cost_Population_Result) {

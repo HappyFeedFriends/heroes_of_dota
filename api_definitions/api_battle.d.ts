@@ -210,60 +210,45 @@ type Ability_Targeting_Line = {
     type: Ability_Targeting_Type.line
     line_length: number
     flags: Ability_Targeting_Flag_Field
-    selector: Ability_Target_Selector
+    selector: Ability_Area_Selector
 }
 
 type Ability_Targeting_Target_In_Manhattan_Distance = {
     type: Ability_Targeting_Type.unit_in_manhattan_distance
     distance: number
     flags: Ability_Targeting_Flag_Field
-    selector: Ability_Target_Selector
+    selector: Ability_Area_Selector
 }
 
 type Ability_Targeting_Rectangular_Area_Around_Caster = {
     type: Ability_Targeting_Type.rectangular_area_around_caster
     area_radius: number
     flags: Ability_Targeting_Flag_Field
-    selector: Ability_Target_Selector
+    selector: Ability_Area_Selector
 }
 
 type Ability_Targeting_Any_Cell = {
     type: Ability_Targeting_Type.any_cell
     flags: Ability_Targeting_Flag_Field
-    selector: Ability_Target_Selector
+    selector: Ability_Area_Selector
 }
 
-type Ability_Target_Selector_Single_Target = {
+type Ability_Area_Selector = {
     type: Ability_Target_Selector_Type.single_target
-}
-
-type Ability_Target_Selector_Rectangle = {
+} | {
     type: Ability_Target_Selector_Type.rectangle
     area_radius: number
-}
-
-type Ability_Target_Selector_Line = {
+} | {
     type: Ability_Target_Selector_Type.line
     length: number
-}
-
-type Ability_Target_Selector_T_Shape = {
+} | {
+    type: Ability_Target_Selector_Type.first_in_line
+    length: number
+} | {
     type: Ability_Target_Selector_Type.t_shape
     stem_length: number
     arm_length: number
 }
-
-type Ability_Target_Selector_First_In_Line = {
-    type: Ability_Target_Selector_Type.first_in_line
-    length: number
-}
-
-type Ability_Target_Selector =
-    Ability_Target_Selector_Single_Target |
-    Ability_Target_Selector_Rectangle |
-    Ability_Target_Selector_Line |
-    Ability_Target_Selector_First_In_Line |
-    Ability_Target_Selector_T_Shape
 
 type Ability_Targeting =
     Ability_Targeting_Line |

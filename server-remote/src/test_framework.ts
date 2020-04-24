@@ -397,6 +397,17 @@ class For_Player_Unit {
         return this;
     }
 
+    order_cast_unit_target(ability: Ability_Id, target: Unit) {
+        try_take_turn_action(this.test.battle, this.player, {
+            type: Action_Type.unit_target_ability,
+            unit_id: this.unit.id,
+            ability_id: ability,
+            target_id: target.id
+        });
+
+        return this;
+    }
+
     order_cast_on_ground(ability: Ability_Id, at: XY) {
         try_take_turn_action(this.test.battle, this.player, {
             type: Action_Type.ground_target_ability,

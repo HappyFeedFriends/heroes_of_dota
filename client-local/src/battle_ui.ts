@@ -6,12 +6,13 @@ import {
     show_action_error_ui,
     show_player_action_error_ui,
     take_battle_action,
-    try_attack_target,
     try_order_unit_to_move,
     try_order_unit_to_pick_up_rune,
     try_purchase_item,
     try_use_card,
-    try_use_targeted_ability
+    try_use_no_target_ability,
+    try_use_ground_target_ability,
+    try_use_unit_targeted_ability
 } from "./battle_actions";
 
 import {
@@ -51,7 +52,7 @@ type Unit_Selection = {
 type Ability_Selection = {
     type: Selection_Type.ability
     unit: Unit
-    ability: Ability
+    ability: Ability_Ground_Target | Ability_Unit_Target
 
     unit_entity: EntityId
 }
@@ -815,7 +816,7 @@ function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, 
 
 function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell_index_to_highlight: boolean[]) {
     let can_highlighted_ability_target_hovered_cell = false;
-    let highlighted_ability_selector: Ability_Target_Selector | undefined;
+    let highlighted_ability_selector: Ability_Area_Selector | undefined;
 
     if (hover.type == Hover_Type.cell) {
         const ability = selection.ability;
@@ -1795,7 +1796,10 @@ function update_ability_button_ui(button: Hero_Ability_Button, hero: Hero, abili
             const [ id ] = entity_data;
 
             select_unit(id);
-            try_select_unit_ability(hero, ability);
+
+            if (ability.type != Ability_Type.passive) {
+                try_select_unit_ability(hero, ability);
+            }
         }
     });
 
@@ -1905,7 +1909,7 @@ function deselect_ability(selection: Ability_Selection) {
     update_grid_visuals();
 }
 
-function select_unit_ability(unit: Unit, ability: Ability) {
+function select_unit_ability(unit: Unit, ability: Ability_Ground_Target | Ability_Unit_Target) {
     if (selection.type == Selection_Type.ability) {
         if (selection.unit == unit && selection.ability.id == ability.id) {
             return;
@@ -1913,7 +1917,6 @@ function select_unit_ability(unit: Unit, ability: Ability) {
     }
 
     const entity_data = find_unit_entity_data_by_unit_id(battle, unit.id);
-
     if (!entity_data) return;
 
     if (unit.supertype == Unit_Supertype.hero) {
@@ -2073,7 +2076,10 @@ function update_current_ability_based_on_cursor_state() {
     const click_behaviors = GameUI.GetClickBehaviors();
 
     if (is_unit_selection(selection) && click_behaviors == CLICK_BEHAVIORS.DOTA_CLICK_BEHAVIOR_ATTACK && selection.unit.attack) {
-        select_unit_ability(selection.unit, selection.unit.attack);
+        if (selection.unit.attack.type != Ability_Type.no_target) {
+            select_unit_ability(selection.unit, selection.unit.attack);
+        }
+
         return;
     }
 
@@ -2235,7 +2241,12 @@ export function battle_filter_mouse_click(event: MouseEvent, button: MouseButton
                     return false;
                 }
             } else if (wants_to_use_ability) {
-                const success = try_use_targeted_ability(selection.unit, selection.ability, battle_position, cursor_entity_unit);
+                const success = (() => {
+                    switch (selection.ability.type) {
+                        case Ability_Type.target_ground: return try_use_ground_target_ability(selection.unit, selection.ability, battle_position);
+                        case Ability_Type.target_unit: return try_use_unit_targeted_ability(selection.unit, selection.ability, cursor_entity_unit);
+                    }
+                })();
 
                 if (success) {
                     deselect_ability(selection);
@@ -2292,17 +2303,22 @@ export function battle_filter_mouse_click(event: MouseEvent, button: MouseButton
                 button == MouseButton.LEFT &&
                 click_behaviors == CLICK_BEHAVIORS.DOTA_CLICK_BEHAVIOR_MOVE;
 
-            const wants_to_attack_unconditionally =
-                button == MouseButton.LEFT &&
-                click_behaviors == CLICK_BEHAVIORS.DOTA_CLICK_BEHAVIOR_ATTACK;
-
             if (wants_to_perform_automatic_action) {
                 const unit_at_cursor_position = valid_unit_at(battle_position);
                 const rune_at_cursor_position = rune_at(battle, battle_position);
 
                 if (unit_at_cursor_position) {
                     if (unit_at_cursor_position != selection.unit) {
-                        try_attack_target(selection.unit, battle_position, true);
+                        if (selection.unit.attack) {
+                            switch (selection.unit.attack.type) {
+                                case Ability_Type.target_ground: { try_use_ground_target_ability(selection.unit, selection.unit.attack, battle_position, true); break; }
+                                case Ability_Type.target_unit: { try_use_unit_targeted_ability(selection.unit, selection.unit.attack, cursor_entity_unit, true); break; }
+                                case Ability_Type.no_target: { try_use_no_target_ability(selection.unit, selection.unit.attack); break; }
+                                default: unreachable(selection.unit.attack);
+                            }
+                        } else {
+                            show_error_ui(custom_error("Can't attack"));
+                        }
                     }
                 } else if (rune_at_cursor_position) {
                     try_order_unit_to_pick_up_rune(selection.unit, rune_at_cursor_position);
@@ -2314,8 +2330,6 @@ export function battle_filter_mouse_click(event: MouseEvent, button: MouseButton
             } else if (wants_to_move_unconditionally) {
                 try_order_unit_to_move(selection.unit, battle_position);
                 move_order_particle(world_position);
-            } else if (wants_to_attack_unconditionally) {
-                try_attack_target(selection.unit, battle_position, false);
             }
         }
     }
@@ -2774,7 +2788,7 @@ function show_game_over_ui(result: Combat_Result) {
     });
 }
 
-function try_select_unit_ability(unit: Unit, ability: Ability) {
+function try_select_unit_ability(unit: Unit, ability: Ability_Active) {
     const ability_use = authorize_ability_use_with_error_ui(unit, ability);
     if (!ability_use) {
         return;
@@ -2783,11 +2797,7 @@ function try_select_unit_ability(unit: Unit, ability: Ability) {
     $.Msg("clicked ", get_ability_icon(ability.id));
 
     if (ability.type == Ability_Type.no_target) {
-        take_battle_action({
-            type: Action_Type.use_no_target_ability,
-            unit_id: unit.id,
-            ability_id: ability.id
-        })
+        try_use_no_target_ability(unit, ability);
     } else {
         select_unit_ability(unit, ability);
     }
@@ -2800,8 +2810,7 @@ function setup_custom_ability_hotkeys() {
         GameUI.CustomUIConfig().register_key_bind(command, () => {
             if (selection.type == Selection_Type.unit) {
                 const ability = selection.unit.abilities[index];
-
-                if (!ability) return;
+                if (!ability || ability.type == Ability_Type.passive) return;
 
                 try_select_unit_ability(selection.unit, ability);
             }

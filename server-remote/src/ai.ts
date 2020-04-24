@@ -65,9 +65,7 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
             if (are_allies) continue;
 
             const ability = actor.attack;
-
             if (!ability) continue;
-            if (ability.type != Ability_Type.target_ground) continue;
 
             const use_permission = authorize_ability_use(order_permission, ability.id);
             if (!use_permission.ok) continue;
@@ -178,12 +176,43 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
         if (best_cell_targets.length > 0) {
             const best_weight_target = best_cell_targets.reduce((prev, val) => prev.weight > val.weight ? prev : val);
 
-            actions.push({
-                type: Action_Type.ground_target_ability,
-                unit_id: actor.id,
-                ability_id: actor.attack!.id,
-                to: best_weight_target.enemy.position
-            });
+            if (actor.attack) {
+                const base = {
+                    unit_id: actor.id,
+                    ability_id: actor.attack.id
+                };
+
+                switch (actor.attack.type) {
+                    case Ability_Type.target_ground: {
+                        actions.push({
+                            ...base,
+                            type: Action_Type.ground_target_ability,
+                            to: best_weight_target.enemy.position
+                        });
+
+                        break;
+                    }
+
+                    case Ability_Type.target_unit: {
+                        actions.push({
+                            ...base,
+                            type: Action_Type.unit_target_ability,
+                            target_id: best_weight_target.enemy.id
+                        });
+
+                        break;
+                    }
+
+                    case Ability_Type.no_target: {
+                        actions.push({
+                            ...base,
+                            type: Action_Type.use_no_target_ability
+                        });
+
+                        break;
+                    }
+                }
+            }
 
             debug.arrow(red, best_cell.position, best_weight_target.enemy.position);
         }

@@ -802,37 +802,14 @@ function filter_and_map_existing_units<T extends { target_unit_id: Unit_Id }>(ar
     return result;
 }
 
-function pudge_hook(game: Game, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
-    function is_hook_hit(cast: Pudge_Hook_Hit | Line_Ability_Miss): cast is Pudge_Hook_Hit {
-        return from_client_bool(cast.hit); // @PanoramaBool
-    }
-
-    let target: Replace_Target_Unit_Id<Pudge_Hook_Hit> | Line_Ability_Miss;
-
-    if (is_hook_hit(cast.result)) {
-        const unit = find_unit_by_id(cast.result.target_unit_id);
-        if (!unit) return;
-
-        target = {
-            hit: true,
-            unit: unit,
-            damage_dealt: cast.result.damage_dealt,
-            move_target_to: cast.result.move_target_to
-        }
-    } else {
-        target = {
-            hit: false,
-            final_point: cast.result.final_point
-        }
-    }
-
-    const click_target = cast.target_position;
+function pudge_hook(game: Game, pudge: Unit, target: Unit, cast: Delta_Ability_Pudge_Hook) {
+    const target_position = target.position;
     const hook_offset = Vector(0, 0, 96);
     const pudge_origin = pudge.handle.GetAbsOrigin() + hook_offset as Vector;
-    const travel_direction = Vector(click_target.x - pudge.position.x, click_target.y - pudge.position.y).Normalized();
+    const travel_direction = Vector(target_position.x - pudge.position.x, target_position.y - pudge.position.y).Normalized();
     const travel_speed = 1600;
 
-    turn_unit_towards_target(pudge, click_target);
+    turn_unit_towards_target(pudge, target_position);
 
     const hook_wearable = pudge.handle.GetTogglableWearable(DOTASlotType_t.DOTA_LOADOUT_TYPE_WEAPON);
     const pudge_gesture = unit_start_gesture(pudge, GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_1);
@@ -842,8 +819,7 @@ function pudge_hook(game: Game, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
 
     wait(0.15);
 
-    const travel_target = target.hit ? target.unit.position : target.final_point;
-    const distance_to_travel = Const.battle_cell_size * Math.max(Math.abs(travel_target.x - pudge.position.x), Math.abs(travel_target.y - pudge.position.y));
+    const distance_to_travel = Const.battle_cell_size * Math.max(Math.abs(target_position.x - pudge.position.x), Math.abs(target_position.y - pudge.position.y));
     const time_to_travel = distance_to_travel / travel_speed;
 
     const chain = fx("particles/units/heroes/hero_pudge/pudge_meathook.vpcf")
@@ -855,50 +831,36 @@ function pudge_hook(game: Game, pudge: Unit, cast: Delta_Ability_Pudge_Hook) {
         .with_point_value(5)
         .to_unit_custom_origin(7, pudge);
 
-    if (target.hit) {
-        const target_unit = target.unit;
+    wait(time_to_travel);
+    change_health(game, pudge, target, cast.damage_dealt);
 
-        wait(time_to_travel);
-        change_health(game, pudge, target_unit, target.damage_dealt);
+    chain_sound.stop();
 
-        chain_sound.stop();
+    unit_emit_sound(target, "Hero_Pudge.AttackHookImpact");
 
-        unit_emit_sound(target_unit, "Hero_Pudge.AttackHookImpact");
+    const target_chain_sound = unit_emit_sound(target, "Hero_Pudge.AttackHookExtend");
+    const target_flail = unit_start_gesture(target, GameActivity_t.ACT_DOTA_FLAIL);
 
-        const target_chain_sound = unit_emit_sound(target_unit, "Hero_Pudge.AttackHookExtend");
-        const target_flail = unit_start_gesture(target_unit, GameActivity_t.ACT_DOTA_FLAIL);
+    fx("particles/units/heroes/hero_pudge/pudge_meathook_impact.vpcf")
+        .to_unit_attach_point(0, target, "attach_hitloc")
+        .release();
 
-        fx("particles/units/heroes/hero_pudge/pudge_meathook_impact.vpcf")
-            .to_unit_attach_point(0, target_unit, "attach_hitloc")
-            .release();
+    chain.to_unit_attach_point(1, target, "attach_hitloc", target.handle.GetOrigin() + hook_offset as Vector);
 
-        chain.to_unit_attach_point(1, target_unit, "attach_hitloc", target_unit.handle.GetOrigin() + hook_offset as Vector);
+    const target_world_position = battle_position_to_world_position_center(battle.world_origin, cast.move_target_to);
+    const travel_position_start = target.handle.GetAbsOrigin();
+    const travel_position_finish = GetGroundPosition(Vector(target_world_position.x, target_world_position.y), target.handle);
 
-        const target_world_position = battle_position_to_world_position_center(battle.world_origin, target.move_target_to);
-        const travel_position_start = target_unit.handle.GetAbsOrigin();
-        const travel_position_finish = GetGroundPosition(Vector(target_world_position.x, target_world_position.y), target_unit.handle);
+    do_each_frame_for(time_to_travel, progress => {
+        const travel_position = (travel_position_finish - travel_position_start) * progress + travel_position_start as Vector;
 
-        do_each_frame_for(time_to_travel, progress => {
-            const travel_position = (travel_position_finish - travel_position_start) * progress + travel_position_start as Vector;
+        target.handle.SetAbsOrigin(travel_position);
+    });
 
-            target_unit.handle.SetAbsOrigin(travel_position);
-        });
+    target_chain_sound.stop();
+    target_flail.fade();
 
-        target_chain_sound.stop();
-        target_flail.fade();
-
-        target_unit.position = target.move_target_to;
-    } else {
-        wait(time_to_travel);
-
-        chain.with_vector_value(1, pudge_origin);
-
-        chain_sound.stop();
-
-        EmitSoundOnLocationWithCaster(battle_position_to_world_position_center(battle.world_origin, travel_target), "Hero_Pudge.AttackHookRetractStop", pudge.handle);
-
-        wait(time_to_travel);
-    }
+    target.position = cast.move_target_to;
 
     hook_wearable.RemoveEffects(Effects.EF_NODRAW);
     pudge_gesture.fade();
@@ -1069,9 +1031,7 @@ function highlight_grid_for_no_target_ability(unit: Unit, ability: Ability_Id) {
     })
 }
 
-function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_Attack) {
-    const target = cast.target_position;
-
+function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_Ability_Basic_Attack) {
     function get_hero_pre_attack_sound(hero: Hero): string | undefined {
         switch (hero.type) {
             case Hero_Type.pudge: return "Hero_Pudge.PreAttack";
@@ -1118,10 +1078,6 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
 
     const ranged_attack_spec = get_ranged_attack_spec(unit);
 
-    function is_attack_hit(cast: Basic_Attack_Hit | Line_Ability_Miss): cast is Basic_Attack_Hit {
-        return from_client_bool(cast.hit); // @PanoramaBool
-    }
-
     if (ranged_attack_spec) {
         try_play_sound_for_hero(unit, get_hero_pre_attack_sound);
         unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK, ranged_attack_spec.attack_point);
@@ -1131,23 +1087,12 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
             shake_screen(unit.position, ranged_attack_spec.shake_on_attack);
         }
 
-        if (is_attack_hit(cast.result)) {
-            const target_unit = find_unit_by_id(cast.result.target.target_unit_id);
+        tracking_projectile_to_unit(unit, target, ranged_attack_spec.particle_path, ranged_attack_spec.projectile_speed);
+        change_health(game, unit, target, cast.target.change, cast.target.blocked_by_armor);
+        try_play_sound_for_hero(unit, get_hero_ranged_impact_sound, target);
 
-            if (!target_unit) {
-                log_chat_debug_message(`Error: unit ${cast.result.target.target_unit_id} not found`);
-                return;
-            }
-
-            tracking_projectile_to_unit(unit, target_unit, ranged_attack_spec.particle_path, ranged_attack_spec.projectile_speed);
-            change_health(game, unit, target_unit, cast.result.target.change, cast.result.target.blocked_by_armor);
-            try_play_sound_for_hero(unit, get_hero_ranged_impact_sound, target_unit);
-
-            if (ranged_attack_spec.shake_on_impact) {
-                shake_screen(target_unit.position, ranged_attack_spec.shake_on_impact);
-            }
-        } else {
-            tracking_projectile_to_point(unit, cast.result.final_point, ranged_attack_spec.particle_path, ranged_attack_spec.projectile_speed);
+        if (ranged_attack_spec.shake_on_impact) {
+            shake_screen(target.position, ranged_attack_spec.shake_on_impact);
         }
     } else {
         if (unit.supertype == Unit_Supertype.creep) {
@@ -1156,20 +1101,12 @@ function perform_basic_attack(game: Game, unit: Unit, cast: Delta_Ability_Basic_
 
         try_play_sound_for_hero(unit, get_hero_pre_attack_sound);
         unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK);
+        change_health(game, unit, target, cast.target.change, cast.target.blocked_by_armor);
+        shake_screen(target.position, Shake.weak);
+        try_play_sound_for_hero(unit, get_hero_attack_sound);
 
-        if (is_attack_hit(cast.result)) {
-            const target_unit = find_unit_by_id(cast.result.target.target_unit_id);
-
-            if (target_unit) {
-                change_health(game, unit, target_unit, cast.result.target.change, cast.result.target.blocked_by_armor);
-            }
-
-            shake_screen(target, Shake.weak);
-            try_play_sound_for_hero(unit, get_hero_attack_sound);
-
-            if (unit.supertype == Unit_Supertype.creep) {
-                unit_emit_sound(unit, unit.traits.sounds.attack);
-            }
+        if (unit.supertype == Unit_Supertype.creep) {
+            unit_emit_sound(unit, unit.traits.sounds.attack);
         }
     }
 }
@@ -1189,16 +1126,6 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
     turn_unit_towards_target(unit, cast.target_position);
 
     switch (cast.ability_id) {
-        case Ability_Id.basic_attack: {
-            perform_basic_attack(game, unit, cast);
-            break;
-        }
-
-        case Ability_Id.pudge_hook: {
-            pudge_hook(game, unit, cast);
-            break;
-        }
-
         case Ability_Id.skywrath_mystic_flare: {
             const caster_gesture = unit_start_gesture(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_4);
 
@@ -1367,61 +1294,6 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             });
 
             wait_for_all_forks(forks);
-
-            break;
-        }
-
-        case Ability_Id.mirana_arrow: {
-            function is_arrow_hit(cast: Mirana_Arrow_Hit | Line_Ability_Miss): cast is Mirana_Arrow_Hit {
-                return from_client_bool(cast.hit); // @PanoramaBool
-            }
-
-            unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_2);
-
-            let travel_target: XY;
-
-            if (is_arrow_hit(cast.result)) {
-                const target = find_unit_by_id(cast.result.stun.target_unit_id);
-
-                if (!target) {
-                    log_chat_debug_message("Mirana arrow target not found");
-                    return;
-                }
-
-                travel_target = target.position;
-            } else {
-                travel_target = cast.result.final_point;
-            }
-
-            const world_to = battle_position_to_world_position_center(battle.world_origin, travel_target);
-            const distance = (world_to - world_from as Vector).Length2D();
-
-            const travel_speed = 1300;
-            const time_to_travel = distance / travel_speed;
-            const particle = fx("particles/units/heroes/hero_mirana/mirana_spell_arrow.vpcf")
-                .to_location(0, unit.position)
-                .with_vector_value(1, direction * travel_speed as Vector)
-                .with_forward_vector(0, unit.handle.GetForwardVector());
-
-            unit_emit_sound(unit, "Hero_Mirana.ArrowCast");
-            const loop_sound = unit_emit_sound(unit, "Hero_Mirana.Arrow");
-
-            wait(time_to_travel);
-
-            if (is_arrow_hit(cast.result)) {
-                const target = find_unit_by_id(cast.result.stun.target_unit_id);
-
-                if (target) {
-                    apply_modifier(game, target, cast.result.stun.modifier);
-                }
-
-                unit_emit_sound(unit, "Hero_Mirana.ArrowImpact");
-            }
-
-            // TODO @VoiceOver hit/miss voicelines
-            loop_sound.stop();
-
-            particle.destroy_and_release(false);
 
             break;
         }
@@ -1801,6 +1673,16 @@ function play_unit_target_ability_delta(game: Game, caster: Unit, cast: Delta_Un
     highlight_grid_for_targeted_ability(caster, cast.ability_id, target.position);
 
     switch (cast.ability_id) {
+        case Ability_Id.basic_attack: {
+            perform_basic_attack(game, caster, target, cast);
+            break;
+        }
+
+        case Ability_Id.pudge_hook: {
+            pudge_hook(game, caster, target, cast);
+            break;
+        }
+
         case Ability_Id.pudge_dismember: {
             function loop_health_change(target: Unit, change: Health_Change) {
                 const loops = 4;
@@ -1915,6 +1797,38 @@ function play_unit_target_ability_delta(game: Game, caster: Unit, cast: Delta_Un
             unit_emit_sound(target, "Hero_Lion.FingerOfDeathImpact");
             change_health(game, caster, target, cast.damage_dealt);
             shake_screen(target.position, Shake.medium);
+
+            break;
+        }
+
+        case Ability_Id.mirana_arrow: {
+            unit_play_activity(caster, GameActivity_t.ACT_DOTA_CAST_ABILITY_2);
+
+            const travel_target: XY = target.position;
+            const world_from = battle_position_to_world_position_center(battle.world_origin, caster.position);
+            const world_to = battle_position_to_world_position_center(battle.world_origin, travel_target);
+            const world_delta = (world_to - world_from as Vector);
+            const distance = world_delta.Length2D();
+
+            const travel_speed = 1300;
+            const time_to_travel = distance / travel_speed;
+            const particle = fx("particles/units/heroes/hero_mirana/mirana_spell_arrow.vpcf")
+                .to_location(0, caster.position)
+                .with_vector_value(1, world_delta.Normalized() * travel_speed as Vector)
+                .with_forward_vector(0, caster.handle.GetForwardVector());
+
+            unit_emit_sound(caster, "Hero_Mirana.ArrowCast");
+            const loop_sound = unit_emit_sound(caster, "Hero_Mirana.Arrow");
+
+            wait(time_to_travel);
+
+            apply_modifier(game, target, cast.stun);
+            unit_emit_sound(caster, "Hero_Mirana.ArrowImpact");
+
+            // TODO @VoiceOver hit voiceline
+            loop_sound.stop();
+
+            particle.destroy_and_release(false);
 
             break;
         }

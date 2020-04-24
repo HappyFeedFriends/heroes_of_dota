@@ -658,7 +658,7 @@ function highlight_cells_for_ability(battle: Battle, unit: Unit, ability: Abilit
     }
 }
 
-function highlight_cells_for_ability_selector(battle: Battle, from_position: XY, to_position: XY, selector: Ability_Target_Selector) {
+function highlight_cells_for_ability_selector(battle: Battle, from_position: XY, to_position: XY, selector: Ability_Area_Selector) {
     for (let x = 0; x < battle.grid.size.x; x++) {
         for (let y = 0; y < battle.grid.size.y; y++) {
             if (ability_selector_fits(battle, selector, from_position, to_position, xy(x, y))) {

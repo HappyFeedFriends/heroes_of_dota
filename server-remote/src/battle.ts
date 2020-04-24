@@ -90,7 +90,7 @@ function query_first_unit_in_line(
     return { hit: false, final_point: current_cell };
 }
 
-function query_units_with_selector(battle: Battle, from: XY, target: XY, selector: Ability_Target_Selector): Unit[] {
+function query_units_with_selector(battle: Battle, from: XY, target: XY, selector: Ability_Area_Selector): Unit[] {
     const units: Unit[] = [];
 
     for (const unit of battle.units) {
@@ -303,6 +303,18 @@ function basic_attack_health_change(source: Unit, target: Unit): Basic_Attack_He
 
     return {
         blocked_by_armor: blocked,
+        change: health_change(target, -damage)
+    }
+}
+
+function basic_attack_unit_health_change(source: Unit, target: Unit): Basic_Attack_Unit_Health_Change {
+    const armor = get_armor(target);
+    const attack = get_attack_damage(source);
+    const damage = Math.max(0, get_attack_damage(source) - armor);
+    const blocked = Math.min(attack, armor);
+
+    return {
+        blocked_by_armor: blocked,
         ...unit_health_change(target, -damage)
     }
 }
@@ -315,59 +327,6 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
     };
 
     switch (ability.id) {
-        case Ability_Id.basic_attack: {
-            const scan = query_first_unit_in_line(battle, unit.position, target, ability.targeting.line_length);
-
-            if (scan.hit) {
-                submit_battle_delta(battle, {
-                    ...base,
-                    ability_id: ability.id,
-                    result: {
-                        hit: true,
-                        target: basic_attack_health_change(unit, scan.unit)
-                    }
-                });
-            } else {
-                submit_battle_delta(battle, {
-                    ...base,
-                    ability_id: ability.id,
-                    result: {
-                        hit: false,
-                        final_point: scan.final_point
-                    }
-                });
-            }
-
-            break;
-        }
-
-        case Ability_Id.pudge_hook: {
-            const distance = ability.targeting.line_length;
-            const direction = direction_normal_between_points(unit.position, target);
-            const scan = query_first_unit_in_line(battle, unit.position, target, distance, direction);
-
-            if (scan.hit) {
-                submit_battle_delta(battle, {
-                    ...base,
-                    ability_id: ability.id,
-                    result: {
-                        hit: true,
-                        target_unit_id: scan.unit.id,
-                        damage_dealt: health_change(scan.unit, -ability.damage),
-                        move_target_to: xy(unit.position.x + direction.x, unit.position.y + direction.y)
-                    }
-                });
-            } else {
-                submit_battle_delta(battle, {
-                    ...base,
-                    ability_id: ability.id,
-                    result: { hit: false, final_point: scan.final_point }
-                });
-            }
-
-            break;
-        }
-
         case Ability_Id.skywrath_mystic_flare: {
             const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting).map(target => ({
                 unit: target,
@@ -418,7 +377,7 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
 
         case Ability_Id.dragon_knight_elder_dragon_form_attack: {
             const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting)
-                .map(target => basic_attack_health_change(unit, target));
+                .map(target => basic_attack_unit_health_change(unit, target));
 
             submit_battle_delta(battle, {
                 ...base,
@@ -441,35 +400,6 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
                 ability_id: ability.id,
                 targets: targets
             });
-
-            break;
-        }
-
-        case Ability_Id.mirana_arrow: {
-            const scan = query_first_unit_in_line(battle, unit.position, target, ability.targeting.line_length);
-
-            if (scan.hit) {
-                submit_battle_delta(battle, {
-                    ...base,
-                    ability_id: ability.id,
-                    result: {
-                        hit: true,
-                        stun: {
-                            target_unit_id: scan.unit.id,
-                            modifier: modifier(battle, { id: Modifier_Id.stunned }, 1)
-                        }
-                    }
-                });
-            } else {
-                submit_battle_delta(battle, {
-                    ...base,
-                    ability_id: ability.id,
-                    result: {
-                        hit: false,
-                        final_point: scan.final_point
-                    }
-                });
-            }
 
             break;
         }
@@ -869,7 +799,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
             submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
-                targets: targets.map(target => basic_attack_health_change(unit, target))
+                targets: targets.map(target => basic_attack_unit_health_change(unit, target))
             });
 
             break;
@@ -952,6 +882,25 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
     };
 
     switch (ability.id) {
+        case Ability_Id.basic_attack: {
+            return {
+                ...base,
+                ability_id: ability.id,
+                target: basic_attack_health_change(unit, target)
+            };
+        }
+
+        case Ability_Id.pudge_hook: {
+            const direction = direction_normal_between_points(unit.position, target.position);
+
+            return {
+                ...base,
+                ability_id: ability.id,
+                damage_dealt: health_change(target, -ability.damage),
+                move_target_to: xy(unit.position.x + direction.x, unit.position.y + direction.y)
+            };
+        }
+
         case Ability_Id.pudge_dismember: {
             return {
                 ...base,
@@ -1015,6 +964,14 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
                 ability_id: ability.id,
                 damage_dealt: health_change(target, -ability.damage)
             }
+        }
+
+        case Ability_Id.mirana_arrow: {
+            return {
+                ...base,
+                ability_id: ability.id,
+                stun: modifier(battle, { id: Modifier_Id.stunned }, 1)
+            };
         }
 
         case Ability_Id.venge_magic_missile: {
@@ -2026,7 +1983,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
             ability_id: Ability_Id.pocket_tower_attack,
             source_unit_id: unit.id,
             target_unit_id: target.id,
-            damage_dealt: basic_attack_health_change(unit, target)
+            damage_dealt: basic_attack_unit_health_change(unit, target)
         }));
     });
 
