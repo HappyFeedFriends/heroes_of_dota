@@ -261,6 +261,13 @@
         vsnd_files = "sounds/weapons/hero/broodmother/spiderling_hatch.vsnd"
     }
 
+    evil_eye_attack = {
+        type = "dota_update_default"
+        pitch_rand_min = -0.25
+        pitch_rand_max = -0.25
+        vsnd_files = "sounds/items/dagon.vsnd"
+    }
+
     shrine_activate = {
         type = "dota_update_default"
         pitch_rand_min = -0.05

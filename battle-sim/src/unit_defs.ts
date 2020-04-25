@@ -514,98 +514,90 @@ function monster_definition(): Unit_Definition {
 
 function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
     switch (creep_type) {
-        case Creep_Type.pocket_tower: {
-            return {
-                attack_damage: 2,
-                health: 7,
-                move_points: 0,
-                abilities: [
-                    passive_ability<Ability_Pocket_Tower_Attack>({
-                        available_since_level: 0,
-                        targeting: target_rect_area_around_caster(2)
-                    }),
-                    passive_ability<Ability_Deployment_Zone>({
-                        available_since_level: 0,
-                        radius: 1
-                    }),
-                ]
-            }
-        }
+        case Creep_Type.pocket_tower: return {
+            attack_damage: 2,
+            health: 7,
+            move_points: 0,
+            abilities: [
+                passive_ability<Ability_Pocket_Tower_Attack>({
+                    available_since_level: 0,
+                    targeting: target_rect_area_around_caster(2)
+                }),
+                passive_ability<Ability_Deployment_Zone>({
+                    available_since_level: 0,
+                    radius: 1
+                }),
+            ]
+        };
 
-        case Creep_Type.lane_creep: {
-            return {
-                attack_damage: 3,
-                health: 3,
-                move_points: 3,
-                attack: basic_attack(1)
-            }
-        }
 
-        case Creep_Type.satyr_big: {
-            return {
-                attack_damage: 6,
-                health: 12,
-                move_points: 2,
-                attack: basic_attack(1)
-            }
-        }
+        case Creep_Type.lane_creep: return {
+            attack_damage: 3,
+            health: 3,
+            move_points: 3,
+            attack: basic_attack(1)
+        };
 
-        case Creep_Type.satyr_small: {
-            return {
-                attack_damage: 3,
-                health: 6,
-                move_points: 3,
-                attack: basic_attack(1)
-            }
-        }
 
-        case Creep_Type.small_spider: {
-            return {
-                attack_damage: 3,
-                health: 5,
-                move_points: 3,
-                attack: basic_attack(1)
-            }
-        }
+        case Creep_Type.satyr_big: return {
+            attack_damage: 6,
+            health: 12,
+            move_points: 2,
+            attack: basic_attack(1)
+        };
 
-        case Creep_Type.large_spider: {
-            return {
-                attack_damage: 4,
-                health: 10,
-                move_points: 3,
-                attack: basic_attack(1),
-                abilities: [
-                    passive_ability<Ability_Monster_Lifesteal>({
-                        available_since_level: 0
-                    }),
-                ]
-            }
-        }
 
-        case Creep_Type.spider_matriarch: {
-            return {
-                attack_damage: 2,
-                health: 10,
-                move_points: 2,
-                attack: basic_attack(1),
-                abilities: [
-                    passive_ability<Ability_Monster_Spawn_Spiderlings>({
-                        available_since_level: 0,
-                        how_many: 3
-                    })
-                ]
-            }
-        }
+        case Creep_Type.satyr_small: return {
+            attack_damage: 3,
+            health: 6,
+            move_points: 3,
+            attack: basic_attack(1)
+        };
 
-        case Creep_Type.spiderling: {
-            return {
-                attack_damage: 2,
-                health: 2,
-                move_points: 3,
-                attack: basic_attack(1),
-                abilities: []
-            }
-        }
+
+        case Creep_Type.small_spider: return {
+            attack_damage: 3,
+            health: 5,
+            move_points: 3,
+            attack: basic_attack(1)
+        };
+
+
+        case Creep_Type.large_spider: return {
+            attack_damage: 4,
+            health: 10,
+            move_points: 3,
+            attack: basic_attack(1),
+            abilities: [
+                passive_ability<Ability_Monster_Lifesteal>({
+                    available_since_level: 0
+                }),
+            ]
+        };
+
+
+        case Creep_Type.spider_matriarch: return {
+            attack_damage: 2,
+            health: 10,
+            move_points: 2,
+            attack: basic_attack(1),
+            abilities: [
+                passive_ability<Ability_Monster_Spawn_Spiderlings>({
+                    available_since_level: 0,
+                    how_many: 3
+                })
+            ]
+        };
+
+
+        case Creep_Type.spiderling: return {
+            attack_damage: 2,
+            health: 2,
+            move_points: 3,
+            attack: basic_attack(1),
+            abilities: []
+        };
+
 
         case Creep_Type.hardened_spider: return {
             attack_damage: 3,
@@ -616,12 +608,17 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             abilities: []
         };
 
-        case Creep_Type.ember_fire_remnant: {
-            return {
-                attack_damage: 0,
-                health: 1,
-                move_points: 0
-            }
-        }
+        case Creep_Type.evil_eye: return {
+            attack_damage: 2,
+            health: 4,
+            move_points: 3,
+            attack: basic_attack(4)
+        };
+
+        case Creep_Type.ember_fire_remnant: return {
+            attack_damage: 0,
+            health: 1,
+            move_points: 0
+        };
     }
 }

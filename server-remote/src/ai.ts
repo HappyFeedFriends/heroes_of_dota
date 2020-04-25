@@ -72,10 +72,11 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
 
             if (ability_targeting_fits(ai.battle, ability.targeting, cell.position, target.position)) {
                 const damage = get_attack_damage(actor) - get_armor(target);
+                const damage_ratio = damage / target.health;
 
-                let weight = damage / target.health;
+                let weight = manhattan(cell.position, target.position) * damage_ratio;
 
-                if (weight > 1) {
+                if (damage_ratio > 1) {
                     weight *= 2;
                 }
 

@@ -80,6 +80,7 @@ declare const enum Creep_Type {
     spider_matriarch = 104,
     spiderling = 105,
     hardened_spider = 106,
+    evil_eye = 107,
 
     ember_fire_remnant = 1000
 }

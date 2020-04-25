@@ -365,6 +365,13 @@ function creep_traits_by_type(creep_type: Creep_Type): Creep_Traits {
             flinch_animation: GameActivity_t.ACT_DOTA_SPAWN
         };
 
+        case Creep_Type.evil_eye: return {
+            sounds: spider_sounds,
+            model: "models/items/broodmother/spiderling/perceptive_spiderling/perceptive_spiderling.vmdl",
+            scale: 0.6,
+            flinch_animation: GameActivity_t.ACT_DOTA_SPAWN
+        };
+
         case Creep_Type.ember_fire_remnant: return {
             ...default_traits,
             model: no_model
@@ -987,10 +994,6 @@ function get_ranged_attack_spec(unit: Unit): Ranged_Attack_Spec | undefined {
 
             break;
         }
-
-        case Unit_Supertype.monster: {
-            return;
-        }
     }
 }
 
@@ -1076,12 +1079,38 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
         }
     }
 
+    if (unit.supertype == Unit_Supertype.creep && unit.type == Creep_Type.evil_eye) {
+        try_play_sound_for_hero(unit, get_hero_pre_attack_sound);
+        unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK, 0.4);
+
+        fx_by_unit("particles/abilities/laser.vpcf", unit)
+            .to_unit_attach_point(0, unit, "attach_hitloc")
+            .to_unit_attach_point(1, target, "attach_hitloc")
+            .release();
+
+        change_health(game, unit, target, cast.target.change, cast.target.blocked_by_armor);
+        unit_emit_sound(unit, "evil_eye_attack");
+        shake_screen(target.position, Shake.weak);
+
+        return;
+    }
+
     const ranged_attack_spec = get_ranged_attack_spec(unit);
 
     if (ranged_attack_spec) {
-        try_play_sound_for_hero(unit, get_hero_pre_attack_sound);
+        if (unit.supertype == Unit_Supertype.creep) {
+            unit_emit_sound(unit, unit.traits.sounds.pre_attack);
+        } else {
+            try_play_sound_for_hero(unit, get_hero_pre_attack_sound);
+        }
+
         unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK, ranged_attack_spec.attack_point);
-        try_play_sound_for_hero(unit, get_hero_attack_sound);
+
+        if (unit.supertype == Unit_Supertype.creep) {
+            unit_emit_sound(unit, unit.traits.sounds.attack);
+        } else {
+            try_play_sound_for_hero(unit, get_hero_attack_sound);
+        }
 
         if (ranged_attack_spec.shake_on_attack) {
             shake_screen(unit.position, ranged_attack_spec.shake_on_attack);
@@ -1097,16 +1126,18 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
     } else {
         if (unit.supertype == Unit_Supertype.creep) {
             unit_emit_sound(unit, unit.traits.sounds.pre_attack);
+        } else {
+            try_play_sound_for_hero(unit, get_hero_pre_attack_sound);
         }
 
-        try_play_sound_for_hero(unit, get_hero_pre_attack_sound);
         unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK);
         change_health(game, unit, target, cast.target.change, cast.target.blocked_by_armor);
         shake_screen(target.position, Shake.weak);
-        try_play_sound_for_hero(unit, get_hero_attack_sound);
 
         if (unit.supertype == Unit_Supertype.creep) {
             unit_emit_sound(unit, unit.traits.sounds.attack);
+        } else {
+            try_play_sound_for_hero(unit, get_hero_attack_sound);
         }
     }
 }
