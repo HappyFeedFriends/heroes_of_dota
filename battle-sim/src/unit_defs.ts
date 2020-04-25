@@ -136,7 +136,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         targeting: target_first_in_line(5),
                         flags: [],
                         charges: 1,
-                        damage: 5
+                        damage: 3
                     }),
                     active_ability<Ability_Pudge_Rot>({
                         available_since_level: 2,
@@ -168,7 +168,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         targeting: target_in_manhattan_distance(5),
                         flags: [],
                         charges: 1,
-                        damage: 4,
+                        damage: 3,
                         move_points_reduction: 2
                     }),
                     active_ability<Ability_Tide_Anchor_Smash>({
@@ -210,7 +210,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     }),
                     active_ability<Ability_Luna_Eclipse>({
                         available_since_level: 3,
-                        targeting: target_in_manhattan_distance(4),
+                        targeting: target_rect_area_around_caster(3),
                         flags: [],
                         total_beams: 14,
                         charges: 1,
@@ -226,21 +226,21 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 attack_damage: 3,
                 attack: basic_attack(3),
                 abilities: [
-                    active_ability<Ability_Skywrath_Concussive_Shot>({
+                    active_ability<Ability_Skywrath_Ancient_Seal>({
                         available_since_level: 1,
+                        targeting: target_in_manhattan_distance(3),
+                        flags: [],
+                        charges: 1,
+                        duration: 3
+                    }),
+                    active_ability<Ability_Skywrath_Concussive_Shot>({
+                        available_since_level: 2,
                         targeting: target_rect_area_around_caster(3),
                         flags: [],
                         charges: 1,
                         move_points_reduction: 2,
                         damage: 4,
                         duration: 2
-                    }),
-                    active_ability<Ability_Skywrath_Ancient_Seal>({
-                        available_since_level: 2,
-                        targeting: target_in_manhattan_distance(3),
-                        flags: [],
-                        charges: 1,
-                        duration: 3
                     }),
                     active_ability<Ability_Skywrath_Mystic_Flare>({
                         available_since_level: 3,
