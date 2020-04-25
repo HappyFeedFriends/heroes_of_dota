@@ -1659,6 +1659,7 @@ function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: 
         ok: true
         use_ability: Ability_Use_Permission
         order_unit: Order_Unit_Permission
+        on_target: Act_On_Unit_Permission
     } | {
         ok: false
         error: Attack_Intent_Error
@@ -1698,6 +1699,7 @@ function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: 
         return {
             ok: true,
             use_ability: ability_use_permission,
+            on_target: act_on_target_permission,
             order_unit: order_unit_permission
         }
     };
@@ -1732,12 +1734,12 @@ function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: 
             const post_move_intent = check_and_update_attack_intent();
             if (!post_move_intent.ok) break;
 
-            const use = authorize_ground_target_ability_use(post_move_intent.use_ability, target.position);
+            const use = authorize_unit_target_ability_use(post_move_intent.use_ability, post_move_intent.on_target);
             if (!use.ok) break;
 
             battle.monster_targets.set(monster, target);
 
-            submit_ability_cast_ground(battle, monster, use.ability, target.position);
+            submit_battle_delta(battle, perform_ability_cast_unit_target(battle, monster, use.ability, target));
             break;
         }
     }
