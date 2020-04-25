@@ -104,6 +104,7 @@ declare const enum Rune_Type {
 
 declare const enum Ability_Targeting_Type {
     line = 0,
+    first_in_line = 1,
     unit_in_manhattan_distance = 2,
     rectangular_area_around_caster = 3,
     any_cell = 4
@@ -113,8 +114,7 @@ declare const enum Ability_Target_Selector_Type {
     single_target = 0,
     rectangle = 1,
     line = 2,
-    t_shape = 3,
-    first_in_line = 4
+    t_shape = 3
 }
 
 declare const enum Ability_Type {
@@ -206,28 +206,27 @@ declare const enum Ability_Targeting_Flag {
 
 type Ability_Targeting_Flag_Field = Record<Ability_Targeting_Flag, boolean>
 
-type Ability_Targeting_Line = {
+type Ability_Targeting = {
     type: Ability_Targeting_Type.line
     line_length: number
     flags: Ability_Targeting_Flag_Field
     selector: Ability_Area_Selector
-}
-
-type Ability_Targeting_Target_In_Manhattan_Distance = {
+} | {
+    type: Ability_Targeting_Type.first_in_line
+    line_length: number
+    flags: Ability_Targeting_Flag_Field
+    selector: Ability_Area_Selector
+} | {
     type: Ability_Targeting_Type.unit_in_manhattan_distance
     distance: number
     flags: Ability_Targeting_Flag_Field
     selector: Ability_Area_Selector
-}
-
-type Ability_Targeting_Rectangular_Area_Around_Caster = {
+} | {
     type: Ability_Targeting_Type.rectangular_area_around_caster
     area_radius: number
     flags: Ability_Targeting_Flag_Field
     selector: Ability_Area_Selector
-}
-
-type Ability_Targeting_Any_Cell = {
+} | {
     type: Ability_Targeting_Type.any_cell
     flags: Ability_Targeting_Flag_Field
     selector: Ability_Area_Selector
@@ -242,19 +241,10 @@ type Ability_Area_Selector = {
     type: Ability_Target_Selector_Type.line
     length: number
 } | {
-    type: Ability_Target_Selector_Type.first_in_line
-    length: number
-} | {
     type: Ability_Target_Selector_Type.t_shape
     stem_length: number
     arm_length: number
 }
-
-type Ability_Targeting =
-    Ability_Targeting_Line |
-    Ability_Targeting_Target_In_Manhattan_Distance |
-    Ability_Targeting_Rectangular_Area_Around_Caster |
-    Ability_Targeting_Any_Cell
 
 type Action_Move = {
     type: Action_Type.move

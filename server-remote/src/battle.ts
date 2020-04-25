@@ -46,57 +46,13 @@ type Spell_Spawn = {
     spell: Spell_Id
 }
 
-type Scan_Result = {
-    hit: true
-    unit: Unit
-} | {
-    hit: false
-    final_point: XY
-}
-
-function query_first_unit_in_line(
-    battle: Battle,
-    from_exclusive: XY,
-    to: XY,
-    line_length: number,
-    direction_normal: XY = direction_normal_between_points(from_exclusive, to)
-): Scan_Result {
-    let current_cell = xy(from_exclusive.x, from_exclusive.y);
-
-    for (let scanned = 0; scanned < line_length; scanned++) {
-        current_cell.x += direction_normal.x;
-        current_cell.y += direction_normal.y;
-
-        const unit = unit_at(battle, current_cell);
-
-        if (unit && authorize_act_on_known_unit(battle, unit).ok) {
-            return { hit: true, unit: unit };
-        }
-
-        const cell = grid_cell_at(battle.grid, current_cell);
-
-        if (!cell) {
-            return {
-                hit: false,
-                final_point: xy(current_cell.x - direction_normal.x, current_cell.y - direction_normal.y)
-            };
-        }
-
-        if (is_grid_cell_occupied(cell)) {
-            return { hit: false, final_point: current_cell };
-        }
-    }
-
-    return { hit: false, final_point: current_cell };
-}
-
 function query_units_with_selector(battle: Battle, from: XY, target: XY, selector: Ability_Area_Selector): Unit[] {
     const units: Unit[] = [];
 
     for (const unit of battle.units) {
         if (!authorize_act_on_known_unit(battle, unit).ok) continue;
 
-        if (ability_selector_fits(battle, selector, from, target, unit.position)) {
+        if (area_selector_fits(battle, selector, from, target, unit.position)) {
             units.push(unit);
         }
     }
@@ -443,7 +399,7 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
 
             const selector = ability.targeting.selector;
             const free_cells = battle.grid.cells
-                .filter(cell => !is_grid_cell_occupied(cell) && ability_selector_fits(battle, selector, unit.position, target, cell.position))
+                .filter(cell => !is_grid_cell_occupied(cell) && area_selector_fits(battle, selector, unit.position, target, cell.position))
                 .map(cell => cell.position);
 
             const closest_free_cell = (for_unit_cell: XY) => {

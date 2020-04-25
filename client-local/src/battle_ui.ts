@@ -897,7 +897,7 @@ function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell
         }
 
         if (hover.type == Hover_Type.cell && can_highlighted_ability_target_hovered_cell && highlighted_ability_selector) {
-            if (ability_selector_fits(battle, highlighted_ability_selector, selection.unit.position, hover.cell, cell.position)) {
+            if (area_selector_fits(battle, highlighted_ability_selector, selection.unit.position, hover.cell, cell.position)) {
                 alpha = 140;
                 cell_color = color_red;
             }
@@ -2118,7 +2118,6 @@ function try_update_stat_bar_display(ui_data: UI_Unit_Data, force = false) {
 
 function position_panel_over_entity_in_the_world(panel: Panel, entity_id: EntityId, offset_x: number, offset_z: number) {
     const entity_origin = Entities.GetAbsOrigin(entity_id);
-
     if (!entity_origin) return;
 
     position_panel_over_position_in_the_world(panel, xyz(entity_origin[0] + offset_x, entity_origin[1], entity_origin[2] + offset_z), Align_H.center, Align_V.bottom);
@@ -2716,7 +2715,7 @@ subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_targeted_ability, 
     highlight_grid_for_unit_ability_with_predicate(
         event.unit_id,
         event.ability_id,
-        (ability, cell) => ability_selector_fits(battle, ability.targeting.selector, event.from, event.to, cell.position)
+        (ability, cell) => area_selector_fits(battle, ability.targeting.selector, event.from, event.to, cell.position)
     );
 });
 

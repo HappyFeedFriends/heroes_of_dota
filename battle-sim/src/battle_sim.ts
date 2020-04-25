@@ -746,6 +746,44 @@ function unit_pathing_flags(unit: Unit, to_grab_rune: boolean): Pathing_Flag[] {
     return flags;
 }
 
+const enum Scan_Result_Type {
+    nothing,
+    unit,
+    obstacle
+}
+
+type Scan_Result = {
+    hit: Scan_Result_Type.nothing
+} | {
+    hit: Scan_Result_Type.unit
+    at: XY
+} | {
+    hit: Scan_Result_Type.obstacle
+    at: XY
+}
+
+function scan_line_for_first_unit(battle: Battle, from: XY, to: XY, line_length: number): Scan_Result {
+    const direction_normal = direction_normal_between_points(from, to);
+    const current_cell = xy(from.x, from.y);
+
+    for (let scanned = 0; scanned < line_length; scanned++) {
+        current_cell.x += direction_normal.x;
+        current_cell.y += direction_normal.y;
+
+        const unit = unit_at(battle, current_cell);
+
+        if (unit && authorize_act_on_known_unit(battle, unit).ok) {
+            return { hit: Scan_Result_Type.unit, at: current_cell };
+        }
+
+        if (is_grid_occupied_at(battle.grid, current_cell)) {
+            return { hit: Scan_Result_Type.obstacle, at: current_cell };
+        }
+    }
+
+    return { hit: Scan_Result_Type.nothing };
+}
+
 function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, from: XY, check_at: XY): boolean {
     if (!targeting.flags[Ability_Targeting_Flag.include_caster] && xy_equal(from, check_at)) {
         return false;
@@ -764,7 +802,36 @@ function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, fr
             }
 
             const distance = distance_between_points_on_the_same_line(from, check_at);
-            return distance > 0 && distance <= targeting.line_length;
+            return distance >= 0 && distance <= targeting.line_length;
+        }
+
+        case Ability_Targeting_Type.first_in_line: {
+            // @Performance the scans are redundant
+            if (are_points_on_the_same_line(from, check_at)) {
+                const distance = distance_between_points_on_the_same_line(from, check_at);
+                const fits_distance = distance > 0 && distance <= targeting.line_length;
+
+                if (fits_distance) {
+                    const first_unit_scan = scan_line_for_first_unit(battle, from, check_at, targeting.line_length);
+
+                    switch (first_unit_scan.hit) {
+                        case Scan_Result_Type.nothing: return true; // Highlight all points fitting the line
+                        case Scan_Result_Type.unit: {
+                            const distance_to_first_unit = distance_between_points_on_the_same_line(from, first_unit_scan.at);
+                            return distance <= distance_to_first_unit; // Highlight all points between source and first unit (inclusive)
+                        }
+
+                        case Scan_Result_Type.obstacle: {
+                            const distance_to_first_unit = distance_between_points_on_the_same_line(from, first_unit_scan.at);
+                            return distance < distance_to_first_unit; // Highlight all points between source and first obstacle (exclusive)
+                        }
+
+                        default: unreachable(first_unit_scan);
+                    }
+                }
+            }
+
+            return false;
         }
 
         case Ability_Targeting_Type.rectangular_area_around_caster: {
@@ -783,7 +850,7 @@ function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, fr
     }
 }
 
-function ability_selector_fits(battle: Battle, selector: Ability_Area_Selector, from: XY, to: XY, check_at: XY): boolean {
+function area_selector_fits(battle: Battle, selector: Ability_Area_Selector, from: XY, to: XY, check_at: XY): boolean {
     function points_on_the_same_line(a: XY, b: XY, c: XY) {
         return are_points_on_the_same_line(a, b) && are_points_on_the_same_line(a, c) && are_points_on_the_same_line(b, c);
     }
@@ -811,32 +878,6 @@ function ability_selector_fits(battle: Battle, selector: Ability_Area_Selector, 
         case Ability_Target_Selector_Type.line: {
             if (points_on_the_same_line(from, to, check_at)) {
                 return fits_line(selector.length);
-            }
-
-            return false;
-        }
-
-        case Ability_Target_Selector_Type.first_in_line: {
-            if (points_on_the_same_line(from, to, check_at) && fits_line(selector.length)) {
-                const direction_normal = direction_normal_between_points(from, to);
-                const current_cell = xy(from.x, from.y);
-
-                for (let scanned = 0; scanned < selector.length; scanned++) {
-                    current_cell.x += direction_normal.x;
-                    current_cell.y += direction_normal.y;
-
-                    const unit = unit_at(battle, current_cell);
-
-                    if (unit && authorize_act_on_known_unit(battle, unit).ok) {
-                        return true;
-                    }
-
-                    if (is_grid_occupied_at(battle.grid, current_cell)) {
-                        return false;
-                    }
-                }
-
-                return false;
             }
 
             return false;

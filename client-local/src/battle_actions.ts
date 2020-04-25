@@ -428,7 +428,7 @@ export function try_order_unit_to_move(unit: Unit, move_where: XY) {
     });
 }
 
-type Use_Spell_Action = Action_Use_Ground_Target_Spell | Action_Use_Unit_Target_Spell | Action_Use_No_Target_Spell;
+type Use_Spell_Action = Action_Use_Ground_Target_Spell | Action_Use_Unit_Target_Spell | Action_Use_No_Target_Spell
 
 function try_use_card_spell(spell: Card_Spell, hover: Hover_State_Unit | Hover_State_Cell, action_permission: Player_Action_Permission, card_use_permission: Card_Use_Permission): Use_Spell_Action | undefined {
     switch (spell.spell_type) {

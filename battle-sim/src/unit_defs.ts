@@ -17,7 +17,7 @@ declare function passive_ability<T extends Ability_Definition_Passive>(stats: Pa
 // That works instead of active/passive ability and allows us to collapse many types
 // declare function ability<T extends Ability_Id>(id: T, stats: Omit<Find_By_Id<Ability_Definition, T>, keyof Ability_Active_Discriminator>): Find_By_Id<Ability_Definition, T>;
 
-function target_line(length: number, selector: Ability_Area_Selector = single_target()): Ability_Targeting_Line {
+function target_line(length: number, selector: Ability_Area_Selector = single_target()) {
     return {
         type: Ability_Targeting_Type.line,
         line_length: length,
@@ -26,19 +26,24 @@ function target_line(length: number, selector: Ability_Area_Selector = single_ta
             [Ability_Targeting_Flag.include_caster]: false,
             [Ability_Targeting_Flag.only_free_cells]: false
         }
-    }
+    } as const;
+}
+
+function target_first_in_line(length: number, selector: Ability_Area_Selector = single_target()) {
+    return {
+        type: Ability_Targeting_Type.first_in_line,
+        line_length: length,
+        selector: selector,
+        flags: {
+            [Ability_Targeting_Flag.include_caster]: false,
+            [Ability_Targeting_Flag.only_free_cells]: false
+        }
+    } as const
 }
 
 function single_target(): Ability_Area_Selector {
     return {
         type: Ability_Target_Selector_Type.single_target
-    }
-}
-
-function first_unit_in_line(length: number): Ability_Area_Selector {
-    return {
-        type: Ability_Target_Selector_Type.first_in_line,
-        length: length
     }
 }
 
@@ -56,7 +61,7 @@ function targets_in_line(length: number): Ability_Area_Selector {
     }
 }
 
-function target_in_manhattan_distance(distance: number, selector: Ability_Area_Selector = single_target(), ...flags: Ability_Targeting_Flag[]): Ability_Targeting_Target_In_Manhattan_Distance {
+function target_in_manhattan_distance(distance: number, selector: Ability_Area_Selector = single_target(), ...flags: Ability_Targeting_Flag[]): Ability_Targeting {
     const result_flags: Ability_Targeting_Flag_Field = {
         [Ability_Targeting_Flag.include_caster]: false,
         [Ability_Targeting_Flag.only_free_cells]: false
@@ -74,7 +79,7 @@ function target_in_manhattan_distance(distance: number, selector: Ability_Area_S
     }
 }
 
-function target_rect_area_around_caster(area_radius: number, selector: Ability_Area_Selector = single_target()): Ability_Targeting_Rectangular_Area_Around_Caster {
+function target_rect_area_around_caster(area_radius: number, selector: Ability_Area_Selector = single_target()): Ability_Targeting {
     return {
         type: Ability_Targeting_Type.rectangular_area_around_caster,
         area_radius: area_radius,
@@ -89,7 +94,7 @@ function target_rect_area_around_caster(area_radius: number, selector: Ability_A
 function basic_attack(range: number): Ability_Basic_Attack {
     return active_ability<Ability_Basic_Attack>({
         available_since_level: 0,
-        targeting: target_line(range, first_unit_in_line(range)),
+        targeting: target_first_in_line(range),
         flags: [],
         charges: 1
     });
@@ -128,7 +133,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 abilities: [
                     active_ability<Ability_Pudge_Hook>({
                         available_since_level: 1,
-                        targeting: target_line(5),
+                        targeting: target_first_in_line(5),
                         flags: [],
                         charges: 1,
                         damage: 5
@@ -340,7 +345,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     }),
                     active_ability<Ability_Mirana_Arrow>({
                         available_since_level: 2,
-                        targeting: target_line(7, first_unit_in_line(7)),
+                        targeting: target_first_in_line(7),
                         flags: [],
                         charges: 1
                     }),

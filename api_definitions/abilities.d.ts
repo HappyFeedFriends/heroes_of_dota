@@ -137,13 +137,11 @@ type Ability_Definition_Passive_Base = {
 type Ability_Basic_Attack = Ability_Definition_Active_Base & {
     id: Ability_Id.basic_attack
     type: Ability_Type.target_unit
-    targeting: Ability_Targeting_Line
 }
 
 type Ability_Pudge_Hook = Ability_Definition_Active_Base & {
     id: Ability_Id.pudge_hook
     type: Ability_Type.target_unit
-    targeting: Ability_Targeting_Line
     damage: number
 }
 
@@ -266,7 +264,6 @@ type Ability_Mirana_Starfall = Ability_Definition_Active_Base & {
 type Ability_Mirana_Arrow = Ability_Definition_Active_Base & {
     id: Ability_Id.mirana_arrow
     type: Ability_Type.target_unit
-    targeting: Ability_Targeting_Line
 }
 
 type Ability_Mirana_Leap = Ability_Definition_Active_Base & {
@@ -336,7 +333,7 @@ type Ability_Ember_Activate_Fire_Remnant = Ability_Definition_Active_Base & {
 type Ability_Shaker_Fissure = Ability_Definition_Active_Base & {
     id: Ability_Id.shaker_fissure
     type: Ability_Type.target_ground
-    targeting: Ability_Targeting_Line
+    targeting: Find_By_Type<Ability_Targeting, Ability_Targeting_Type.line>
 }
 
 type Ability_Shaker_Enchant_Totem = Ability_Definition_Active_Base & {
