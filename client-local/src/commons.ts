@@ -3,8 +3,6 @@ type RGB = [ number, number, number ] & { _color_id_brand: any };
 const enum Align_H { left, center, right}
 const enum Align_V { top, center, bottom}
 
-type Find_By_State<Union, Type> = Union extends { state: Type } ? Union : never;
-
 declare const enum Const {
     hand_base_x = 400,
     hand_base_y = 957,
@@ -43,6 +41,10 @@ function get_screen_world_position(cursor: [number, number]): XYZ | undefined {
     }
 
     return xyz(position[0], position[1], position[2]);
+}
+
+function to_layout_space(a: number) {
+    return a / (Game.GetScreenHeight() / 1080);
 }
 
 function position_panel_over_position_in_the_world(panel: Panel, position: XYZ, h: Align_H, v: Align_V, floor = true) {

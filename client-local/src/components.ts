@@ -5,6 +5,7 @@ type Effect_UI<T> = {
 
 type Effect_Tooltip = {
     content: Panel
+    arrow: Panel
     text(section: Panel, text: string): void
     section(): Panel
     header(parent: Panel, name: string): void
@@ -268,6 +269,7 @@ function update_effects_elements<T>(root: Panel, elements: Effect_UI<T>[], initi
 
 function create_effect_tooltip(root: Panel): Effect_Tooltip {
     const content = $.CreatePanel("Panel", root, "content");
+    const arrow = $.CreatePanel("Panel", root, "arrow");
 
     function text(parent: Panel, content: string) {
         const text = $.CreatePanel("Label", parent, "");
@@ -290,6 +292,7 @@ function create_effect_tooltip(root: Panel): Effect_Tooltip {
 
     return {
         content: content,
+        arrow: arrow,
         section: new_section,
         text: text,
         header: header
@@ -352,35 +355,57 @@ function assemble_modifier_tooltip_strings(modifier: Modifier): string[] {
     return result;
 }
 
-function fill_modifier_tooltip_section(tooltip: Effect_Tooltip, section: Panel, modifier: Modifier) {
-    const strings = assemble_modifier_tooltip_strings(modifier);
+function position_tooltip_panel(tooltip: Panel, arrow: Panel, over_what: Panel) {
+    // ss - screen space
+    // ls - layout space
 
-    for (const string of strings) {
-        tooltip.text(section, string);
-    }
+    const ls_window_position = over_what.GetPositionWithinWindow();
+
+    const ls_tooltip_width = to_layout_space(tooltip.actuallayoutwidth);
+    const ls_tooltip_height = to_layout_space(tooltip.actuallayoutheight);
+
+    const ls_center_x = to_layout_space(ls_window_position.x + over_what.actuallayoutwidth / 2);
+    const ls_center_y = to_layout_space(ls_window_position.y);
+    const ls_position_x = Math.round(ls_center_x - ls_tooltip_width / 2);
+    const ls_position_y = Math.round(ls_center_y - ls_tooltip_height) - 20;
+
+    const ls_clamped_x = Math.max(0, ls_position_x);
+    const ls_offset_x = ls_clamped_x - ls_position_x;
+
+    tooltip.style.x = ls_clamped_x + "px";
+    tooltip.style.y = ls_position_y + "px";
+
+    const ls_arrow_width = to_layout_space(arrow.actuallayoutwidth);
+    const ls_arrow_offset = ls_tooltip_width / 2 - ls_offset_x - ls_arrow_width / 2;
+
+    arrow.style.transform = "translateX(" + Math.round(ls_arrow_offset) + "px) scaleY(-1)";
 }
 
-function position_tooltip_panel(tooltip: Panel, over_what: Panel) {
-    const screen_ratio = Game.GetScreenHeight() / 1080;
-    const window_position = over_what.GetPositionWithinWindow();
-
-    const tooltip_width = tooltip.actuallayoutwidth / screen_ratio;
-    const tooltip_height = tooltip.actuallayoutheight / screen_ratio;
-
-    const position_x = Math.round((window_position.x + over_what.actuallayoutwidth / 2) / screen_ratio - tooltip_width / 2);
-    const position_y = Math.round(window_position.y / screen_ratio - tooltip_height) - 20;
-
-    tooltip.style.x = position_x + "px";
-    tooltip.style.y = position_y + "px";
-}
-
-function prepare_tooltip_to_be_shown_next_frame(tooltip: Panel, over_what: Panel) {
+function prepare_tooltip_to_be_shown_next_frame(tooltip: Panel, arrow: Panel, over_what: Panel) {
     // First barely display it to let it get laid out, then position it in the next frame
     tooltip.style.opacity = "0.01";
 
     $.Schedule(0, () => {
-        position_tooltip_panel(tooltip, over_what);
+        position_tooltip_panel(tooltip, arrow, over_what);
 
         tooltip.style.opacity = "1";
     });
+}
+
+function create_and_show_titled_effect_tooltip(root: Panel, over_what: Panel, icon: string, title_content: string) {
+    const tooltip = create_effect_tooltip(root);
+
+    prepare_tooltip_to_be_shown_next_frame(root, tooltip.arrow, over_what);
+
+    const title = $.CreatePanel("Panel", tooltip.content, "title");
+    title.AddClass("title");
+
+    const title_icon = $.CreatePanel("Image", title, "icon");
+    title_icon.SetImage(icon);
+    title_icon.SetScaling(ScalingFunction.STRETCH_TO_FIT_X_PRESERVE_ASPECT);
+
+    const title_text = $.CreatePanel("Label", title, "text");
+    title_text.text = title_content;
+
+    return tooltip;
 }

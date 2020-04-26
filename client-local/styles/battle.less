@@ -75,11 +75,11 @@
   }
 }
 
-#hero_control {
+#unit_control {
   flow-children: right;
   align: left bottom;
 
-  #heroes_panel {
+  #units_panel {
     min-height: 130px;
 
     > #background {
@@ -94,12 +94,12 @@
       align: right center;
     }
 
-    #hero_rows {
+    #unit_rows {
       flow-children: down;
       padding-top: 4px;
       padding-bottom: 0;
 
-      .hero_row {
+      .unit_row {
         margin-bottom: 4px;
 
         &:hover {
@@ -128,155 +128,205 @@
         }
 
         #container {
-          flow-children: right;
+          flow-children: down;
+          width: 245px;
           padding-left: 4px;
           padding-right: 4px;
 
-          &:hover .hero_portrait {
-            wash-color: gray;
-          }
-
-          &:hover .ability_row {
-            wash-color: gray;
-          }
-
-          #hero_portrait {
-            box-shadow: inset #151515 2px 2px 4px 4px;
-            background-size: auto 100%;
-            background-position: center;
-            background-color: black; // Else the rendering bugs out
-            width: 76px;
-            height: 42px;
-            margin-right: 8px;
-            border-radius: 2px;
-
-            #indicators {
-              margin-right: 2px;
-              width: 100%;
-              height: 100%;
-            }
-
-            #health_indicator.indicator {
-              align: right top;
-
-              /*#background {
-                background-color: #ba1217;
-              }*/
-
-              Label {
-                color: #13d72e;
-              }
-            }
-
-            #level_indicator {
-              align: left bottom;
-              background-color: rgba(0, 0, 0, 0.8);
-              padding: 4px;
-              border-radius: 4px;
-
-              .level_pip {
-                width: 6px;
-                height: 6px;
-                margin: 0;
-              }
-            }
-
-            .indicator {
-              > #background {
-                /*border: 1px solid black;
-                border-radius: 50%;
-                width: 20px;
-                height: 20px;
-                align: center center;*/
-              }
-
-              Label {
-                font-family: @font-mono;
-                font-size: 18px;
-                text-shadow: 0px 1px 1px 8.0 #00000077;
-                color: white;
-                align: center center;
-                text-align: center center;
-              }
-            }
-          }
-
-          #ability_row {
+          #main_content {
             flow-children: right;
-            align: left center;
 
-            .ability_button {
+            &:hover .hero_portrait {
+              wash-color: gray;
+            }
+
+            &:hover .ability_row {
+              wash-color: gray;
+            }
+
+            #portrait {
               box-shadow: inset #151515 2px 2px 4px 4px;
-              width: 48px;
-              height: 36px;
-              margin-left: 1px;
-              margin-right: 1px;
+              background-size: auto 100%;
+              background-position: center;
+              background-color: black; // Else the rendering bugs out
+              width: 76px;
+              height: 42px;
+              margin-right: 8px;
               border-radius: 2px;
 
-              tooltip-position: top;
-              tooltip-body-position: 50% 100%;
-
-              &.not_learned #ability_image {
-                saturation: 0.1;
-                brightness: 0.2;
-              }
-
-              &.not_enough_charges #ability_image {
-                saturation: 0.1;
-                brightness: 0.2;
-              }
-
-              #ability_image {
-                width: 100%;
-                height: 100%;
-                background-size: 100% auto;
-                background-position: center;
-                background-color: black; // Else the rendering bugs out
-              }
-
-              #charges {
-                font-family: @font-mono;
-                font-size: 16px;
-                color: white;
-                align: right bottom;
-                background-color: rgba(0, 0, 0, 0.95);
-                border-radius: 5px;
-                text-align: center;
-                line-height: 20px;
-                width: 18px;
-              }
-
-              #overlay {
+              #indicators {
+                margin-right: 2px;
                 width: 100%;
                 height: 100%;
               }
 
-              &.silence {
-                #ability_image {
+              #health_indicator.indicator {
+                align: right top;
+
+                /*#background {
+                  background-color: #ba1217;
+                }*/
+
+                Label {
+                  color: #13d72e;
+                }
+              }
+
+              #level_indicator {
+                align: left bottom;
+                background-color: rgba(0, 0, 0, 0.8);
+                padding: 4px;
+                border-radius: 4px;
+
+                .level_pip {
+                  width: 6px;
+                  height: 6px;
+                  margin: 0;
+                }
+              }
+
+              .indicator {
+                > #background {
+                  /*border: 1px solid black;
+                  border-radius: 50%;
+                  width: 20px;
+                  height: 20px;
+                  align: center center;*/
+                }
+
+                Label {
+                  font-family: @font-mono;
+                  font-size: 18px;
+                  text-shadow: 0px 1px 1px 8.0 #00000077;
+                  color: white;
+                  align: center center;
+                  text-align: center center;
+                }
+              }
+            }
+
+            #ability_row {
+              flow-children: right;
+              align: left center;
+
+              .ability_button {
+                box-shadow: inset #151515 2px 2px 4px 4px;
+                width: 48px;
+                height: 36px;
+                margin-left: 1px;
+                margin-right: 1px;
+                border-radius: 2px;
+
+                tooltip-position: top;
+                tooltip-body-position: 50% 100%;
+
+                &.not_learned #ability_image {
                   saturation: 0.1;
                   brightness: 0.2;
                 }
 
-                #overlay {
-                  background-image: url("file://{images}/custom_game/silence.png");
-                  background-size: auto 110%;
+                &.not_enough_charges #ability_image {
+                  saturation: 0.1;
+                  brightness: 0.2;
+                }
+
+                #ability_image {
+                  width: 100%;
+                  height: 100%;
+                  background-size: 100% auto;
                   background-position: center;
-                  background-color: #00000099;
+                  background-color: black; // Else the rendering bugs out
                 }
-              }
 
-              &:hover {
-                brightness: 1.5;
-              }
+                #charges {
+                  font-family: @font-mono;
+                  font-size: 16px;
+                  color: white;
+                  align: right bottom;
+                  background-color: rgba(0, 0, 0, 0.95);
+                  border-radius: 5px;
+                  text-align: center;
+                  line-height: 20px;
+                  width: 18px;
+                }
 
-              &.not_learned {
+                #overlay {
+                  width: 100%;
+                  height: 100%;
+                }
+
+                &.silence {
+                  #ability_image {
+                    saturation: 0.1;
+                    brightness: 0.2;
+                  }
+
+                  #overlay {
+                    background-image: url("file://{images}/custom_game/silence.png");
+                    background-size: auto 110%;
+                    background-position: center;
+                    background-color: #00000099;
+                  }
+                }
+
                 &:hover {
-                  brightness: 0.5;
+                  brightness: 1.5;
+                }
+
+                &.not_learned {
+                  &:hover {
+                    brightness: 0.5;
+                  }
+                }
+
+                &:active {
+                  transform: translateY(1px);
                 }
               }
+            }
+          }
 
-              &:active {
-                transform: translateY(1px);
+          #modifier_bar {
+            overflow: clip;
+            width: 100%;
+
+            #arrow() {
+              width: 28px;
+              height: 28px;
+              background-size: 100% 100%;
+              background-color: gray;
+              z-index: 1;
+
+              &.hidden {
+                visibility: collapse;
+              }
+            }
+
+            #arrow_left {
+              #arrow();
+              horizontal-align: left;
+              opacity-mask: url("file://{images}/control_icons/arrow_solid_left.png");
+            }
+
+            #arrow_right {
+              #arrow();
+              horizontal-align: right;
+              opacity-mask: url("file://{images}/control_icons/arrow_solid_right.png");
+            }
+
+            .modifier {
+              border-radius: 50%;
+              width: 28px;
+              height: 28px;
+              border: 1px solid #111;
+              box-shadow: 0px 0px 2px black;
+              transition-property: position, opacity, transform;
+              transition-duration: 0.3s;
+              opacity: 1;
+
+              &.being_removed {
+                opacity: 0;
+                transform: translateY(-30px);
               }
             }
           }

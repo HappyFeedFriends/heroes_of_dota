@@ -515,14 +515,14 @@ function authorize_ability_use(order_unit: Order_Unit_Permission, ability_id: Ab
     if (!ability) return error(Ability_Use_Error.other);
     if (ability.type == Ability_Type.passive) return error(Ability_Use_Error.unusable);
 
+    if (unit.supertype == Unit_Supertype.hero) {
+        if (unit.level < ability.available_since_level) return error(Ability_Use_Error.not_learned_yet);
+    }
+
     if (ability == unit.attack) {
         if (is_unit_disarmed(unit)) return error(Ability_Use_Error.disarmed);
     } else {
         if (is_unit_silenced(unit)) return error(Ability_Use_Error.silenced);
-    }
-
-    if (unit.supertype == Unit_Supertype.hero) {
-        if (unit.level < ability.available_since_level) return error(Ability_Use_Error.not_learned_yet);
     }
 
     if (ability.charges_remaining < 1) return error(Ability_Use_Error.no_charges);

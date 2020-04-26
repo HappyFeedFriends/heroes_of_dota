@@ -253,11 +253,12 @@ function create_adventure_card_tooltip(root: Panel) {
     const card = create_card_container_ui(parent, true);
     card.style.transitionDuration = "0s";
 
-    $.CreatePanel("Panel", parent, "arrow");
+    const arrow = $.CreatePanel("Panel", parent, "arrow");
 
     return {
         container: parent,
-        card: card
+        card: card,
+        arrow: arrow
     };
 }
 
@@ -316,22 +317,14 @@ function show_item_tooltip(over_what: Panel, item: Adventure_Item) {
     const root = adventure_ui.item_tooltip;
     root.RemoveAndDeleteChildren();
 
-    prepare_tooltip_to_be_shown_next_frame(root, over_what);
+    const tooltip = create_and_show_titled_effect_tooltip(
+        root,
+        over_what,
+        get_adventure_item_icon(item),
+        get_adventure_item_name(item)
+    );
 
-    const tooltip = create_effect_tooltip(root);
-    const { section, text, header } = tooltip;
-
-    $.CreatePanel("Panel", root, "arrow");
-
-    const title = $.CreatePanel("Panel", tooltip.content, "title");
-    title.AddClass("title");
-
-    const title_icon = $.CreatePanel("Image", title, "icon");
-    title_icon.SetImage(get_adventure_item_icon(item));
-    title_icon.SetScaling(ScalingFunction.STRETCH_TO_FIT_X_PRESERVE_ASPECT);
-
-    const title_text = $.CreatePanel("Label", title, "text");
-    title_text.text = get_adventure_item_name(item);
+    const { section, header, text } = tooltip;
 
     const health = field_ui(Modifier_Field.health_bonus);
 
@@ -340,7 +333,13 @@ function show_item_tooltip(over_what: Panel, item: Adventure_Item) {
             case Adventure_Item_Effect_Type.in_combat: {
                 const new_section = section();
                 header(new_section, "During combat");
-                fill_modifier_tooltip_section(tooltip, new_section, effect.modifier);
+
+                const strings = assemble_modifier_tooltip_strings(effect.modifier);
+
+                for (const string of strings) {
+                    tooltip.text(new_section, string);
+                }
+
                 break;
             }
 
@@ -425,7 +424,7 @@ function hide_item_tooltip() {
 }
 
 function show_and_prepare_adventure_tooltip(parent: Panel, css_class: string) {
-    prepare_tooltip_to_be_shown_next_frame(adventure_ui.tooltip.container, parent);
+    prepare_tooltip_to_be_shown_next_frame(adventure_ui.tooltip.container, adventure_ui.tooltip.arrow, parent);
 
     const card = adventure_ui.tooltip.card;
 

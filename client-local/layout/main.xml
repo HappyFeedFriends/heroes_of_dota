@@ -43,12 +43,11 @@
         </Panel>
 
         <Panel id="battle_ui" hittest="false" class="ui_state">
-            <Panel id="hero_control">
-                <Panel id="heroes_panel" class="control_panel">
+            <Panel id="unit_control">
+                <Panel id="units_panel" class="control_panel">
                     <Panel id="background"/>
                     <Panel id="inset_shadow"/>
-                    <Panel id="hero_rows"/>
-                    <Panel id="selected_hero"/>
+                    <Panel id="unit_rows"/>
                 </Panel>
                 <Panel id="right_flare"/>
             </Panel>
@@ -86,6 +85,8 @@
             </Panel>
 
             <Panel id="hand_ui" hittest="false"/>
+
+            <Panel id="modifier_tooltip" class="effect_tooltip tooltip_with_arrow" hittest="false" hittestchildren="false"/>
 
             <Panel id="your_turn_ui" hittest="false" hittestchildren="false">
                 <Panel id="container">

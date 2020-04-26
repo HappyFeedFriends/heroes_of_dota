@@ -176,6 +176,13 @@ type Stat_Indicator = {
 type Unit_Row = {
     unit_id: Unit_Id
     panel: Panel
+    modifier_cursor: number
+    modifier_bar: {
+        root: Panel
+        arrow_left: Panel
+        arrow_right: Panel
+    }
+    modifier_panels: Unit_Modifier_Panel[]
     ability_buttons_panel: Panel
     ability_buttons: Unit_Ability_Button[]
     health_label: LabelPanel
@@ -188,6 +195,11 @@ type Unit_Ability_Button = {
     ability_image: Panel
     charges_label: LabelPanel
     overlay: Panel
+}
+
+type Unit_Modifier_Panel = {
+    modifier_handle_id: Modifier_Handle_Id
+    panel: ImagePanel
 }
 
 type Level_Bar = {
@@ -241,9 +253,10 @@ const current_targeted_ability_ui = $("#current_targeted_ability");
 const card_selection_overlay = $("#card_selection_overlay");
 const end_turn_button = $("#end_turn_button");
 const popups = $("#popups");
+const modifier_tooltip = $("#modifier_tooltip");
 
 export const control_panel: Control_Panel = {
-    panel: $("#hero_rows"),
+    panel: $("#unit_rows"),
     unit_rows: []
 };
 
@@ -480,11 +493,11 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
         }
     }
 
-    for (const hero_row of control_panel.unit_rows) {
-        const hero = find_hero_by_id(battle, hero_row.unit_id);
+    for (const row of control_panel.unit_rows) {
+        const hero = find_hero_by_id(battle, row.unit_id);
 
         if (hero) {
-            update_hero_control_panel_state(hero_row, hero);
+            update_hero_control_panel_state(row, hero);
         }
     }
 
@@ -944,10 +957,6 @@ function update_unit_indicators() {
 
         const [color, alpha] = compute_unit_indicator_color(unit);
         const should_hide = unit_ui.hidden || unit.dead;
-
-        if (unit.supertype == Unit_Supertype.creep) {
-            $.Msg(enum_to_string(unit.type), "", unit.health, ", dead: ", unit.dead);
-        }
 
         if (unit_ui.circle.visible) {
             if (should_hide) {
@@ -1554,7 +1563,7 @@ function make_battle_snapshot(): Battle_Snapshot {
 }
 
 function clear_control_panel() {
-    $("#hero_rows").RemoveAndDeleteChildren();
+    $("#unit_rows").RemoveAndDeleteChildren();
 
     control_panel.unit_rows = [];
 }
@@ -1863,25 +1872,32 @@ function add_spawned_unit_to_control_panel(unit: Unit) {
         return label;
     }
 
-    const hero_row = $.CreatePanel("Panel", control_panel.panel, "");
-    hero_row.AddClass("hero_row");
-    hero_row.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+    const unit_row = $.CreatePanel("Panel", control_panel.panel, "");
+    unit_row.AddClass("unit_row");
+    unit_row.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
         const entity_id_and_unit_ui = find_unit_entity_data_by_unit_id(battle, unit.id);
 
         if (entity_id_and_unit_ui) {
+            const already_selected = selection.type == Selection_Type.unit && selection.unit.id == unit.id;
+
             Game.EmitSound("click_simple");
-            select_unit(entity_id_and_unit_ui[0]);
+            select_unit(entity_id_and_unit_ui[0], already_selected);
             update_grid_visuals();
         }
     });
 
-    const death_overlay = $.CreatePanel("Panel", hero_row, "death_overlay");
+    const death_overlay = $.CreatePanel("Panel", unit_row, "death_overlay");
     death_overlay.hittest = false;
 
-    const content_container = $.CreatePanel("Panel", hero_row, "container");
+    const content_container = $.CreatePanel("Panel", unit_row, "container");
 
-    const portrait = $.CreatePanel("Panel", content_container, "hero_portrait");
-    const abilities = $.CreatePanel("Panel", content_container, "ability_row");
+    const main_content = $.CreatePanel("Panel", content_container, "main_content");
+    const modifier_bar = $.CreatePanel("Panel", content_container, "modifier_bar");
+    const arrow_left = $.CreatePanel("Panel", modifier_bar, "arrow_left");
+    const arrow_right = $.CreatePanel("Panel", modifier_bar, "arrow_right");
+
+    const portrait = $.CreatePanel("Panel", main_content, "portrait");
+    const abilities = $.CreatePanel("Panel", main_content, "ability_row");
 
     if (unit.supertype == Unit_Supertype.hero) {
         safely_set_panel_background_image(portrait, get_full_hero_icon_path(unit.type));
@@ -1891,10 +1907,17 @@ function add_spawned_unit_to_control_panel(unit: Unit) {
     const health = create_indicator(indicators, "health_indicator", unit.health);
     const level = create_level_bar(indicators, "level_indicator");
     const new_row: Unit_Row = {
-        panel: hero_row,
+        panel: unit_row,
         unit_id: unit.id,
         ability_buttons_panel: abilities,
         ability_buttons: [],
+        modifier_cursor: 0,
+        modifier_bar: {
+            root: modifier_bar,
+            arrow_left: arrow_left,
+            arrow_right: arrow_right
+        },
+        modifier_panels: [],
         health_label: health,
         level_bar: level
     };
@@ -1933,6 +1956,116 @@ function update_hero_control_panel_state(row: Unit_Row, hero: Hero) {
             ability_button.charges_label.text = ability.charges_remaining.toString();
             ability_button.ability_panel.SetHasClass("silence", is_available && is_unit_silenced(hero));
         }
+    }
+
+    try_layout_modifiers();
+
+    function try_layout_modifiers() {
+        if (row.panel.actuallayoutwidth == 0) {
+            $.Schedule(0, try_layout_modifiers);
+        }
+
+        type Remove_Flag<T> = {
+            should_remove: boolean
+            data: T
+        }
+
+        const existing_panels: Remove_Flag<Unit_Modifier_Panel>[] = row.modifier_panels.map(panel => ({
+            should_remove: true,
+            data: panel
+        }));
+
+        function source_to_name(id: Modifier_Id, source: Source): string {
+            switch (source.type) {
+                case Source_Type.adventure_item: return get_adventure_item_name_by_id(source.item_id);
+                case Source_Type.item: return get_item_name(source.item_id);
+                case Source_Type.modifier: return source_to_name(id, source.applied.source);
+
+                default: return snake_case_to_capitalized_words(enum_to_string(id));
+            }
+        }
+
+        function show_modifier_tooltip(panel: Panel, applied: Applied_Modifier) {
+            const root = modifier_tooltip;
+            root.RemoveAndDeleteChildren();
+
+            const { section, header, text } = create_and_show_titled_effect_tooltip(
+                root,
+                panel,
+                get_modifier_icon(applied),
+                source_to_name(applied.modifier.id, applied.source)
+            );
+
+            const main = section();
+            header(main, "Effects");
+
+            const strings = assemble_modifier_tooltip_strings(applied.modifier);
+
+            for (const string of strings) {
+                text(main, string);
+            }
+        }
+
+        const one_modifier = 28;
+        const max_width = to_layout_space(row.panel.actuallayoutwidth);
+        const updated_panels: Unit_Modifier_Panel[] = [];
+        const modifiers_visible = Math.floor(max_width / one_modifier);
+
+        $.Msg(row.panel.actuallayoutwidth);
+
+        row.modifier_bar.arrow_left.SetHasClass("hidden", row.modifier_cursor == 0);
+        row.modifier_bar.arrow_right.SetHasClass("hidden", row.modifier_cursor + modifiers_visible >= hero.modifiers.length);
+
+        row.modifier_bar.arrow_left.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+            row.modifier_cursor = Math.max(0, row.modifier_cursor - modifiers_visible + 2);
+            update_hero_control_panel_state(row, hero);
+        });
+
+        row.modifier_bar.arrow_right.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+            row.modifier_cursor += modifiers_visible - 2;
+            update_hero_control_panel_state(row, hero);
+        });
+
+        for (const applied of hero.modifiers) {
+            const existing = existing_panels.find(ui => ui.data.modifier_handle_id == applied.handle_id);
+
+            if (existing) {
+                existing.should_remove = false;
+
+                updated_panels.unshift(existing.data);
+            } else {
+                const panel = $.CreatePanel("Image", row.modifier_bar.root, "");
+                panel.AddClass("modifier");
+                panel.SetImage(get_modifier_icon(applied));
+                panel.SetScaling(ScalingFunction.STRETCH_TO_FIT_Y_PRESERVE_ASPECT);
+                panel.SetPanelEvent(PanelEvent.ON_MOUSE_OVER, () => show_modifier_tooltip(panel, applied));
+                panel.SetPanelEvent(PanelEvent.ON_MOUSE_OUT, () => {
+                    modifier_tooltip.style.opacity = "0";
+                });
+
+                updated_panels.unshift({
+                    panel: panel,
+                    modifier_handle_id: applied.handle_id
+                });
+            }
+        }
+
+        for (const existing of existing_panels) {
+            if (existing.should_remove) {
+                existing.data.panel.AddClass("being_removed");
+                existing.data.panel.DeleteAsync(1);
+            }
+        }
+
+        let x = -row.modifier_cursor * one_modifier;
+
+        for (const ui of updated_panels) {
+            ui.panel.style.x = x + "px";
+
+            x += one_modifier;
+        }
+
+        row.modifier_panels = updated_panels;
     }
 }
 
