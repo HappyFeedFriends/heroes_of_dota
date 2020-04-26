@@ -556,7 +556,7 @@ function is_unit_selection(selection: Selection_State): selection is (Unit_Selec
     return selection.type == Selection_Type.unit || selection.type == Selection_Type.ability;
 }
 
-function on_cell_selected(game: Game_In_Battle, player: Battle_Player, x: number, y: number) {
+function on_cell_selected(game: Game_In_Battle, x: number, y: number) {
     const unit_in_cell = unit_at(game.battle, xy(x, y));
 
     if (game.selection.type == Selection_Type.ability) {
@@ -1190,8 +1190,8 @@ function draw_grid(game: Game_In_Battle, player?: Battle_Player, highlighted_abi
             );
 
             if (hovered) {
-                if (was_button_clicked(0) && player) {
-                    on_cell_selected(game, player, x, y);
+                if (was_button_clicked(0)) {
+                    on_cell_selected(game, x, y);
 
                     game.any_button_clicked_this_frame = true;
                 } else if (was_button_clicked(2) && player) {
