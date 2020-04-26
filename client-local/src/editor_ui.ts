@@ -218,7 +218,7 @@ function text_button(parent: Panel, css_class: string, text: string, action: (bu
     button.AddClass(css_class);
     button.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => action(button));
 
-    $.CreatePanel("Label", button, "").text = text;
+    $.CreatePanel("Label", button, "text").text = text;
 
     return button;
 }
@@ -321,12 +321,18 @@ function dropdown_menu(root: Panel): Dropdown_Menu {
 function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: Physical_Adventure_Entity, enemy: Find_By_Type<Adventure_Entity, Adventure_Entity_Type.enemy>, name: string) {
     const { creeps, id, battleground } = enemy;
 
-    entity_button(`Battleground: #${battleground}`, () => {
+    const button = entity_button("...", () => {
         load_battleground_editor(battleground, {
             current_battleground_id: battleground,
             id: id,
             name: name
         }, editor)
+    });
+
+    api_request(Api_Request_Type.editor_get_battleground, {
+        id: battleground
+    }, data => {
+        (button.FindChild("text") as LabelPanel).text = `Bg: '${data.battleground.name}' #${battleground}`
     });
 
     const menu = dropdown_menu(entity_buttons_dropdown);
@@ -2341,6 +2347,11 @@ function enter_battleground_editor(id: Battleground_Id, battleground: Battlegrou
                     enemy.current_battleground_id = id;
 
                     assign_button.DeleteAsync(0);
+
+                    const entity = find_adventure_entity_by_id(enemy.id);
+                    if (entity && entity.base.type == Adventure_Entity_Type.enemy) {
+                        entity.base.battleground = id;
+                    }
                 });
 
                 toolbar_dropdown_button("Cancel", () => close_dropdown());
