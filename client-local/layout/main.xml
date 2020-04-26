@@ -47,8 +47,8 @@
                 <Panel id="heroes_panel" class="control_panel">
                     <Panel id="background"/>
                     <Panel id="inset_shadow"/>
-                    <Panel id="hero_rows">
-                    </Panel>
+                    <Panel id="hero_rows"/>
+                    <Panel id="selected_hero"/>
                 </Panel>
                 <Panel id="right_flare"/>
             </Panel>

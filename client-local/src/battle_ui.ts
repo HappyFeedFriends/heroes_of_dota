@@ -110,6 +110,13 @@ type UI_Unit_Data_Base = {
     modifier_bar: Panel
     modifier_elements: Effect_UI<Modifier_Handle_Id>[]
 
+    circle: {
+        visible: true
+        particle: ParticleId
+    } | {
+        visible: false
+    }
+
     stats: Unit_Stats
 }
 
@@ -127,7 +134,7 @@ type UI_Creep_Data = UI_Unit_Data_Base & {
     supertype: Unit_Supertype.creep
 }
 
-type UI_Unit_Data = UI_Hero_Data | UI_Monster_Data | UI_Creep_Data;
+type UI_Unit_Data = UI_Hero_Data | UI_Monster_Data | UI_Creep_Data
 
 type UI_Battle = Battle & {
     id: Battle_Id
@@ -150,14 +157,14 @@ type UI_Battle = Battle & {
 
 type UI_Cell = Cell & ({
     disabled: false
-    associated_particle: ParticleId;
+    associated_particle: ParticleId
 } | {
     disabled: true
 })
 
 type Control_Panel = {
-    panel: Panel;
-    hero_rows: Hero_Row[];
+    panel: Panel
+    unit_rows: Unit_Row[]
 }
 
 type Stat_Indicator = {
@@ -166,16 +173,16 @@ type Stat_Indicator = {
     value_provider(stats: Unit_Stats): number
 }
 
-type Hero_Row = {
+type Unit_Row = {
     unit_id: Unit_Id
     panel: Panel
     ability_buttons_panel: Panel
-    ability_buttons: Hero_Ability_Button[]
+    ability_buttons: Unit_Ability_Button[]
     health_label: LabelPanel
     level_bar: Level_Bar
 }
 
-type Hero_Ability_Button = {
+type Unit_Ability_Button = {
     ability: Ability_Id
     ability_panel: Panel
     ability_image: Panel
@@ -237,7 +244,7 @@ const popups = $("#popups");
 
 export const control_panel: Control_Panel = {
     panel: $("#hero_rows"),
-    hero_rows: []
+    unit_rows: []
 };
 
 let actual_cards_in_hand: Card_Id[] = [];
@@ -264,6 +271,10 @@ function set_selection(new_selection: Selection_State) {
 
     if (!was_overlay_unit_selection && is_overlay_unit_selection(new_selection)) {
         recreate_overlay_unit_selection(new_selection);
+    }
+
+    for (const row of control_panel.unit_rows) {
+        row.panel.SetHasClass("selected", is_unit_selection(new_selection) && new_selection.unit.id == row.unit_id);
     }
 }
 
@@ -456,7 +467,7 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
             const spawned_hero = find_hero_by_id(battle, delta.unit_id);
 
             if (spawned_hero && player_owns_unit(battle.this_player, spawned_hero)) {
-                add_spawned_hero_to_control_panel(spawned_hero);
+                add_spawned_unit_to_control_panel(spawned_hero);
             }
         }
 
@@ -469,7 +480,7 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
         }
     }
 
-    for (const hero_row of control_panel.hero_rows) {
+    for (const hero_row of control_panel.unit_rows) {
         const hero = find_hero_by_id(battle, hero_row.unit_id);
 
         if (hero) {
@@ -764,7 +775,7 @@ function color_cell(cell: UI_Cell, color: RGB, alpha: number) {
     }
 }
 
-function compute_unit_cell_color(unit_in_cell: Unit): [RGB, number] {
+function compute_unit_indicator_color(unit_in_cell: Unit): [RGB, number] {
     const your_turn = battle.this_player == battle.turning_player;
 
     let cell_color: RGB;
@@ -785,21 +796,25 @@ function compute_unit_cell_color(unit_in_cell: Unit): [RGB, number] {
 
     let alpha = 50;
 
-    if (is_unit_selection(selection) && selection.unit == unit_in_cell) {
-        alpha = 255;
+    if (is_unit_selection(selection)) {
+        if (selection.unit == unit_in_cell) {
+            alpha = 255;
+        } else {
+            alpha = 20;
+        }
     }
 
     return [ cell_color, alpha ];
 }
 
 function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, cell_index: number): [RGB, number] {
-    if (is_unit_rooted(unit)) return [color_nothing, 20];
+    if (is_unit_rooted(unit)) return [color_nothing, 10];
 
     const rune_in_cell = battle.cell_index_to_rune[cell_index];
     const cost = path.cell_index_to_cost[cell_index];
 
-    if (cost <= unit.move_points && !unit.has_taken_an_action_this_turn) {
-        return [color_green, 35];
+    if (cost > 0 && cost <= unit.move_points && !unit.has_taken_an_action_this_turn) {
+        return [color_green, 45];
     }
 
     // TODO @Performance seems awfully inefficient if we have a lot of runes, consider populating paths twice and using that
@@ -807,11 +822,11 @@ function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, 
         const path = can_find_path(battle, unit, rune_in_cell.position, unit_pathing_flags(unit, true));
 
         if (path.found && cost <= unit.move_points) {
-            return [color_green, 35];
+            return [color_green, 45];
         }
     }
 
-    return [color_nothing, 20];
+    return [color_nothing, 10];
 }
 
 function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell_index_to_highlight: boolean[]) {
@@ -843,14 +858,10 @@ function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell
         const index = grid_cell_index(battle.grid, cell.position);
 
         let cell_color: RGB = color_nothing;
-        let alpha = 20;
+        let alpha = 10;
 
         const unit_in_cell = battle.cell_index_to_unit[index];
         const ability = selection.ability;
-
-        if (unit_in_cell) {
-            [cell_color, alpha] = compute_unit_cell_color(unit_in_cell);
-        }
 
         switch (ability.type) {
             case Ability_Type.target_ground: {
@@ -867,7 +878,7 @@ function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell
             case Ability_Type.target_unit: {
                 if (ability_targeting_fits(battle, ability.targeting, selection.unit.position, cell.position)) {
                     if (unit_in_cell) {
-                        alpha = 140;
+                        alpha = 80;
                         cell_color = color_green;
                     } else {
                         alpha = 20;
@@ -907,57 +918,9 @@ function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell
     }
 }
 
-function update_grid_visuals_for_unit_selection(selection: Grid_Selection_Unit, cell_index_to_shop_highlight: boolean[]) {
-    const hovered_shop = hover.type == Hover_Type.cell && shop_at(battle, hover.cell);
-
-    for (const cell of battle.grid.cells) {
-        const index = grid_cell_index(battle.grid, cell.position);
-        const unit_in_cell = battle.cell_index_to_unit[index];
-
-        let [cell_color, alpha] = compute_unit_path_cell_color(selection.unit, selection.path, index);
-
-        if (unit_in_cell) {
-            [cell_color, alpha] = compute_unit_cell_color(unit_in_cell);
-        }
-
-        if (hovered_shop && is_point_in_shop_range(cell.position, hovered_shop)) {
-            cell_index_to_shop_highlight[index] = true;
-        }
-
-        color_cell(cell, cell_color, alpha);
-    }
-}
-
-function update_grid_visuals_for_shop_selection(selection: Grid_Selection_Shop, cell_index_to_shop_highlight: boolean[]) {
-    for (const cell of battle.grid.cells) {
-        const index = grid_cell_index(battle.grid, cell.position);
-        const unit_in_cell = battle.cell_index_to_unit[index];
-
-        let [cell_color, alpha] = compute_unit_path_cell_color(selection.unit, selection.path, index);
-
-        if (unit_in_cell) {
-            [cell_color, alpha] = compute_unit_cell_color(unit_in_cell);
-        }
-
-        if (is_point_in_shop_range(cell.position, selection.shop)) {
-            cell_index_to_shop_highlight[index] = true;
-        }
-
-        color_cell(cell, cell_color, alpha);
-    }
-}
-
 function update_grid_visuals_for_card_selection(selection: Grid_Selection_Card, cell_index_to_zone_highlight: boolean[]) {
     for (const cell of battle.grid.cells) {
         const index = grid_cell_index(battle.grid, cell.position);
-        const unit_in_cell = battle.cell_index_to_unit[index];
-
-        let cell_color: RGB = color_nothing;
-        let alpha = 20;
-
-        if (unit_in_cell) {
-            [cell_color, alpha] = compute_unit_cell_color(unit_in_cell);
-        }
 
         if (selection.card.type == Card_Type.hero || selection.card.type == Card_Type.existing_hero) {
             if (is_point_in_deployment_zone(battle, cell.position, battle.this_player)) {
@@ -965,58 +928,113 @@ function update_grid_visuals_for_card_selection(selection: Grid_Selection_Card, 
             }
         }
 
-        color_cell(cell, cell_color, alpha);
+        color_cell(cell, color_nothing, 10);
     }
 }
 
-function update_grid_visuals_for_no_selection(cell_index_to_shop_highlight: boolean[]) {
-    const hovered_shop = hover.type == Hover_Type.cell && shop_at(battle, hover.cell);
+function update_unit_indicators() {
+    function set_circle_color_alpha(particle: ParticleId, color: RGB, alpha: number) {
+        Particles.SetParticleControl(particle, 2, color);
+        Particles.SetParticleControl(particle, 3, [ alpha, 0, 0 ]);
+    }
 
-    for (const cell of battle.grid.cells) {
-        const index = grid_cell_index(battle.grid, cell.position);
-        const unit_in_cell = battle.cell_index_to_unit[index];
+    for (const [entity, unit_ui] of Object.entries(battle.entity_id_to_unit_data)) {
+        const unit = find_unit_by_id(battle, unit_ui.id);
+        if (!unit) continue;
 
-        let cell_color: RGB = color_nothing;
-        let alpha = 20;
+        const [color, alpha] = compute_unit_indicator_color(unit);
+        const should_hide = unit_ui.hidden || unit.dead;
 
-        if (unit_in_cell) {
-            [cell_color, alpha] = compute_unit_cell_color(unit_in_cell);
+        if (unit.supertype == Unit_Supertype.creep) {
+            $.Msg(enum_to_string(unit.type), "", unit.health, ", dead: ", unit.dead);
         }
 
-        if (hovered_shop && is_point_in_shop_range(cell.position, hovered_shop)) {
-            cell_index_to_shop_highlight[index] = true;
-        }
+        if (unit_ui.circle.visible) {
+            if (should_hide) {
+                destroy_fx(unit_ui.circle.particle);
+                unit_ui.circle = { visible: false };
+            } else {
+                set_circle_color_alpha(unit_ui.circle.particle, color, alpha);
+            }
+        } else {
+            if (!should_hide) {
+                unit_ui.circle = {
+                    visible: true,
+                    particle: -1 as ParticleId
+                };
 
-        color_cell(cell, cell_color, alpha);
+                // The particle won't show without that wait if the unit was just created
+                $.Schedule(0.1, () => {
+                    if (unit_ui.circle.visible && unit_ui.circle.particle == -1) {
+                        const new_particle = Particles.CreateParticle("particles/ui/circle.vpcf", ParticleAttachment_t.PATTACH_ABSORIGIN_FOLLOW, parseInt(entity));
+
+                        Particles.SetParticleControl(new_particle, 1, [64, 0, 0]); // Size
+
+                        set_circle_color_alpha(new_particle, color, alpha);
+                        register_particle_for_reload(new_particle);
+
+                        unit_ui.circle.particle = new_particle;
+                    }
+                });
+            }
+        }
     }
 }
 
 function update_grid_visuals() {
     $.Msg("Update grid visuals");
 
+    update_unit_indicators();
+
     const selection = selection_to_grid_selection();
     const cell_index_to_highlight: boolean[] = [];
     const cell_index_to_shop_highlight: boolean[] = [];
     const cell_index_to_zone_highlight: boolean[] = [];
 
+    let hovered_shop: Shop | undefined;
+
+    if (selection.type == Selection_Type.shop) {
+        hovered_shop = selection.shop;
+    } else {
+        if (hover.type == Hover_Type.cell) {
+            hovered_shop = shop_at(battle, hover.cell);
+        } else {
+            hovered_shop = undefined;
+        }
+    }
+
+    for (const cell of battle.grid.cells) {
+        const index = grid_cell_index(battle.grid, cell.position);
+
+        if (hovered_shop && is_point_in_shop_range(cell.position, hovered_shop)) {
+            cell_index_to_shop_highlight[index] = true;
+        }
+    }
+
     switch (selection.type) {
         case Selection_Type.none: {
-            update_grid_visuals_for_no_selection(cell_index_to_shop_highlight);
+            for (const cell of battle.grid.cells) {
+                color_cell(cell, color_nothing, 10);
+            }
+
             break;
         }
 
+        case Selection_Type.shop:
         case Selection_Type.unit: {
-            update_grid_visuals_for_unit_selection(selection, cell_index_to_shop_highlight);
+            for (const cell of battle.grid.cells) {
+                const index = grid_cell_index(battle.grid, cell.position);
+
+                let [cell_color, alpha] = compute_unit_path_cell_color(selection.unit, selection.path, index);
+
+                color_cell(cell, cell_color, alpha);
+            }
+
             break;
         }
 
         case Selection_Type.ability: {
             update_grid_visuals_for_ability(selection, cell_index_to_highlight);
-            break;
-        }
-
-        case Selection_Type.shop: {
-            update_grid_visuals_for_shop_selection(selection, cell_index_to_shop_highlight);
             break;
         }
 
@@ -1035,7 +1053,7 @@ function update_grid_visuals() {
             if (selection.type == Selection_Type.card) {
                 cell_index_to_highlight[index] = true;
             } else {
-                color_cell(cell, color_green, 140);
+                color_cell(cell, color_green, 80);
             }
         }
     }
@@ -1228,7 +1246,10 @@ function create_ui_unit_data(data: Visualizer_Unit_Data): UI_Unit_Data {
             stat_max_move_points: max_move_points,
             stat_max_health: max_health,
             modifier_bar: modifiers,
-            modifier_elements: []
+            modifier_elements: [],
+            circle: {
+                visible: false
+            } as const
         }
     }
 
@@ -1347,8 +1368,12 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
     try_find_and_update_associated_unit();
 }
 
-function dispose_of_unit_stat_bar_data(data: UI_Unit_Data) {
+function dispose_of_ui_unit_data(data: UI_Unit_Data) {
     data.stat_bar_panel.DeleteAsync(0);
+
+    if (data.circle.visible) {
+        destroy_fx(data.circle.particle);
+    }
 }
 
 function update_hand_elements(source: Card_Id[]) {
@@ -1439,7 +1464,7 @@ function battle_process_state_update(battle: UI_Battle, state: Game_Net_Table_In
             }
         }
 
-        dispose_of_unit_stat_bar_data(battle.entity_id_to_unit_data[leftover_id]);
+        dispose_of_ui_unit_data(battle.entity_id_to_unit_data[leftover_id]);
 
         delete battle.entity_id_to_unit_data[Number(leftover_id)];
     }
@@ -1531,7 +1556,7 @@ function make_battle_snapshot(): Battle_Snapshot {
 function clear_control_panel() {
     $("#hero_rows").RemoveAndDeleteChildren();
 
-    control_panel.hero_rows = [];
+    control_panel.unit_rows = [];
 }
 
 function clear_hand_state() {
@@ -1738,8 +1763,8 @@ function update_level_bar(level_bar: Level_Bar, level: number) {
     });
 }
 
-function sync_ability_buttons_with_abilities(row: Hero_Row, hero: Hero) {
-    function create_hero_ability_button(ability: Ability): Hero_Ability_Button {
+function sync_ability_buttons_with_abilities(row: Unit_Row, hero: Unit) {
+    function create_hero_ability_button(ability: Ability): Unit_Ability_Button {
         const ability_panel = $.CreatePanel("Button", row.ability_buttons_panel, "");
         ability_panel.AddClass("ability_button");
 
@@ -1786,7 +1811,7 @@ function sync_ability_buttons_with_abilities(row: Hero_Row, hero: Hero) {
     }
 }
 
-function update_ability_button_ui(button: Hero_Ability_Button, hero: Hero, ability: Ability) {
+function update_ability_button_ui(button: Unit_Ability_Button, hero: Unit, ability: Ability) {
     const ability_panel = button.ability_panel;
 
     ability_panel.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
@@ -1796,10 +1821,7 @@ function update_ability_button_ui(button: Hero_Ability_Button, hero: Hero, abili
             const [ id ] = entity_data;
 
             select_unit(id);
-
-            if (ability.type != Ability_Type.passive) {
-                try_select_unit_ability(hero, ability);
-            }
+            try_select_unit_ability(hero, ability);
         }
     });
 
@@ -1830,7 +1852,7 @@ function update_ability_button_ui(button: Hero_Ability_Button, hero: Hero, abili
     safely_set_panel_background_image(button.ability_image, get_full_ability_icon_path(ability.id));
 }
 
-function add_spawned_hero_to_control_panel(hero: Hero) {
+function add_spawned_unit_to_control_panel(unit: Unit) {
     function create_indicator(parent: Panel, id: string, value: number): LabelPanel {
         const indicator = $.CreatePanel("Panel", parent, id);
         const label = $.CreatePanel("Label", indicator, "");
@@ -1843,6 +1865,15 @@ function add_spawned_hero_to_control_panel(hero: Hero) {
 
     const hero_row = $.CreatePanel("Panel", control_panel.panel, "");
     hero_row.AddClass("hero_row");
+    hero_row.SetPanelEvent(PanelEvent.ON_LEFT_CLICK, () => {
+        const entity_id_and_unit_ui = find_unit_entity_data_by_unit_id(battle, unit.id);
+
+        if (entity_id_and_unit_ui) {
+            Game.EmitSound("click_simple");
+            select_unit(entity_id_and_unit_ui[0]);
+            update_grid_visuals();
+        }
+    });
 
     const death_overlay = $.CreatePanel("Panel", hero_row, "death_overlay");
     death_overlay.hittest = false;
@@ -1852,23 +1883,25 @@ function add_spawned_hero_to_control_panel(hero: Hero) {
     const portrait = $.CreatePanel("Panel", content_container, "hero_portrait");
     const abilities = $.CreatePanel("Panel", content_container, "ability_row");
 
-    safely_set_panel_background_image(portrait, get_full_hero_icon_path(hero.type));
+    if (unit.supertype == Unit_Supertype.hero) {
+        safely_set_panel_background_image(portrait, get_full_hero_icon_path(unit.type));
+    }
 
     const indicators = $.CreatePanel("Panel", portrait, "indicators");
-    const health = create_indicator(indicators, "health_indicator", hero.health);
+    const health = create_indicator(indicators, "health_indicator", unit.health);
     const level = create_level_bar(indicators, "level_indicator");
-    const new_row: Hero_Row = {
+    const new_row: Unit_Row = {
         panel: hero_row,
-        unit_id: hero.id,
+        unit_id: unit.id,
         ability_buttons_panel: abilities,
         ability_buttons: [],
         health_label: health,
         level_bar: level
     };
 
-    sync_ability_buttons_with_abilities(new_row, hero);
+    sync_ability_buttons_with_abilities(new_row, unit);
 
-    control_panel.hero_rows.push(new_row);
+    control_panel.unit_rows.push(new_row);
 }
 
 function update_end_turn_button() {
@@ -1876,7 +1909,7 @@ function update_end_turn_button() {
     end_turn_button.SetHasClass("cant_end_turn", !player_act_permission.ok);
 }
 
-function update_hero_control_panel_state(row: Hero_Row, hero: Hero) {
+function update_hero_control_panel_state(row: Unit_Row, hero: Hero) {
     row.panel.SetHasClass("dead", hero.dead);
     row.health_label.text = hero.health.toString();
 
@@ -1954,8 +1987,7 @@ function before_unit_selection_change() {
                 shop_ui.root_container.RemoveClass("open");
             }
 
-            Particles.DestroyParticleEffect(selection.arrow_particle, false);
-            Particles.ReleaseParticleIndex(selection.arrow_particle);
+            destroy_fx(selection.arrow_particle);
         }
     }
 }
@@ -1979,9 +2011,7 @@ function drop_selection() {
 
 function shop_particle(new_entity_id: EntityId) {
     const fx = Particles.CreateParticle("particles/shop_arrow.vpcf", ParticleAttachment_t.PATTACH_OVERHEAD_FOLLOW, new_entity_id);
-
     register_particle_for_reload(fx);
-
     return fx;
 }
 
@@ -2279,10 +2309,14 @@ export function battle_filter_mouse_click(event: MouseEvent, button: MouseButton
                     Particles.SetParticleControl(particle, 1, [255, 255, 255]);
                     Particles.SetParticleControl(particle, 2, [64, 255, 0]);
                     Particles.ReleaseParticleIndex(particle);
+
+                    Game.EmitSound("click_simple");
                 }
 
                 if (cursor_entity_shop) {
                     select_shop(cursor_entity);
+
+                    Game.EmitSound("click_simple");
                 }
             } else {
                 drop_selection();
@@ -2787,7 +2821,7 @@ function show_game_over_ui(result: Combat_Result) {
     });
 }
 
-function try_select_unit_ability(unit: Unit, ability: Ability_Active) {
+function try_select_unit_ability(unit: Unit, ability: Ability) {
     const ability_use = authorize_ability_use_with_error_ui(unit, ability);
     if (!ability_use) {
         return;
@@ -2795,10 +2829,13 @@ function try_select_unit_ability(unit: Unit, ability: Ability_Active) {
 
     $.Msg("clicked ", get_ability_icon(ability.id));
 
-    if (ability.type == Ability_Type.no_target) {
-        try_use_no_target_ability(unit, ability);
+    Game.EmitSound("click_simple");
+
+    const active = ability_use.ability;
+    if (active.type == Ability_Type.no_target) {
+        try_use_no_target_ability(unit, active);
     } else {
-        select_unit_ability(unit, ability);
+        select_unit_ability(unit, active);
     }
 }
 
@@ -2809,7 +2846,6 @@ function setup_custom_ability_hotkeys() {
         GameUI.CustomUIConfig().register_key_bind(command, () => {
             if (selection.type == Selection_Type.unit) {
                 const ability = selection.unit.abilities[index];
-                if (!ability || ability.type == Ability_Type.passive) return;
 
                 try_select_unit_ability(selection.unit, ability);
             }

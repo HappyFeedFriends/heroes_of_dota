@@ -187,7 +187,7 @@ function show_ability_use_error_ui(caster: Unit, ability_id: Ability_Id, error: 
     show_action_error_ui(error, ability_use_error_reason);
 
     if (error.kind == Ability_Use_Error.silenced) {
-        const row = control_panel.hero_rows.find(row => row.unit_id == caster.id);
+        const row = control_panel.unit_rows.find(row => row.unit_id == caster.id);
         if (!row) return;
 
         const button = row.ability_buttons.find(button => button.ability == ability_id);

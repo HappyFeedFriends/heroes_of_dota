@@ -530,14 +530,12 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             ]
         };
 
-
         case Creep_Type.lane_creep: return {
             attack_damage: 3,
             health: 3,
             move_points: 3,
             attack: basic_attack(1)
         };
-
 
         case Creep_Type.satyr_big: return {
             attack_damage: 6,
@@ -546,7 +544,6 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             attack: basic_attack(1)
         };
 
-
         case Creep_Type.satyr_small: return {
             attack_damage: 3,
             health: 6,
@@ -554,14 +551,12 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             attack: basic_attack(1)
         };
 
-
         case Creep_Type.small_spider: return {
             attack_damage: 3,
             health: 5,
             move_points: 3,
             attack: basic_attack(1)
         };
-
 
         case Creep_Type.large_spider: return {
             attack_damage: 4,
@@ -574,7 +569,6 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
                 }),
             ]
         };
-
 
         case Creep_Type.spider_matriarch: return {
             attack_damage: 2,
@@ -589,7 +583,6 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             ]
         };
 
-
         case Creep_Type.spiderling: return {
             attack_damage: 2,
             health: 2,
@@ -597,7 +590,6 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             attack: basic_attack(1),
             abilities: []
         };
-
 
         case Creep_Type.hardened_spider: return {
             attack_damage: 3,

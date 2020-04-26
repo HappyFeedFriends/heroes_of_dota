@@ -80,6 +80,8 @@
   align: left bottom;
 
   #heroes_panel {
+    min-height: 130px;
+
     > #background {
       background-image: url("s2r://panorama/images/hud/reborn/ability_bg_psd.vtex");
       background-size: 100%;
@@ -99,6 +101,18 @@
 
       .hero_row {
         margin-bottom: 4px;
+
+        &:hover {
+          background-color: gradient( linear, 0% 0%, 0% 100%, from( #5f7ee933 ), to(#4e68c033) );
+        }
+
+        &.selected {
+          background-color: gradient( linear, 0% 0%, 0% 100%, from( #5f7ee977 ), to(#4e68c077) );
+        }
+
+        &:active {
+          transform: translateY(1px);
+        }
 
         &.dead {
           wash-color: gray;
@@ -259,6 +273,10 @@
                 &:hover {
                   brightness: 0.5;
                 }
+              }
+
+              &:active {
+                transform: translateY(1px);
               }
             }
           }

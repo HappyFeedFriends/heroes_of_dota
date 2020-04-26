@@ -10,9 +10,9 @@ type World_Grid<T extends Cell_Like> = Grid<T> & {
 }
 
 const color_nothing = rgb(255, 255, 255);
-const color_green = rgb(128, 255, 128);
-const color_red = rgb(255, 128, 128);
-const color_yellow = rgb(255, 255, 0);
+const color_green = rgb(128, 255, 0);
+const color_red = rgb(255, 80, 80);
+const color_yellow = rgb(255, 255, 128);
 
 function world_position_to_battle_position(world_origin: XY, position: XYZ): XY {
     return {
