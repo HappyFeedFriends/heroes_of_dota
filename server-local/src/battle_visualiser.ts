@@ -96,6 +96,7 @@ type Ranged_Attack_Spec = {
     particle_path: string
     projectile_speed: number
     attack_point: number
+    custom_attach_point?: string
     shake_on_attack?: Shake
     shake_on_impact?: Shake
 }
@@ -376,6 +377,13 @@ function creep_traits_by_type(creep_type: Creep_Type): Creep_Traits {
             ...default_traits,
             model: no_model
         };
+
+        case Creep_Type.veno_plague_ward: return {
+            sounds: default_sounds,
+            model: "models/heroes/venomancer/venomancer_ward.vmdl",
+            scale: 1.0,
+            flinch_animation: GameActivity_t.ACT_DOTA_SPAWN
+        }
     }
 }
 
@@ -952,48 +960,55 @@ function tide_ravage(game: Game, caster: Unit, cast: Delta_Ability_Tide_Ravage) 
 
 function get_ranged_attack_spec(unit: Unit): Ranged_Attack_Spec | undefined {
     switch (unit.supertype) {
-        case Unit_Supertype.hero: {
-            switch (unit.type) {
-                case Hero_Type.sniper: return {
-                    particle_path: "particles/units/heroes/hero_sniper/sniper_base_attack.vpcf",
-                    projectile_speed: 1600,
-                    attack_point: 0.1,
-                    shake_on_attack: Shake.weak
-                };
+        case Unit_Supertype.hero: return get_hero_ranged_attack_spec(unit.type);
+    }
+}
 
-                case Hero_Type.luna: return {
-                    particle_path: "particles/units/heroes/hero_luna/luna_moon_glaive.vpcf",
-                    projectile_speed: 900,
-                    attack_point: 0.4
-                };
+function get_hero_ranged_attack_spec(type: Hero_Type): Ranged_Attack_Spec | undefined {
+    switch (type) {
+        case Hero_Type.sniper: return {
+            particle_path: "particles/units/heroes/hero_sniper/sniper_base_attack.vpcf",
+            projectile_speed: 1600,
+            attack_point: 0.1,
+            shake_on_attack: Shake.weak
+        };
 
-                case Hero_Type.skywrath_mage: return {
-                    particle_path: "particles/units/heroes/hero_skywrath_mage/skywrath_mage_base_attack.vpcf",
-                    projectile_speed: 800,
-                    attack_point: 0.5
-                };
+        case Hero_Type.luna: return {
+            particle_path: "particles/units/heroes/hero_luna/luna_moon_glaive.vpcf",
+            projectile_speed: 900,
+            attack_point: 0.4
+        };
 
-                case Hero_Type.lion: return {
-                    particle_path: "particles/units/heroes/hero_lion/lion_base_attack.vpcf",
-                    projectile_speed: 1200,
-                    attack_point: 0.4
-                };
+        case Hero_Type.skywrath_mage: return {
+            particle_path: "particles/units/heroes/hero_skywrath_mage/skywrath_mage_base_attack.vpcf",
+            projectile_speed: 800,
+            attack_point: 0.5
+        };
 
-                case Hero_Type.mirana: return {
-                    particle_path: "particles/units/heroes/hero_mirana/mirana_base_attack.vpcf",
-                    projectile_speed: 1400,
-                    attack_point: 0.3
-                };
+        case Hero_Type.lion: return {
+            particle_path: "particles/units/heroes/hero_lion/lion_base_attack.vpcf",
+            projectile_speed: 1200,
+            attack_point: 0.4
+        };
 
-                case Hero_Type.vengeful_spirit: return {
-                    particle_path: "particles/units/heroes/hero_vengeful/vengeful_base_attack.vpcf",
-                    projectile_speed: 1400,
-                    attack_point: 0.3
-                }
-            }
+        case Hero_Type.mirana: return {
+            particle_path: "particles/units/heroes/hero_mirana/mirana_base_attack.vpcf",
+            projectile_speed: 1400,
+            attack_point: 0.3
+        };
 
-            break;
-        }
+        case Hero_Type.vengeful_spirit: return {
+            particle_path: "particles/units/heroes/hero_vengeful/vengeful_base_attack.vpcf",
+            projectile_speed: 1400,
+            attack_point: 0.3
+        };
+
+        case Hero_Type.venomancer: return {
+            particle_path: "particles/units/heroes/hero_venomancer/venomancer_base_attack.vpcf",
+            projectile_speed: 1200,
+            attack_point: 0.3,
+            custom_attach_point: "attach_mouth"
+        };
     }
 }
 
@@ -1065,6 +1080,7 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
             case Hero_Type.earthshaker: return hero.modifiers.some(applied => applied.modifier.id == Modifier_Id.shaker_enchant_totem_caster)
                 ? "Hero_EarthShaker.Totem.Attack"
                 : "Hero_EarthShaker.Attack";
+            case Hero_Type.venomancer: return "Hero_Venomancer.Attack";
         }
     }
 
@@ -1076,6 +1092,7 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
             case Hero_Type.lion: return "Hero_Lion.ProjectileImpact";
             case Hero_Type.mirana: return "Hero_Mirana.ProjectileImpact";
             case Hero_Type.vengeful_spirit: return "Hero_VengefulSpirit.ProjectileImpact";
+            case Hero_Type.venomancer: return "Hero_Venomancer.ProjectileImpact";
         }
     }
 
@@ -1095,16 +1112,16 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
         return;
     }
 
-    const ranged_attack_spec = get_ranged_attack_spec(unit);
+    const spec = get_ranged_attack_spec(unit);
 
-    if (ranged_attack_spec) {
+    if (spec) {
         if (unit.supertype == Unit_Supertype.creep) {
             unit_emit_sound(unit, unit.traits.sounds.pre_attack);
         } else {
             try_play_sound_for_hero(unit, get_hero_pre_attack_sound);
         }
 
-        unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK, ranged_attack_spec.attack_point);
+        unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK, spec.attack_point);
 
         if (unit.supertype == Unit_Supertype.creep) {
             unit_emit_sound(unit, unit.traits.sounds.attack);
@@ -1112,16 +1129,16 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
             try_play_sound_for_hero(unit, get_hero_attack_sound);
         }
 
-        if (ranged_attack_spec.shake_on_attack) {
-            shake_screen(unit.position, ranged_attack_spec.shake_on_attack);
+        if (spec.shake_on_attack) {
+            shake_screen(unit.position, spec.shake_on_attack);
         }
 
-        tracking_projectile_to_unit(unit, target, ranged_attack_spec.particle_path, ranged_attack_spec.projectile_speed);
+        tracking_projectile_to_unit(unit, target, spec.particle_path, spec.projectile_speed, spec.custom_attach_point);
         change_health(game, unit, target, cast.target.change, cast.target.blocked_by_armor);
         try_play_sound_for_hero(unit, get_hero_ranged_impact_sound, target);
 
-        if (ranged_attack_spec.shake_on_impact) {
-            shake_screen(target.position, ranged_attack_spec.shake_on_impact);
+        if (spec.shake_on_impact) {
+            shake_screen(target.position, spec.shake_on_impact);
         }
     } else {
         if (unit.supertype == Unit_Supertype.creep) {
@@ -1427,7 +1444,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
         }
 
         case Ability_Id.ember_fire_remnant: {
-            // TODO Should be able to cast this ability as a monster as well
+            // @MonsterOwner
             if (unit.supertype == Unit_Supertype.monster) break;
 
             unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_4, 0);
@@ -1465,6 +1482,32 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             }
 
             create_timed_effect(cast.block.effect_handle_id, cast.block.effect);
+
+            break;
+        }
+
+        case Ability_Id.venomancer_plague_wards: {
+            // TODO
+
+            // @MonsterOwner
+            if (unit.supertype == Unit_Supertype.monster) return;
+
+            const facing = find_player_deployment_zone_facing(unit.owner_remote_id);
+            if (!facing) break;
+
+            const creep = spawn_creep_for_battle(cast.summon_type, cast.summon_id, unit.owner_remote_id, cast.target_position, facing);
+
+            register_unit(battle, creep);
+            update_game_net_table(game);
+
+            break;
+        }
+
+        case Ability_Id.venomancer_venomous_gale: {
+            // TODO
+            for (const modifier of filter_and_map_existing_units(cast.targets)) {
+                apply_modifier(game, modifier.unit, modifier.modifier);
+            }
 
             break;
         }
@@ -2294,6 +2337,16 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
                 change_health(game, unit, target.unit, target.change);
                 unit_emit_sound(target.unit, "Hero_EarthShaker.EchoSlamEcho");
             })));
+
+            break;
+        }
+
+        case Ability_Id.venomancer_poison_nova: {
+            // TODO
+
+            for (const modifier of filter_and_map_existing_units(cast.targets)) {
+                apply_modifier(game, modifier.unit, modifier.modifier);
+            }
 
             break;
         }

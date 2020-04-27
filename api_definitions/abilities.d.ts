@@ -35,6 +35,9 @@ declare const enum Ability_Id {
     shaker_fissure = 35,
     shaker_enchant_totem = 36,
     shaker_echo_slam = 37,
+    venomancer_plague_wards = 38,
+    venomancer_venomous_gale = 39,
+    venomancer_poison_nova = 40,
 
     pocket_tower_attack = 1000,
     deployment_zone = 1001,
@@ -109,6 +112,8 @@ type Ability_Definition =
     Ability_Ember_Fire_Remnant |
     Ability_Ember_Activate_Fire_Remnant |
 
+    Venomancer_Abilities |
+
     Ability_Pocket_Tower_Attack |
     Ability_Deployment_Zone |
     Ability_Monster_Lifesteal |
@@ -126,7 +131,7 @@ type Ability_Definition_Active_Base = {
     available_since_level: number
     charges: number
     targeting: Ability_Targeting
-    flags: Ability_Flag[]
+    flags?: Ability_Flag[]
 }
 
 type Ability_Definition_Passive_Base = {
@@ -346,6 +351,19 @@ type Ability_Shaker_Echo_Slam = Ability_Definition_Active_Base & {
     type: Ability_Type.no_target
 }
 
+type Venomancer_Abilities = (Ability_Definition_Active_Base & {
+    id: Ability_Id.venomancer_plague_wards
+    type: Ability_Type.target_ground
+}) | (Ability_Definition_Active_Base & {
+    id: Ability_Id.venomancer_venomous_gale
+    type: Ability_Type.target_ground
+    slow: number
+    poison_applied: number
+}) | (Ability_Definition_Active_Base & {
+    id: Ability_Id.venomancer_poison_nova
+    type: Ability_Type.no_target
+})
+
 type Ability_Pocket_Tower_Attack = Ability_Definition_Passive_Base & {
     id: Ability_Id.pocket_tower_attack
     targeting: Ability_Targeting
@@ -411,7 +429,9 @@ type Delta_Cast_Ability =
 
     Delta_Ability_Dark_Seer_Vacuum |
     Delta_Ability_Dark_Seer_Ion_Shell |
-    Delta_Ability_Dark_Seer_Surge
+    Delta_Ability_Dark_Seer_Surge |
+
+    Venomancer_Ability_Deltas
 
 
 type Delta_Ground_Target_Ability = Find_By_Type<Delta_Cast_Ability, Delta_Type.use_ground_target_ability>
@@ -700,3 +720,15 @@ type Delta_Ability_Shaker_Echo_Slam = Delta_Use_No_Target_Ability_Base & {
     ability_id: Ability_Id.shaker_echo_slam
     targets: Unit_Health_Change[]
 }
+
+type Venomancer_Ability_Deltas = (Delta_Ground_Target_Ability_Base & {
+    ability_id: Ability_Id.venomancer_plague_wards
+    summon_id: Unit_Id
+    summon_type: Creep_Type
+}) | (Delta_Ground_Target_Ability_Base & {
+    ability_id: Ability_Id.venomancer_venomous_gale
+    targets: Unit_Modifier_Application[]
+}) | (Delta_Use_No_Target_Ability_Base & {
+    ability_id: Ability_Id.venomancer_poison_nova
+    targets: Unit_Modifier_Application[]
+})

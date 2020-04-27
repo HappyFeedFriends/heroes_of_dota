@@ -25,6 +25,12 @@ function Precache(context: CScriptPrecacheContext) {
         PrecacheResource("soundfile", hero_sounds_by_hero_type(hero_type).file, context);
         PrecacheResource("soundfile", `soundevents/game_sounds_heroes/game_sounds_${hero_name}.vsndevts`, context);
 
+        const spec = get_hero_ranged_attack_spec(hero_type);
+
+        if (spec) {
+            PrecacheResource("particle", spec.particle_path, context);
+        }
+
         print("Precaching", unit_name);
     }
 

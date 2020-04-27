@@ -66,7 +66,8 @@ declare const enum Hero_Type {
     vengeful_spirit = 9,
     dark_seer = 10,
     ember_spirit = 11,
-    earthshaker = 12
+    earthshaker = 12,
+    venomancer = 13
 }
 
 declare const enum Creep_Type {
@@ -82,7 +83,8 @@ declare const enum Creep_Type {
     hardened_spider = 106,
     evil_eye = 107,
 
-    ember_fire_remnant = 1000
+    ember_fire_remnant = 1000,
+    veno_plague_ward = 1001
 }
 
 declare const enum Shop_Type {

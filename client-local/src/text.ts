@@ -6,10 +6,6 @@ function get_creep_name(creep: Creep_Type) {
     return snake_case_to_capitalized_words(enum_to_string(creep));
 }
 
-function get_npc_name(npc: Npc_Type) {
-    return snake_case_to_capitalized_words(enum_to_string(npc));
-}
-
 function snake_case_to_capitalized_words(source: string) {
     return source.split("_")
         .map(word => word[0].toUpperCase() + word.slice(1))
@@ -121,12 +117,13 @@ function get_combat_result_string(result: Combat_Result): string {
     }
 }
 
-function get_field_name(field: Modifier_Field) {
+function get_field_name(field: Modifier_Field): string {
     switch (field) {
         case Modifier_Field.armor_bonus: return "armor";
         case Modifier_Field.health_bonus: return "health";
         case Modifier_Field.attack_bonus: return "attack";
         case Modifier_Field.move_points_bonus: return "moves";
+        case Modifier_Field.applied_poison: return "poison damage";
     }
 }
 

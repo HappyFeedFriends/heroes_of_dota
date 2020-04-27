@@ -1,4 +1,4 @@
-import {XY, Id_Generator} from "./common";
+import {XY, Id_Generator, unreachable} from "./common";
 import {Random} from "./random";
 
 export type Battle_Record = Battle & {
@@ -232,7 +232,7 @@ function perform_spell_cast_unit_target(battle: Battle_Record, player: Battle_Pl
     }
 }
 
-function perform_spell_cast_ground_target(battle: Battle_Record, player: Battle_Player, at: XY, spell: Card_Spell_Ground_Target): Delta_Use_Ground_Target_Spell {
+function submit_spell_cast_ground_target(battle: Battle_Record, player: Battle_Player, at: XY, spell: Card_Spell_Ground_Target): void {
     const base: Delta_Use_Ground_Target_Spell_Base = {
         type: Delta_Type.use_ground_target_spell,
         player_id: player.id,
@@ -241,12 +241,24 @@ function perform_spell_cast_ground_target(battle: Battle_Record, player: Battle_
 
     switch (spell.spell_id) {
         case Spell_Id.pocket_tower: {
-            return {
+            const tower_id = get_next_entity_id(battle) as Unit_Id;
+
+            submit_battle_delta(battle, {
                 ...base,
                 spell_id: spell.spell_id,
                 new_unit_type: Creep_Type.pocket_tower,
-                new_unit_id: get_next_entity_id(battle) as Unit_Id
-            }
+                new_unit_id: tower_id
+            });
+
+            // @IntrinsicModifier
+            submit_battle_delta(battle, {
+                type: Delta_Type.modifier_applied,
+                source: { type: Source_Type.none },
+                unit_id: tower_id,
+                application: modifier(battle, { id: Modifier_Id.rooted })
+            });
+
+            break;
         }
     }
 }
@@ -558,6 +570,48 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
 
             break;
         }
+
+        case Ability_Id.venomancer_plague_wards: {
+            const plague_ward_id = get_next_entity_id(battle) as Unit_Id;
+
+            submit_battle_delta(battle, {
+                ...base,
+                ability_id: ability.id,
+                summon_id: plague_ward_id,
+                summon_type: Creep_Type.veno_plague_ward,
+            });
+
+            // @IntrinsicModifier
+            submit_battle_delta(battle, {
+                type: Delta_Type.modifier_applied,
+                source: { type: Source_Type.none },
+                unit_id: plague_ward_id,
+                application: modifier(battle, { id: Modifier_Id.veno_plague_ward })
+            });
+
+            break;
+        }
+
+        case Ability_Id.venomancer_venomous_gale: {
+            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+
+            submit_battle_delta(battle, {
+                ...base,
+                ability_id: ability.id,
+                targets: targets.map(target => ({
+                    target_unit_id: target.id,
+                    modifier: modifier(battle, {
+                        id: Modifier_Id.veno_venomous_gale,
+                        poison_applied: ability.poison_applied,
+                        move_reduction: ability.slow
+                    }, 1)
+                }))
+            });
+
+            break;
+        }
+
+        default: unreachable(ability);
     }
 }
 
@@ -821,6 +875,21 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
                 ...base,
                 ability_id: ability.id,
                 targets: targets.map(target => unit_health_change(target, -damage))
+            });
+
+            break;
+        }
+
+        case Ability_Id.venomancer_poison_nova: {
+            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+
+            submit_battle_delta(battle, {
+                ...base,
+                ability_id: ability.id,
+                targets: targets.map(target => ({
+                    target_unit_id: target.id,
+                    modifier: modifier(battle, { id: Modifier_Id.veno_poison_nova }, 1)
+                }))
             });
 
             break;
@@ -1484,7 +1553,7 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
             const { player, card, spell } = spell_use_permission;
 
             submit_battle_delta(battle, use_card(player, card));
-            submit_battle_delta(battle, perform_spell_cast_ground_target(battle, player, action.at, spell));
+            submit_spell_cast_ground_target(battle, player, action.at, spell);
 
             break;
         }

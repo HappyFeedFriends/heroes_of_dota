@@ -1650,6 +1650,10 @@ function get_ability_tooltip(caster: Unit, a: Ability): string {
             return `Deal damage equal to number of units in the area (<font color="#ddd">${targets + 1}</font>) to targets in the area`;
         }
 
+        case Ability_Id.venomancer_plague_wards: return `Plant a plague ward which attacks enemies at the end of each turn. Plague wards deal double damage to rooted and slowed targets`;
+        case Ability_Id.venomancer_venomous_gale: return `Slow all units in the line by ${a.slow} points and apply ${a.poison_applied} poison to them`;
+        case Ability_Id.venomancer_poison_nova: return `Paralyze all units in the area, rooting and disarming them`;
+
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
         case Ability_Id.deployment_zone: return "";
@@ -1697,6 +1701,9 @@ function get_ability_icon(ability_id: Ability_Id): string {
         case Ability_Id.shaker_fissure: return "earthshaker_fissure";
         case Ability_Id.shaker_enchant_totem: return "earthshaker_enchant_totem";
         case Ability_Id.shaker_echo_slam: return "earthshaker_echo_slam";
+        case Ability_Id.venomancer_plague_wards: return "venomancer_plague_ward";
+        case Ability_Id.venomancer_venomous_gale: return "venomancer_venomous_gale";
+        case Ability_Id.venomancer_poison_nova: return "venomancer_poison_nova";
 
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
@@ -2010,8 +2017,6 @@ function update_hero_control_panel_state(row: Unit_Row, hero: Hero) {
         const max_width = to_layout_space(row.panel.actuallayoutwidth);
         const updated_panels: Unit_Modifier_Panel[] = [];
         const modifiers_visible = Math.floor(max_width / one_modifier);
-
-        $.Msg(row.panel.actuallayoutwidth);
 
         row.modifier_bar.arrow_left.SetHasClass("hidden", row.modifier_cursor == 0);
         row.modifier_bar.arrow_right.SetHasClass("hidden", row.modifier_cursor + modifiers_visible >= hero.modifiers.length);

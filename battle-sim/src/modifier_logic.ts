@@ -9,40 +9,30 @@ const enum Modifier_Field {
     health_bonus,
     attack_bonus,
     armor_bonus,
-    move_points_bonus
+    move_points_bonus,
+    applied_poison
 }
 
 const enum Special_Modifier_State {
-    damage_doubled
+    damage_doubled,
+    damage_double_against_movement_impaired
 }
 
-type Modifier_Change_Field_Change = {
+type Modifier_Change = {
     type: Modifier_Change_Type.field_change
     field: Modifier_Field
     delta: number
-}
-
-type Modifier_Change_Ability_Override = {
+} | {
     type: Modifier_Change_Type.ability_override
     original_ability: Ability_Id
     override_with: Ability_Id
-}
-
-type Modifier_Change_Apply_Status = {
+} | {
     type: Modifier_Change_Type.apply_status
     status: Unit_Status
-}
-
-type Modifier_Change_Apply_Special_State = {
+} | {
     type: Modifier_Change_Type.apply_special_state
     state: Special_Modifier_State
 }
-
-type Modifier_Change =
-    Modifier_Change_Field_Change |
-    Modifier_Change_Ability_Override |
-    Modifier_Change_Apply_Status |
-    Modifier_Change_Apply_Special_State
 
 type Ability_Override = {
     original: Ability_Id
@@ -58,6 +48,7 @@ type Recalculated_Stats = {
         max_health: number
         attack_damage: number
         max_move_points: number
+        poison: number
     }
 
     status: Record<Unit_Status, boolean>
@@ -122,13 +113,15 @@ function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Mo
         armor: 0,
         max_health: 0,
         attack_damage: 0,
-        max_move_points: 0
+        max_move_points: 0,
+        poison: 0
     };
 
     const new_status = starting_unit_status();
     const new_overrides: Ability_Override[] = [];
     const special_states: Record<Special_Modifier_State, boolean> = {
-        [Special_Modifier_State.damage_doubled]: false
+        [Special_Modifier_State.damage_doubled]: false,
+        [Special_Modifier_State.damage_double_against_movement_impaired]: false
     };
 
     for (const modifier of modifiers) {
@@ -142,6 +135,7 @@ function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Mo
                         case Modifier_Field.attack_bonus: new_bonus.attack_damage += change.delta; break;
                         case Modifier_Field.health_bonus: new_bonus.max_health += change.delta; break;
                         case Modifier_Field.move_points_bonus: new_bonus.max_move_points += change.delta; break;
+                        case Modifier_Field.applied_poison: new_bonus.poison += change.delta; break;
                         default: unreachable(change.field);
                     }
 
@@ -262,6 +256,10 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             status(Unit_Status.stunned)
         ];
 
+        case Modifier_Id.rooted: return [
+            status(Unit_Status.rooted)
+        ];
+
         case Modifier_Id.rune_double_damage: return [
             special_state(Special_Modifier_State.damage_doubled)
         ];
@@ -318,6 +316,21 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
 
         case Modifier_Id.shaker_enchant_totem_caster: return [
             special_state(Special_Modifier_State.damage_doubled)
+        ];
+
+        case Modifier_Id.veno_plague_ward: return [
+            special_state(Special_Modifier_State.damage_double_against_movement_impaired),
+            status(Unit_Status.rooted)
+        ];
+
+        case Modifier_Id.veno_venomous_gale: return [
+            field(Modifier_Field.move_points_bonus, -modifier.move_reduction),
+            field(Modifier_Field.applied_poison, modifier.poison_applied)
+        ];
+
+        case Modifier_Id.veno_poison_nova: return [
+            status(Unit_Status.rooted),
+            status(Unit_Status.disarmed)
         ];
 
         case Modifier_Id.item_heart_of_tarrasque: return [

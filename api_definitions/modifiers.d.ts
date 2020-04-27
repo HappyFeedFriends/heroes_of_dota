@@ -15,6 +15,9 @@ declare const enum Modifier_Id {
     ember_fire_remnant_caster = 15,
     ember_fire_remnant = 16,
     shaker_enchant_totem_caster = 18,
+    veno_plague_ward = 19,
+    veno_venomous_gale = 20,
+    veno_poison_nova = 21,
 
     item_heart_of_tarrasque = 101,
     item_iron_branch = 102,
@@ -36,6 +39,7 @@ declare const enum Modifier_Id {
     attack_damage = 302,
     health = 303,
     stunned = 304,
+    rooted = 305,
 
     returned_to_hand = 1000
 }
@@ -54,6 +58,8 @@ type Modifier = {
     bonus: number
 } | {
     id: Modifier_Id.stunned
+} | {
+    id: Modifier_Id.rooted
 } | {
     id: Modifier_Id.rune_haste
     move_bonus: number
@@ -90,6 +96,14 @@ type Modifier = {
     remnant_owner_unit_id: Unit_Id
 } | {
     id: Modifier_Id.shaker_enchant_totem_caster
+} | {
+    id: Modifier_Id.veno_plague_ward
+} | {
+    id: Modifier_Id.veno_venomous_gale
+    move_reduction: number
+    poison_applied: number
+} | {
+    id: Modifier_Id.veno_poison_nova
 } | {
     id: Modifier_Id.item_heart_of_tarrasque
     health: number

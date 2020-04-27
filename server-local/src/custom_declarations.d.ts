@@ -1,5 +1,3 @@
-declare function GetDedicatedServerKey(version: string): string;
-
 declare namespace json {
     function decode(input: string): object;
     function encode(input: object): string;

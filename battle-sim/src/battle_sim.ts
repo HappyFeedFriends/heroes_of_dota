@@ -168,13 +168,14 @@ type Applied_Modifier = {
     duration_remaining?: number
 }
 
-type With_Charges = {
-    charges_remaining: number;
+type With_Charges_And_Flags = {
+    charges_remaining: number
+    flags: Ability_Flag[]
 }
 
-type Ability_Ground_Target = Ability_Definition_Ground_Target & With_Charges
-type Ability_Unit_Target = Ability_Definition_Unit_Target & With_Charges
-type Ability_No_Target = Ability_Definition_No_Target & With_Charges
+type Ability_Ground_Target = Ability_Definition_Ground_Target & With_Charges_And_Flags
+type Ability_Unit_Target = Ability_Definition_Unit_Target & With_Charges_And_Flags
+type Ability_No_Target = Ability_Definition_No_Target & With_Charges_And_Flags
 
 type Ability_Passive = Ability_Definition_Passive
 type Ability_Active = Ability_Ground_Target | Ability_Unit_Target | Ability_No_Target
@@ -1097,7 +1098,8 @@ function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base 
 
         return {
             ...definition,
-            charges_remaining: definition.charges
+            charges_remaining: definition.charges,
+            flags: definition.flags ? definition.flags : []
         }
     }
 
@@ -1583,6 +1585,12 @@ function collapse_no_target_ability_use(battle: Battle, unit: Unit, cast: Delta_
             break;
         }
 
+        case Ability_Id.venomancer_poison_nova: {
+            apply_modifier_multiple(battle, source, cast.targets);
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }
@@ -1635,7 +1643,7 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
         }
 
         case Ability_Id.ember_fire_remnant: {
-            // TODO Figure out how to fix this stuff, how come we can't make monsters which spawn other things?
+            // @MonsterOwner
             if (caster.supertype == Unit_Supertype.monster) return;
 
             const remnant = create_creep(battle, source, caster.owner, cast.remnant.id, cast.remnant.type, cast.target_position, true);
@@ -1657,6 +1665,21 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
             }
 
             create_timed_effect(battle, cast.block);
+
+            break;
+        }
+
+        case Ability_Id.venomancer_plague_wards: {
+            // @MonsterOwner
+            if (caster.supertype == Unit_Supertype.monster) return;
+
+            create_creep(battle, source, caster.owner, cast.summon_id, cast.summon_type, cast.target_position, true);
+
+            break;
+        }
+
+        case Ability_Id.venomancer_venomous_gale: {
+            apply_modifier_multiple(battle, source, cast.targets);
 
             break;
         }
