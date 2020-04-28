@@ -504,14 +504,23 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
                     available_since_level: 0,
                     radius: 1
                 }),
-            ]
+            ],
+            intrinsic_modifiers: [{ id: Modifier_Id.rooted }]
         };
 
         case Creep_Type.veno_plague_ward: return {
             attack_damage: 1,
             health: 3,
             move_points: 0,
-            abilities: []
+            abilities: [
+                {
+                    id: Ability_Id.plague_ward_attack,
+                    type: Ability_Type.passive,
+                    available_since_level: 0,
+                    targeting: target_rect_area_around_caster(3)
+                },
+            ],
+            intrinsic_modifiers: [{ id: Modifier_Id.rooted }]
         };
 
         case Creep_Type.lane_creep: return {

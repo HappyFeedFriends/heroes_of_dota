@@ -14,8 +14,7 @@ const enum Modifier_Field {
 }
 
 const enum Special_Modifier_State {
-    damage_doubled,
-    damage_double_against_movement_impaired
+    damage_doubled
 }
 
 type Modifier_Change = {
@@ -120,8 +119,7 @@ function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Mo
     const new_status = starting_unit_status();
     const new_overrides: Ability_Override[] = [];
     const special_states: Record<Special_Modifier_State, boolean> = {
-        [Special_Modifier_State.damage_doubled]: false,
-        [Special_Modifier_State.damage_double_against_movement_impaired]: false
+        [Special_Modifier_State.damage_doubled]: false
     };
 
     for (const modifier of modifiers) {
@@ -316,11 +314,6 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
 
         case Modifier_Id.shaker_enchant_totem_caster: return [
             special_state(Special_Modifier_State.damage_doubled)
-        ];
-
-        case Modifier_Id.veno_plague_ward: return [
-            special_state(Special_Modifier_State.damage_double_against_movement_impaired),
-            status(Unit_Status.rooted)
         ];
 
         case Modifier_Id.veno_venomous_gale: return [

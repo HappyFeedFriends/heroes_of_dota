@@ -633,27 +633,36 @@ function register_unit(battle: Battle, unit: Unit) {
     battle.units.push(unit);
 }
 
-function spawn_creep_for_battle(type: Creep_Type, unit_id: Unit_Id, owner_id: Battle_Player_Id, at: XY, facing: XY): Creep {
-    const definition = creep_definition_by_type(type);
-    const base = unit_base(unit_id, { supertype: Unit_Supertype.creep, type: type }, definition, at, facing);
+function spawn_creep_for_battle(game: Game, spawn: Creep_Spawn_Effect, owner_id: Battle_Player_Id, at: XY, facing: XY): Creep {
+    const definition = creep_definition_by_type(spawn.creep_type);
+    const base = unit_base(spawn.unit_id, { supertype: Unit_Supertype.creep, type: spawn.creep_type }, definition, at, facing);
 
-    return {
+    const creep: Creep = {
         ...base,
         supertype: Unit_Supertype.creep,
-        type: type,
+        type: spawn.creep_type,
         owner_remote_id: owner_id,
-        traits: creep_traits_by_type(type)
+        traits: creep_traits_by_type(spawn.creep_type)
     };
+
+    for (const modifier of from_client_array(spawn.intrinsic_modifiers)) {
+        apply_modifier(game, creep, modifier);
+    }
+
+    return creep;
+}
+
+function setup_tracking_projectile_particle(world_point: Vector, target: Unit, particle_path: string, speed: number, target_attach: string) {
+    return fx(particle_path)
+        .with_vector_value(0, world_point)
+        .to_unit_attach_point(1, target, target_attach)
+        .with_point_value(2, speed)
+        .to_unit_attach_point(3, target, target_attach);
 }
 
 function tracking_projectile_from_point_to_unit(world_point: Vector, target: Unit, particle_path: string, speed: number) {
     const in_attach = "attach_hitloc";
-    const particle = fx(particle_path)
-        .with_vector_value(0, world_point)
-        .to_unit_attach_point(1, target, in_attach)
-        .with_point_value(2, speed)
-        .to_unit_attach_point(3, target, in_attach);
-
+    const particle = setup_tracking_projectile_particle(world_point, target, particle_path, speed, in_attach);
     const world_distance = (world_point - attachment_world_origin(target.handle, in_attach) as Vector).Length();
 
     wait(world_distance / speed);
@@ -946,7 +955,7 @@ function tide_ravage(game: Game, caster: Unit, cast: Delta_Ability_Tide_Ravage) 
                 toss_target_up(victim);
             }));
 
-            change_health(game, caster, victim, target.change);
+            change_health(game, caster, victim, target);
             apply_modifier(game, victim, target.modifier);
         }
 
@@ -1105,7 +1114,7 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
             .to_unit_attach_point(1, target, "attach_hitloc")
             .release();
 
-        change_health(game, unit, target, cast.target.change, cast.target.blocked_by_armor);
+        change_health(game, unit, target, cast.target, cast.target.blocked_by_armor);
         unit_emit_sound(unit, "evil_eye_attack");
         shake_screen(target.position, Shake.weak);
 
@@ -1134,7 +1143,7 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
         }
 
         tracking_projectile_to_unit(unit, target, spec.particle_path, spec.projectile_speed, spec.custom_attach_point);
-        change_health(game, unit, target, cast.target.change, cast.target.blocked_by_armor);
+        change_health(game, unit, target, cast.target, cast.target.blocked_by_armor);
         try_play_sound_for_hero(unit, get_hero_ranged_impact_sound, target);
 
         if (spec.shake_on_impact) {
@@ -1148,7 +1157,7 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
         }
 
         unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK);
-        change_health(game, unit, target, cast.target.change, cast.target.blocked_by_armor);
+        change_health(game, unit, target, cast.target, cast.target.blocked_by_armor);
         shake_screen(target.position, Shake.weak);
 
         if (unit.supertype == Unit_Supertype.creep) {
@@ -1187,7 +1196,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             let total_time = cast.damage_remaining * tick_time;
 
             for (const target of targets) {
-                total_time += tick_time * (-target.change.value_delta);
+                total_time += tick_time * (-target.value_delta);
             }
 
             const world_target = battle_position_to_world_position_center(battle.world_origin, cast.target_position);
@@ -1204,7 +1213,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
 
             const damaged_units = targets.map(target => ({
                 unit_id: target.target_unit_id,
-                damage_remaining: -target.change.value_delta
+                damage_remaining: -target.value_delta
             }));
 
             while (damaged_units.length > 0) {
@@ -1267,7 +1276,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
                 const target_unit = find_unit_by_id(target.target_unit_id);
 
                 if (target_unit) {
-                    change_health(game, unit, target_unit, target.change);
+                    change_health(game, unit, target_unit, target);
                 }
             }
 
@@ -1302,7 +1311,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
                 const target_unit = find_unit_by_id(target.target_unit_id);
 
                 if (target_unit) {
-                    change_health(game, unit, target_unit, target.change, target.blocked_by_armor);
+                    change_health(game, unit, target_unit, target, target.blocked_by_armor);
                 }
             }
 
@@ -1331,7 +1340,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             const to = cast.target_position;
 
             linear_projectile_with_targets(from, to, 1500, distance, fx, targets, target => target.unit.handle.GetAbsOrigin(), target => {
-                change_health(game, unit, target.unit, target.change);
+                change_health(game, unit, target.unit, target);
                 apply_modifier(game, target.unit, target.modifier);
 
                 forks.push(fork(() => {
@@ -1393,7 +1402,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             const targets = filter_and_map_existing_units(cast.targets);
 
             linear_projectile_with_targets(from, to, 2000, distance, fx, targets, target => target.unit.handle.GetAbsOrigin(), target => {
-                change_health(game, unit, target.unit, target.change);
+                change_health(game, unit, target.unit, target);
                 apply_modifier(game, target.unit, target.modifier);
             });
 
@@ -1459,9 +1468,8 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
 
             fx.destroy_and_release(false);
 
-            const remnant = spawn_creep_for_battle(cast.remnant.type, cast.remnant.id, unit.owner_remote_id, cast.target_position, direction);
+            const remnant = spawn_creep_for_battle(game, cast.remnant, unit.owner_remote_id, cast.target_position, direction);
             register_unit(battle, remnant);
-            apply_modifier(game, remnant, cast.remnant.modifier);
             apply_modifier(game, unit, cast.modifier);
             unit_emit_sound(remnant, "Hero_EmberSpirit.FireRemnant.Create");
 
@@ -1495,7 +1503,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             const facing = find_player_deployment_zone_facing(unit.owner_remote_id);
             if (!facing) break;
 
-            const creep = spawn_creep_for_battle(cast.summon_type, cast.summon_id, unit.owner_remote_id, cast.target_position, facing);
+            const creep = spawn_creep_for_battle(game, cast.summon, unit.owner_remote_id, cast.target_position, facing);
 
             register_unit(battle, creep);
             update_game_net_table(game);
@@ -1989,7 +1997,7 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
                 const target = find_unit_by_id(target_data.target_unit_id);
 
                 if (target) {
-                    change_health(game, unit, target, target_data.change);
+                    change_health(game, unit, target, target_data);
                 }
             }
 
@@ -2017,7 +2025,7 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
                 const target = find_unit_by_id(effect.target_unit_id);
 
                 if (target) {
-                    change_health(game, unit, target, effect.change);
+                    change_health(game, unit, target, effect);
                     apply_modifier(game, target, effect.modifier);
                 }
             }
@@ -2052,10 +2060,10 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
                 .to_unit_origin(3, unit);
 
             const beam_targets = filter_and_map_existing_units(cast.targets)
-                .filter(target => target.change.value_delta != 0)
+                .filter(target => target.value_delta != 0)
                 .map(target => ({
                     target: target,
-                    beams_remaining: -target.change.value_delta
+                    beams_remaining: -target.value_delta
                 }));
 
             while (beam_targets.length > 0) {
@@ -2178,7 +2186,7 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
             unit_emit_sound(unit, "Ability.Starfall");
 
             wait_for_all_forks(filter_and_map_existing_units(cast.targets).map(target => fork(() => {
-                starfall_drop_star_on_unit(game, unit, target.unit, target.change);
+                starfall_drop_star_on_unit(game, unit, target.unit, target);
             })));
 
             break;
@@ -2242,7 +2250,7 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
 
                 target.particle.destroy_and_release(false);
 
-                change_health(game, unit, target.unit, target.change, target.blocked_by_armor);
+                change_health(game, unit, target.unit, target, target.blocked_by_armor);
             }
 
             remnant_fx.destroy_and_release(false);
@@ -2334,7 +2342,7 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
                 const projectile = "particles/units/heroes/hero_earthshaker/earthshaker_echoslam.vpcf";
 
                 tracking_projectile_to_unit(unit, target.unit, projectile, 800, "attach_hitloc");
-                change_health(game, unit, target.unit, target.change);
+                change_health(game, unit, target.unit, target);
                 unit_emit_sound(target.unit, "Hero_EarthShaker.EchoSlamEcho");
             })));
 
@@ -2363,7 +2371,7 @@ function play_no_target_spell_delta(game: Game, caster: Battle_Player, cast: Del
             for (const target of filter_and_map_existing_units(cast.targets)) {
                 fx_follow_unit("particles/items2_fx/mekanism.vpcf", target.unit).release();
                 unit_emit_sound(target.unit, "DOTA_Item.Mekansm.Target");
-                change_health(game, target.unit, target.unit, target.change);
+                change_health(game, target.unit, target.unit, target);
             }
 
             break;
@@ -2397,7 +2405,7 @@ function play_no_target_spell_delta(game: Game, caster: Battle_Player, cast: Del
             battle_emit_sound("call_to_arms");
 
             for (const summon of from_client_array(cast.summons)) {
-                const creep = spawn_unit_with_fx(summon.at, () => spawn_creep_for_battle(summon.unit_type, summon.unit_id, cast.player_id, summon.at, facing));
+                const creep = spawn_unit_with_fx(summon.at, () => spawn_creep_for_battle(game, summon.spawn, cast.player_id, summon.at, facing));
 
                 add_activity_override(creep, GameActivity_t.ACT_DOTA_SHARPEN_WEAPON, 1.0);
             }
@@ -2416,7 +2424,7 @@ function play_ground_target_spell_delta(game: Game, cast: Delta_Use_Ground_Targe
 
             if (!facing) break;
 
-            spawn_unit_with_fx(cast.at, () => spawn_creep_for_battle(cast.new_unit_type, cast.new_unit_id, cast.player_id, cast.at, facing));
+            spawn_unit_with_fx(cast.at, () => spawn_creep_for_battle(game, cast.spawn, cast.player_id, cast.at, facing));
             highlight_player_deployment_zone(cast.player_id);
 
             break;
@@ -2532,7 +2540,7 @@ function play_modifier_effect_delta(game: Game, delta: Delta_Modifier_Effect_App
             const target = find_unit_by_id(delta.change.target_unit_id);
             if (!target) break;
 
-            change_health(game, target, target, delta.change.change);
+            change_health(game, target, target, delta.change);
 
             break;
         }
@@ -2541,7 +2549,7 @@ function play_modifier_effect_delta(game: Game, delta: Delta_Modifier_Effect_App
             const target = find_unit_by_id(delta.heal.target_unit_id);
             if (!target) break;
 
-            change_health(game, target, target, delta.heal.change);
+            change_health(game, target, target, delta.heal);
             fx_by_unit("particles/items3_fx/octarine_core_lifesteal.vpcf", target).release();
 
             break;
@@ -2552,7 +2560,7 @@ function play_modifier_effect_delta(game: Game, delta: Delta_Modifier_Effect_App
             const target = find_unit_by_id(delta.heal.target_unit_id);
             if (!target) break;
 
-            change_health(game, target, target, delta.heal.change);
+            change_health(game, target, target, delta.heal);
             fx_by_unit("particles/generic_gameplay/generic_lifesteal.vpcf", target).release();
 
             break;
@@ -2612,7 +2620,7 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
 
             if (source) {
                 for (const target of filter_and_map_existing_units(effect.targets)) {
-                    change_health(game, source, target.unit, target.change);
+                    change_health(game, source, target.unit, target);
                     fx("particles/units/heroes/hero_dark_seer/dark_seer_ion_shell_damage.vpcf")
                         .follow_unit_origin(0, source)
                         .to_unit_attach_point(1, target.unit, "attach_hitloc")
@@ -2640,7 +2648,7 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
                 unit_emit_sound(source, "pocket_tower_attack");
                 tracking_projectile_from_point_to_unit(source.handle.GetAbsOrigin() + Vector(0, 0, 200) as Vector, target, attack_particle, 1600);
                 shake_screen(target.position, Shake.medium);
-                change_health(game, source, target, effect.damage_dealt.change, effect.damage_dealt.blocked_by_armor);
+                change_health(game, source, target, effect.damage_dealt, effect.damage_dealt.blocked_by_armor);
                 add_activity_override(source, GameActivity_t.ACT_DOTA_CUSTOM_TOWER_IDLE);
                 unit_emit_sound(target, "Tower.HeroImpact");
             }
@@ -2662,6 +2670,9 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
             const source = find_unit_by_id(effect.source_unit_id);
             if (!source) break;
 
+            // @MonsterOwner
+            if (source.supertype == Unit_Supertype.monster) break;
+
             unit_emit_sound(source, "spawn_spiderlings");
 
             fx("particles/units/heroes/hero_broodmother/broodmother_spiderlings_spawn.vpcf")
@@ -2676,13 +2687,13 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
                     const direction = (Vector(summon.at.x, summon.at.y) - Vector(spawn_at.x, spawn_at.y) as Vector).Normalized();
 
                     if (direction.Length2D() == 0) {
-                        const creep = spawn_creep_for_battle(summon.creep_type, summon.unit_id, summon.owner_id, spawn_at, RandomVector(1));
+                        const creep = spawn_creep_for_battle(game, summon.spawn, source.owner_remote_id, spawn_at, RandomVector(1));
                         register_unit(battle, creep);
 
                         return;
                     }
 
-                    const creep = spawn_creep_for_battle(summon.creep_type, summon.unit_id, summon.owner_id, spawn_at, { x: direction.x, y: direction.y });
+                    const creep = spawn_creep_for_battle(game, summon.spawn, source.owner_remote_id, spawn_at, { x: direction.x, y: direction.y });
                     const world_target = battle_position_to_world_position_center(battle.world_origin, summon.at);
 
                     register_unit(battle, creep);
@@ -2704,6 +2715,38 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
 
             update_game_net_table(game);
             wait_for_all_forks(forks);
+
+            break;
+        }
+
+        case Ability_Id.plague_ward_attack: {
+            const source = find_unit_by_id(effect.source_unit_id);
+            const target = find_unit_by_id(effect.damage_dealt.target_unit_id);
+            if (!source || !target) break;
+
+            turn_unit_towards_target(source, target.position);
+
+            const animation = add_activity_override(source, GameActivity_t.ACT_DOTA_ATTACK);
+
+            wait(0.5);
+
+            const speed = 1200;
+            const attack_target_attach = "attach_hitloc";
+            const attack_particle = "particles/units/heroes/hero_venomancer/venomancer_plague_ward_projectile.vpcf";
+            const projectile_from = attachment_world_origin(source.handle, "attach_attack1");
+            const projectile_to = attachment_world_origin(target.handle, attack_target_attach);
+            const fx = setup_tracking_projectile_particle(projectile_from, target, attack_particle, 1400, attack_target_attach);
+            const world_distance = (projectile_from - projectile_to as Vector).Length();
+
+            unit_emit_sound(source, "Hero_VenomancerWard.Attack");
+
+            wait(world_distance / speed);
+
+            fx.destroy_and_release(false);
+            animation.Destroy();
+
+            change_health(game, source, target, effect.damage_dealt, effect.damage_dealt.blocked_by_armor);
+            unit_emit_sound(target, "Hero_VenomancerWard.ProjectileImpact");
 
             break;
         }
@@ -2936,8 +2979,8 @@ function kill_unit(source: Unit, target: Unit) {
         try_play_random_sound_for_hero(source, sounds => sounds.kill);
     }
 
-    if (source.supertype == Unit_Supertype.creep) {
-        unit_emit_sound(source, source.traits.sounds.death);
+    if (target.supertype == Unit_Supertype.creep) {
+        unit_emit_sound(target, target.traits.sounds.death);
     }
 
     apply_special_death_effects(target);
@@ -3181,7 +3224,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
 
             spawn_unit_with_fx(delta.at_position, () => {
                 const facing = { x: owner.deployment_zone.face.x, y: owner.deployment_zone.face.y };
-                const unit = spawn_creep_for_battle(delta.creep_type, delta.unit_id, delta.owner_id, delta.at_position, facing);
+                const unit = spawn_creep_for_battle(game, delta.effect, delta.owner_id, delta.at_position, facing);
                 unit.health = delta.health;
                 add_activity_override(unit, GameActivity_t.ACT_DOTA_SPAWN, 0.7);
                 return unit;

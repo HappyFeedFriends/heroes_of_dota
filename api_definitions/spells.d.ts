@@ -170,15 +170,13 @@ type Delta_Spell_Drums_Of_Endurance = Delta_Use_No_Target_Spell_Base & {
 
 type Delta_Spell_Pocket_Tower = Delta_Use_Ground_Target_Spell_Base & {
     spell_id: Spell_Id.pocket_tower
-    new_unit_type: Creep_Type
-    new_unit_id: Unit_Id
+    spawn: Creep_Spawn_Effect
 }
 
 type Delta_Spell_Call_To_Arms = Delta_Use_No_Target_Spell_Base & {
     spell_id: Spell_Id.call_to_arms
     summons: {
-        unit_id: Unit_Id
-        unit_type: Creep_Type,
+        spawn: Creep_Spawn_Effect
         at: XY
     }[]
 }

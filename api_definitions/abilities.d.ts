@@ -38,6 +38,7 @@ declare const enum Ability_Id {
     venomancer_plague_wards = 38,
     venomancer_venomous_gale = 39,
     venomancer_poison_nova = 40,
+    plague_ward_attack = 41,
 
     pocket_tower_attack = 1000,
     deployment_zone = 1001,
@@ -125,7 +126,8 @@ type Ability_Effect =
     Ability_Effect_Dark_Seer_Ion_Shell |
     Ability_Effect_Pocket_Tower_Attack |
     Ablity_Effect_Monster_Lifesteal |
-    Ablity_Effect_Monster_Spawn_Spiderlings
+    Ablity_Effect_Monster_Spawn_Spiderlings |
+    Ability_Effect_Plague_Ward_Attack
 
 type Ability_Definition_Active_Base = {
     available_since_level: number
@@ -362,7 +364,11 @@ type Venomancer_Abilities = (Ability_Definition_Active_Base & {
 }) | (Ability_Definition_Active_Base & {
     id: Ability_Id.venomancer_poison_nova
     type: Ability_Type.no_target
-})
+} | (Ability_Definition_Passive_Base & {
+    id: Ability_Id.plague_ward_attack
+    type: Ability_Type.passive
+    targeting: Ability_Targeting
+}))
 
 type Ability_Pocket_Tower_Attack = Ability_Definition_Passive_Base & {
     id: Ability_Id.pocket_tower_attack
@@ -438,9 +444,8 @@ type Delta_Ground_Target_Ability = Find_By_Type<Delta_Cast_Ability, Delta_Type.u
 type Delta_Unit_Target_Ability = Find_By_Type<Delta_Cast_Ability, Delta_Type.use_unit_target_ability>
 type Delta_Use_No_Target_Ability = Find_By_Type<Delta_Cast_Ability, Delta_Type.use_no_target_ability>
 
-type Basic_Attack_Health_Change = {
+type Basic_Attack_Health_Change = Health_Change & {
     blocked_by_armor: number
-    change: Health_Change
 }
 
 type Basic_Attack_Unit_Health_Change = Unit_Health_Change & {
@@ -469,9 +474,8 @@ type Health_Change = {
     value_delta: number
 }
 
-type Unit_Health_Change = {
+type Unit_Health_Change = Health_Change & {
     target_unit_id: Unit_Id
-    change: Health_Change
 }
 
 type Unit_Modifier_Application = {
@@ -560,6 +564,12 @@ type Ability_Effect_Pocket_Tower_Attack = {
     damage_dealt: Basic_Attack_Unit_Health_Change
 }
 
+type Ability_Effect_Plague_Ward_Attack = {
+    ability_id: Ability_Id.plague_ward_attack
+    source_unit_id: Unit_Id
+    damage_dealt: Basic_Attack_Unit_Health_Change
+}
+
 type Ablity_Effect_Monster_Lifesteal = {
     ability_id: Ability_Id.monster_lifesteal
     source_unit_id: Unit_Id
@@ -571,9 +581,7 @@ type Ablity_Effect_Monster_Spawn_Spiderlings = {
     ability_id: Ability_Id.monster_spawn_spiderlings
     source_unit_id: Unit_Id
     summons: {
-        owner_id: Battle_Player_Id
-        unit_id: Unit_Id
-        creep_type: Creep_Type
+        spawn: Creep_Spawn_Effect
         at: XY
     }[]
 }
@@ -638,12 +646,7 @@ type Delta_Ability_Ember_Sleight_Of_Fist = Delta_Use_No_Target_Ability_Base & {
 type Delta_Ability_Ember_Fire_Remnant = Delta_Ground_Target_Ability_Base & {
     ability_id: Ability_Id.ember_fire_remnant
     modifier: Modifier_Application
-
-    remnant: {
-        id: Unit_Id
-        type: Creep_Type
-        modifier: Modifier_Application
-    }
+    remnant: Creep_Spawn_Effect
 }
 
 type Delta_Ability_Ember_Activate_Fire_Remnant = Delta_Use_No_Target_Ability_Base & {
@@ -723,8 +726,7 @@ type Delta_Ability_Shaker_Echo_Slam = Delta_Use_No_Target_Ability_Base & {
 
 type Venomancer_Ability_Deltas = (Delta_Ground_Target_Ability_Base & {
     ability_id: Ability_Id.venomancer_plague_wards
-    summon_id: Unit_Id
-    summon_type: Creep_Type
+    summon: Creep_Spawn_Effect
 }) | (Delta_Ground_Target_Ability_Base & {
     ability_id: Ability_Id.venomancer_venomous_gale
     targets: Unit_Modifier_Application[]

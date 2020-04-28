@@ -73,7 +73,7 @@ function apply_ability_effect_delta<T extends Ability_Effect>(effect: T): Delta_
 
 function unit_health_change(target: Unit, change: number): Unit_Health_Change {
     return {
-        change: health_change(target, change),
+        ...health_change(target, change),
         target_unit_id: target.id
     }
 }
@@ -82,6 +82,20 @@ function health_change(target: Unit, change: number): Health_Change {
     return {
         new_value: Math.max(0, Math.min(get_max_health(target), target.health + change)),
         value_delta: change
+    }
+}
+
+function creep_spawn_effect(battle: Battle_Record, type: Creep_Type, additional_intrinsic_modifiers?: Modifier[]): Creep_Spawn_Effect {
+    const built_in_modifiers = creep_definition_by_type(type).intrinsic_modifiers;
+    const modifiers: Modifier[] = [
+        ...(built_in_modifiers || []),
+        ...(additional_intrinsic_modifiers || []),
+    ];
+
+    return {
+        unit_id: get_next_entity_id(battle) as Unit_Id,
+        creep_type: type,
+        intrinsic_modifiers: modifiers.map(data => modifier(battle, data))
     }
 }
 
@@ -118,7 +132,7 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
                 spell_id: spell.spell_id,
                 targets: owned_units.map(target => ({
                     target_unit_id: target.id,
-                    change: health_change(target, spell.heal)
+                    ...health_change(target, spell.heal)
                 }))
             }
         }
@@ -163,8 +177,7 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
                 spell_id: spell.spell_id,
                 summons: spawn_points.map(point => ({
                     at: point.position,
-                    unit_id: get_next_entity_id(battle) as Unit_Id,
-                    unit_type: Creep_Type.lane_creep
+                    spawn: creep_spawn_effect(battle, Creep_Type.lane_creep)
                 }))
             }
         }
@@ -241,21 +254,10 @@ function submit_spell_cast_ground_target(battle: Battle_Record, player: Battle_P
 
     switch (spell.spell_id) {
         case Spell_Id.pocket_tower: {
-            const tower_id = get_next_entity_id(battle) as Unit_Id;
-
             submit_battle_delta(battle, {
                 ...base,
                 spell_id: spell.spell_id,
-                new_unit_type: Creep_Type.pocket_tower,
-                new_unit_id: tower_id
-            });
-
-            // @IntrinsicModifier
-            submit_battle_delta(battle, {
-                type: Delta_Type.modifier_applied,
-                source: { type: Source_Type.none },
-                unit_id: tower_id,
-                application: modifier(battle, { id: Modifier_Id.rooted })
+                spawn: creep_spawn_effect(battle, Creep_Type.pocket_tower)
             });
 
             break;
@@ -263,27 +265,33 @@ function submit_spell_cast_ground_target(battle: Battle_Record, player: Battle_P
     }
 }
 
-function basic_attack_health_change(source: Unit, target: Unit): Basic_Attack_Health_Change {
+function calculate_basic_attack(attack: number, target: Unit): { new_health: number, health_delta: number, blocked_by_armor: number } {
     const armor = get_armor(target);
-    const attack = get_attack_damage(source);
-    const damage = Math.max(0, get_attack_damage(source) - armor);
+    const damage = Math.max(0, attack - armor);
     const blocked = Math.min(attack, armor);
+    const new_health = Math.max(0, Math.min(get_max_health(target), target.health - damage));
 
     return {
         blocked_by_armor: blocked,
-        change: health_change(target, -damage)
+        new_health: new_health,
+        health_delta: -damage
+    }
+}
+
+function basic_attack_health_change(source: Unit, target: Unit): Basic_Attack_Health_Change {
+    const stats = calculate_basic_attack(get_attack_damage(source), target);
+
+    return {
+        blocked_by_armor: stats.blocked_by_armor,
+        new_value: stats.new_health,
+        value_delta: stats.health_delta
     }
 }
 
 function basic_attack_unit_health_change(source: Unit, target: Unit): Basic_Attack_Unit_Health_Change {
-    const armor = get_armor(target);
-    const attack = get_attack_damage(source);
-    const damage = Math.max(0, get_attack_damage(source) - armor);
-    const blocked = Math.min(attack, armor);
-
     return {
-        blocked_by_armor: blocked,
-        ...unit_health_change(target, -damage)
+        target_unit_id: target.id,
+        ...basic_attack_health_change(source, target)
     }
 }
 
@@ -358,8 +366,7 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
 
         case Ability_Id.lion_impale: {
             const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting).map(target => ({
-                target_unit_id: target.id,
-                change: health_change(target, -ability.damage),
+                ...unit_health_change(target, -ability.damage),
                 modifier: modifier(battle, { id: Modifier_Id.stunned }, 1)
             }));
 
@@ -383,8 +390,7 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
 
         case Ability_Id.venge_wave_of_terror: {
             const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting).map(target => ({
-                target_unit_id: target.id,
-                change: health_change(target, -ability.damage),
+                ...unit_health_change(target, -ability.damage),
                 modifier: modifier(battle, {
                     id: Modifier_Id.venge_wave_of_terror,
                     armor_reduction: ability.armor_reduction
@@ -465,23 +471,19 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
         }
 
         case Ability_Id.ember_fire_remnant: {
-            const remnant_id = get_next_entity_id(battle) as Unit_Id;
+            const remnant = creep_spawn_effect(battle, Creep_Type.ember_fire_remnant, [{
+                id: Modifier_Id.ember_fire_remnant,
+                remnant_owner_unit_id: unit.id
+            }]);
 
             submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 modifier: modifier(battle, {
                     id: Modifier_Id.ember_fire_remnant_caster,
-                    remnant_unit_id: remnant_id
+                    remnant_unit_id: remnant.unit_id
                 }),
-                remnant: {
-                    id: remnant_id,
-                    type: Creep_Type.ember_fire_remnant,
-                    modifier: modifier(battle, {
-                        id: Modifier_Id.ember_fire_remnant,
-                        remnant_owner_unit_id: unit.id
-                    })
-                }
+                remnant: remnant
             });
 
             break;
@@ -572,21 +574,10 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
         }
 
         case Ability_Id.venomancer_plague_wards: {
-            const plague_ward_id = get_next_entity_id(battle) as Unit_Id;
-
             submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
-                summon_id: plague_ward_id,
-                summon_type: Creep_Type.veno_plague_ward,
-            });
-
-            // @IntrinsicModifier
-            submit_battle_delta(battle, {
-                type: Delta_Type.modifier_applied,
-                source: { type: Source_Type.none },
-                unit_id: plague_ward_id,
-                application: modifier(battle, { id: Modifier_Id.veno_plague_ward })
+                summon: creep_spawn_effect(battle, Creep_Type.veno_plague_ward)
             });
 
             break;
@@ -637,8 +628,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
 
         case Ability_Id.tide_anchor_smash: {
             const targets = query_units_for_no_target_ability(battle, unit, ability.targeting).map(target => ({
-                target_unit_id: target.id,
-                change: health_change(target, -ability.damage),
+                ...unit_health_change(target, -ability.damage),
                 modifier: modifier(battle, {
                     id: Modifier_Id.attack_damage,
                     bonus: -ability.attack_reduction
@@ -656,8 +646,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
 
         case Ability_Id.tide_ravage: {
             const targets = query_units_for_no_target_ability(battle, unit, ability.targeting).map(target => ({
-                target_unit_id: target.id,
-                change: health_change(target, -ability.damage),
+                ...unit_health_change(target, -ability.damage),
                 modifier: modifier(battle, { id: Modifier_Id.stunned }, 1)
             }));
 
@@ -759,10 +748,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
                 submit_battle_delta(battle, {
                     ...base,
                     ability_id: ability.id,
-                    targets: targets.map(target => ({
-                        target_unit_id: target.id,
-                        change: health_change(target, -ability.damage)
-                    }))
+                    targets: targets.map(target => unit_health_change(target, -ability.damage))
                 });
             }
 
@@ -1648,8 +1634,11 @@ function spawn_creep(id: Unit_Id, owner: Battle_Player, at_position: XY, type: C
         type: Delta_Type.creep_spawn,
         at_position: at_position,
         owner_id: owner.id,
-        creep_type: type,
-        unit_id: id,
+        effect: {
+            unit_id: id,
+            creep_type: type,
+            intrinsic_modifiers: []
+        },
         health: health
     };
 }
@@ -1889,8 +1878,7 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
                                 source_unit_id: target.id,
                                 summons: battle.random.pick_n_mutable(free_cells, ability.how_many).map(cell => ({
                                     owner_id: target.owner.id,
-                                    unit_id: get_next_entity_id(battle) as Unit_Id,
-                                    creep_type: Creep_Type.spiderling,
+                                    spawn: creep_spawn_effect(battle, Creep_Type.spiderling),
                                     at: cell
                                 }))
                             }));
@@ -1989,12 +1977,34 @@ function resolve_end_turn_effects(battle: Battle_Record) {
             submit_battle_delta(battle, apply_ability_effect_delta({
                 ability_id: Ability_Id.dark_seer_ion_shell,
                 source_unit_id: unit.id,
-                targets: targets.map(target => ({
-                    target_unit_id: target.id,
-                    change: health_change(target, -ability.damage_per_turn)
-                }))
+                targets: targets.map(target => unit_health_change(target, -ability.damage_per_turn))
             }));
         }
+    });
+
+    for_units_with_ability(Ability_Id.plague_ward_attack, (unit, ability) => {
+        if (is_unit_disarmed(unit)) return;
+
+        const target = battle.random.in_array(
+            query_units_for_no_target_ability(battle, unit, ability.targeting).filter(target => !are_units_allies(unit, target))
+        );
+
+        if (!target) return;
+
+        const base_attack = get_attack_damage(unit);
+        const result_attack = (is_unit_rooted(target) || target.bonus.max_move_points < 0) ? base_attack * 2 : base_attack;
+        const basic_attack_stats = calculate_basic_attack(result_attack, target);
+
+        submit_battle_delta(battle, apply_ability_effect_delta({
+            ability_id: Ability_Id.plague_ward_attack,
+            source_unit_id: unit.id,
+            damage_dealt: {
+                target_unit_id: target.id,
+                blocked_by_armor: basic_attack_stats.blocked_by_armor,
+                new_value: basic_attack_stats.new_health,
+                value_delta: basic_attack_stats.health_delta
+            }
+        }));
     });
 
     for_units_with_ability(Ability_Id.pocket_tower_attack, (unit, ability) => {

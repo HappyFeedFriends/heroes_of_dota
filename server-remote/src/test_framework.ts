@@ -156,14 +156,21 @@ class For_Player {
 
     spawn_creep(creep: Creep_Type, at: XY) {
         const id = this.test.battle.id_generator() as Unit_Id;
+        const modifiers = (creep_definition_by_type(creep).intrinsic_modifiers || []).map(data => ({
+            modifier_handle_id: this.test.battle.id_generator() as Modifier_Handle_Id,
+            modifier: data
+        }));
 
         submit_external_battle_delta(this.test.battle, {
             type: Delta_Type.creep_spawn,
-            creep_type: creep,
+            effect: {
+                unit_id: id,
+                creep_type: creep,
+                intrinsic_modifiers: modifiers
+            },
             at_position: at,
             health: creep_definition_by_type(creep).health,
             owner_id: this.player.id,
-            unit_id: id
         });
 
         const unit = find_unit_by_id(this.test.battle, id);

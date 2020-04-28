@@ -200,6 +200,7 @@ type Unit_Definition = {
     attack?: Ability_Definition_Active
     abilities?: Ability_Definition[]
     ability_bench?: Ability_Definition[]
+    intrinsic_modifiers?: Modifier[]
 }
 
 declare const enum Ability_Targeting_Flag {
@@ -419,8 +420,7 @@ type Delta_Monster_Spawn = {
 
 type Delta_Creep_Spawn = {
     type: Delta_Type.creep_spawn
-    creep_type: Creep_Type
-    unit_id: Unit_Id
+    effect: Creep_Spawn_Effect
     owner_id: Battle_Player_Id
     health: number
     at_position: XY
@@ -634,6 +634,12 @@ type Change_Source = {
 } | {
     type: Source_Type.item
     item: Item_Id
+}
+
+type Creep_Spawn_Effect = {
+    unit_id: Unit_Id
+    creep_type: Creep_Type
+    intrinsic_modifiers: Modifier_Application[]
 }
 
 type Modifier_Application = {

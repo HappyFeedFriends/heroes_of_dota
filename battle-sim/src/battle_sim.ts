@@ -1144,11 +1144,11 @@ function unit_spawn_event(source: Source, unit: Unit, at: XY): Battle_Event {
     }
 }
 
-function create_creep(battle: Battle, source: Source, owner: Battle_Player, unit_id: Unit_Id, type: Creep_Type, at: XY, summoned: boolean): Creep {
+function create_creep(battle: Battle, source: Source, owner: Battle_Player, spawn: Creep_Spawn_Effect, at: XY, summoned: boolean): Creep {
     const creep: Creep = {
-        ...unit_base(unit_id, creep_definition_by_type(type), at),
+        ...unit_base(spawn.unit_id, creep_definition_by_type(spawn.creep_type), at),
         supertype: Unit_Supertype.creep,
-        type: type,
+        type: spawn.creep_type,
         owner: owner,
         is_a_summon: summoned
     };
@@ -1158,6 +1158,10 @@ function create_creep(battle: Battle, source: Source, owner: Battle_Player, unit
     occupy_cell_at(battle, at);
 
     push_event(battle, unit_spawn_event(source, creep, at));
+
+    for (const modifier of spawn.intrinsic_modifiers) {
+        apply_modifier(battle, source, creep, modifier);
+    }
 
     return creep;
 }
@@ -1276,7 +1280,7 @@ function collapse_modifier_effect(battle: Battle, effect: Delta_Modifier_Effect_
             const target = find_unit_by_id(battle, effect.heal.target_unit_id);
 
             if (target) {
-                change_health(battle, source, target, effect.heal.change);
+                change_health(battle, source, target, effect.heal);
             }
 
             break;
@@ -1325,7 +1329,7 @@ function collapse_ability_effect(battle: Battle, effect: Ability_Effect) {
             const target = find_unit_by_id(battle, effect.damage_dealt.target_unit_id);
 
             if (source && target) {
-                change_health(battle, unit_source(source, effect.ability_id), target, effect.damage_dealt.change);
+                change_health(battle, unit_source(source, effect.ability_id), target, effect.damage_dealt);
             }
 
             break;
@@ -1346,17 +1350,26 @@ function collapse_ability_effect(battle: Battle, effect: Ability_Effect) {
             const source = find_unit_by_id(battle, effect.source_unit_id);
             if (!source) return;
 
-            for (const summon of effect.summons) {
-                const owner = find_player_by_id(battle, summon.owner_id);
+            // @MonsterOwner
+            if (source.supertype == Unit_Supertype.monster) return;
 
-                if (owner) {
-                    create_creep(battle, unit_source(source, effect.ability_id), owner, summon.unit_id, summon.creep_type, summon.at, true);
-                }
+            for (const summon of effect.summons) {
+                create_creep(battle, unit_source(source, effect.ability_id), source.owner, summon.spawn, summon.at, true);
             }
 
             break;
         }
 
+        case Ability_Id.plague_ward_attack: {
+            const source = find_unit_by_id(battle, effect.source_unit_id);
+            const target = find_unit_by_id(battle, effect.damage_dealt.target_unit_id);
+
+            if (source && target) {
+                change_health(battle, unit_source(source, effect.ability_id), target, effect.damage_dealt);
+            }
+
+            break;
+        }
 
         default: unreachable(effect);
     }
@@ -1367,7 +1380,7 @@ function change_health_multiple(battle: Battle, source: Source, changes: Unit_He
         const target = find_unit_by_id(battle, change.target_unit_id);
 
         if (target) {
-            change_health(battle, source, target, change.change);
+            change_health(battle, source, target, change);
         }
     }
 }
@@ -1376,7 +1389,7 @@ function change_unit_health(battle: Battle, source: Source, change: Unit_Health_
     const target = find_unit_by_id(battle, change.target_unit_id);
 
     if (target) {
-        change_health(battle, source, target, change.change);
+        change_health(battle, source, target, change);
     }
 }
 
@@ -1395,7 +1408,7 @@ function change_health_and_apply_modifier_multiple(battle: Battle, source: Sourc
         const target = find_unit_by_id(battle, change.target_unit_id);
 
         if (target) {
-            change_health(battle, source, target, change.change);
+            change_health(battle, source, target, change);
             apply_modifier(battle, source, target, change.modifier);
         }
     }
@@ -1406,7 +1419,7 @@ function collapse_unit_target_ability_use(battle: Battle, caster: Unit, target: 
 
     switch (cast.ability_id) {
         case Ability_Id.basic_attack: {
-            change_health(battle, source, target, cast.target.change);
+            change_health(battle, source, target, cast.target);
 
             break;
         }
@@ -1646,8 +1659,7 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
             // @MonsterOwner
             if (caster.supertype == Unit_Supertype.monster) return;
 
-            const remnant = create_creep(battle, source, caster.owner, cast.remnant.id, cast.remnant.type, cast.target_position, true);
-            apply_modifier(battle, source, remnant, cast.remnant.modifier);
+            const remnant = create_creep(battle, source, caster.owner, cast.remnant, cast.target_position, true);
             apply_modifier(battle, source, caster, cast.modifier);
 
             break;
@@ -1673,7 +1685,7 @@ function collapse_ground_target_ability_use(battle: Battle, caster: Unit, at: Ce
             // @MonsterOwner
             if (caster.supertype == Unit_Supertype.monster) return;
 
-            create_creep(battle, source, caster.owner, cast.summon_id, cast.summon_type, cast.target_position, true);
+            create_creep(battle, source, caster.owner, cast.summon, cast.target_position, true);
 
             break;
         }
@@ -1710,7 +1722,7 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
 
         case Spell_Id.call_to_arms: {
             for (const summon of cast.summons) {
-                create_creep(battle, source, caster, summon.unit_id, summon.unit_type, summon.at, true);
+                create_creep(battle, source, caster, summon.spawn, summon.at, true);
             }
 
             break;
@@ -1723,7 +1735,7 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
 function collapse_ground_target_spell_use(battle: Battle, caster: Battle_Player, at: XY, cast: Delta_Use_Ground_Target_Spell) {
     switch (cast.spell_id) {
         case Spell_Id.pocket_tower: {
-            create_creep(battle, player_source(caster), caster, cast.new_unit_id, cast.new_unit_type, at, true);
+            create_creep(battle, player_source(caster), caster, cast.spawn, at, true);
 
             break;
         }
@@ -1929,7 +1941,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             const owner = find_player_by_id(battle, delta.owner_id);
             if (!owner) break;
 
-            const creep = create_creep(battle, no_source(), owner, delta.unit_id, delta.creep_type, delta.at_position, false);
+            const creep = create_creep(battle, no_source(), owner, delta.effect, delta.at_position, false);
             creep.health = delta.health;
 
             break;

@@ -15,7 +15,6 @@ declare const enum Modifier_Id {
     ember_fire_remnant_caster = 15,
     ember_fire_remnant = 16,
     shaker_enchant_totem_caster = 18,
-    veno_plague_ward = 19,
     veno_venomous_gale = 20,
     veno_poison_nova = 21,
 
@@ -96,8 +95,6 @@ type Modifier = {
     remnant_owner_unit_id: Unit_Id
 } | {
     id: Modifier_Id.shaker_enchant_totem_caster
-} | {
-    id: Modifier_Id.veno_plague_ward
 } | {
     id: Modifier_Id.veno_venomous_gale
     move_reduction: number
