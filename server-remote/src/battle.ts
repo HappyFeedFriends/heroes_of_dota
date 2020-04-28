@@ -584,7 +584,7 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
         }
 
         case Ability_Id.venomancer_venomous_gale: {
-            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+            const targets = query_units_for_point_target_ability(battle, unit, target, ability.targeting);
 
             submit_battle_delta(battle, {
                 ...base,

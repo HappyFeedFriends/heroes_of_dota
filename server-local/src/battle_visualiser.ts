@@ -733,6 +733,10 @@ function toss_target_up(target: Unit) {
     gesture.fade();
 }
 
+function target_world_position<T extends { unit: Unit }>(provider: T) {
+    return provider.unit.handle.GetAbsOrigin()
+}
+
 function linear_projectile_end_to_end(from: XY, to: XY, travel_speed: number, fx_path: string): [FX, number] {
     const world_from = battle_position_to_world_position_center(battle.world_origin, from);
     const world_to = battle_position_to_world_position_center(battle.world_origin, to);
@@ -1339,7 +1343,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             const from = unit.position;
             const to = cast.target_position;
 
-            linear_projectile_with_targets(from, to, 1500, distance, fx, targets, target => target.unit.handle.GetAbsOrigin(), target => {
+            linear_projectile_with_targets(from, to, 1500, distance, fx, targets, target_world_position, target => {
                 change_health(game, unit, target.unit, target);
                 apply_modifier(game, target.unit, target.modifier);
 
@@ -1401,7 +1405,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             const to = cast.target_position;
             const targets = filter_and_map_existing_units(cast.targets);
 
-            linear_projectile_with_targets(from, to, 2000, distance, fx, targets, target => target.unit.handle.GetAbsOrigin(), target => {
+            linear_projectile_with_targets(from, to, 2000, distance, fx, targets, target_world_position, target => {
                 change_health(game, unit, target.unit, target);
                 apply_modifier(game, target.unit, target.modifier);
             });
@@ -1495,15 +1499,29 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
         }
 
         case Ability_Id.venomancer_plague_wards: {
-            // TODO
-
             // @MonsterOwner
             if (unit.supertype == Unit_Supertype.monster) return;
 
             const facing = find_player_deployment_zone_facing(unit.owner_remote_id);
             if (!facing) break;
 
+            fx_by_unit("particles/units/heroes/hero_venomancer/venomancer_ward_cast.vpcf", unit)
+                .to_unit_attach_point(0, unit, "attach_attack1")
+                .release();
+
+            fx_by_unit("particles/units/heroes/hero_venomancer/venomancer_ward_cast.vpcf", unit)
+                .to_unit_attach_point(0, unit, "attach_attack2")
+                .release();
+
+            unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_3);
+            unit_emit_sound(unit, "Hero_Venomancer.Plague_Ward");
+
+            fx("particles/units/heroes/hero_venomancer/venomancer_ward_spawn.vpcf")
+                .to_location(0, cast.target_position)
+                .release();
+
             const creep = spawn_creep_for_battle(game, cast.summon, unit.owner_remote_id, cast.target_position, facing);
+            add_activity_override(creep, GameActivity_t.ACT_DOTA_SPAWN);
 
             register_unit(battle, creep);
             update_game_net_table(game);
@@ -1512,10 +1530,20 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
         }
 
         case Ability_Id.venomancer_venomous_gale: {
-            // TODO
-            for (const modifier of filter_and_map_existing_units(cast.targets)) {
-                apply_modifier(game, modifier.unit, modifier.modifier);
-            }
+            // @HardcodedConstant
+            const distance = 4;
+            const fx = "particles/units/heroes/hero_venomancer/venomancer_venomous_gale.vpcf";
+            const from = unit.position;
+            const to = cast.target_position;
+            const targets = filter_and_map_existing_units(cast.targets);
+
+            unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_1, 0.2);
+            unit_emit_sound(unit, "Hero_Venomancer.VenomousGale");
+
+            linear_projectile_with_targets(from, to, 1200, distance, fx, targets, target_world_position, target => {
+                apply_modifier(game, target.unit, target.modifier);
+                unit_emit_sound(target.unit, "Hero_Venomancer.VenomousGaleImpact");
+            });
 
             break;
         }
@@ -1609,7 +1637,10 @@ function modifier_to_visuals(target: Unit, modifier: Modifier): Modifier_Visuals
             one_from_activity_translation(Activity_Translation.enchant_totem),
             one_from_fx(fx_by_unit("particles/units/heroes/hero_earthshaker/earthshaker_totem_buff.vpcf", target)
                     .to_unit_attach_point(0, target, "attach_totem"))
-        ]
+        ];
+
+        case Modifier_Id.veno_venomous_gale: return follow("particles/units/heroes/hero_venomancer/venomancer_gale_poison_debuff.vpcf");
+        case Modifier_Id.veno_poison_nova: return follow("particles/units/heroes/hero_venomancer/venomancer_poison_debuff_nova.vpcf");
     }
 }
 
@@ -2350,7 +2381,15 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
         }
 
         case Ability_Id.venomancer_poison_nova: {
-            // TODO
+            // @HardcodedConstant
+            const radius = 2;
+
+            unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_4, 0);
+            unit_emit_sound(unit, "Hero_Venomancer.PoisonNova");
+
+            fx_by_unit("particles/units/heroes/hero_venomancer/venomancer_poison_nova.vpcf", unit)
+                .with_point_value(1, radius * Const.battle_cell_size, 1, radius * Const.battle_cell_size)
+                .release();
 
             for (const modifier of filter_and_map_existing_units(cast.targets)) {
                 apply_modifier(game, modifier.unit, modifier.modifier);
