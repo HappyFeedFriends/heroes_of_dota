@@ -175,6 +175,7 @@ declare const enum Unit_Status {
 type Unit_Stats = {
     health: number
     move_points: number
+    poison: number
     status: Record<Unit_Status, boolean>
 
     base: {
@@ -383,10 +384,8 @@ type Battle_Participant_Info = {
 
 type Delta_Health_Change = {
     type: Delta_Type.health_change
-    source_unit_id: Unit_Id
-    target_unit_id: Unit_Id
-    new_value: number
-    value_delta: number
+    source: Delta_Source
+    change: Unit_Health_Change
 }
 
 type Delta_Move = {
@@ -458,14 +457,14 @@ type Delta_Level_Change = {
     type: Delta_Type.level_change
     unit_id: Unit_Id
     new_level: number
-    source: Change_Source
+    source: Delta_Source
 }
 
 type Delta_Modifier_Applied = {
     type: Delta_Type.modifier_applied
     unit_id: Unit_Id
     application: Modifier_Application
-    source: Change_Source
+    source: Delta_Source
 }
 
 type Delta_Modifier_Removed = {
@@ -479,7 +478,7 @@ type Delta_Set_Ability_Charges_Remaining = {
     ability_id: Ability_Id
     charges: number
     only_set_remaining: boolean
-    source: Change_Source
+    source: Delta_Source
 }
 
 type Delta_Ability_Effect_Applied<T extends Ability_Effect> = {
@@ -626,7 +625,7 @@ type Delta =
     Delta_Game_Start |
     Delta_Game_Over
 
-type Change_Source = {
+type Delta_Source = {
     type: Source_Type.none
 } | {
     type: Source_Type.adventure_item
@@ -634,6 +633,16 @@ type Change_Source = {
 } | {
     type: Source_Type.item
     item: Item_Id
+ }| {
+    type: Source_Type.unit
+    unit: Unit_Id
+    ability_id: Ability_Id
+} | {
+    type: Source_Type.player
+    player: Battle_Player_Id
+} | {
+    type: Source_Type.modifier
+    handle: Modifier_Handle_Id
 }
 
 type Creep_Spawn_Effect = {

@@ -39,6 +39,14 @@ class Test_Battle {
         this.assert_index = 1;
     }
 
+    next_turn() {
+        try_take_turn_action(this.battle, this.battle.turning_player, {
+            type: Action_Type.end_turn
+        });
+
+        return this;
+    }
+
     for_test_player() {
         return new For_Player(this, this.battle.players[0]);
     }
@@ -334,10 +342,12 @@ class For_Player_Unit {
     set_health(value: number) {
         submit_external_battle_delta(this.test.battle, {
             type: Delta_Type.health_change,
-            source_unit_id: this.unit.id,
-            target_unit_id: this.unit.id,
-            new_value: value,
-            value_delta: 0
+            source: { type: Source_Type.none },
+            change: {
+                target_unit_id: this.unit.id,
+                new_value: value,
+                value_delta: 0
+            }
         });
 
         return this;

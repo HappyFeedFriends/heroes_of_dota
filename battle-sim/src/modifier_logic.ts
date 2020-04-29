@@ -41,13 +41,13 @@ type Ability_Override = {
 type Recalculated_Stats = {
     health: number
     move_points: number
+    poison: number
 
     bonus: {
         armor: number
         max_health: number
         attack_damage: number
         max_move_points: number
-        poison: number
     }
 
     status: Record<Unit_Status, boolean>
@@ -112,9 +112,10 @@ function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Mo
         armor: 0,
         max_health: 0,
         attack_damage: 0,
-        max_move_points: 0,
-        poison: 0
+        max_move_points: 0
     };
+
+    let poison = 0;
 
     const new_status = starting_unit_status();
     const new_overrides: Ability_Override[] = [];
@@ -133,7 +134,7 @@ function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Mo
                         case Modifier_Field.attack_bonus: new_bonus.attack_damage += change.delta; break;
                         case Modifier_Field.health_bonus: new_bonus.max_health += change.delta; break;
                         case Modifier_Field.move_points_bonus: new_bonus.max_move_points += change.delta; break;
-                        case Modifier_Field.applied_poison: new_bonus.poison += change.delta; break;
+                        case Modifier_Field.applied_poison: poison += change.delta; break;
                         default: unreachable(change.field);
                     }
 
@@ -196,6 +197,7 @@ function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Mo
     return {
         health: new_health,
         move_points: new_move_points,
+        poison: poison,
         bonus: new_bonus,
         status: new_status,
         overrides: new_overrides

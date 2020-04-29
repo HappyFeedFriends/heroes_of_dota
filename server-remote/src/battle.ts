@@ -1893,6 +1893,17 @@ function on_battle_event(battle_base: Battle, event: Battle_Event) {
 }
 
 function resolve_end_turn_effects(battle: Battle_Record) {
+    function serialize_source(source: Source): Delta_Source {
+        switch (source.type) {
+            case Source_Type.none: return { type: source.type };
+            case Source_Type.unit: return { type: source.type, unit: source.unit.id, ability_id: source.ability_id };
+            case Source_Type.item: return { type: source.type, item: source.item_id };
+            case Source_Type.player: return { type: source.type, player: source.player.id };
+            case Source_Type.modifier: return { type: source.type, handle: source.applied.handle_id };
+            case Source_Type.adventure_item: return { type: source.type, item: source.item_id };
+        }
+    }
+
     function for_units_with_ability<T extends Ability_Id>(ability_id: T, action: (unit: Unit, ability: Find_By_Id<Ability, T>) => void) {
         for (const unit of battle.units) {
             if (!authorize_act_on_known_unit(battle, unit).ok) continue;
@@ -1917,37 +1928,6 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         }
     }
 
-    // TODO Not sure how this interacts with new modifiers being added in case of a modifier removal
-    for (const unit of battle.units) {
-        for (const modifier of unit.modifiers) {
-            if (modifier.duration_remaining != undefined && modifier.duration_remaining == 0) {
-                submit_battle_delta(battle, {
-                    type: Delta_Type.modifier_removed,
-                    modifier_handle_id: modifier.handle_id
-                });
-            }
-        }
-    }
-
-    // Not iterating backwards because presumably order actually matters here and savings would be low anyway
-    for (let index = 0; index < battle.timed_effects.length; index++) {
-        const effect = battle.timed_effects[index];
-
-        if (effect.duration_remaining == 0) {
-            // Careful, Ned...
-            // The submission can cause timed_effects to change,
-            // although I wouldn't expect elements to be removed there, so fingers crossed
-            // Maybe we should push those deltas into a separate array and submit them all later
-            submit_battle_delta(battle, {
-                type: Delta_Type.timed_effect_expired,
-                handle_id: effect.handle_id
-            });
-
-            battle.timed_effects.splice(index, 1);
-            index--;
-        }
-    }
-
     for_units_with_modifier(Modifier_Id.item_heart_of_tarrasque, (unit, applied, modifier) => {
         submit_battle_delta(battle, {
             type: Delta_Type.modifier_effect_applied,
@@ -1956,6 +1936,25 @@ function resolve_end_turn_effects(battle: Battle_Record) {
             change: unit_health_change(unit, modifier.regeneration_per_turn)
         });
     });
+
+    for (const unit of battle.units) {
+        if (!authorize_act_on_known_unit(battle, unit).ok) continue;
+
+        for (const applied of unit.modifiers) {
+            const changes = calculate_modifier_changes(applied.modifier);
+            const source = applied.source;
+
+            for (const change of changes) {
+                if (change.type == Modifier_Change_Type.field_change && change.field == Modifier_Field.applied_poison) {
+                    submit_battle_delta(battle, {
+                        type: Delta_Type.health_change,
+                        source: serialize_source(source),
+                        change: unit_health_change(unit, -change.delta)
+                    });
+                }
+            }
+        }
+    }
 
     for_units_with_modifier(Modifier_Id.item_armlet, (unit, applied, modifier) => {
         submit_battle_delta(battle, {
@@ -2031,6 +2030,37 @@ function resolve_end_turn_effects(battle: Battle_Record) {
             if (target) {
                 monster_try_retaliate(battle, monster, target);
             }
+        }
+    }
+
+    // TODO Not sure how this interacts with new modifiers being added in case of a modifier removal
+    for (const unit of battle.units) {
+        for (const modifier of unit.modifiers) {
+            if (modifier.duration_remaining != undefined && modifier.duration_remaining == 0) {
+                submit_battle_delta(battle, {
+                    type: Delta_Type.modifier_removed,
+                    modifier_handle_id: modifier.handle_id
+                });
+            }
+        }
+    }
+
+    // Not iterating backwards because presumably order actually matters here and savings would be low anyway
+    for (let index = 0; index < battle.timed_effects.length; index++) {
+        const effect = battle.timed_effects[index];
+
+        if (effect.duration_remaining == 0) {
+            // Careful, Ned...
+            // The submission can cause timed_effects to change,
+            // although I wouldn't expect elements to be removed there, so fingers crossed
+            // Maybe we should push those deltas into a separate array and submit them all later
+            submit_battle_delta(battle, {
+                type: Delta_Type.timed_effect_expired,
+                handle_id: effect.handle_id
+            });
+
+            battle.timed_effects.splice(index, 1);
+            index--;
         }
     }
 }
@@ -2153,10 +2183,12 @@ export function surrender_player_forces(battle: Battle_Record, battle_player: Ba
     for (const unit of player_units) {
         submit_battle_delta(battle, {
             type: Delta_Type.health_change,
-            source_unit_id: unit.id,
-            target_unit_id: unit.id,
-            new_value: 0,
-            value_delta: 0
+            source: { type: Source_Type.none },
+            change: {
+                target_unit_id: unit.id,
+                new_value: 0,
+                value_delta: 0
+            }
         });
     }
 }
@@ -2328,10 +2360,12 @@ export function start_battle(battle_id: Battle_Id, id_generator: Id_Generator, r
 
                 submit_battle_delta(battle, {
                     type: Delta_Type.health_change,
-                    source_unit_id: hero.id,
-                    target_unit_id: hero.id,
-                    new_value: hero.health,
-                    value_delta: 0
+                    source: { type: Source_Type.none },
+                    change: {
+                        target_unit_id: hero.id,
+                        new_value: hero.health,
+                        value_delta: 0
+                    }
                 });
             }
         }
@@ -2361,10 +2395,8 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
     function refresh_unit(battle: Battle_Record, unit: Unit) {
         submit_battle_delta(battle, {
             type: Delta_Type.health_change,
-            source_unit_id: unit.id,
-            target_unit_id: unit.id,
-            new_value: get_max_health(unit),
-            value_delta: get_max_health(unit) - unit.health
+            source: { type: Source_Type.none },
+            change: unit_health_change(unit, get_max_health(unit) - unit.health)
         });
 
         for (const ability of unit.abilities) {
@@ -2475,10 +2507,8 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
 
             submit_external_battle_delta(battle, {
                 type: Delta_Type.health_change,
-                source_unit_id: unit.id,
-                target_unit_id: unit.id,
-                new_value: 0,
-                value_delta: -unit.health
+                source: { type: Source_Type.none },
+                change: unit_health_change(unit, -unit.health)
             });
 
             break;
@@ -2489,10 +2519,8 @@ export function cheat(battle: Battle_Record, battle_player: Battle_Player, cheat
                 if (!unit.dead) {
                     submit_external_battle_delta(battle, {
                         type: Delta_Type.health_change,
-                        source_unit_id: unit.id,
-                        target_unit_id: unit.id,
-                        new_value: 0,
-                        value_delta: -unit.health
+                        source: { type: Source_Type.none },
+                        change: unit_health_change(unit, -unit.health)
                     });
                 }
             }

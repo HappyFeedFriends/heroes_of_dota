@@ -9,37 +9,25 @@ declare const enum Pathing_Flag {
     pass_through_units = 1
 }
 
-type Source_None = {
+type Source = {
     type: Source_Type.none
-}
-
-type Source_Unit = {
+}| {
     type: Source_Type.unit
     unit: Unit
     ability_id: Ability_Id
-}
-
-type Source_Player = {
+} | {
     type: Source_Type.player
     player: Battle_Player
-}
-
-type Source_Item = {
+} | {
     type: Source_Type.item
     item_id: Item_Id
-}
-
-type Source_Modifier = {
+} | {
     type: Source_Type.modifier
     applied: Applied_Modifier
-}
-
-type Source_Adventure_Item = {
+} | {
     type: Source_Type.adventure_item
     item_id: Adventure_Item_Id
 }
-
-type Source = Source_None | Source_Unit | Source_Item | Source_Player | Source_Modifier | Source_Adventure_Item
 
 type Battle = {
     state: {
@@ -476,6 +464,36 @@ function adventure_item_source(item_id: Adventure_Item_Id): Source {
     return {
         type: Source_Type.adventure_item,
         item_id: item_id
+    }
+}
+
+function deserialize_source(battle: Battle, source: Delta_Source): Source | undefined {
+    switch (source.type) {
+        case Source_Type.unit: {
+            const unit = find_unit_by_id(battle, source.unit);
+            if (!unit) return;
+
+            return unit_source(unit, source.ability_id);
+        }
+
+        case Source_Type.player: {
+            const player = find_player_by_id(battle, source.player);
+            if (!player) return;
+
+            return player_source(player);
+        }
+
+        case Source_Type.modifier: {
+            const result = find_modifier_by_handle_id(battle, source.handle);
+            if (!result) return;
+
+            return modifier_source(result[1]);
+        }
+
+        case Source_Type.adventure_item: return adventure_item_source(source.item);
+        case Source_Type.item: return item_source(source.item);
+        case Source_Type.none: return no_source();
+        default: unreachable(source);
     }
 }
 
@@ -1116,6 +1134,7 @@ function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base 
         modifiers: [],
         ability_overrides: [],
         status: starting_unit_status(),
+        poison: 0,
         base: {
             armor: definition.armor != undefined ? definition.armor : 0,
             attack_damage: definition.attack_damage,
@@ -1964,11 +1983,11 @@ function collapse_delta(battle: Battle, delta: Delta): void {
         }
 
         case Delta_Type.health_change: {
-            const source = find_unit_by_id(battle, delta.source_unit_id);
-            const target = find_unit_by_id(battle, delta.target_unit_id);
+            const source = deserialize_source(battle, delta.source);
+            const target = find_unit_by_id(battle, delta.change.target_unit_id);
 
             if (source && target) {
-                change_health(battle, no_source(), target, delta);
+                change_health(battle, source, target, delta.change);
             }
 
             break;
@@ -2110,15 +2129,10 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             const unit = find_unit_by_id(battle, delta.unit_id);
             if (!unit) break;
 
-            const get_source: () => Source = () => {
-                switch (delta.source.type) {
-                    case Source_Type.adventure_item: return adventure_item_source(delta.source.item);
-                    case Source_Type.item: return item_source(delta.source.item);
-                    case Source_Type.none: return no_source();
-                }
-            };
+            const source = deserialize_source(battle, delta.source);
+            if (!source) break;
 
-            apply_modifier(battle, get_source(), unit, delta.application);
+            apply_modifier(battle, source, unit, delta.application);
 
             break;
         }

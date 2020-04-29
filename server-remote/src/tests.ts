@@ -231,8 +231,8 @@ function test_ember_spirit_fire_remnant_ability_swap_working_correctly() {
         .has_ability(Ability_Id.ember_activate_fire_remnant)
         .has_benched_ability_bench(Ability_Id.ember_fire_remnant);
 
-    battle.for_test_player().end_turn();
-    battle.for_enemy_player().end_turn();
+    battle.next_turn();
+    battle.next_turn();
 
     hero.order_cast_no_target(Ability_Id.ember_activate_fire_remnant);
 
@@ -299,12 +299,12 @@ function test_pocket_tower_attacks_at_the_end_of_the_turn() {
 
     const tower = battle.for_test_player().creep_by_type(Creep_Type.pocket_tower).assert_found();
 
-    battle.for_test_player().end_turn();
+    battle.next_turn();
 
     expected_health -= get_attack_damage(tower.unit);
     enemy.assert().has_health(expected_health);
 
-    battle.for_enemy_player().end_turn();
+    battle.next_turn();
 
     expected_health -= get_attack_damage(tower.unit);
     enemy.assert().has_health(expected_health);
@@ -481,6 +481,46 @@ function test_hero_cant_buy_shop_item_no_gold() {
     ally.assert().doesnt_have_modifier(Modifier_Id.item_armlet);
 }
 
+function test_poison_deals_damage_at_the_end_of_each_turn() {
+    const [battle, ally] = test_battle_with_ally_and_enemy(Hero_Type.earthshaker, xy(1, 1));
+    battle.start();
+
+    const start_health = ally.unit.health;
+    const damage = 3;
+
+    ally.apply_modifier({ id: Modifier_Id.veno_venomous_gale, poison_applied: damage, move_reduction: 0 });
+    ally.assert().has_health(start_health);
+
+    battle.next_turn();
+    ally.assert().has_health(start_health - damage);
+
+    battle.next_turn();
+    ally.assert().has_health(start_health - damage - damage);
+
+    battle.next_turn();
+    ally.assert().has_health(start_health - damage - damage - damage);
+}
+
+function test_poison_deals_damage_at_the_end_of_turn_before_expiring() {
+    const [battle, ally] = test_battle_with_ally_and_enemy(Hero_Type.earthshaker, xy(1, 1));
+    battle.start();
+
+    const start_health = ally.unit.health;
+    const damage = 3;
+
+    ally.apply_modifier({ id: Modifier_Id.veno_venomous_gale, poison_applied: damage, move_reduction: 0 }, 1);
+    ally.assert().has_health(start_health);
+
+    battle.next_turn();
+    ally.assert().has_health(start_health - damage);
+
+    battle.next_turn();
+    ally.assert().has_health(start_health - damage - damage);
+
+    battle.next_turn();
+    ally.assert().has_health(start_health - damage - damage).doesnt_have_modifier(Modifier_Id.veno_venomous_gale);
+}
+
 function test_load_all_adventures() {
     const ok = load_all_adventures();
 
@@ -520,5 +560,7 @@ run_tests([
     test_shaker_fissure_expires_correctly,
     test_hero_can_buy_shop_item,
     test_hero_cant_buy_shop_item_out_of_range,
-    test_hero_cant_buy_shop_item_no_gold
+    test_hero_cant_buy_shop_item_no_gold,
+    test_poison_deals_damage_at_the_end_of_each_turn,
+    test_poison_deals_damage_at_the_end_of_turn_before_expiring
 ]);
