@@ -1945,11 +1945,11 @@ function resolve_end_turn_effects(battle: Battle_Record) {
             const source = applied.source;
 
             for (const change of changes) {
-                if (change.type == Modifier_Change_Type.field_change && change.field == Modifier_Field.applied_poison) {
+                if (change.type == Modifier_Change_Type.apply_poison) {
                     submit_battle_delta(battle, {
                         type: Delta_Type.health_change,
                         source: serialize_source(source),
-                        change: unit_health_change(unit, -change.delta)
+                        change: unit_health_change(unit, -change.poison)
                     });
                 }
             }

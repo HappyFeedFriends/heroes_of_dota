@@ -329,7 +329,7 @@ function assemble_modifier_tooltip_strings(modifier: Modifier): string[] {
     for (const change of changes) {
         switch (change.type) {
             case Modifier_Change_Type.field_change: {
-                result.push(`${change.delta > 0 ? "+" : ""}${em(change.delta)}${field_ui(change.field)}`);
+                result.push(`${change.delta > 0 ? "+" : "-"}${em(Math.abs(change.delta))}${field_ui(change.field)}`);
                 break;
             }
 
@@ -345,6 +345,11 @@ function assemble_modifier_tooltip_strings(modifier: Modifier): string[] {
 
             case Modifier_Change_Type.apply_special_state: {
                 result.push("Special: " + em(enum_to_string(change.state)));
+                break;
+            }
+
+            case Modifier_Change_Type.apply_poison: {
+                result.push(`+${em(change.poison)} poison`);
                 break;
             }
 

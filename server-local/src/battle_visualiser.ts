@@ -650,7 +650,6 @@ function unit_base(unit_id: Unit_Id, info: Unit_Creation_Info, definition: Unit_
             max_move_points: 0
         },
         health: definition.health,
-        poison: 0,
         status: starting_unit_status(),
         move_points: definition.move_points,
         modifiers: [],
@@ -1736,7 +1735,6 @@ function update_unit_state_from_modifiers(unit: Unit) {
     unit.status = recalculated.status;
     unit.health = recalculated.health;
     unit.move_points = recalculated.move_points;
-    unit.poison = recalculated.poison;
 
     update_state_visuals(unit);
 }
@@ -3890,7 +3888,6 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
             move_points: unit.move_points,
             base: unit.base,
             bonus: unit.bonus,
-            poison: unit.poison,
 
             // We will recalculate stats and update those at the end
             status: starting_unit_status()

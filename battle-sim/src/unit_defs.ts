@@ -464,7 +464,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     available_since_level: 2,
                     charges: 1,
                     slow: 2,
-                    poison_applied: 3
+                    poison_applied: 2
                 },
                 {
                     id: Ability_Id.venomancer_poison_nova,

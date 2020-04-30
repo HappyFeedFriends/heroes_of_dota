@@ -1134,7 +1134,6 @@ function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base 
         modifiers: [],
         ability_overrides: [],
         status: starting_unit_status(),
-        poison: 0,
         base: {
             armor: definition.armor != undefined ? definition.armor : 0,
             attack_damage: definition.attack_damage,

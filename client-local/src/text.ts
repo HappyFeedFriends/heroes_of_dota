@@ -123,7 +123,6 @@ function get_field_name(field: Modifier_Field): string {
         case Modifier_Field.health_bonus: return "health";
         case Modifier_Field.attack_bonus: return "attack";
         case Modifier_Field.move_points_bonus: return "moves";
-        case Modifier_Field.applied_poison: return "poison damage";
     }
 }
 

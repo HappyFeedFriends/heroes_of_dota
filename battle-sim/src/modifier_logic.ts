@@ -2,15 +2,15 @@ const enum Modifier_Change_Type {
     field_change,
     ability_override,
     apply_status,
-    apply_special_state
+    apply_special_state,
+    apply_poison
 }
 
 const enum Modifier_Field {
     health_bonus,
     attack_bonus,
     armor_bonus,
-    move_points_bonus,
-    applied_poison
+    move_points_bonus
 }
 
 const enum Special_Modifier_State {
@@ -31,6 +31,9 @@ type Modifier_Change = {
 } | {
     type: Modifier_Change_Type.apply_special_state
     state: Special_Modifier_State
+} | {
+    type: Modifier_Change_Type.apply_poison
+    poison: number
 }
 
 type Ability_Override = {
@@ -41,7 +44,6 @@ type Ability_Override = {
 type Recalculated_Stats = {
     health: number
     move_points: number
-    poison: number
 
     bonus: {
         armor: number
@@ -115,8 +117,6 @@ function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Mo
         max_move_points: 0
     };
 
-    let poison = 0;
-
     const new_status = starting_unit_status();
     const new_overrides: Ability_Override[] = [];
     const special_states: Record<Special_Modifier_State, boolean> = {
@@ -134,7 +134,6 @@ function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Mo
                         case Modifier_Field.attack_bonus: new_bonus.attack_damage += change.delta; break;
                         case Modifier_Field.health_bonus: new_bonus.max_health += change.delta; break;
                         case Modifier_Field.move_points_bonus: new_bonus.max_move_points += change.delta; break;
-                        case Modifier_Field.applied_poison: poison += change.delta; break;
                         default: unreachable(change.field);
                     }
 
@@ -157,6 +156,10 @@ function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Mo
 
                 case Modifier_Change_Type.apply_special_state: {
                     special_states[change.state] = true;
+                    break;
+                }
+
+                case Modifier_Change_Type.apply_poison: {
                     break;
                 }
 
@@ -197,7 +200,6 @@ function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Mo
     return {
         health: new_health,
         move_points: new_move_points,
-        poison: poison,
         bonus: new_bonus,
         status: new_status,
         overrides: new_overrides
@@ -232,6 +234,13 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
         return {
             type: Modifier_Change_Type.apply_special_state,
             state: state
+        }
+    }
+
+    function poison(how_much: number): Modifier_Change {
+        return {
+            type: Modifier_Change_Type.apply_poison,
+            poison: how_much
         }
     }
 
@@ -320,7 +329,7 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
 
         case Modifier_Id.veno_venomous_gale: return [
             field(Modifier_Field.move_points_bonus, -modifier.move_reduction),
-            field(Modifier_Field.applied_poison, modifier.poison_applied)
+            poison(modifier.poison_applied)
         ];
 
         case Modifier_Id.veno_poison_nova: return [

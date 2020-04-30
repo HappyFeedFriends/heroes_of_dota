@@ -175,7 +175,6 @@ declare const enum Unit_Status {
 type Unit_Stats = {
     health: number
     move_points: number
-    poison: number
     status: Record<Unit_Status, boolean>
 
     base: {
