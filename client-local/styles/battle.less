@@ -592,8 +592,16 @@
       z-index: 100;
       background-color: #000000ee;
 
+      &.large_additional_stats {
+        width: 44px;
+      }
+
       &.show_full_stats {
-        width: 70px;
+        width: 64px;
+
+        &.large_full_stats {
+          width: 76px;
+        }
 
         .container {
           horizontal-align: right;
@@ -630,13 +638,13 @@
     }
 
     &:not(.enemy) {
-      box-shadow: rgb(17, 162, 0) 0px 0px 4px 0;
-      border: 1px solid rgb(16, 120, 0);
+      //box-shadow: rgb(17, 162, 0) 0px 0px 4px 0;
+      border: 2px solid rgb(16, 162, 0);
     }
 
     &.enemy {
-      box-shadow: #aa0000aa 0px 0px 4px 0;
-      border: 1px solid rgba(126, 0, 0, 0.67);
+      //box-shadow: #aa0000aa 0px 0px 4px 0;
+      border: 2px solid rgb(126, 0, 0);
     }
 
     &.enemy:not(.show_additional_stats) #health_container #health_label {

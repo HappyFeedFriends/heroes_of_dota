@@ -1338,6 +1338,23 @@ function update_unit_stat_bar_data(ui: UI_Unit_Data, new_data: Visualizer_Unit_D
     ui.modifier_bar.SetHasClass("hidden", ui.hidden);
     ui.stat_bar_panel.SetHasClass("hidden", ui.hidden);
 
+    ui.stat_bar_panel.SetHasClass("large_additional_stats", false);
+    ui.stat_bar_panel.SetHasClass("large_full_stats", false);
+
+    for (const stat of [ui.stat_health, ui.stat_attack]) {
+        if (stat.value_provider(ui.stats) >= 10) {
+            ui.stat_bar_panel.SetHasClass("large_additional_stats", true);
+            break;
+        }
+    }
+
+    for (const stat of [ui.stat_health, ui.stat_max_health, ui.stat_move_points, ui.stat_max_move_points]) {
+        if (stat.value_provider(ui.stats) >= 10) {
+            ui.stat_bar_panel.SetHasClass("large_full_stats", true);
+            break;
+        }
+    }
+
     update_effects_elements(ui.modifier_bar, ui.modifier_elements, (parent, modifier_handle) => {
         const modifier = battle.modifier_handle_id_to_modifier[modifier_handle];
         if (!modifier) {
