@@ -127,6 +127,7 @@ function replace_ability(unit: Unit_Abilities, ability_id_to_bench: Ability_Id, 
     if (ability_to_bench == unit.attack) {
         if (benched_ability.type == Ability_Type.passive) return;
 
+        benched_ability.charges_remaining = unit.attack.charges_remaining;
         unit.attack = benched_ability;
     }
 
@@ -381,7 +382,8 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
         ];
 
         case Modifier_Id.shaker_enchant_totem_caster: return [
-            special_state(Special_Modifier_State.damage_doubled)
+            special_state(Special_Modifier_State.damage_doubled),
+            override_ability(Ability_Id.basic_attack, Ability_Id.shaker_enchant_totem_attack)
         ];
 
         case Modifier_Id.veno_venomous_gale: return [

@@ -1144,9 +1144,7 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
             case Hero_Type.vengeful_spirit: return "Hero_VengefulSpirit.Attack";
             case Hero_Type.dark_seer: return "Hero_DarkSeer.Attack";
             case Hero_Type.ember_spirit: return "Hero_EmberSpirit.Attack";
-            case Hero_Type.earthshaker: return hero.modifiers.some(applied => applied.modifier.id == Modifier_Id.shaker_enchant_totem_caster)
-                ? "Hero_EarthShaker.Totem.Attack"
-                : "Hero_EarthShaker.Attack";
+            case Hero_Type.earthshaker: return "Hero_EarthShaker.Attack";
             case Hero_Type.venomancer: return "Hero_Venomancer.Attack";
             case Hero_Type.bounty_hunter: return "Hero_BountyHunter.Attack";
         }
@@ -2080,6 +2078,22 @@ function play_unit_target_ability_delta(game: Game, caster: Unit, cast: Delta_Un
             unit_emit_sound(target, "Hero_BountyHunter.Jinada");
             apply_modifier(game, target, cast.modifier);
             fx_by_unit("particles/units/heroes/hero_bounty_hunter/bounty_hunter_jinda_slow.vpcf", target).release();
+
+            break;
+        }
+
+        case Ability_Id.shaker_enchant_totem_attack: {
+            if (caster.supertype == Unit_Supertype.creep) {
+                unit_emit_sound(caster, caster.traits.sounds.pre_attack);
+            } else {
+                try_play_sound_for_hero(caster, get_hero_pre_attack_sound);
+            }
+
+            unit_play_activity(caster, GameActivity_t.ACT_DOTA_ATTACK);
+            change_health(game, unit_source(caster, cast.ability_id), target, cast.target, cast.target.blocked_by_armor);
+            shake_screen(target.position, Shake.medium);
+            unit_emit_sound(target, "Hero_EarthShaker.Totem.Attack");
+            fx_by_unit("particles/dev/library/base_dust_hit.vpcf", target).release();
 
             break;
         }

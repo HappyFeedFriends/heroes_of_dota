@@ -223,13 +223,13 @@ function test_ember_spirit_fire_remnant_ability_swap_working_correctly() {
 
     hero.assert()
         .has_ability(Ability_Id.ember_fire_remnant)
-        .has_benched_ability_bench(Ability_Id.ember_activate_fire_remnant);
+        .has_benched_ability(Ability_Id.ember_activate_fire_remnant);
 
     hero.order_cast_on_ground(Ability_Id.ember_fire_remnant, xy(2, 1));
 
     hero.assert()
         .has_ability(Ability_Id.ember_activate_fire_remnant)
-        .has_benched_ability_bench(Ability_Id.ember_fire_remnant);
+        .has_benched_ability(Ability_Id.ember_fire_remnant);
 
     battle.next_turn();
     battle.next_turn();
@@ -238,7 +238,7 @@ function test_ember_spirit_fire_remnant_ability_swap_working_correctly() {
 
     hero.assert()
         .has_ability(Ability_Id.ember_fire_remnant)
-        .has_benched_ability_bench(Ability_Id.ember_activate_fire_remnant);
+        .has_benched_ability(Ability_Id.ember_activate_fire_remnant);
 }
 
 function test_health_modifiers_increase_current_health_along_with_maximum() {
@@ -430,6 +430,51 @@ function test_shaker_fissure_expires_correctly() {
         .grid_free_at(xy(5, 1));
 }
 
+function test_shaker_enchant_totem_can_be_used_any_number_of_times() {
+    const [battle, ally] = test_battle_with_ally_and_enemy(Hero_Type.earthshaker, xy(1, 1));
+    battle.start();
+
+    ally.set_level(2);
+
+    const big_enemy = battle.for_enemy_player().spawn_hero(Hero_Type.dark_seer, xy(1, 2));
+
+    let target_health = 100;
+
+    big_enemy.apply_modifier({ id: Modifier_Id.health, bonus: target_health - big_enemy.unit.health });
+    big_enemy.assert().has_health(target_health);
+
+    const attack = get_attack_damage(ally.unit);
+
+    for (let index = 0; index < 5; index++) {
+        ally.set_ability_charges(Ability_Id.shaker_enchant_totem, 1);
+
+        ally.assert()
+            .has_ability(Ability_Id.basic_attack)
+            .has_benched_ability(Ability_Id.shaker_enchant_totem_attack);
+
+        ally.order_cast_no_target(Ability_Id.shaker_enchant_totem);
+
+        ally.assert()
+            .has_ability(Ability_Id.shaker_enchant_totem_attack)
+            .has_benched_ability(Ability_Id.basic_attack)
+            .has_modifier(Modifier_Id.shaker_enchant_totem_caster)
+            .has_attack_damage(attack * 2);
+
+        ally.order_cast_unit_target(Ability_Id.shaker_enchant_totem_attack, big_enemy.unit);
+
+        ally.assert()
+            .doesnt_have_modifier(Modifier_Id.shaker_enchant_totem_caster);
+
+        target_health -= attack * 2;
+
+        big_enemy.assert()
+            .has_health(target_health);
+
+        battle.next_turn();
+        battle.next_turn();
+    }
+}
+
 function test_hero_can_buy_shop_item() {
     const [battle, ally] = test_battle_with_ally_and_enemy(Hero_Type.earthshaker, xy(1, 1));
     battle.start();
@@ -558,6 +603,7 @@ run_tests([
     test_eul_scepter_modifier_on_ally,
     test_pathing_is_blocked_by_units,
     test_shaker_fissure_expires_correctly,
+    test_shaker_enchant_totem_can_be_used_any_number_of_times,
     test_hero_can_buy_shop_item,
     test_hero_cant_buy_shop_item_out_of_range,
     test_hero_cant_buy_shop_item_no_gold,

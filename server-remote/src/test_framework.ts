@@ -353,6 +353,19 @@ class For_Player_Unit {
         return this;
     }
 
+    set_ability_charges(ability_id: Ability_Id, charges: number) {
+        submit_external_battle_delta(this.test.battle, {
+            type: Delta_Type.set_ability_charges,
+            unit_id: this.unit.id,
+            ability_id: ability_id,
+            charges: charges,
+            only_set_remaining: true,
+            source: { type: Source_Type.none }
+        });
+
+        return this;
+    }
+
     apply_modifier(modifier: Modifier, duration?: number) {
         const id = this.test.battle.id_generator() as Modifier_Handle_Id;
 
@@ -548,12 +561,16 @@ class Assert_For_Player_Unit {
         if (!this.unit.modifiers.some(applied => applied.modifier.id == id)) {
             do_assert(this.index, false, `Failed to find modfier '${enum_to_string(id)}' on unit`);
         }
+
+        return this;
     }
 
     doesnt_have_modifier(id: Modifier_Id) {
         if (this.unit.modifiers.some(applied => applied.modifier.id == id)) {
             do_assert(this.index, false, `Supposed not to find modfier '${enum_to_string(id)}' on unit`);
         }
+
+        return this;
     }
 
     has_ability(id: Ability_Id) {
@@ -562,7 +579,7 @@ class Assert_For_Player_Unit {
         return this;
     }
 
-    has_benched_ability_bench(id: Ability_Id) {
+    has_benched_ability(id: Ability_Id) {
         if (!this.unit.ability_bench.some(ability => ability.id == id)) {
             do_assert(this.index, false, `Failed to find benched ability '${enum_to_string(id)}' on unit`);
         }
@@ -584,6 +601,12 @@ class Assert_For_Player_Unit {
 
     has_move_points(expected: number) {
         do_assert(this.index, this.unit.move_points == expected, `Expected ${expected} move points, actual ${this.unit.move_points}`);
+
+        return this;
+    }
+
+    has_attack_damage(expected: number) {
+        do_assert(this.index, get_attack_damage(this.unit) == expected, `Expected ${expected} attack damage, actual ${get_attack_damage(this.unit)}`);
 
         return this;
     }

@@ -34,14 +34,15 @@ declare const enum Ability_Id {
     ember_activate_fire_remnant = 34,
     shaker_fissure = 35,
     shaker_enchant_totem = 36,
-    shaker_echo_slam = 37,
-    venomancer_plague_wards = 38,
-    venomancer_venomous_gale = 39,
-    venomancer_poison_nova = 40,
-    plague_ward_attack = 41,
-    bounty_hunter_shadow_walk = 42,
-    bounty_hunter_jinada = 43,
-    bounty_hunter_jinada_attack = 44,
+    shaker_enchant_totem_attack = 37,
+    shaker_echo_slam = 38,
+    venomancer_plague_wards = 39,
+    venomancer_venomous_gale = 40,
+    venomancer_poison_nova = 41,
+    plague_ward_attack = 42,
+    bounty_hunter_shadow_walk = 43,
+    bounty_hunter_jinada = 44,
+    bounty_hunter_jinada_attack = 45,
 
     pocket_tower_attack = 1000,
     deployment_zone = 1001,
@@ -114,6 +115,7 @@ type Ability_Definition =
 
     Ability_Shaker_Fissure |
     Ability_Shaker_Enchant_Totem |
+    Ability_Shaker_Enchant_Totem_Attack |
     Ability_Shaker_Echo_Slam |
 
     Ability_Pudge_Hook |
@@ -401,6 +403,13 @@ type Ability_Shaker_Enchant_Totem = Ability_Definition_Active_Base & {
     id: Ability_Id.shaker_enchant_totem
     type: Ability_Type.no_target
     selector: Ability_Area_Selector
+    modifier: Modifier
+}
+
+type Ability_Shaker_Enchant_Totem_Attack = Ability_Definition_Active_Base & {
+    id: Ability_Id.shaker_enchant_totem_attack
+    type: Ability_Type.target_unit
+    targeting: Ability_Targeting
 }
 
 type Ability_Shaker_Echo_Slam = Ability_Definition_Active_Base & {
@@ -504,6 +513,7 @@ type Delta_Cast_Ability =
 
     Delta_Ability_Shaker_Fissure |
     Delta_Ability_Shaker_Enchant_Totem |
+    Delta_Ability_Shaker_Enchant_Totem_Attack |
     Delta_Ability_Shaker_Echo_Slam |
 
     Delta_Ability_Dark_Seer_Vacuum |
@@ -791,6 +801,11 @@ type Delta_Ability_Shaker_Enchant_Totem = Delta_Use_No_Target_Ability_Base & {
     ability_id: Ability_Id.shaker_enchant_totem
     modifier: Modifier_Application
     targets: Unit_Modifier_Application[]
+}
+
+type Delta_Ability_Shaker_Enchant_Totem_Attack = Delta_Unit_Target_Ability_Base & {
+    ability_id: Ability_Id.shaker_enchant_totem_attack
+    target: Basic_Attack_Health_Change
 }
 
 type Delta_Ability_Shaker_Echo_Slam = Delta_Use_No_Target_Ability_Base & {

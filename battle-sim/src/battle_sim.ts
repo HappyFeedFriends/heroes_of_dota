@@ -852,6 +852,16 @@ function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, fr
 }
 
 function area_selector_fits(battle: Battle, selector: Ability_Area_Selector, caster_at: XY, cursor_at: XY, check_what: XY): boolean {
+    if (!selector.flags[Ability_Targeting_Flag.include_caster] && xy_equal(caster_at, check_what)) {
+        return false;
+    }
+
+    if (selector.flags[Ability_Targeting_Flag.only_free_cells]) {
+        if (is_grid_occupied_at(battle.grid, check_what)) {
+            return false;
+        }
+    }
+
     function points_on_the_same_line(a: XY, b: XY, c: XY) {
         return are_points_on_the_same_line(a, b) && are_points_on_the_same_line(a, c) && are_points_on_the_same_line(b, c);
     }
@@ -864,7 +874,7 @@ function area_selector_fits(battle: Battle, selector: Ability_Area_Selector, cas
         const head = get_line_segment_end(length);
         const from_tail_to_point = distance_between_points_on_the_same_line(check_what, caster_at);
         const from_head_to_point = distance_between_points_on_the_same_line(check_what, head);
-        return from_tail_to_point > 0 && from_tail_to_point <= length && from_head_to_point <= length;
+        return from_tail_to_point >= 0 && from_tail_to_point <= length && from_head_to_point <= length;
     }
 
     switch (selector.type) {
@@ -1465,6 +1475,11 @@ function collapse_unit_target_ability_use(battle: Battle, caster: Unit, target: 
         case Ability_Id.bounty_hunter_jinada_attack: {
             change_health(battle, source, target, cast.target);
             apply_modifier(battle, source, target, cast.modifier);
+            break;
+        }
+
+        case Ability_Id.shaker_enchant_totem_attack: {
+            change_health(battle, source, target, cast.target);
             break;
         }
 

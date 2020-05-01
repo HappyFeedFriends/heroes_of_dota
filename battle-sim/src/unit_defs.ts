@@ -54,15 +54,19 @@ function instantiate_unit_abilities(definition: Unit_Definition): Unit_Abilities
     }
 }
 
+function default_targeting_flags(): Ability_Targeting_Flag_Field {
+    return {
+        [Ability_Targeting_Flag.include_caster]: false,
+        [Ability_Targeting_Flag.only_free_cells]: false
+    };
+}
+
 function target_line(length: number, selector: Ability_Area_Selector = single_target()) {
     return {
         type: Ability_Targeting_Type.line,
         line_length: length,
         selector: selector,
-        flags: {
-            [Ability_Targeting_Flag.include_caster]: false,
-            [Ability_Targeting_Flag.only_free_cells]: false
-        }
+        flags: default_targeting_flags(),
     } as const;
 }
 
@@ -71,38 +75,41 @@ function target_first_in_line(length: number, selector: Ability_Area_Selector = 
         type: Ability_Targeting_Type.first_in_line,
         line_length: length,
         selector: selector,
-        flags: {
-            [Ability_Targeting_Flag.include_caster]: false,
-            [Ability_Targeting_Flag.only_free_cells]: false
-        }
+        flags: default_targeting_flags(),
     } as const
 }
 
 function single_target(): Ability_Area_Selector {
     return {
-        type: Ability_Target_Selector_Type.single_target
+        type: Ability_Target_Selector_Type.single_target,
+        flags: default_targeting_flags()
     }
 }
 
-function select_in_rectangle(radius: number): Ability_Area_Selector {
+function select_in_rectangle(radius: number, ...flags: Ability_Targeting_Flag[]): Ability_Area_Selector {
+    const result_flags = default_targeting_flags();
+
+    for (const flag of flags) {
+        result_flags[flag] = true;
+    }
+
     return {
         type: Ability_Target_Selector_Type.rectangle,
-        area_radius: radius
+        area_radius: radius,
+        flags: result_flags
     }
 }
 
 function select_in_line(length: number): Ability_Area_Selector {
     return {
         type: Ability_Target_Selector_Type.line,
-        length: length
+        length: length,
+        flags: default_targeting_flags()
     }
 }
 
 function target_in_manhattan_distance(distance: number, selector: Ability_Area_Selector = single_target(), ...flags: Ability_Targeting_Flag[]): Ability_Targeting {
-    const result_flags: Ability_Targeting_Flag_Field = {
-        [Ability_Targeting_Flag.include_caster]: false,
-        [Ability_Targeting_Flag.only_free_cells]: false
-    };
+    const result_flags = default_targeting_flags();
 
     for (const flag of flags) {
         result_flags[flag] = true;
@@ -121,10 +128,7 @@ function target_rect_area_around_caster(area_radius: number, selector: Ability_A
         type: Ability_Targeting_Type.rectangular_area_around_caster,
         area_radius: area_radius,
         selector: selector,
-        flags: {
-            [Ability_Targeting_Flag.include_caster]: false,
-            [Ability_Targeting_Flag.only_free_cells]: false
-        }
+        flags: default_targeting_flags(),
     }
 }
 
@@ -259,7 +263,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 }),
                 active_ability<Ability_Skywrath_Mystic_Flare>({
                     available_since_level: 3,
-                    targeting: target_in_manhattan_distance(5, select_in_rectangle(1), Ability_Targeting_Flag.include_caster),
+                    targeting: target_in_manhattan_distance(5, select_in_rectangle(1, Ability_Targeting_Flag.include_caster), Ability_Targeting_Flag.include_caster),
                     charges: 1,
                     damage: 10
                 })
@@ -277,7 +281,8 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     targeting: target_line(3, {
                         type: Ability_Target_Selector_Type.t_shape,
                         stem_length: 3,
-                        arm_length: 2
+                        arm_length: 2,
+                        flags: default_targeting_flags()
                     }),
                     charges: 1,
                     damage: 5
@@ -297,7 +302,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             ability_bench: [
                 active_ability<Ability_Dragon_Knight_Elder_Dragon_Form_Attack>({
                     available_since_level: 0,
-                    targeting: target_line(4, select_in_rectangle(1)),
+                    targeting: target_line(4, select_in_rectangle(1, Ability_Targeting_Flag.include_caster)),
                     charges: 1
                 })
             ]
@@ -416,7 +421,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 }),
                 active_ability<Ability_Dark_Seer_Vacuum>({
                     available_since_level: 3,
-                    targeting: target_in_manhattan_distance(4, select_in_rectangle(2)),
+                    targeting: target_in_manhattan_distance(4, select_in_rectangle(2, Ability_Targeting_Flag.include_caster)),
                     flags: [ ],
                     charges: 1,
                 }),
@@ -471,6 +476,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     available_since_level: 2,
                     charges: 1,
                     selector: select_in_rectangle(1),
+                    modifier: { id: Modifier_Id.shaker_enchant_totem_caster },
                     flags: [ Ability_Flag.does_not_consume_action ]
                 }),
                 active_ability<Ability_Shaker_Echo_Slam>({
@@ -478,6 +484,15 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     charges: 1,
                     selector: select_in_rectangle(2)
                 })
+            ],
+            ability_bench: [
+                {
+                    id: Ability_Id.shaker_enchant_totem_attack,
+                    type: Ability_Type.target_unit,
+                    available_since_level: 0,
+                    targeting: target_in_manhattan_distance(1),
+                    charges: 1
+                }
             ]
         };
 

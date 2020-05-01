@@ -843,7 +843,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
             submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
-                modifier: modifier(battle, { id: Modifier_Id.shaker_enchant_totem_caster }),
+                modifier: modifier(battle, ability.modifier),
                 targets: targets.map(target => ({
                     target_unit_id: target.id,
                     modifier: modifier(battle, { id: Modifier_Id.stunned }, 1)
@@ -895,7 +895,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
     }
 }
 
-function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, ability: Ability_Unit_Target, target: Unit): Delta_Unit_Target_Ability {
+function submit_ability_cast_unit_target(battle: Battle_Record, unit: Unit, ability: Ability_Unit_Target, target: Unit): void {
     const base: Delta_Unit_Target_Ability_Base = {
         type: Delta_Type.use_unit_target_ability,
         unit_id: unit.id,
@@ -904,35 +904,41 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
 
     switch (ability.id) {
         case Ability_Id.basic_attack: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 target: basic_attack_health_change(unit, target)
-            };
+            });
+
+            break;
         }
 
         case Ability_Id.pudge_hook: {
             const direction = direction_normal_between_points(unit.position, target.position);
 
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 damage_dealt: health_change(target, -ability.damage),
                 move_target_to: xy(unit.position.x + direction.x, unit.position.y + direction.y)
-            };
+            });
+
+            break;
         }
 
         case Ability_Id.pudge_dismember: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 damage_dealt: health_change(target, -ability.damage),
                 health_restored: health_change(target, ability.damage)
-            };
+            });
+
+            break;
         }
 
         case Ability_Id.tide_gush: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 modifier: modifier(battle, {
@@ -940,103 +946,146 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
                     move_reduction: ability.move_points_reduction
                 }, 1),
                 damage_dealt: health_change(target, -ability.damage),
-            };
+            });
+
+            break;
         }
 
         case Ability_Id.luna_lucent_beam: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 damage_dealt: health_change(target, -ability.damage)
-            };
+            });
+
+            break;
         }
 
         case Ability_Id.skywrath_ancient_seal: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 modifier: modifier(battle, { id: Modifier_Id.skywrath_ancient_seal }, ability.duration),
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.dragon_knight_dragon_tail: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 modifier: modifier(battle, { id: Modifier_Id.stunned }, 1),
                 damage_dealt: health_change(target, -ability.damage)
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.lion_hex: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 modifier: modifier(battle, {
                     id: Modifier_Id.lion_hex,
                     move_reduction: ability.move_points_reduction
                 }, ability.duration)
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.lion_finger_of_death: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 damage_dealt: health_change(target, -ability.damage)
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.mirana_arrow: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 stun: modifier(battle, { id: Modifier_Id.stunned }, 1)
-            };
+            });
+
+            break;
         }
 
         case Ability_Id.venge_magic_missile: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 modifier: modifier(battle, { id: Modifier_Id.stunned }, 1),
                 damage_dealt: health_change(target, -ability.damage)
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.venge_nether_swap: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.dark_seer_ion_shell: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 modifier: modifier(battle, { id: Modifier_Id.dark_seer_ion_shell }, ability.duration)
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.dark_seer_surge: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 modifier: modifier(battle, {
                     id: Modifier_Id.dark_seer_surge,
                     move_bonus: ability.move_points_bonus
                 }, 1),
-            }
+            });
+
+            break;
         }
 
         case Ability_Id.bounty_hunter_jinada_attack: {
-            return {
+            submit_battle_delta(battle, {
                 ...base,
                 ability_id: ability.id,
                 target: basic_attack_unit_health_change(unit, target),
                 modifier: modifier(battle, ability.modifier, 1)
+            });
+
+            break;
+        }
+
+        case Ability_Id.shaker_enchant_totem_attack: {
+            submit_battle_delta(battle, {
+                ...base,
+                ability_id: ability.id,
+                target: basic_attack_unit_health_change(unit, target)
+            });
+
+            for (const applied of unit.modifiers) {
+                if (applied.modifier.id == Modifier_Id.shaker_enchant_totem_caster) {
+                    submit_battle_delta(battle, {
+                        type: Delta_Type.modifier_removed,
+                        modifier_handle_id: applied.handle_id
+                    });
+                }
             }
+
+            break;
         }
     }
 }
@@ -1345,15 +1394,6 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
                 });
             }
         }
-
-        for (const applied of source.modifiers) {
-            if (applied.modifier.id == Modifier_Id.shaker_enchant_totem_caster) {
-                submit_battle_delta(battle, {
-                    type: Delta_Type.modifier_removed,
-                    modifier_handle_id: applied.handle_id
-                });
-            }
-        }
     }
 
     for (const ability of source.abilities) {
@@ -1471,7 +1511,7 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
             const { unit, ability, target } = use_ability_on_target_permission;
 
             submit_battle_delta(battle, decrement_charges(unit, ability));
-            submit_battle_delta(battle, perform_ability_cast_unit_target(battle, unit, ability, target));
+            submit_ability_cast_unit_target(battle, unit, ability, target);
 
             break;
         }
@@ -1820,7 +1860,7 @@ function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: 
 
             battle.monster_targets.set(monster, target);
 
-            submit_battle_delta(battle, perform_ability_cast_unit_target(battle, monster, use.ability, target));
+            submit_ability_cast_unit_target(battle, monster, use.ability, target);
             break;
         }
     }

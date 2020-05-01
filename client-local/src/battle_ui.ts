@@ -1662,6 +1662,7 @@ function get_ability_tooltip(caster: Unit, a: Ability): string {
         case Ability_Id.ember_activate_fire_remnant: return `Instantly move to the fire remnant location`;
         case Ability_Id.shaker_fissure: return `Stun targets in the line, pushing them to the sides and blocking path until the end of next turn`;
         case Ability_Id.shaker_enchant_totem: return `Stun targets around until the end of next turn, gain double damage for the next attack`;
+        case Ability_Id.shaker_enchant_totem_attack: return `Basic attack`;
         case Ability_Id.shaker_echo_slam: {
             const targets = query_units_for_no_target_ability(battle, caster, a.selector).length;
             return `Deal damage equal to number of units in the area (<font color="#ddd">${targets + 1}</font>) to targets in the area`;
@@ -1723,6 +1724,7 @@ function get_ability_icon(ability_id: Ability_Id): string {
         case Ability_Id.ember_activate_fire_remnant: return "ember_spirit_activate_fire_remnant";
         case Ability_Id.shaker_fissure: return "earthshaker_fissure";
         case Ability_Id.shaker_enchant_totem: return "earthshaker_enchant_totem";
+        case Ability_Id.shaker_enchant_totem_attack: return "earthshaker_enchant_totem";
         case Ability_Id.shaker_echo_slam: return "earthshaker_echo_slam";
         case Ability_Id.venomancer_plague_wards: return "venomancer_plague_ward";
         case Ability_Id.venomancer_venomous_gale: return "venomancer_venomous_gale";

@@ -240,16 +240,20 @@ type Ability_Targeting = {
 
 type Ability_Area_Selector = {
     type: Ability_Target_Selector_Type.single_target
+    flags: Ability_Targeting_Flag_Field
 } | {
     type: Ability_Target_Selector_Type.rectangle
     area_radius: number
+    flags: Ability_Targeting_Flag_Field
 } | {
     type: Ability_Target_Selector_Type.line
     length: number
+    flags: Ability_Targeting_Flag_Field
 } | {
     type: Ability_Target_Selector_Type.t_shape
     stem_length: number
     arm_length: number
+    flags: Ability_Targeting_Flag_Field
 }
 
 type Action_Move = {
