@@ -1672,6 +1672,10 @@ function get_ability_tooltip(caster: Unit, a: Ability): string {
         case Ability_Id.venomancer_poison_nova: return `Paralyze all units in the area, rooting and disarming them`;
         case Ability_Id.bounty_hunter_shadow_walk: return assemble_modifier_tooltip_strings(a.modifier).join("<br/>");
 
+        // @AbilityTooltip
+        case Ability_Id.bounty_hunter_jinada: return `Replace basic attack with Jinada`;
+        case Ability_Id.bounty_hunter_jinada_attack: return `Attack applies: <br/>${assemble_modifier_tooltip_strings(a.modifier).join("<br/>")}`;
+
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
         case Ability_Id.plague_ward_attack: return "";
@@ -1724,6 +1728,8 @@ function get_ability_icon(ability_id: Ability_Id): string {
         case Ability_Id.venomancer_venomous_gale: return "venomancer_venomous_gale";
         case Ability_Id.venomancer_poison_nova: return "venomancer_poison_nova";
         case Ability_Id.bounty_hunter_shadow_walk: return "bounty_hunter_wind_walk";
+        case Ability_Id.bounty_hunter_jinada: return "bounty_hunter_jinada";
+        case Ability_Id.bounty_hunter_jinada_attack: return "bounty_hunter_jinada";
 
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
@@ -1822,8 +1828,10 @@ function sync_ability_buttons_with_abilities(row: Unit_Row, hero: Unit) {
         };
     }
 
-    for (let index = 0; index < hero.abilities.length; index++) {
-        const ability = hero.abilities[index];
+    const abilities = hero.abilities.filter(ability => ability != hero.attack);
+
+    for (let index = 0; index < abilities.length; index++) {
+        const ability = abilities[index];
 
         if (index >= row.ability_buttons.length) {
             const button = create_hero_ability_button(ability);
@@ -1841,7 +1849,7 @@ function sync_ability_buttons_with_abilities(row: Unit_Row, hero: Unit) {
         }
     }
 
-    const remaining_buttons = row.ability_buttons.splice(hero.abilities.length);
+    const remaining_buttons = row.ability_buttons.splice(abilities.length);
 
     for (const button of remaining_buttons) {
         button.ability_panel.DeleteAsync(0);
@@ -3008,7 +3016,9 @@ function setup_custom_ability_hotkeys() {
     function bind_ability_at_index_to_command(command: string, index: number) {
         GameUI.CustomUIConfig().register_key_bind(command, () => {
             if (selection.type == Selection_Type.unit) {
-                const ability = selection.unit.abilities[index];
+                const unit = selection.unit;
+                const abilities = unit.abilities.filter(ability => ability != unit.attack);
+                const ability = abilities[index];
 
                 try_select_unit_ability(selection.unit, ability);
             }

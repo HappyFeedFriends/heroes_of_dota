@@ -114,6 +114,54 @@ function starting_unit_status(): Record<Unit_Status, boolean> {
     };
 }
 
+function replace_ability(unit: Unit_Abilities, ability_id_to_bench: Ability_Id, currently_benched_ability_id: Ability_Id) {
+    const benched_ability_index = unit.ability_bench.findIndex(ability => ability.id == currently_benched_ability_id);
+    if (benched_ability_index == -1) return;
+
+    const ability_to_bench_index = unit.abilities.findIndex(ability => ability.id == ability_id_to_bench);
+    if (ability_to_bench_index == -1) return;
+
+    const ability_to_bench = unit.abilities[ability_to_bench_index];
+    const benched_ability = unit.ability_bench[benched_ability_index];
+
+    if (ability_to_bench == unit.attack) {
+        if (benched_ability.type == Ability_Type.passive) return;
+
+        unit.attack = benched_ability;
+    }
+
+    unit.abilities[ability_to_bench_index] = benched_ability;
+    unit.ability_bench[benched_ability_index] = ability_to_bench;
+}
+
+function update_unit_stats_and_abilities_from_modifiers(unit: Unit_Stats & Unit_Abilities, max_ability_level: number, modifiers: Modifier[]) {
+    const active_intrinsic_modifiers: Modifier[] = [];
+
+    for (const ability of unit.abilities) {
+        if (ability.type == Ability_Type.passive && ability.available_since_level <= max_ability_level) {
+            active_intrinsic_modifiers.push(...ability.intrinsic_modifiers)
+        }
+    }
+
+    const recalculated = recalculate_unit_stats_from_modifiers(unit, active_intrinsic_modifiers.concat(modifiers));
+    unit.bonus = recalculated.bonus;
+    unit.status = recalculated.status;
+    unit.health = recalculated.health;
+    unit.move_points = recalculated.move_points;
+
+    // The most naive method: cancel all old overrides and then reapply all new ones
+    // lower @Performance than it could possibly be, but it does the job
+    for (const override of unit.ability_overrides) {
+        replace_ability(unit, override.override, override.original);
+    }
+
+    for (const override of recalculated.overrides) {
+        replace_ability(unit, override.original, override.override);
+    }
+
+    unit.ability_overrides = recalculated.overrides;
+}
+
 function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Modifier[]): Recalculated_Stats {
     const new_bonus = {
         armor: 0,
@@ -274,6 +322,10 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             status(Unit_Status.rooted)
         ];
 
+        case Modifier_Id.replace_ability: return [
+            override_ability(modifier.from, modifier.to)
+        ];
+
         case Modifier_Id.rune_double_damage: return [
             special_state(Special_Modifier_State.damage_doubled)
         ];
@@ -345,6 +397,11 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
         case Modifier_Id.bounty_hunter_shadow_walk: return [
             field(Modifier_Field.move_points_bonus, modifier.move_bonus),
             status(Unit_Status.invisible)
+        ];
+
+        case Modifier_Id.bounty_hunter_jinada: return [
+            field(Modifier_Field.move_points_bonus, -modifier.move_reduction),
+            status(Unit_Status.disarmed)
         ];
 
         case Modifier_Id.item_heart_of_tarrasque: return [

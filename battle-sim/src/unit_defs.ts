@@ -17,6 +17,43 @@ declare function passive_ability<T extends Ability_Definition_Passive>(stats: Pa
 // That works instead of active/passive ability and allows us to collapse many types
 // declare function ability<T extends Ability_Id>(id: T, stats: Omit<Find_By_Id<Ability_Definition, T>, keyof Ability_Active_Discriminator>): Find_By_Id<Ability_Definition, T>;
 
+type Unit_Abilities = {
+    attack?: Ability_Active
+    abilities: Ability[]
+    ability_bench: Ability[]
+    ability_overrides: Ability_Override[]
+}
+
+function instantiate_unit_abilities(definition: Unit_Definition): Unit_Abilities {
+    function ability_definition_to_ability(definition: Ability_Definition): Ability {
+        if (definition.type == Ability_Type.passive) {
+            return {
+                ...definition,
+                intrinsic_modifiers: definition.intrinsic_modifiers ? definition.intrinsic_modifiers : []
+            }
+        }
+
+        return {
+            ...definition,
+            charges_remaining: definition.charges,
+            flags: definition.flags ? definition.flags : []
+        }
+    }
+
+    const attack = definition.attack ? ability_definition_to_ability(definition.attack) as Ability_Active : undefined;
+    const abilities = definition.abilities ? definition.abilities.map(ability => ability_definition_to_ability(ability)) : [];
+    const ability_bench = definition.ability_bench ? definition.ability_bench.map(ability => ability_definition_to_ability(ability)) : [];
+
+    if (attack) abilities.unshift(attack);
+
+    return {
+        attack: attack,
+        abilities: abilities,
+        ability_bench: ability_bench,
+        ability_overrides: []
+    }
+}
+
 function target_line(length: number, selector: Ability_Area_Selector = single_target()) {
     return {
         type: Ability_Targeting_Type.line,
@@ -479,8 +516,8 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
         case Hero_Type.bounty_hunter: return {
             health: 8,
             attack_damage: 3,
-            move_points: 3,
-            attack: basic_attack(2),
+            move_points: 2,
+            attack: basic_attack(1),
             abilities: [
                 {
                     id: Ability_Id.bounty_hunter_shadow_walk,
@@ -490,9 +527,32 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     selector: single_target(),
                     modifier: {
                         id: Modifier_Id.bounty_hunter_shadow_walk,
-                        move_bonus: 1
+                        move_bonus: 2
                     },
                     flags: [ Ability_Flag.does_not_consume_action ]
+                },
+                {
+                    id: Ability_Id.bounty_hunter_jinada,
+                    type: Ability_Type.passive,
+                    available_since_level: 2,
+                    intrinsic_modifiers: [{
+                        id: Modifier_Id.replace_ability,
+                        from: Ability_Id.basic_attack,
+                        to: Ability_Id.bounty_hunter_jinada_attack
+                    }]
+                }
+            ],
+            ability_bench: [
+                {
+                    id: Ability_Id.bounty_hunter_jinada_attack,
+                    type: Ability_Type.target_unit,
+                    targeting: target_first_in_line(1),
+                    available_since_level: 0,
+                    charges: 1,
+                    modifier: {
+                        id: Modifier_Id.bounty_hunter_jinada,
+                        move_reduction: 1
+                    }
                 }
             ]
         };

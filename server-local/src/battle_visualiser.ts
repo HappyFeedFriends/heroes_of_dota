@@ -33,7 +33,7 @@ type Battle_Player = {
     gold: number
 }
 
-type Unit_Base = Unit_Stats & {
+type Unit_Base = Unit_Stats & Unit_Abilities & {
     id: Unit_Id
     handle: CDOTA_BaseNPC_Hero
     position: XY
@@ -655,7 +655,8 @@ function unit_base(unit_id: Unit_Id, info: Unit_Creation_Info, definition: Unit_
         modifiers: [],
         dead: false,
         hidden: false,
-        hidden_from_snapshot: false
+        hidden_from_snapshot: false,
+        ...instantiate_unit_abilities(definition)
     };
 }
 
@@ -1114,21 +1115,21 @@ function highlight_grid_for_no_target_ability(unit: Unit, ability: Ability_Id) {
     })
 }
 
-function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_Ability_Basic_Attack) {
-    function get_hero_pre_attack_sound(hero: Hero): string | undefined {
-        switch (hero.type) {
-            case Hero_Type.pudge: return "Hero_Pudge.PreAttack";
-            case Hero_Type.ursa: return "Hero_Ursa.PreAttack";
-            case Hero_Type.tidehunter: return "hero_tidehunter.PreAttack";
-            case Hero_Type.skywrath_mage: return "Hero_SkywrathMage.PreAttack";
-            case Hero_Type.dragon_knight: return "Hero_DragonKnight.PreAttack";
-            case Hero_Type.dark_seer: return "Hero_DarkSeer.PreAttack";
-            case Hero_Type.ember_spirit: return "Hero_EmberSpirit.PreAttack";
-            case Hero_Type.earthshaker: return "Hero_EarthShaker.PreAttack";
-            case Hero_Type.bounty_hunter: return "Hero_BountyHunter.PreAttack";
-        }
+function get_hero_pre_attack_sound(hero: Hero): string | undefined {
+    switch (hero.type) {
+        case Hero_Type.pudge: return "Hero_Pudge.PreAttack";
+        case Hero_Type.ursa: return "Hero_Ursa.PreAttack";
+        case Hero_Type.tidehunter: return "hero_tidehunter.PreAttack";
+        case Hero_Type.skywrath_mage: return "Hero_SkywrathMage.PreAttack";
+        case Hero_Type.dragon_knight: return "Hero_DragonKnight.PreAttack";
+        case Hero_Type.dark_seer: return "Hero_DarkSeer.PreAttack";
+        case Hero_Type.ember_spirit: return "Hero_EmberSpirit.PreAttack";
+        case Hero_Type.earthshaker: return "Hero_EarthShaker.PreAttack";
+        case Hero_Type.bounty_hunter: return "Hero_BountyHunter.PreAttack";
     }
+}
 
+function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_Ability_Basic_Attack) {
     function get_hero_attack_sound(hero: Hero): string {
         switch (hero.type) {
             case Hero_Type.pudge: return "Hero_Pudge.Attack";
@@ -1695,6 +1696,7 @@ function modifier_to_visuals(target: Unit, modifier: Modifier): Modifier_Visuals
 
         case Modifier_Id.veno_venomous_gale: return follow("particles/units/heroes/hero_venomancer/venomancer_gale_poison_debuff.vpcf");
         case Modifier_Id.veno_poison_nova: return follow("particles/units/heroes/hero_venomancer/venomancer_poison_debuff_nova.vpcf");
+        case Modifier_Id.bounty_hunter_jinada: return from_buff("Modifier_Bounty_Hunter_Jinada");
     }
 }
 
@@ -1730,14 +1732,16 @@ function try_remove_modifier_visuals(target: Unit, handle_id: Modifier_Handle_Id
     battle.applied_modifier_visuals.splice(index, 1);
 }
 
-function update_unit_state_from_modifiers(unit: Unit) {
-    const recalculated = recalculate_unit_stats_from_modifiers(unit, unit.modifiers.map(applied => applied.modifier));
+function update_unit_modifier_state(unit: Unit) {
+    let max_ability_level;
 
-    unit.bonus = recalculated.bonus;
-    unit.status = recalculated.status;
-    unit.health = recalculated.health;
-    unit.move_points = recalculated.move_points;
+    switch (unit.supertype) {
+        case Unit_Supertype.hero: max_ability_level = unit.level; break;
+        case Unit_Supertype.creep: max_ability_level = 0; break;
+        case Unit_Supertype.monster: max_ability_level = 0; break;
+    }
 
+    update_unit_stats_and_abilities_from_modifiers(unit, max_ability_level, unit.modifiers.map(applied => applied.modifier));
     update_state_visuals(unit);
 }
 
@@ -1789,7 +1793,7 @@ function apply_modifier(game: Game, target: Unit, application: Modifier_Applicat
         modifier_handle_id: application.modifier_handle_id
     });
 
-    update_unit_state_from_modifiers(target);
+    update_unit_modifier_state(target);
     update_game_net_table(game);
 }
 
@@ -2059,6 +2063,23 @@ function play_unit_target_ability_delta(game: Game, caster: Unit, cast: Delta_Un
             unit_play_activity(caster, GameActivity_t.ACT_DOTA_CAST_ABILITY_3);
             unit_emit_sound(caster, "Hero_Dark_Seer.Surge");
             apply_modifier(game, target, cast.modifier);
+
+            break;
+        }
+
+        case Ability_Id.bounty_hunter_jinada_attack: {
+            if (caster.supertype == Unit_Supertype.creep) {
+                unit_emit_sound(caster, caster.traits.sounds.pre_attack);
+            } else {
+                try_play_sound_for_hero(caster, get_hero_pre_attack_sound);
+            }
+
+            unit_play_activity(caster, GameActivity_t.ACT_DOTA_ATTACK_EVENT);
+            change_health(game, unit_source(caster, cast.ability_id), target, cast.target, cast.target.blocked_by_armor);
+            shake_screen(target.position, Shake.weak);
+            unit_emit_sound(target, "Hero_BountyHunter.Jinada");
+            apply_modifier(game, target, cast.modifier);
+            fx_by_unit("particles/units/heroes/hero_bounty_hunter/bounty_hunter_jinda_slow.vpcf", target).release();
 
             break;
         }
@@ -2989,6 +3010,7 @@ function update_specific_state_visuals(unit: Unit, flag: boolean, associated_mod
 }
 
 function update_state_visuals(unit: Unit) {
+    print_table(unit.status);
     update_specific_state_visuals(unit, is_unit_stunned(unit), "Modifier_Battle_Stunned");
     update_specific_state_visuals(unit, is_unit_silenced(unit), "modifier_silence");
     update_specific_state_visuals(unit, is_unit_invisible(unit), "Modifier_Battle_Invisible");
@@ -3224,6 +3246,7 @@ function change_hero_level(game: Game, hero: Hero, new_level: number, source?: D
         wait(0.2);
     }
 
+    update_unit_modifier_state(hero);
     update_game_net_table(game);
 }
 
@@ -3276,7 +3299,7 @@ function remove_modifier(game: Game, unit: Unit, applied: Modifier_Data, array_i
 
     unit.modifiers.splice(array_index, 1);
 
-    update_unit_state_from_modifiers(unit);
+    update_unit_modifier_state(unit);
 }
 
 function add_activity_translation(target: Unit, translation: Activity_Translation, duration?: number) {
@@ -3874,6 +3897,14 @@ function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC)
     };
 }
 
+function unit_definition_from_snapshot(snapshot: Unit_Snapshot): Unit_Definition {
+    switch (snapshot.supertype) {
+        case Unit_Supertype.hero: return hero_definition_by_type(snapshot.type);
+        case Unit_Supertype.creep: return creep_definition_by_type(snapshot.type);
+        case Unit_Supertype.monster: return monster_definition();
+    }
+}
+
 function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
     print("Fast forwarding from snapshot, new head", snapshot.delta_head);
 
@@ -3888,7 +3919,7 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
     }));
 
     battle.units = snapshot.units.map(unit => {
-        const base: Unit_Base = {
+        const base = {
             id: unit.id,
             dead: unit.health <= 0,
             position: unit.position,
@@ -3903,7 +3934,8 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
             bonus: unit.bonus,
 
             // We will recalculate stats and update those at the end
-            status: starting_unit_status()
+            status: starting_unit_status(),
+            ...instantiate_unit_abilities(unit_definition_from_snapshot(unit))
         };
 
         switch (unit.supertype) {
@@ -3979,7 +4011,7 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
     wait_one_frame();
 
     for (const unit of battle.units) {
-        update_unit_state_from_modifiers(unit);
+        update_unit_modifier_state(unit);
 
         for (const applied of unit.modifiers) {
             try_apply_modifier_visuals(unit, applied.modifier_handle_id, applied.modifier);

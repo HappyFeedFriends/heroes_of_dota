@@ -1029,6 +1029,15 @@ function perform_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abi
                 }, 1),
             }
         }
+
+        case Ability_Id.bounty_hunter_jinada_attack: {
+            return {
+                ...base,
+                ability_id: ability.id,
+                target: basic_attack_unit_health_change(unit, target),
+                modifier: modifier(battle, ability.modifier, 1)
+            }
+        }
     }
 }
 

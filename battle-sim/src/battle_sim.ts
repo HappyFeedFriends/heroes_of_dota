@@ -96,27 +96,23 @@ type Active_Timed_Effect = {
 }
 
 type Cell = Cell_Like & {
-    cost: number;
+    cost: number
 }
 
-type Unit_Base = Unit_Stats & {
-    id: Unit_Id;
-    dead: boolean;
-    position: XY;
-    has_taken_an_action_this_turn: boolean;
-    attack?: Ability_Active
-    abilities: Ability[]
-    ability_bench: Ability[]
+type Unit_Base = Unit_Stats & Unit_Abilities & {
+    id: Unit_Id
+    dead: boolean
+    position: XY
+    has_taken_an_action_this_turn: boolean
     modifiers: Applied_Modifier[]
-    ability_overrides: Ability_Override[]
 }
 
 type Unit = Hero | Monster | Creep
 
 type Hero =  Unit_Base & {
-    type: Hero_Type;
+    type: Hero_Type
     supertype: Unit_Supertype.hero
-    owner: Battle_Player;
+    owner: Battle_Player
     level: number
 }
 
@@ -155,20 +151,6 @@ type Applied_Modifier = {
     modifier: Modifier
     duration_remaining?: number
 }
-
-type With_Charges_And_Flags = {
-    charges_remaining: number
-    flags: Ability_Flag[]
-}
-
-type Ability_Ground_Target = Ability_Definition_Ground_Target & With_Charges_And_Flags
-type Ability_Unit_Target = Ability_Definition_Unit_Target & With_Charges_And_Flags
-type Ability_No_Target = Ability_Definition_No_Target & With_Charges_And_Flags
-
-type Ability_Passive = Ability_Definition_Passive
-type Ability_Active = Ability_Ground_Target | Ability_Unit_Target | Ability_No_Target
-
-type Ability = Ability_Passive | Ability_Active
 
 type Cost_Population_Result = {
     cell_index_to_cost: number[]
@@ -984,34 +966,7 @@ function drain_battle_event_queue(battle: Battle) {
 }
 
 function find_unit_ability(unit: Unit, ability_id: Ability_Id): Ability | undefined {
-    if (unit.attack && ability_id == unit.attack.id) return unit.attack;
-
     return unit.abilities.find(ability => ability.id == ability_id);
-}
-
-function replace_ability(unit: Unit, ability_id_to_bench: Ability_Id, currently_benched_ability_id: Ability_Id) {
-    const benched_ability_index = unit.ability_bench.findIndex(ability => ability.id == currently_benched_ability_id);
-    if (benched_ability_index == -1) return;
-
-    if (unit.attack && ability_id_to_bench == unit.attack.id) {
-        const replace_with = unit.ability_bench[benched_ability_index];
-        const old_attack = unit.attack;
-
-        if (replace_with.type != Ability_Type.passive) {
-            unit.attack = replace_with;
-            unit.ability_bench[benched_ability_index] = old_attack;
-        }
-
-        return;
-    } else {
-        const ability_to_bench_index = unit.abilities.findIndex(ability => ability.id == ability_id_to_bench);
-        if (ability_to_bench_index == -1) return;
-
-        const ability_to_bench = unit.abilities[ability_to_bench_index];
-
-        unit.abilities[ability_to_bench_index] = unit.ability_bench[benched_ability_index];
-        unit.ability_bench[benched_ability_index] = ability_to_bench;
-    }
 }
 
 function end_turn(battle: Battle, next_turning_player: Battle_Player) {
@@ -1109,28 +1064,13 @@ function free_cell<T extends Cell_Like>(cell: T) {
 }
 
 function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base {
-    function ability_definition_to_ability(definition: Ability_Definition): Ability {
-        if (definition.type == Ability_Type.passive) {
-            return definition;
-        }
-
-        return {
-            ...definition,
-            charges_remaining: definition.charges,
-            flags: definition.flags ? definition.flags : []
-        }
-    }
-
     return {
         id: id,
         position: at,
-        attack: definition.attack ? ability_definition_to_ability(definition.attack) as Ability_Active : undefined,
         move_points: definition.move_points,
         health: definition.health,
         dead: false,
         has_taken_an_action_this_turn: false,
-        abilities: definition.abilities ? definition.abilities.map(ability_definition_to_ability) : [],
-        ability_bench: definition.ability_bench ? definition.ability_bench.map(ability_definition_to_ability) : [],
         modifiers: [],
         ability_overrides: [],
         status: starting_unit_status(),
@@ -1145,7 +1085,8 @@ function unit_base(id: Unit_Id, definition: Unit_Definition, at: XY): Unit_Base 
             attack_damage: 0,
             max_health: 0,
             max_move_points: 0
-        }
+        },
+        ...instantiate_unit_abilities(definition)
     }
 }
 
@@ -1184,24 +1125,21 @@ function create_creep(battle: Battle, source: Source, owner: Battle_Player, spaw
     return creep;
 }
 
-function update_unit_state_from_modifiers(unit: Unit) {
-    const recalculated = recalculate_unit_stats_from_modifiers(unit, unit.modifiers.map(applied => applied.modifier));
-    unit.bonus = recalculated.bonus;
-    unit.status = recalculated.status;
-    unit.health = recalculated.health;
-    unit.move_points = recalculated.move_points;
+function update_unit_modifier_state(unit: Unit) {
+    let max_ability_level;
 
-    // The most naive method: cancel all old overrides and then reapply all new ones
-    // lower @Performance than it could possibly be, but it does the job
-    for (const override of unit.ability_overrides) {
-        replace_ability(unit, override.override, override.original);
+    switch (unit.supertype) {
+        case Unit_Supertype.hero: max_ability_level = unit.level; break;
+        case Unit_Supertype.creep: max_ability_level = 0; break;
+        case Unit_Supertype.monster: max_ability_level = 0; break;
     }
 
-    for (const override of recalculated.overrides) {
-        replace_ability(unit, override.original, override.override);
-    }
+    update_unit_stats_and_abilities_from_modifiers(unit, max_ability_level, unit.modifiers.map(applied => applied.modifier));
+}
 
-    unit.ability_overrides = recalculated.overrides;
+function set_hero_level(hero: Hero, new_level: number) {
+    hero.level = new_level;
+    update_unit_modifier_state(hero);
 }
 
 function apply_modifier(battle: Battle, source: Source, target: Unit, application: Modifier_Application) {
@@ -1214,7 +1152,7 @@ function apply_modifier(battle: Battle, source: Source, target: Unit, applicatio
 
     target.modifiers.push(applied);
 
-    update_unit_state_from_modifiers(target);
+    update_unit_modifier_state(target);
 
     push_event(battle, {
         type: Battle_Event_Type.modifier_applied,
@@ -1520,6 +1458,12 @@ function collapse_unit_target_ability_use(battle: Battle, caster: Unit, target: 
         }
 
         case Ability_Id.dark_seer_surge: {
+            apply_modifier(battle, source, target, cast.modifier);
+            break;
+        }
+
+        case Ability_Id.bounty_hunter_jinada_attack: {
+            change_health(battle, source, target, cast.target);
             apply_modifier(battle, source, target, cast.modifier);
             break;
         }
@@ -1852,7 +1796,7 @@ function collapse_item_equip(battle: Battle, hero: Hero, equip: Equip_Item) {
         }
 
         case Item_Id.tome_of_knowledge: {
-            hero.level = equip.new_level;
+            set_hero_level(hero, equip.new_level);
             break;
         }
 
@@ -1979,7 +1923,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
             hero.modifiers.splice(in_hand_modifier, 1);
 
-            update_unit_state_from_modifiers(hero);
+            update_unit_modifier_state(hero);
             hero.position = delta.at_position;
             occupy_cell_at(battle, delta.at_position);
 
@@ -2123,7 +2067,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             const unit = find_hero_by_id(battle, delta.unit_id);
 
             if (unit) {
-                unit.level = delta.new_level;
+                set_hero_level(unit, delta.new_level);
             }
 
             break;
@@ -2150,7 +2094,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
                 unit.modifiers.splice(index, 1);
 
-                update_unit_state_from_modifiers(unit);
+                update_unit_modifier_state(unit);
             }
 
             break;

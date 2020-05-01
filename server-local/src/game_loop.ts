@@ -582,6 +582,7 @@ function main() {
     link_modifier("Modifier_Stunned", "modifiers/modifier_stunned");
     link_modifier("Modifier_Battle_Stunned", "modifiers/modifier_battle_stunned");
     link_modifier("Modifier_Battle_Invisible", "modifiers/modifier_battle_invisible");
+    link_modifier("Modifier_Bounty_Hunter_Jinada", "modifiers/modifier_bounty_hunter_jinada");
 
     mode.SetContextThink("scheduler_think", () => {
         update_scheduler();

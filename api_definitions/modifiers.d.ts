@@ -18,6 +18,7 @@ declare const enum Modifier_Id {
     veno_venomous_gale = 20,
     veno_poison_nova = 21,
     bounty_hunter_shadow_walk = 22,
+    bounty_hunter_jinada = 23,
 
     item_heart_of_tarrasque = 101,
     item_iron_branch = 102,
@@ -40,6 +41,7 @@ declare const enum Modifier_Id {
     health = 303,
     stunned = 304,
     rooted = 305,
+    replace_ability = 306,
 
     returned_to_hand = 1000
 }
@@ -60,6 +62,10 @@ type Modifier = {
     id: Modifier_Id.stunned
 } | {
     id: Modifier_Id.rooted
+} | {
+    id: Modifier_Id.replace_ability
+    from: Ability_Id
+    to: Ability_Id
 } | {
     id: Modifier_Id.rune_haste
     move_bonus: number
@@ -105,6 +111,9 @@ type Modifier = {
 } | {
     id: Modifier_Id.bounty_hunter_shadow_walk
     move_bonus: number
+} | {
+    id: Modifier_Id.bounty_hunter_jinada
+    move_reduction: number
 } | {
     id: Modifier_Id.item_heart_of_tarrasque
     health: number

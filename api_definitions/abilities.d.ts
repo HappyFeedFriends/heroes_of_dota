@@ -40,6 +40,8 @@ declare const enum Ability_Id {
     venomancer_poison_nova = 40,
     plague_ward_attack = 41,
     bounty_hunter_shadow_walk = 42,
+    bounty_hunter_jinada = 43,
+    bounty_hunter_jinada_attack = 44,
 
     pocket_tower_attack = 1000,
     deployment_zone = 1001,
@@ -53,6 +55,23 @@ declare const enum Ability_Id {
 declare const enum Ability_Flag {
     does_not_consume_action = 0
 }
+
+type With_Charges_And_Flags = {
+    charges_remaining: number
+    flags: Ability_Flag[]
+}
+
+type Ability_Ground_Target = Ability_Definition_Ground_Target & With_Charges_And_Flags
+type Ability_Unit_Target = Ability_Definition_Unit_Target & With_Charges_And_Flags
+type Ability_No_Target = Ability_Definition_No_Target & With_Charges_And_Flags
+
+type Ability_Passive = Ability_Definition_Passive & {
+    intrinsic_modifiers: Modifier[]
+}
+
+type Ability_Active = Ability_Ground_Target | Ability_Unit_Target | Ability_No_Target
+
+type Ability = Ability_Passive | Ability_Active
 
 type Ability_Definition_Ground_Target = Find_By_Type<Ability_Definition, Ability_Type.target_ground>
 type Ability_Definition_Unit_Target = Find_By_Type<Ability_Definition, Ability_Type.target_unit>
@@ -141,6 +160,7 @@ type Ability_Definition_Active_Base = {
 type Ability_Definition_Passive_Base = {
     type: Ability_Type.passive
     available_since_level: number
+    intrinsic_modifiers?: Modifier[]
 }
 
 type Ability_Basic_Attack = Ability_Definition_Active_Base & {
@@ -414,7 +434,14 @@ type Bounty_Hunter_Abilities = (Ability_Definition_Active_Base & {
     type: Ability_Type.no_target
     selector: Ability_Area_Selector
     modifier: Modifier
-})
+} | (Ability_Definition_Passive_Base & {
+    id: Ability_Id.bounty_hunter_jinada
+}) | (Ability_Definition_Active_Base & {
+    id: Ability_Id.bounty_hunter_jinada_attack
+    type: Ability_Type.target_unit
+    targeting: Ability_Targeting
+    modifier: Modifier
+}))
 
 type Ability_Pocket_Tower_Attack = Ability_Definition_Passive_Base & {
     id: Ability_Id.pocket_tower_attack
@@ -784,5 +811,9 @@ type Venomancer_Ability_Deltas = (Delta_Ground_Target_Ability_Base & {
 
 type Bounty_Hunter_Ability_Deltas = (Delta_Use_No_Target_Ability_Base & {
     ability_id: Ability_Id.bounty_hunter_shadow_walk
+    modifier: Modifier_Application
+}) | (Delta_Unit_Target_Ability_Base & {
+    ability_id: Ability_Id.bounty_hunter_jinada_attack
+    target: Basic_Attack_Health_Change
     modifier: Modifier_Application
 })
