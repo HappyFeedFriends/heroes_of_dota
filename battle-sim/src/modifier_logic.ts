@@ -97,6 +97,10 @@ function is_unit_phased(unit: Unit_Stats) {
     return unit.status[Unit_Status.phased];
 }
 
+function is_unit_invisible(unit: Unit_Stats) {
+    return unit.status[Unit_Status.invisible];
+}
+
 function starting_unit_status(): Record<Unit_Status, boolean> {
     return {
         [Unit_Status.rooted]: false,
@@ -105,7 +109,8 @@ function starting_unit_status(): Record<Unit_Status, boolean> {
         [Unit_Status.disarmed]: false,
         [Unit_Status.unselectable]: false,
         [Unit_Status.out_of_the_game]: false,
-        [Unit_Status.phased]: false
+        [Unit_Status.phased]: false,
+        [Unit_Status.invisible]: false
     };
 }
 

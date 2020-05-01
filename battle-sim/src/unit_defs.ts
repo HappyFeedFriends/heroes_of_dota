@@ -476,6 +476,14 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             ]
         };
 
+        case Hero_Type.bounty_hunter: return {
+            health: 8,
+            attack_damage: 3,
+            move_points: 3,
+            attack: basic_attack(2),
+            abilities: []
+        };
+
         default: return unreachable(type);
     }
 }

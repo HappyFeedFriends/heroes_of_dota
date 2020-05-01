@@ -67,7 +67,8 @@ declare const enum Hero_Type {
     dark_seer = 10,
     ember_spirit = 11,
     earthshaker = 12,
-    venomancer = 13
+    venomancer = 13,
+    bounty_hunter = 14
 }
 
 declare const enum Creep_Type {
@@ -169,7 +170,8 @@ declare const enum Unit_Status {
     disarmed = 3,
     out_of_the_game = 4,
     unselectable = 5,
-    phased = 6
+    phased = 6,
+    invisible = 7
 }
 
 type Unit_Stats = {

@@ -40,7 +40,8 @@ declare const enum Spell_Target_Unit_Error {
     other = 0,
     out_of_the_game = 1,
     not_a_hero = 2,
-    not_an_ally = 3
+    not_an_ally = 3,
+    invisible = 4
 }
 
 declare const enum Use_Shop_Error {
@@ -83,7 +84,8 @@ declare const enum Rune_Pickup_Order_Error {
 
 declare const enum Unit_Target_Ability_Use_Error {
     other = 0,
-    not_in_range = 1
+    not_in_range = 1,
+    invisible = 2
 }
 
 declare const enum Ground_Target_Ability_Use_Error {
@@ -314,13 +316,13 @@ function authorize_known_unit_target_for_spell_card_use(use: Unit_Target_Spell_C
     }
 
     const flags = use.spell.targeting_flags;
-    const has_flag = (flag: Spell_Unit_Targeting_Flag) => flags.indexOf(flag) != -1; // .includes won't work in panorama
 
     if (is_unit_out_of_the_game(unit)) return error(Spell_Target_Unit_Error.out_of_the_game);
+    if (is_unit_invisible(unit) && !player_owns_unit(use.player, unit)) return error(Spell_Target_Unit_Error.invisible);
 
-    if (has_flag(Spell_Unit_Targeting_Flag.allies) && !player_owns_unit(use.player, unit)) return error(Spell_Target_Unit_Error.not_an_ally);
-    if (has_flag(Spell_Unit_Targeting_Flag.dead) && !unit.dead) return error(Spell_Target_Unit_Error.other);
-    if (has_flag(Spell_Unit_Targeting_Flag.heroes) && unit.supertype != Unit_Supertype.hero) return error(Spell_Target_Unit_Error.not_a_hero);
+    if (flags.includes(Spell_Unit_Targeting_Flag.allies) && !player_owns_unit(use.player, unit)) return error(Spell_Target_Unit_Error.not_an_ally);
+    if (flags.includes(Spell_Unit_Targeting_Flag.dead) && !unit.dead) return error(Spell_Target_Unit_Error.other);
+    if (flags.includes(Spell_Unit_Targeting_Flag.heroes) && unit.supertype != Unit_Supertype.hero) return error(Spell_Target_Unit_Error.not_a_hero);
 
     return {
         ok: true,
@@ -536,6 +538,10 @@ function authorize_ability_use(order_unit: Order_Unit_Permission, ability_id: Ab
 function authorize_unit_target_ability_use(use: Ability_Use_Permission, on_target: Act_On_Unit_Permission): Unit_Target_Ability_Use_Auth {
     if (!ability_targeting_fits(use.battle, use.ability.targeting, use.unit.position, on_target.unit.position)) {
         return { ok: false, kind: Unit_Target_Ability_Use_Error.not_in_range };
+    }
+
+    if (!are_units_allies(use.unit, on_target.unit) && is_unit_invisible(on_target.unit)) {
+        return { ok: false, kind: Unit_Target_Ability_Use_Error.invisible };
     }
 
     if (use.ability.type != Ability_Type.target_unit) return { ok: false, kind: Unit_Target_Ability_Use_Error.other };

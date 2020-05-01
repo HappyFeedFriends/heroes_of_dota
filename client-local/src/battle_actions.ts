@@ -101,6 +101,7 @@ function unit_target_ability_use_error_reason(error: Action_Error<Unit_Target_Ab
     switch (error.kind) {
         case Unit_Target_Ability_Use_Error.other: return custom_error("Error");
         case Unit_Target_Ability_Use_Error.not_in_range: return custom_error("Target out of range");
+        case Unit_Target_Ability_Use_Error.invisible: return custom_error("Target is invisible");
     }
 }
 
@@ -134,6 +135,7 @@ function spell_target_unit_error_reason(error: Action_Error<Spell_Target_Unit_Er
         case Spell_Target_Unit_Error.not_a_hero: return custom_error("Can only target heroes");
         case Spell_Target_Unit_Error.not_an_ally: return custom_error("Can only target allies");
         case Spell_Target_Unit_Error.out_of_the_game: return custom_error("Target out of the game");
+        case Spell_Target_Unit_Error.invisible: return custom_error("Target is invisible");
     }
 }
 

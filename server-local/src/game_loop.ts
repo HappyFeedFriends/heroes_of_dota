@@ -581,6 +581,7 @@ function main() {
     link_modifier("Modifier_Dummy", "modifiers/modifier_dummy");
     link_modifier("Modifier_Stunned", "modifiers/modifier_stunned");
     link_modifier("Modifier_Battle_Stunned", "modifiers/modifier_battle_stunned");
+    link_modifier("Modifier_Battle_Invisible", "modifiers/modifier_battle_invisible");
 
     mode.SetContextThink("scheduler_think", () => {
         update_scheduler();

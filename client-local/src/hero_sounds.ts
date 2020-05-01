@@ -207,6 +207,20 @@ function hero_sounds_by_hero_type(hero_type: Hero_Type): Hero_Sounds {
             thanks: range("venomancer_venm_thanks", 2),
         };
 
+        case Hero_Type.bounty_hunter: return {
+            file: "soundevents/voscripts/game_sounds_vo_bounty_hunter.vsndevts",
+            spawn: range("bounty_hunter_bount_spawn", 4),
+            move: range("bounty_hunter_bount_move", 19),
+            attack: range("bounty_hunter_bount_attack", 14),
+            level_up: range("bounty_hunter_bount_level", 11),
+            kill: range("bounty_hunter_bount_kill", 20),
+            deny: range("bounty_hunter_bount_deny", 13),
+            not_yet: range("bounty_hunter_bount_notyet", 9),
+            pain: range("bounty_hunter_bount_pain", 10),
+            purchase: range("bounty_hunter_bount_purch", 3),
+            thanks: range("bounty_hunter_bount_thanks", 2),
+        }
+
         // ^".*
     }
 }
@@ -227,5 +241,6 @@ function get_hero_dota_name(type: Hero_Type): string {
         case Hero_Type.ember_spirit: return "ember_spirit";
         case Hero_Type.earthshaker: return "earthshaker";
         case Hero_Type.venomancer: return "venomancer";
+        case Hero_Type.bounty_hunter: return "bounty_hunter";
     }
 }

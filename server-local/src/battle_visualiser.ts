@@ -1125,6 +1125,7 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
             case Hero_Type.dark_seer: return "Hero_DarkSeer.PreAttack";
             case Hero_Type.ember_spirit: return "Hero_EmberSpirit.PreAttack";
             case Hero_Type.earthshaker: return "Hero_EarthShaker.PreAttack";
+            case Hero_Type.bounty_hunter: return "Hero_BountyHunter.PreAttack";
         }
     }
 
@@ -1146,6 +1147,7 @@ function perform_basic_attack(game: Game, unit: Unit, target: Unit, cast: Delta_
                 ? "Hero_EarthShaker.Totem.Attack"
                 : "Hero_EarthShaker.Attack";
             case Hero_Type.venomancer: return "Hero_Venomancer.Attack";
+            case Hero_Type.bounty_hunter: return "Hero_BountyHunter.Attack";
         }
     }
 
@@ -2979,6 +2981,7 @@ function update_specific_state_visuals(unit: Unit, flag: boolean, associated_mod
 function update_state_visuals(unit: Unit) {
     update_specific_state_visuals(unit, is_unit_stunned(unit), "Modifier_Battle_Stunned");
     update_specific_state_visuals(unit, is_unit_silenced(unit), "modifier_silence");
+    update_specific_state_visuals(unit, is_unit_invisible(unit), "Modifier_Battle_Invisible");
 
     const was_hidden = unit.hidden;
 
