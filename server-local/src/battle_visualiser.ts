@@ -2452,6 +2452,16 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
             break;
         }
 
+        case Ability_Id.bounty_hunter_shadow_walk: {
+            // TODO @VoiceOver
+
+            fx_by_unit("particles/units/heroes/hero_bounty_hunter/bounty_hunter_windwalk.vpcf", unit).release();
+            unit_emit_sound(unit, "Hero_BountyHunter.WindWalk");
+            apply_modifier(game, unit, cast.modifier);
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }

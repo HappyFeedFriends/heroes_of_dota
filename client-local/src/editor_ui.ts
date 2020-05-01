@@ -335,6 +335,14 @@ function create_adventure_enemy_menu_buttons(editor: Adventure_Editor, entity: P
         (button.FindChild("text") as LabelPanel).text = `Bg: '${data.battleground.name}' #${battleground}`
     });
 
+    entity_button("Playtest", () => {
+        dispatch_local_editor_action({
+            type: Editor_Action_Type.playtest_battleground,
+            enemy: enemy.id,
+            battleground: battleground
+        });
+    });
+
     const menu = dropdown_menu(entity_buttons_dropdown);
 
     for (let index = 0; index < creeps.length + 1; index++) {

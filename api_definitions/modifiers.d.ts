@@ -17,6 +17,7 @@ declare const enum Modifier_Id {
     shaker_enchant_totem_caster = 18,
     veno_venomous_gale = 20,
     veno_poison_nova = 21,
+    bounty_hunter_shadow_walk = 22,
 
     item_heart_of_tarrasque = 101,
     item_iron_branch = 102,
@@ -101,6 +102,9 @@ type Modifier = {
     poison_applied: number
 } | {
     id: Modifier_Id.veno_poison_nova
+} | {
+    id: Modifier_Id.bounty_hunter_shadow_walk
+    move_bonus: number
 } | {
     id: Modifier_Id.item_heart_of_tarrasque
     health: number

@@ -133,7 +133,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 }),
                 active_ability<Ability_Pudge_Rot>({
                     available_since_level: 2,
-                    targeting: target_rect_area_around_caster(1),
+                    selector: select_in_rectangle(1),
                     charges: 1,
                     damage: 5
                 }),
@@ -161,14 +161,14 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 }),
                 active_ability<Ability_Tide_Anchor_Smash>({
                     available_since_level: 2,
-                    targeting: target_rect_area_around_caster(1),
+                    selector: select_in_rectangle(1),
                     charges: 2,
                     damage: 4,
                     attack_reduction: 2
                 }),
                 active_ability<Ability_Tide_Ravage>({
                     available_since_level: 3,
-                    targeting: target_in_manhattan_distance(5),
+                    selector: select_in_rectangle(5),
                     damage: 5,
                     charges: 1,
                 })
@@ -189,11 +189,11 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 }),
                 passive_ability<Ability_Luna_Moon_Glaive>({
                     available_since_level: 2,
-                    secondary_targeting: target_rect_area_around_caster(2)
+                    secondary_selector: select_in_rectangle(2)
                 }),
                 active_ability<Ability_Luna_Eclipse>({
                     available_since_level: 3,
-                    targeting: target_rect_area_around_caster(3),
+                    selector: select_in_rectangle(3),
                     total_beams: 14,
                     charges: 1,
                 })
@@ -214,7 +214,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 }),
                 active_ability<Ability_Skywrath_Concussive_Shot>({
                     available_since_level: 2,
-                    targeting: target_rect_area_around_caster(3),
+                    selector: select_in_rectangle(3),
                     charges: 1,
                     move_points_reduction: 2,
                     damage: 4,
@@ -253,7 +253,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 }),
                 active_ability<Ability_Dragon_Knight_Elder_Dragon_Form>({
                     available_since_level: 3,
-                    targeting: target_in_manhattan_distance(0),
+                    selector: single_target(),
                     charges: 1
                 })
             ],
@@ -302,7 +302,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             abilities: [
                 active_ability<Ability_Mirana_Starfall>({
                     available_since_level: 1,
-                    targeting: target_rect_area_around_caster(2),
+                    selector: select_in_rectangle(2),
                     charges: 1,
                     damage: 3
                 }),
@@ -368,7 +368,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     charges: 1,
                     damage_per_turn: 1,
                     duration: 5,
-                    shield_targeting: target_rect_area_around_caster(1)
+                    shield_selector: select_in_rectangle(1)
                 }),
                 active_ability<Ability_Dark_Seer_Surge>({
                     available_since_level: 2,
@@ -394,13 +394,13 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             abilities: [
                 active_ability<Ability_Ember_Searing_Chains>({
                     available_since_level: 1,
-                    targeting: target_rect_area_around_caster(2),
+                    selector: select_in_rectangle(2),
                     charges: 1,
                     targets: 2
                 }),
                 active_ability<Ability_Ember_Sleight_Of_Fist>({
                     available_since_level: 2,
-                    targeting: target_rect_area_around_caster(2),
+                    selector: select_in_rectangle(2),
                     charges: 1
                 }),
                 active_ability<Ability_Ember_Fire_Remnant>({
@@ -413,7 +413,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 active_ability<Ability_Ember_Activate_Fire_Remnant>({
                     available_since_level: 3,
                     charges: 1,
-                    targeting: target_in_manhattan_distance(0),
+                    selector: single_target(),
                     flags: [ Ability_Flag.does_not_consume_action ]
                 })
             ]
@@ -433,13 +433,13 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 active_ability<Ability_Shaker_Enchant_Totem>({
                     available_since_level: 2,
                     charges: 1,
-                    targeting: target_rect_area_around_caster(1),
+                    selector: select_in_rectangle(1),
                     flags: [ Ability_Flag.does_not_consume_action ]
                 }),
                 active_ability<Ability_Shaker_Echo_Slam>({
                     available_since_level: 3,
                     charges: 1,
-                    targeting: target_rect_area_around_caster(2)
+                    selector: select_in_rectangle(2)
                 })
             ]
         };
@@ -469,7 +469,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                 {
                     id: Ability_Id.venomancer_poison_nova,
                     type: Ability_Type.no_target,
-                    targeting: target_rect_area_around_caster(2, select_in_rectangle(2)),
+                    selector: select_in_rectangle(2),
                     available_since_level: 3,
                     charges: 1
                 }
@@ -481,7 +481,20 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack_damage: 3,
             move_points: 3,
             attack: basic_attack(2),
-            abilities: []
+            abilities: [
+                {
+                    id: Ability_Id.bounty_hunter_shadow_walk,
+                    type: Ability_Type.no_target,
+                    charges: 2,
+                    available_since_level: 1,
+                    selector: single_target(),
+                    modifier: {
+                        id: Modifier_Id.bounty_hunter_shadow_walk,
+                        move_bonus: 1
+                    },
+                    flags: [ Ability_Flag.does_not_consume_action ]
+                }
+            ]
         };
 
         default: return unreachable(type);
@@ -506,7 +519,7 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             abilities: [
                 passive_ability<Ability_Pocket_Tower_Attack>({
                     available_since_level: 0,
-                    targeting: target_rect_area_around_caster(2)
+                    selector: select_in_rectangle(2)
                 }),
                 passive_ability<Ability_Deployment_Zone>({
                     available_since_level: 0,
@@ -525,7 +538,7 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
                     id: Ability_Id.plague_ward_attack,
                     type: Ability_Type.passive,
                     available_since_level: 0,
-                    targeting: target_rect_area_around_caster(3)
+                    selector: select_in_rectangle(3)
                 },
             ],
             intrinsic_modifiers: [{ id: Modifier_Id.rooted }]

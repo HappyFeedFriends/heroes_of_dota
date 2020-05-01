@@ -650,9 +650,16 @@ function highlight_cells_unit_can_go_to(battle: Battle, unit: Unit) {
 function highlight_cells_for_ability(battle: Battle, unit: Unit, ability: Ability_Active) {
     for (let x = 0; x < battle.grid.size.x; x++) {
         for (let y = 0; y < battle.grid.size.y; y++) {
-            if (ability_targeting_fits(battle, ability.targeting, unit.position, xy(x, y))) {
-                game.ctx.fillStyle = "rgba(0, 255, 0, 0.1)";
-                game.ctx.fillRect(x * cell_size, y * cell_size, cell_size, cell_size);
+            if (ability.type == Ability_Type.no_target) {
+                if (area_selector_fits(battle, ability.selector, unit.position, unit.position, xy(x, y))) {
+                    game.ctx.fillStyle = "rgba(0, 255, 0, 0.1)";
+                    game.ctx.fillRect(x * cell_size, y * cell_size, cell_size, cell_size);
+                }
+            } else {
+                if (ability_targeting_fits(battle, ability.targeting, unit.position, xy(x, y))) {
+                    game.ctx.fillStyle = "rgba(0, 255, 0, 0.1)";
+                    game.ctx.fillRect(x * cell_size, y * cell_size, cell_size, cell_size);
+                }
             }
         }
     }

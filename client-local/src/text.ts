@@ -126,7 +126,7 @@ function get_field_name(field: Modifier_Field): string {
     }
 }
 
-function get_status_text(status: Unit_Status) {
+function get_status_text(status: Unit_Status): string {
     switch (status) {
         case Unit_Status.rooted: return "rooted";
         case Unit_Status.silenced: return "silenced";
@@ -135,6 +135,7 @@ function get_status_text(status: Unit_Status) {
         case Unit_Status.out_of_the_game: return "out of the game";
         case Unit_Status.unselectable: return "unselectable";
         case Unit_Status.phased: return "phased";
+        case Unit_Status.invisible: return "invisible";
     }
 }
 

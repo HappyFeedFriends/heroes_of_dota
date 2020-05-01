@@ -342,6 +342,11 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             status(Unit_Status.disarmed)
         ];
 
+        case Modifier_Id.bounty_hunter_shadow_walk: return [
+            field(Modifier_Field.move_points_bonus, modifier.move_bonus),
+            status(Unit_Status.invisible)
+        ];
+
         case Modifier_Id.item_heart_of_tarrasque: return [
             field(Modifier_Field.health_bonus, modifier.health)
         ];

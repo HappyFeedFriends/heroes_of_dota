@@ -39,6 +39,7 @@ declare const enum Ability_Id {
     venomancer_venomous_gale = 39,
     venomancer_poison_nova = 40,
     plague_ward_attack = 41,
+    bounty_hunter_shadow_walk = 42,
 
     pocket_tower_attack = 1000,
     deployment_zone = 1001,
@@ -115,6 +116,8 @@ type Ability_Definition =
 
     Venomancer_Abilities |
 
+    Bounty_Hunter_Abilities |
+
     Ability_Pocket_Tower_Attack |
     Ability_Deployment_Zone |
     Ability_Monster_Lifesteal |
@@ -132,7 +135,6 @@ type Ability_Effect =
 type Ability_Definition_Active_Base = {
     available_since_level: number
     charges: number
-    targeting: Ability_Targeting
     flags?: Ability_Flag[]
 }
 
@@ -144,29 +146,34 @@ type Ability_Definition_Passive_Base = {
 type Ability_Basic_Attack = Ability_Definition_Active_Base & {
     id: Ability_Id.basic_attack
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
 }
 
 type Ability_Pudge_Hook = Ability_Definition_Active_Base & {
     id: Ability_Id.pudge_hook
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
     damage: number
 }
 
 type Ability_Pudge_Rot = Ability_Definition_Active_Base & {
     id: Ability_Id.pudge_rot
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
     damage: number
 }
 
 type Ability_Pudge_Dismember = Ability_Definition_Active_Base & {
     id: Ability_Id.pudge_dismember
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
     damage: number
 }
 
 type Ability_Tide_Gush = Ability_Definition_Active_Base & {
     id: Ability_Id.tide_gush
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
     damage: number
     move_points_reduction: number
 }
@@ -174,6 +181,7 @@ type Ability_Tide_Gush = Ability_Definition_Active_Base & {
 type Ability_Tide_Anchor_Smash = Ability_Definition_Active_Base & {
     id: Ability_Id.tide_anchor_smash
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
     damage: number
     attack_reduction: number
 }
@@ -181,29 +189,33 @@ type Ability_Tide_Anchor_Smash = Ability_Definition_Active_Base & {
 type Ability_Tide_Ravage = Ability_Definition_Active_Base & {
     id: Ability_Id.tide_ravage
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
     damage: number
 }
 
 type Ability_Luna_Lucent_Beam = Ability_Definition_Active_Base & {
     id: Ability_Id.luna_lucent_beam
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
     damage: number
 }
 
 type Ability_Luna_Moon_Glaive = Ability_Definition_Passive_Base & {
     id: Ability_Id.luna_moon_glaive
-    secondary_targeting: Ability_Targeting
+    secondary_selector: Ability_Area_Selector
 }
 
 type Ability_Luna_Eclipse = Ability_Definition_Active_Base & {
     id: Ability_Id.luna_eclipse
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
     total_beams: number
 }
 
 type Ability_Skywrath_Concussive_Shot = Ability_Definition_Active_Base & {
     id: Ability_Id.skywrath_concussive_shot
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
     damage: number
     move_points_reduction: number
     duration: number
@@ -212,40 +224,47 @@ type Ability_Skywrath_Concussive_Shot = Ability_Definition_Active_Base & {
 type Ability_Skywrath_Ancient_Seal = Ability_Definition_Active_Base & {
     id: Ability_Id.skywrath_ancient_seal
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
     duration: number
 }
 
 type Ability_Skywrath_Mystic_Flare = Ability_Definition_Active_Base & {
     id: Ability_Id.skywrath_mystic_flare
     type: Ability_Type.target_ground
+    targeting: Ability_Targeting
     damage: number
 }
 
 type Ability_Dragon_Knight_Breathe_Fire = Ability_Definition_Active_Base & {
     id: Ability_Id.dragon_knight_breathe_fire
     type: Ability_Type.target_ground
+    targeting: Ability_Targeting
     damage: number
 }
 
 type Ability_Dragon_Knight_Dragon_Tail = Ability_Definition_Active_Base & {
     id: Ability_Id.dragon_knight_dragon_tail
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
     damage: number
 }
 
 type Ability_Dragon_Knight_Elder_Dragon_Form = Ability_Definition_Active_Base & {
     id: Ability_Id.dragon_knight_elder_dragon_form
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
 }
 
 type Ability_Dragon_Knight_Elder_Dragon_Form_Attack = Ability_Definition_Active_Base & {
     id: Ability_Id.dragon_knight_elder_dragon_form_attack
     type: Ability_Type.target_ground
+    targeting: Ability_Targeting
 }
 
 type Ability_Lion_Hex = Ability_Definition_Active_Base & {
     id: Ability_Id.lion_hex
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
     duration: number
     move_points_reduction: number
 }
@@ -253,40 +272,47 @@ type Ability_Lion_Hex = Ability_Definition_Active_Base & {
 type Ability_Lion_Impale = Ability_Definition_Active_Base & {
     id: Ability_Id.lion_impale
     type: Ability_Type.target_ground
+    targeting: Ability_Targeting
     damage: number
 }
 
 type Ability_Lion_Finger_Of_Death = Ability_Definition_Active_Base & {
     id: Ability_Id.lion_finger_of_death
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
     damage: number
 }
 
 type Ability_Mirana_Starfall = Ability_Definition_Active_Base & {
     id: Ability_Id.mirana_starfall
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
     damage: number
 }
 
 type Ability_Mirana_Arrow = Ability_Definition_Active_Base & {
     id: Ability_Id.mirana_arrow
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
 }
 
 type Ability_Mirana_Leap = Ability_Definition_Active_Base & {
     id: Ability_Id.mirana_leap
     type: Ability_Type.target_ground
+    targeting: Ability_Targeting
 }
 
 type Ability_Venge_Magic_Missile = Ability_Definition_Active_Base & {
     id: Ability_Id.venge_magic_missile
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
     damage: number
 }
 
 type Ability_Venge_Wave_Of_Terror = Ability_Definition_Active_Base & {
     id: Ability_Id.venge_wave_of_terror
     type: Ability_Type.target_ground
+    targeting: Ability_Targeting
     damage: number
     armor_reduction: number
     duration: number
@@ -295,46 +321,54 @@ type Ability_Venge_Wave_Of_Terror = Ability_Definition_Active_Base & {
 type Ability_Venge_Nether_Swap = Ability_Definition_Active_Base & {
     id: Ability_Id.venge_nether_swap
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
 }
 
 type Ability_Dark_Seer_Ion_Shell = Ability_Definition_Active_Base & {
     id: Ability_Id.dark_seer_ion_shell
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
     damage_per_turn: number
     duration: number
-    shield_targeting: Ability_Targeting
+    shield_selector: Ability_Area_Selector
 }
 
 type Ability_Dark_Seer_Surge = Ability_Definition_Active_Base & {
     id: Ability_Id.dark_seer_surge
     type: Ability_Type.target_unit
+    targeting: Ability_Targeting
     move_points_bonus: number
 }
 
 type Ability_Dark_Seer_Vacuum = Ability_Definition_Active_Base & {
     id: Ability_Id.dark_seer_vacuum
     type: Ability_Type.target_ground
+    targeting: Ability_Targeting
 }
 
 type Ability_Ember_Searing_Chains = Ability_Definition_Active_Base & {
     id: Ability_Id.ember_searing_chains
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
     targets: number
 }
 
 type Ability_Ember_Sleight_Of_Fist = Ability_Definition_Active_Base & {
     id: Ability_Id.ember_sleight_of_fist
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
 }
 
 type Ability_Ember_Fire_Remnant = Ability_Definition_Active_Base & {
     id: Ability_Id.ember_fire_remnant
     type: Ability_Type.target_ground
+    targeting: Ability_Targeting
 }
 
 type Ability_Ember_Activate_Fire_Remnant = Ability_Definition_Active_Base & {
     id: Ability_Id.ember_activate_fire_remnant
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
 }
 
 type Ability_Shaker_Fissure = Ability_Definition_Active_Base & {
@@ -346,33 +380,45 @@ type Ability_Shaker_Fissure = Ability_Definition_Active_Base & {
 type Ability_Shaker_Enchant_Totem = Ability_Definition_Active_Base & {
     id: Ability_Id.shaker_enchant_totem
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
 }
 
 type Ability_Shaker_Echo_Slam = Ability_Definition_Active_Base & {
     id: Ability_Id.shaker_echo_slam
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
 }
 
 type Venomancer_Abilities = (Ability_Definition_Active_Base & {
     id: Ability_Id.venomancer_plague_wards
     type: Ability_Type.target_ground
+    targeting: Ability_Targeting
 }) | (Ability_Definition_Active_Base & {
     id: Ability_Id.venomancer_venomous_gale
     type: Ability_Type.target_ground
+    targeting: Ability_Targeting
     slow: number
     poison_applied: number
 }) | (Ability_Definition_Active_Base & {
     id: Ability_Id.venomancer_poison_nova
     type: Ability_Type.no_target
+    selector: Ability_Area_Selector
 } | (Ability_Definition_Passive_Base & {
     id: Ability_Id.plague_ward_attack
     type: Ability_Type.passive
-    targeting: Ability_Targeting
+    selector: Ability_Area_Selector
 }))
+
+type Bounty_Hunter_Abilities = (Ability_Definition_Active_Base & {
+    id: Ability_Id.bounty_hunter_shadow_walk
+    type: Ability_Type.no_target
+    selector: Ability_Area_Selector
+    modifier: Modifier
+})
 
 type Ability_Pocket_Tower_Attack = Ability_Definition_Passive_Base & {
     id: Ability_Id.pocket_tower_attack
-    targeting: Ability_Targeting
+    selector: Ability_Area_Selector
 }
 
 type Ability_Deployment_Zone = Ability_Definition_Passive_Base & {
@@ -437,7 +483,8 @@ type Delta_Cast_Ability =
     Delta_Ability_Dark_Seer_Ion_Shell |
     Delta_Ability_Dark_Seer_Surge |
 
-    Venomancer_Ability_Deltas
+    Venomancer_Ability_Deltas |
+    Bounty_Hunter_Ability_Deltas
 
 
 type Delta_Ground_Target_Ability = Find_By_Type<Delta_Cast_Ability, Delta_Type.use_ground_target_ability>
@@ -733,4 +780,9 @@ type Venomancer_Ability_Deltas = (Delta_Ground_Target_Ability_Base & {
 }) | (Delta_Use_No_Target_Ability_Base & {
     ability_id: Ability_Id.venomancer_poison_nova
     targets: Unit_Modifier_Application[]
+})
+
+type Bounty_Hunter_Ability_Deltas = (Delta_Use_No_Target_Ability_Base & {
+    ability_id: Ability_Id.bounty_hunter_shadow_walk
+    modifier: Modifier_Application
 })

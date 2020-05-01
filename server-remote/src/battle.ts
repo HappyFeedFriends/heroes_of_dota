@@ -614,7 +614,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
 
     switch (ability.id) {
         case Ability_Id.pudge_rot: {
-            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting)
+            const targets = query_units_for_no_target_ability(battle, unit, ability.selector)
                 .map(target => unit_health_change(target, -ability.damage));
 
             submit_battle_delta(battle, {
@@ -627,7 +627,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
         }
 
         case Ability_Id.tide_anchor_smash: {
-            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting).map(target => ({
+            const targets = query_units_for_no_target_ability(battle, unit, ability.selector).map(target => ({
                 ...unit_health_change(target, -ability.damage),
                 modifier: modifier(battle, {
                     id: Modifier_Id.attack_damage,
@@ -645,7 +645,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
         }
 
         case Ability_Id.tide_ravage: {
-            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting).map(target => ({
+            const targets = query_units_for_no_target_ability(battle, unit, ability.selector).map(target => ({
                 ...unit_health_change(target, -ability.damage),
                 modifier: modifier(battle, { id: Modifier_Id.stunned }, 1)
             }));
@@ -660,7 +660,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
         }
 
         case Ability_Id.luna_eclipse: {
-            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting).map(target => ({
+            const targets = query_units_for_no_target_ability(battle, unit, ability.selector).map(target => ({
                 unit: target,
                 beams_applied: 0
             }));
@@ -699,7 +699,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
         }
 
         case Ability_Id.skywrath_concussive_shot: {
-            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+            const targets = query_units_for_no_target_ability(battle, unit, ability.selector);
             const enemies = targets.filter(target => !are_units_allies(unit, target));
             const allies = targets.filter(target => are_units_allies(unit, target));
             const target = enemies.length > 0 ? battle.random.in_array(enemies) : battle.random.in_array(allies);
@@ -743,7 +743,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
 
         case Ability_Id.mirana_starfall: {
             {
-                const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+                const targets = query_units_for_no_target_ability(battle, unit, ability.selector);
 
                 submit_battle_delta(battle, {
                     ...base,
@@ -753,7 +753,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
             }
 
             {
-                const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+                const targets = query_units_for_no_target_ability(battle, unit, ability.selector);
                 const enemies = targets.filter(target => !are_units_allies(unit, target));
                 const allies = targets.filter(target => are_units_allies(unit, target));
                 const extra_target = enemies.length > 0 ? battle.random.in_array(enemies) : battle.random.in_array(allies);
@@ -772,7 +772,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
         }
 
         case Ability_Id.ember_searing_chains: {
-            const all_targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+            const all_targets = query_units_for_no_target_ability(battle, unit, ability.selector);
             const enemies = battle.random.pick_n_mutable(all_targets.filter(target => !are_units_allies(unit, target)), ability.targets);
             const allies = battle.random.pick_n_mutable(all_targets.filter(target => are_units_allies(unit, target)), ability.targets);
             const targets = [...enemies, ...allies].slice(0, ability.targets);
@@ -790,7 +790,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
         }
 
         case Ability_Id.ember_sleight_of_fist: {
-            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+            const targets = query_units_for_no_target_ability(battle, unit, ability.selector);
 
             submit_battle_delta(battle, {
                 ...base,
@@ -838,7 +838,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
         }
 
         case Ability_Id.shaker_enchant_totem: {
-            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+            const targets = query_units_for_no_target_ability(battle, unit, ability.selector);
 
             submit_battle_delta(battle, {
                 ...base,
@@ -854,7 +854,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
         }
 
         case Ability_Id.shaker_echo_slam: {
-            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+            const targets = query_units_for_no_target_ability(battle, unit, ability.selector);
             const damage = targets.length + 1;
 
             submit_battle_delta(battle, {
@@ -867,7 +867,7 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
         }
 
         case Ability_Id.venomancer_poison_nova: {
-            const targets = query_units_for_no_target_ability(battle, unit, ability.targeting);
+            const targets = query_units_for_no_target_ability(battle, unit, ability.selector);
 
             submit_battle_delta(battle, {
                 ...base,
@@ -876,6 +876,16 @@ function submit_ability_cast_no_target(battle: Battle_Record, unit: Unit, abilit
                     target_unit_id: target.id,
                     modifier: modifier(battle, { id: Modifier_Id.veno_poison_nova }, 1)
                 }))
+            });
+
+            break;
+        }
+
+        case Ability_Id.bounty_hunter_shadow_walk: {
+            submit_battle_delta(battle, {
+                ...base,
+                ability_id: ability.id,
+                modifier: modifier(battle, ability.modifier, 1)
             });
 
             break;
@@ -1344,7 +1354,7 @@ function on_target_dealt_damage_by_attack(battle: Battle_Record, source: Unit, t
 
         switch (ability.id) {
             case Ability_Id.luna_moon_glaive: {
-                const targets = query_units_for_no_target_ability(battle, target, ability.secondary_targeting);
+                const targets = query_units_for_no_target_ability(battle, target, ability.secondary_selector);
                 const allies = targets.filter(target => are_units_allies(source, target) && target != source);
                 const enemies = targets.filter(target => !are_units_allies(source, target));
                 const glaive_target = enemies.length > 0 ? battle.random.in_array(enemies) : battle.random.in_array(allies);
@@ -1775,6 +1785,10 @@ function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: 
     const initial_intent = authorize_attack_intent();
     if (!initial_intent.ok) return;
 
+    if (initial_intent.use_ability.ability.type != Ability_Type.target_unit) {
+        return;
+    }
+
     const costs = populate_unit_path_costs(battle, monster, false);
 
     for (const cell of battle.grid.cells) {
@@ -1971,7 +1985,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         for (const ability of applied.source.unit.abilities) {
             if (ability.id != Ability_Id.dark_seer_ion_shell) continue;
 
-            const targets = query_units_for_no_target_ability(battle, unit, ability.shield_targeting);
+            const targets = query_units_for_no_target_ability(battle, unit, ability.shield_selector);
 
             submit_battle_delta(battle, apply_ability_effect_delta({
                 ability_id: Ability_Id.dark_seer_ion_shell,
@@ -1985,7 +1999,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         if (is_unit_disarmed(unit)) return;
 
         const target = battle.random.in_array(
-            query_units_for_no_target_ability(battle, unit, ability.targeting).filter(target => !are_units_allies(unit, target))
+            query_units_for_no_target_ability(battle, unit, ability.selector).filter(target => !are_units_allies(unit, target))
         );
 
         if (!target) return;
@@ -2010,7 +2024,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         if (is_unit_disarmed(unit)) return;
 
         const target = battle.random.in_array(
-            query_units_for_no_target_ability(battle, unit, ability.targeting).filter(target => !are_units_allies(unit, target))
+            query_units_for_no_target_ability(battle, unit, ability.selector).filter(target => !are_units_allies(unit, target))
         );
 
         if (!target) return;

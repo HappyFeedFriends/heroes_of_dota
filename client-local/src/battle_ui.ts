@@ -905,7 +905,7 @@ function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell
             }
 
             case Ability_Type.no_target: {
-                if (ability_targeting_fits(battle, ability.targeting, selection.unit.position, cell.position)) {
+                if (area_selector_fits(battle, ability.selector, selection.unit.position, selection.unit.position, cell.position)) {
                     alpha = 140;
                     cell_color = color_red;
                 }
@@ -1663,13 +1663,14 @@ function get_ability_tooltip(caster: Unit, a: Ability): string {
         case Ability_Id.shaker_fissure: return `Stun targets in the line, pushing them to the sides and blocking path until the end of next turn`;
         case Ability_Id.shaker_enchant_totem: return `Stun targets around until the end of next turn, gain double damage for the next attack`;
         case Ability_Id.shaker_echo_slam: {
-            const targets = query_units_for_no_target_ability(battle, caster, a.targeting).length;
+            const targets = query_units_for_no_target_ability(battle, caster, a.selector).length;
             return `Deal damage equal to number of units in the area (<font color="#ddd">${targets + 1}</font>) to targets in the area`;
         }
 
         case Ability_Id.venomancer_plague_wards: return `Plant a plague ward which attacks enemies at the end of each turn. Plague wards deal double damage to rooted and slowed targets`;
         case Ability_Id.venomancer_venomous_gale: return `Slow all units in the line by ${a.slow} points and apply ${a.poison_applied} poison to them`;
         case Ability_Id.venomancer_poison_nova: return `Paralyze all units in the area, rooting and disarming them`;
+        case Ability_Id.bounty_hunter_shadow_walk: return assemble_modifier_tooltip_strings(a.modifier).join("<br/>");
 
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
@@ -1722,6 +1723,7 @@ function get_ability_icon(ability_id: Ability_Id): string {
         case Ability_Id.venomancer_plague_wards: return "venomancer_plague_ward";
         case Ability_Id.venomancer_venomous_gale: return "venomancer_venomous_gale";
         case Ability_Id.venomancer_poison_nova: return "venomancer_poison_nova";
+        case Ability_Id.bounty_hunter_shadow_walk: return "bounty_hunter_wind_walk";
 
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";
@@ -2906,7 +2908,9 @@ subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_targeted_ability, 
     highlight_grid_for_unit_ability_with_predicate(
         event.unit_id,
         event.ability_id,
-        (ability, cell) => area_selector_fits(battle, ability.targeting.selector, event.from, event.to, cell.position)
+        (ability, cell) => {
+            return ability.type != Ability_Type.no_target && area_selector_fits(battle, ability.targeting.selector, event.from, event.to, cell.position)
+        }
     );
 });
 
@@ -2914,7 +2918,9 @@ subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_no_target_ability,
     highlight_grid_for_unit_ability_with_predicate(
         event.unit_id,
         event.ability_id,
-        (ability, cell) => ability_targeting_fits(battle, ability.targeting, event.from, cell.position)
+        (ability, cell) => {
+            return ability.type == Ability_Type.no_target && area_selector_fits(battle, ability.selector, event.from, event.from, cell.position);
+        }
     );
 });
 

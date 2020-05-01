@@ -297,13 +297,13 @@ function are_units_allies(a: Unit, b: Unit): boolean {
     return false;
 }
 
-function query_units_for_no_target_ability(battle: Battle, caster: Unit, targeting: Ability_Targeting): Unit[] {
+function query_units_for_no_target_ability(battle: Battle, caster: Unit, selector: Ability_Area_Selector): Unit[] {
     const units: Unit[] = [];
 
     for (const unit of battle.units) {
         if (!authorize_act_on_known_unit(battle, unit).ok) continue;
 
-        if (ability_targeting_fits(battle, targeting, caster.position, unit.position)) {
+        if (area_selector_fits(battle, selector, caster.position, caster.position, unit.position)) {
             units.push(unit);
         }
     }
@@ -869,33 +869,33 @@ function ability_targeting_fits(battle: Battle, targeting: Ability_Targeting, fr
     }
 }
 
-function area_selector_fits(battle: Battle, selector: Ability_Area_Selector, from: XY, to: XY, check_at: XY): boolean {
+function area_selector_fits(battle: Battle, selector: Ability_Area_Selector, caster_at: XY, cursor_at: XY, check_what: XY): boolean {
     function points_on_the_same_line(a: XY, b: XY, c: XY) {
         return are_points_on_the_same_line(a, b) && are_points_on_the_same_line(a, c) && are_points_on_the_same_line(b, c);
     }
 
-    function get_line_segment_end(length: number, direction: XY = direction_normal_between_points(from, to)): XY {
-        return xy(from.x + direction.x * length, from.y + direction.y * length);
+    function get_line_segment_end(length: number, direction: XY = direction_normal_between_points(caster_at, cursor_at)): XY {
+        return xy(caster_at.x + direction.x * length, caster_at.y + direction.y * length);
     }
 
     function fits_line(length: number): boolean {
         const head = get_line_segment_end(length);
-        const from_tail_to_point = distance_between_points_on_the_same_line(check_at, from);
-        const from_head_to_point = distance_between_points_on_the_same_line(check_at, head);
+        const from_tail_to_point = distance_between_points_on_the_same_line(check_what, caster_at);
+        const from_head_to_point = distance_between_points_on_the_same_line(check_what, head);
         return from_tail_to_point > 0 && from_tail_to_point <= length && from_head_to_point <= length;
     }
 
     switch (selector.type) {
         case Ability_Target_Selector_Type.single_target: {
-            return xy_equal(to, check_at);
+            return xy_equal(cursor_at, check_what);
         }
 
         case Ability_Target_Selector_Type.rectangle: {
-            return rectangular(to, check_at) <= selector.area_radius;
+            return rectangular(cursor_at, check_what) <= selector.area_radius;
         }
 
         case Ability_Target_Selector_Type.line: {
-            if (points_on_the_same_line(from, to, check_at)) {
+            if (points_on_the_same_line(caster_at, cursor_at, check_what)) {
                 return fits_line(selector.length);
             }
 
@@ -903,17 +903,17 @@ function area_selector_fits(battle: Battle, selector: Ability_Area_Selector, fro
         }
 
         case Ability_Target_Selector_Type.t_shape: {
-            if (points_on_the_same_line(from, to, check_at)) {
+            if (points_on_the_same_line(caster_at, cursor_at, check_what)) {
                 return fits_line(selector.stem_length);
             }
 
-            const direction = direction_normal_between_points(from, to);
+            const direction = direction_normal_between_points(caster_at, cursor_at);
             const head = get_line_segment_end(selector.stem_length, direction);
             const direction_left = xy(-direction.y, direction.x);
             const left_arm_end = xy(head.x + direction_left.x * selector.arm_length, head.y + direction_left.y * selector.arm_length);
 
-            if (points_on_the_same_line(left_arm_end, check_at, head)) {
-                return distance_between_points_on_the_same_line(head, check_at) <= selector.arm_length;
+            if (points_on_the_same_line(left_arm_end, check_what, head)) {
+                return distance_between_points_on_the_same_line(head, check_what) <= selector.arm_length;
             }
 
             return false;
@@ -1619,6 +1619,11 @@ function collapse_no_target_ability_use(battle: Battle, unit: Unit, cast: Delta_
         case Ability_Id.venomancer_poison_nova: {
             apply_modifier_multiple(battle, source, cast.targets);
 
+            break;
+        }
+
+        case Ability_Id.bounty_hunter_shadow_walk: {
+            apply_modifier(battle, source, unit, cast.modifier);
             break;
         }
 

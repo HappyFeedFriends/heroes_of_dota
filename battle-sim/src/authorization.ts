@@ -536,6 +536,8 @@ function authorize_ability_use(order_unit: Order_Unit_Permission, ability_id: Ab
 }
 
 function authorize_unit_target_ability_use(use: Ability_Use_Permission, on_target: Act_On_Unit_Permission): Unit_Target_Ability_Use_Auth {
+    if (use.ability.type != Ability_Type.target_unit) return { ok: false, kind: Unit_Target_Ability_Use_Error.other };
+
     if (!ability_targeting_fits(use.battle, use.ability.targeting, use.unit.position, on_target.unit.position)) {
         return { ok: false, kind: Unit_Target_Ability_Use_Error.not_in_range };
     }
@@ -543,8 +545,6 @@ function authorize_unit_target_ability_use(use: Ability_Use_Permission, on_targe
     if (!are_units_allies(use.unit, on_target.unit) && is_unit_invisible(on_target.unit)) {
         return { ok: false, kind: Unit_Target_Ability_Use_Error.invisible };
     }
-
-    if (use.ability.type != Ability_Type.target_unit) return { ok: false, kind: Unit_Target_Ability_Use_Error.other };
 
     return {
         ok: true,
@@ -558,12 +558,11 @@ function authorize_ground_target_ability_use(use: Ability_Use_Permission, at: XY
     const cell = grid_cell_at(use.battle.grid, at);
 
     if (!cell) return { ok: false, kind: Ground_Target_Ability_Use_Error.other };
+    if (use.ability.type != Ability_Type.target_ground) return { ok: false, kind: Ground_Target_Ability_Use_Error.other };
 
     if (!ability_targeting_fits(use.battle, use.ability.targeting, use.unit.position, cell.position)) {
         return { ok: false, kind: Ground_Target_Ability_Use_Error.not_in_range };
     }
-
-    if (use.ability.type != Ability_Type.target_ground) return { ok: false, kind: Ground_Target_Ability_Use_Error.other };
 
     return {
         ok: true,

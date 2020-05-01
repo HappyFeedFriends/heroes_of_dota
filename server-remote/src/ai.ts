@@ -66,6 +66,7 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
 
             const ability = actor.attack;
             if (!ability) continue;
+            if (ability.type != Ability_Type.target_unit) continue;
 
             const use_permission = authorize_ability_use(order_permission, ability.id);
             if (!use_permission.ok) continue;
