@@ -566,6 +566,79 @@ function test_poison_deals_damage_at_the_end_of_turn_before_expiring() {
     ally.assert().has_health(start_health - damage - damage).doesnt_have_modifier(Modifier_Id.veno_venomous_gale);
 }
 
+function test_aura_modifier() {
+    const battle = test_battle();
+
+    const aura_carrier = battle.for_test_player().spawn_hero(Hero_Type.earthshaker, xy(1, 1));
+    const ally_in_range = battle.for_test_player().spawn_hero(Hero_Type.mirana, xy(2, 2));
+    const ally_not_in_range = battle.for_test_player().spawn_hero(Hero_Type.dragon_knight, xy(4, 4));
+
+    const enemy_in_range = battle.for_enemy_player().spawn_hero(Hero_Type.luna, xy(0, 0));
+    const enemy_not_in_range = battle.for_enemy_player().spawn_hero(Hero_Type.luna, xy(5, 5));
+
+    const fixed_attack = 10;
+    const expected_bonus = 5;
+
+    for (const hero of [aura_carrier, ally_in_range, ally_not_in_range, enemy_in_range, enemy_not_in_range]) {
+        const attack = get_attack_damage(hero.unit);
+        hero.apply_modifier({ id: Modifier_Id.attack_damage, bonus: fixed_attack - attack });
+        hero.assert().has_attack_damage(fixed_attack);
+    }
+
+    aura_carrier.apply_modifier({
+        id: Modifier_Id.aura,
+        selector: {
+            rectangle_distance: 2,
+            flags: {
+                [Aura_Selector_Flag.allies]: true,
+                [Aura_Selector_Flag.enemies]: false
+            }
+        },
+        modifier: { id: Modifier_Id.attack_damage, bonus: expected_bonus }
+    });
+
+    aura_carrier.assert().has_attack_damage(fixed_attack + expected_bonus);
+    ally_in_range.assert().has_attack_damage(fixed_attack + expected_bonus);
+    ally_not_in_range.assert().has_attack_damage(fixed_attack);
+    enemy_in_range.assert().has_attack_damage(fixed_attack);
+    enemy_not_in_range.assert().has_attack_damage(fixed_attack);
+}
+
+function test_aura_depends_on_distance() {
+    const [battle, carrier] = test_battle_with_ally_and_enemy(Hero_Type.earthshaker, xy(1, 1));
+    const ally = battle.for_test_player().spawn_hero(Hero_Type.mirana, xy(2, 1));
+
+    const fixed_attack = 10;
+    const expected_bonus = 5;
+
+    const attack = get_attack_damage(ally.unit);
+    ally.apply_modifier({ id: Modifier_Id.attack_damage, bonus: fixed_attack - attack });
+    ally.assert().has_attack_damage(fixed_attack);
+
+    battle.start();
+
+    carrier.apply_modifier({
+        id: Modifier_Id.aura,
+        selector: {
+            rectangle_distance: 2,
+            flags: {
+                [Aura_Selector_Flag.allies]: true,
+                [Aura_Selector_Flag.enemies]: false
+            }
+        },
+        modifier: { id: Modifier_Id.attack_damage, bonus: expected_bonus }
+    });
+
+
+    ally.assert().has_attack_damage(fixed_attack + expected_bonus);
+    ally.order_move(xy(3, 1));
+    ally.assert().has_attack_damage(fixed_attack + expected_bonus);
+    ally.order_move(xy(4, 1));
+    ally.assert().has_attack_damage(fixed_attack);
+    ally.order_move(xy(3, 1));
+    ally.assert().has_attack_damage(fixed_attack + expected_bonus);
+}
+
 function test_load_all_adventures() {
     const ok = load_all_adventures();
 
@@ -608,5 +681,7 @@ run_tests([
     test_hero_cant_buy_shop_item_out_of_range,
     test_hero_cant_buy_shop_item_no_gold,
     test_poison_deals_damage_at_the_end_of_each_turn,
-    test_poison_deals_damage_at_the_end_of_turn_before_expiring
+    test_poison_deals_damage_at_the_end_of_turn_before_expiring,
+    test_aura_modifier,
+    test_aura_depends_on_distance
 ]);

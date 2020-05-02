@@ -22,7 +22,6 @@ type Battle = {
     has_started: boolean
     is_over: boolean
     camera_dummy: CDOTA_BaseNPC
-    applied_modifier_visuals: Applied_Modifier_Visuals[]
     timed_effect_visuals: Active_Timed_Effect_Visuals[]
     player_requested_game_over_screen_skip: boolean
     disabled_cells: Cell_Index[]
@@ -37,7 +36,7 @@ type Unit_Base = Unit_Stats & Unit_Abilities & {
     id: Unit_Id
     handle: CDOTA_BaseNPC_Hero
     position: XY
-    modifiers: Modifier_Data[]
+    modifiers: Applied_Modifier[]
     dead: boolean
     hidden: boolean
     hidden_from_snapshot: boolean
@@ -121,10 +120,13 @@ type Ranged_Attack_Spec = {
     shake_on_impact?: Shake
 }
 
-type Applied_Modifier_Visuals = {
-    unit_id: Unit_Id
-    visuals: Modifier_Visuals_Container[]
-    modifier_handle_id: Modifier_Handle_Id
+type Applied_Modifier = Modifier_Data & {
+    state: {
+        visible: true
+        visuals: Modifier_Visuals_Container[]
+    } | {
+        visible: false
+    }
 }
 
 type Active_Timed_Effect_Visuals = {
@@ -1698,38 +1700,6 @@ function modifier_to_visuals(target: Unit, modifier: Modifier): Modifier_Visuals
     }
 }
 
-function try_apply_modifier_visuals(target: Unit, handle_id: Modifier_Handle_Id, modifier: Modifier) {
-    const visuals = modifier_to_visuals(target, modifier);
-    if (!visuals) return;
-
-    battle.applied_modifier_visuals.push({
-        unit_id: target.id,
-        modifier_handle_id: handle_id,
-        visuals: visuals
-    });
-}
-
-function try_remove_modifier_visuals(target: Unit, handle_id: Modifier_Handle_Id) {
-    const index = array_find_index(battle.applied_modifier_visuals, visual =>
-        visual.modifier_handle_id == handle_id &&
-        visual.unit_id == target.id
-    );
-
-    if (index == -1) return;
-
-    const container = battle.applied_modifier_visuals[index];
-
-    for (const visual of container.visuals) {
-        if (visual.from_buff) {
-            visual.buff.Destroy();
-        } else {
-            visual.fx.destroy_and_release(false);
-        }
-    }
-
-    battle.applied_modifier_visuals.splice(index, 1);
-}
-
 function update_unit_modifier_state(unit: Unit) {
     let max_ability_level;
 
@@ -1739,8 +1709,46 @@ function update_unit_modifier_state(unit: Unit) {
         case Unit_Supertype.monster: max_ability_level = 0; break;
     }
 
-    update_unit_stats_and_abilities_from_modifiers(unit, max_ability_level, unit.modifiers.map(applied => applied.modifier));
+    const carriers: Aura_Carrier[] = [];
+
+    // @Performance is bad in case we have a lot of modifiers
+    for (const carrier of battle.units) {
+        for (const applied of carrier.modifiers) {
+            if (applied.modifier.id == Modifier_Id.aura) {
+                carriers.push({
+                    ally: are_units_allies(unit, carrier),
+                    at: carrier.position,
+                    aura: applied.modifier
+                })
+            }
+        }
+    }
+
+    // TODO Just for style... Fix once TSTL fixes ts-node resolution and we can be on the version which fixes array spread
+    const start: Modifier[] = [];
+    const final_modifier_list: Modifier[] = start
+        .concat(build_intrinsic_modifier_list(unit, max_ability_level))
+        .concat(unit.modifiers.map(applied => applied.modifier))
+        .concat(get_aura_modifiers_affecting_target(unit.position, carriers));
+
+    update_unit_stats_and_abilities_from_modifiers(unit, final_modifier_list);
     update_state_visuals(unit);
+
+    const should_be_hidden = unit.hidden || unit.dead;
+    for (const applied of unit.modifiers) {
+        if (applied.state.visible && should_be_hidden) {
+            hide_modifier_visuals(applied);
+        }
+
+        if (!applied.state.visible && !should_be_hidden) {
+            const visuals = modifier_to_visuals(unit, applied.modifier);
+
+            applied.state = {
+                visible: true,
+                visuals: visuals ? visuals : []
+            }
+        }
+    }
 }
 
 function get_item_equip_sound(item: Item_Id): string | undefined {
@@ -1784,11 +1792,10 @@ function apply_modifier(game: Game, target: Unit, application: Modifier_Applicat
         }
     }
 
-    try_apply_modifier_visuals(target, application.modifier_handle_id, application.modifier);
-
     target.modifiers.push({
         modifier: application.modifier,
-        modifier_handle_id: application.modifier_handle_id
+        modifier_handle_id: application.modifier_handle_id,
+        state: { visible: false }
     });
 
     update_unit_modifier_state(target);
@@ -3024,7 +3031,6 @@ function update_specific_state_visuals(unit: Unit, flag: boolean, associated_mod
 }
 
 function update_state_visuals(unit: Unit) {
-    print_table(unit.status);
     update_specific_state_visuals(unit, is_unit_stunned(unit), "Modifier_Battle_Stunned");
     update_specific_state_visuals(unit, is_unit_silenced(unit), "modifier_silence");
     update_specific_state_visuals(unit, is_unit_invisible(unit), "Modifier_Battle_Invisible");
@@ -3126,10 +3132,6 @@ function kill_unit(source: Source, target: Unit) {
         }
     }
 
-    for (const applied of target.modifiers) {
-        try_remove_modifier_visuals(target, applied.modifier_handle_id);
-    }
-
     if (target.supertype == Unit_Supertype.creep) {
         unit_emit_sound(target, target.traits.sounds.death);
     }
@@ -3138,6 +3140,8 @@ function kill_unit(source: Source, target: Unit) {
 
     target.handle.ForceKill(false);
     target.dead = true;
+
+    update_unit_modifier_state(target);
 }
 
 function number_particle(target: Handle_Provider, amount: number, r: number, g: number, b: number) {
@@ -3305,10 +3309,24 @@ function on_modifier_removed(unit: Unit, modifier_id: Modifier_Id) {
     }
 }
 
-function remove_modifier(game: Game, unit: Unit, applied: Modifier_Data, array_index: number) {
+function hide_modifier_visuals(applied: Applied_Modifier) {
+    if (applied.state.visible) {
+        for (const visual of applied.state.visuals) {
+            if (visual.from_buff) {
+                visual.buff.Destroy();
+            } else {
+                visual.fx.destroy_and_release(false);
+            }
+        }
+    }
+
+    applied.state = { visible: false };
+}
+
+function remove_modifier(game: Game, unit: Unit, applied: Applied_Modifier, array_index: number) {
     print(`Remove modifier ${enum_to_string(applied.modifier.id)} from ${unit.handle.GetName()}`);
 
-    try_remove_modifier_visuals(unit, applied.modifier_handle_id);
+    hide_modifier_visuals(applied);
     on_modifier_removed(unit, applied.modifier.id);
 
     unit.modifiers.splice(array_index, 1);
@@ -3476,9 +3494,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             if (!unit.handle.IsAlive()) {
                 unit.handle.RespawnHero(false, false);
 
-                for (const applied of unit.modifiers) {
-                    try_apply_modifier_visuals(unit, applied.modifier_handle_id, applied.modifier);
-                }
+                update_unit_modifier_state(unit);
             }
 
             const world_at = battle_position_to_world_position_center(battle.world_origin, delta.at_position);
@@ -3828,6 +3844,12 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
 
         default: unreachable(delta);
     }
+
+    for (const unit of battle.units) {
+        update_unit_modifier_state(unit);
+    }
+
+    update_game_net_table(game);
 }
 
 function periodically_update_battle() {
@@ -3842,6 +3864,16 @@ function periodically_update_battle() {
 
 function clean_battle_world_handles(battle: Battle) {
     for (const unit of battle.units) {
+        for (const modifier of unit.modifiers) {
+            if (modifier.state.visible) {
+                for (const visual of modifier.state.visuals) {
+                    if (!visual.from_buff) {
+                        visual.fx.destroy_and_release(true);
+                    }
+                }
+            }
+        }
+
         unit.handle.RemoveSelf();
     }
 
@@ -3857,14 +3889,6 @@ function clean_battle_world_handles(battle: Battle) {
         tree.handle.Kill();
     }
 
-    for (const applied of battle.applied_modifier_visuals) {
-        for (const visual of applied.visuals) {
-            if (!visual.from_buff) {
-                visual.fx.destroy_and_release(true);
-            }
-        }
-    }
-
     for (const effect of battle.timed_effect_visuals) {
         for (const visual of effect.visuals) {
             visual.destroy_and_release(true);
@@ -3875,7 +3899,6 @@ function clean_battle_world_handles(battle: Battle) {
     battle.shops = [];
     battle.runes = [];
     battle.trees = [];
-    battle.applied_modifier_visuals = [];
     battle.timed_effect_visuals = [];
 }
 
@@ -3905,7 +3928,6 @@ function reinitialize_battle(world_origin: Vector, camera_entity: CDOTA_BaseNPC)
         is_over: true,
         player_requested_game_over_screen_skip: false,
         camera_dummy: camera_entity,
-        applied_modifier_visuals: [],
         timed_effect_visuals: [],
         disabled_cells: []
     };
@@ -3938,7 +3960,10 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
             dead: unit.health <= 0,
             position: unit.position,
             handle: create_world_handle_for_battle_unit(battle.world_origin, unit, unit.position, unit.facing),
-            modifiers: from_client_array(unit.modifiers),
+            modifiers: from_client_array(unit.modifiers).map(data => ({
+                ...data,
+                state: { visible: false } as const // We will make them visible later down
+            })),
             hidden: false, // We will update it in update_state_visuals,
             hidden_from_snapshot: unit.health <= 0,
 
@@ -4026,9 +4051,5 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
 
     for (const unit of battle.units) {
         update_unit_modifier_state(unit);
-
-        for (const applied of unit.modifiers) {
-            try_apply_modifier_visuals(unit, applied.modifier_handle_id, applied.modifier);
-        }
     }
 }

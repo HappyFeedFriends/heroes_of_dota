@@ -147,7 +147,6 @@ export default function run_transformer(program: ts.Program, options: Options): 
         const statements: ts.Statement[] = [];
 
         for (const [name, expression] of Object.entries(context.named_types)) {
-            console.log("Emit", name);
             const declaration = ts.createVariableDeclaration(name, undefined, expression);
             statements.push(ts.createVariableStatement(undefined, [ declaration ]));
         }
@@ -183,7 +182,6 @@ export default function run_transformer(program: ts.Program, options: Options): 
                 if (!already_serialized) {
                     context.named_types[type.name] = ts.createLiteral(0); // Placeholder for recursion
                     context.named_types[type.name] = serialize_type(type.target, context, [ type.name ]);
-                    console.log("Remember", type.name, "at", path);
                 }
 
                 context.back_patches.push({
@@ -196,8 +194,6 @@ export default function run_transformer(program: ts.Program, options: Options): 
 
             case SimpleTypeKind.ENUM: {
                 const members = type.types.map((member, index) => serialize_type(member.type, context, path.concat("members", index)));
-
-                console.log("Remember enum", type.name);
 
                 return ts.createObjectLiteral([
                     ts.createPropertyAssignment("kind", ts.createLiteral(type_enum)),

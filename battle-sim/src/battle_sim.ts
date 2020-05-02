@@ -1135,7 +1135,7 @@ function create_creep(battle: Battle, source: Source, owner: Battle_Player, spaw
     return creep;
 }
 
-function update_unit_modifier_state(unit: Unit) {
+function update_unit_modifier_state(battle: Battle, unit: Unit) {
     let max_ability_level;
 
     switch (unit.supertype) {
@@ -1144,12 +1144,32 @@ function update_unit_modifier_state(unit: Unit) {
         case Unit_Supertype.monster: max_ability_level = 0; break;
     }
 
-    update_unit_stats_and_abilities_from_modifiers(unit, max_ability_level, unit.modifiers.map(applied => applied.modifier));
+    const carriers: Aura_Carrier[] = [];
+
+    // @Performance is bad in case we have a lot of modifiers
+    for (const carrier of battle.units) {
+        for (const applied of carrier.modifiers) {
+            if (applied.modifier.id == Modifier_Id.aura) {
+                carriers.push({
+                    ally: are_units_allies(unit, carrier),
+                    at: carrier.position,
+                    aura: applied.modifier
+                })
+            }
+        }
+    }
+
+    const final_modifier_list = [
+        ...build_intrinsic_modifier_list(unit, max_ability_level),
+        ...unit.modifiers.map(applied => applied.modifier),
+        ...get_aura_modifiers_affecting_target(unit.position, carriers)
+    ];
+
+    update_unit_stats_and_abilities_from_modifiers(unit, final_modifier_list);
 }
 
 function set_hero_level(hero: Hero, new_level: number) {
     hero.level = new_level;
-    update_unit_modifier_state(hero);
 }
 
 function apply_modifier(battle: Battle, source: Source, target: Unit, application: Modifier_Application) {
@@ -1162,7 +1182,7 @@ function apply_modifier(battle: Battle, source: Source, target: Unit, applicatio
 
     target.modifiers.push(applied);
 
-    update_unit_modifier_state(target);
+    update_unit_modifier_state(battle, target);
 
     push_event(battle, {
         type: Battle_Event_Type.modifier_applied,
@@ -1937,8 +1957,6 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             if (in_hand_modifier == -1) break;
 
             hero.modifiers.splice(in_hand_modifier, 1);
-
-            update_unit_modifier_state(hero);
             hero.position = delta.at_position;
             occupy_cell_at(battle, delta.at_position);
 
@@ -2108,8 +2126,6 @@ function collapse_delta(battle: Battle, delta: Delta): void {
                 const index = unit.modifiers.indexOf(modifier);
 
                 unit.modifiers.splice(index, 1);
-
-                update_unit_modifier_state(unit);
             }
 
             break;
@@ -2256,5 +2272,9 @@ function collapse_delta(battle: Battle, delta: Delta): void {
         }
 
         default: unreachable(delta);
+    }
+
+    for (const unit of battle.units) {
+        update_unit_modifier_state(battle, unit);
     }
 }

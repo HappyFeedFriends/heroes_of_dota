@@ -57,6 +57,12 @@ type Recalculated_Stats = {
     overrides: Ability_Override[]
 }
 
+type Aura_Carrier = {
+    at: XY
+    ally: boolean
+    aura: Modifier_Aura
+}
+
 function get_attack_damage(stats: Unit_Stats) {
     return stats.base.attack_damage + stats.bonus.attack_damage;
 }
@@ -114,6 +120,42 @@ function starting_unit_status(): Record<Unit_Status, boolean> {
     };
 }
 
+function get_aura_modifiers_affecting_target(target_at: XY, carriers: Aura_Carrier[]): Modifier[] {
+    function rectangular(from: XY, to: XY) {
+        const delta_x = from.x - to.x;
+        const delta_y = from.y - to.y;
+
+        return Math.max(Math.abs(delta_x), Math.abs(delta_y));
+    }
+
+    const result: Modifier[] = [];
+
+    for (const carrier of carriers) {
+        const selector = carrier.aura.selector;
+        const fits_ally = carrier.ally && selector.flags[Aura_Selector_Flag.allies];
+        const fits_enemy = !carrier.ally && selector.flags[Aura_Selector_Flag.enemies];
+        const fits_flags = fits_ally || fits_enemy;
+
+        if (fits_flags && rectangular(target_at, carrier.at) <= selector.rectangle_distance) {
+            result.push(carrier.aura.modifier);
+        }
+    }
+
+    return result;
+}
+
+function build_intrinsic_modifier_list(unit: Unit_Abilities, max_ability_level: number) {
+    const active_intrinsic_modifiers: Modifier[] = [];
+
+    for (const ability of unit.abilities) {
+        if (ability.type == Ability_Type.passive && ability.available_since_level <= max_ability_level) {
+            active_intrinsic_modifiers.push(...ability.intrinsic_modifiers)
+        }
+    }
+
+    return active_intrinsic_modifiers;
+}
+
 function replace_ability(unit: Unit_Abilities, ability_id_to_bench: Ability_Id, currently_benched_ability_id: Ability_Id) {
     const benched_ability_index = unit.ability_bench.findIndex(ability => ability.id == currently_benched_ability_id);
     if (benched_ability_index == -1) return;
@@ -135,16 +177,8 @@ function replace_ability(unit: Unit_Abilities, ability_id_to_bench: Ability_Id, 
     unit.ability_bench[benched_ability_index] = ability_to_bench;
 }
 
-function update_unit_stats_and_abilities_from_modifiers(unit: Unit_Stats & Unit_Abilities, max_ability_level: number, modifiers: Modifier[]) {
-    const active_intrinsic_modifiers: Modifier[] = [];
-
-    for (const ability of unit.abilities) {
-        if (ability.type == Ability_Type.passive && ability.available_since_level <= max_ability_level) {
-            active_intrinsic_modifiers.push(...ability.intrinsic_modifiers)
-        }
-    }
-
-    const recalculated = recalculate_unit_stats_from_modifiers(unit, active_intrinsic_modifiers.concat(modifiers));
+function update_unit_stats_and_abilities_from_modifiers(unit: Unit_Stats & Unit_Abilities, modifiers: Modifier[]) {
+    const recalculated = recalculate_unit_stats_from_modifiers(unit, modifiers);
     unit.bonus = recalculated.bonus;
     unit.status = recalculated.status;
     unit.health = recalculated.health;
@@ -459,6 +493,8 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
         case Modifier_Id.returned_to_hand: return [
             status(Unit_Status.out_of_the_game)
         ];
+
+        case Modifier_Id.aura: return [];
 
         default: unreachable(modifier);
     }

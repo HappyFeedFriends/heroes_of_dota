@@ -557,9 +557,17 @@ class Assert_For_Player_Unit {
         this.index = test.assert_index++;
     }
 
+    private name(): string {
+        switch (this.unit.supertype) {
+            case Unit_Supertype.hero: return enum_to_string(this.unit.type);
+            case Unit_Supertype.creep: return enum_to_string(this.unit.type);
+            case Unit_Supertype.monster: return enum_to_string(this.unit.supertype);
+        }
+    }
+
     has_modifier(id: Modifier_Id) {
         if (!this.unit.modifiers.some(applied => applied.modifier.id == id)) {
-            do_assert(this.index, false, `Failed to find modfier '${enum_to_string(id)}' on unit`);
+            do_assert(this.index, false, `Failed to find modfier '${enum_to_string(id)}' on ${this.name()}`);
         }
 
         return this;
@@ -567,46 +575,46 @@ class Assert_For_Player_Unit {
 
     doesnt_have_modifier(id: Modifier_Id) {
         if (this.unit.modifiers.some(applied => applied.modifier.id == id)) {
-            do_assert(this.index, false, `Supposed not to find modfier '${enum_to_string(id)}' on unit`);
+            do_assert(this.index, false, `Supposed not to find modfier '${enum_to_string(id)}' on ${this.name()}`);
         }
 
         return this;
     }
 
     has_ability(id: Ability_Id) {
-        do_assert(this.index, !!find_unit_ability(this.unit, id), `Failed to find ability '${enum_to_string(id)}' on unit`);
+        do_assert(this.index, !!find_unit_ability(this.unit, id), `Failed to find ability '${enum_to_string(id)}' on ${this.name()}`);
 
         return this;
     }
 
     has_benched_ability(id: Ability_Id) {
         if (!this.unit.ability_bench.some(ability => ability.id == id)) {
-            do_assert(this.index, false, `Failed to find benched ability '${enum_to_string(id)}' on unit`);
+            do_assert(this.index, false, `Failed to find benched ability '${enum_to_string(id)}' on ${this.name()}`);
         }
 
         return this;
     }
 
     has_health(expected: number) {
-        do_assert(this.index, this.unit.health == expected, `Expected ${expected} health, actual ${this.unit.health}`);
+        do_assert(this.index, this.unit.health == expected, `Expected ${this.name()} to have ${expected} health, actual ${this.unit.health}`);
 
         return this;
     }
 
     has_max_health(expected: number) {
-        do_assert(this.index, get_max_health(this.unit) == expected, `Expected ${expected} max health, actual ${get_max_health(this.unit)}`);
+        do_assert(this.index, get_max_health(this.unit) == expected, `Expected ${this.name()} to have ${expected} max health, actual ${get_max_health(this.unit)}`);
 
         return this;
     }
 
     has_move_points(expected: number) {
-        do_assert(this.index, this.unit.move_points == expected, `Expected ${expected} move points, actual ${this.unit.move_points}`);
+        do_assert(this.index, this.unit.move_points == expected, `Expected ${this.name()} to have ${expected} move points, actual ${this.unit.move_points}`);
 
         return this;
     }
 
     has_attack_damage(expected: number) {
-        do_assert(this.index, get_attack_damage(this.unit) == expected, `Expected ${expected} attack damage, actual ${get_attack_damage(this.unit)}`);
+        do_assert(this.index, get_attack_damage(this.unit) == expected, `Expected ${this.name()} to have ${expected} attack damage, actual ${get_attack_damage(this.unit)}`);
 
         return this;
     }
@@ -614,13 +622,13 @@ class Assert_For_Player_Unit {
     is_at(xy: XY) {
         const actual = this.unit.position;
 
-        do_assert(this.index, xy_equal(xy, actual), `Expected unit to be at [${xy.x}, ${xy.y}], actual [${actual.x}, ${actual.y}]`);
+        do_assert(this.index, xy_equal(xy, actual), `Expected ${this.name()} to be at [${xy.x}, ${xy.y}], actual [${actual.x}, ${actual.y}]`);
 
         return this;
     }
 
     is_dead() {
-        do_assert(this.index, this.unit.dead, `Expected unit to be dead`);
+        do_assert(this.index, this.unit.dead, `Expected ${this.name()} to be dead`);
 
         return this;
     }

@@ -43,7 +43,13 @@ declare const enum Modifier_Id {
     rooted = 305,
     replace_ability = 306,
 
-    returned_to_hand = 1000
+    returned_to_hand = 400,
+    aura = 1000
+}
+
+declare const enum Aura_Selector_Flag {
+    allies = 0,
+    enemies = 1
 }
 
 type Modifier = {
@@ -153,7 +159,16 @@ type Modifier = {
     move_bonus: number
 } | {
     id: Modifier_Id.returned_to_hand
+} | {
+    id: Modifier_Id.aura
+    selector: {
+        rectangle_distance: number
+        flags: Record<Aura_Selector_Flag, boolean>
+    },
+    modifier: Modifier
 }
+
+type Modifier_Aura = Find_By_Id<Modifier, Modifier_Id.aura>
 
 type Delta_Modifier_Effect_Applied_Base = {
     type: Delta_Type.modifier_effect_applied
