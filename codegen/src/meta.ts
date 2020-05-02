@@ -4,6 +4,7 @@ import {SyntaxKind, TypeFlags} from "typescript";
 import * as utils from "tsutils";
 import {
     SimpleType,
+    SimpleTypeEnum,
     SimpleTypeEnumMember,
     SimpleTypeKind,
     SimpleTypeMemberNamed,
@@ -103,29 +104,6 @@ export default function run_transformer(program: ts.Program, options: Options): 
             });
     }
 
-    function any_to_literal(any: any): ts.Expression {
-        if (any == undefined) {
-            return ts.createLiteral(undefined);
-        }
-
-        switch (typeof any) {
-            case "string":
-            case "number":
-            case "boolean": return ts.createLiteral(any);
-
-            case "object": {
-                if (Array.isArray(any)) {
-                    return ts.createArrayLiteral(any.map(any_to_literal));
-                } else {
-                    return ts.createObjectLiteral(Object.entries(any)
-                        .map(([key, value]) => {
-                            return ts.createPropertyAssignment(key, any_to_literal(value));
-                        }));
-                }
-            }
-        }
-    }
-
     // Stupidscript won't allow me to use those directly...
     const type_string: Type_Kind.string = 0;
     const type_number: Type_Kind.number = 1;
@@ -144,199 +122,195 @@ export default function run_transformer(program: ts.Program, options: Options): 
     const type_generic: Type_Kind.generic = 14;
 
     type Serialization_Context = {
-        enums: Enum_Type[]
+        enums: SimpleTypeEnum[]
+        named_types: Record<string, ts.Expression>
+        back_patches: Back_Patch[]
     }
 
-    function serialize_type_to_function(type: Type) {
+    type Back_Patch = {
+        with_what: string
+        path: Path_Fragment[]
+    }
+
+    type Path_Fragment = number | string
+
+    function serialize_type_to_function(type: SimpleType) {
         const context: Serialization_Context = {
             enums: [],
+            named_types: {},
+            back_patches: []
         };
 
-        const root_type = serialize_type(type, context);
+        const root_name = "__root";
+        context.named_types[root_name] = serialize_type(type, context, [ root_name ]);
 
-        const enum_declarations = context.enums.map(en => {
-            const declaration = ts.createVariableDeclaration(en.name, undefined, any_to_literal(en));
-            return ts.createVariableStatement(undefined, [ declaration ]);
-        });
+        const statements: ts.Statement[] = [];
+
+        for (const [name, expression] of Object.entries(context.named_types)) {
+            console.log("Emit", name);
+            const declaration = ts.createVariableDeclaration(name, undefined, expression);
+            statements.push(ts.createVariableStatement(undefined, [ declaration ]));
+        }
+
+        for (const patch of context.back_patches) {
+            let chain: ts.Expression | undefined = undefined;
+
+            for (let index = 1; index < patch.path.length; index++) {
+                const fragment = patch.path[index];
+                const parent = chain ? chain : ts.createIdentifier(patch.path[0] as string);
+
+                if (typeof fragment == "string") {
+                    chain = ts.createPropertyAccess(parent, fragment);
+                } else {
+                    chain = ts.createElementAccess(parent, fragment);
+                }
+            }
+
+            statements.push(ts.createExpressionStatement(ts.createAssignment(chain, ts.createIdentifier(patch.with_what))));
+        }
 
         return ts.createImmediatelyInvokedArrowFunction([
-            ...enum_declarations,
-            ts.createReturn(root_type)
+            ...statements,
+            ts.createReturn(ts.createIdentifier(root_name))
         ]);
     }
 
-    function serialize_type(type: Type, context: Serialization_Context): ts.Expression {
+    function serialize_type(type: SimpleType, context: Serialization_Context, path: Path_Fragment[]): ts.Expression {
         switch (type.kind) {
-            case type_object: {
-                const members = type.members.map(member => ts.createObjectLiteral([
-                    ts.createPropertyAssignment("optional", any_to_literal(member.optional)),
-                    ts.createPropertyAssignment("name", any_to_literal(member.name)),
-                    ts.createPropertyAssignment("type", serialize_type(member.type, context))
+            case SimpleTypeKind.ALIAS: {
+                const already_serialized = context.named_types[type.name];
+
+                if (!already_serialized) {
+                    context.named_types[type.name] = ts.createLiteral(0); // Placeholder for recursion
+                    context.named_types[type.name] = serialize_type(type.target, context, [ type.name ]);
+                    console.log("Remember", type.name, "at", path);
+                }
+
+                context.back_patches.push({
+                    with_what: type.name,
+                    path: path
+                });
+
+                return ts.createLiteral("");
+            }
+
+            case SimpleTypeKind.ENUM: {
+                const members = type.types.map((member, index) => serialize_type(member.type, context, path.concat("members", index)));
+
+                console.log("Remember enum", type.name);
+
+                return ts.createObjectLiteral([
+                    ts.createPropertyAssignment("kind", ts.createLiteral(type_enum)),
+                    ts.createPropertyAssignment("name", ts.createLiteral(type.name)),
+                    ts.createPropertyAssignment("members", ts.createArrayLiteral(members)),
+                ], true);
+            }
+
+            case SimpleTypeKind.CIRCULAR_TYPE_REF: {
+                return serialize_type(type.ref, context, path);
+            }
+
+            case SimpleTypeKind.OBJECT: {
+                const members = type.members.map((member, index) => ts.createObjectLiteral([
+                    ts.createPropertyAssignment("optional", ts.createLiteral(member.optional)),
+                    ts.createPropertyAssignment("name", ts.createLiteral(member.name)),
+                    ts.createPropertyAssignment("type", serialize_type(member.type, context, path.concat("members", index, "type")))
                 ], true));
 
                 return ts.createObjectLiteral([
-                    ts.createPropertyAssignment("kind", any_to_literal(type.kind)),
+                    ts.createPropertyAssignment("kind", ts.createLiteral(type_object)),
                     ts.createPropertyAssignment("members", ts.createArrayLiteral(members))
                 ], true);
             }
 
-            case type_generic: {
-                const type_args = type.arguments.map(member_type => serialize_type(member_type, context));
+            case SimpleTypeKind.GENERIC_ARGUMENTS: {
+                const type_args = type.typeArguments.map((member_type, index) => serialize_type(member_type, context, path.concat("arguments", index)));
 
                 return ts.createObjectLiteral([
-                    ts.createPropertyAssignment("kind", any_to_literal(type.kind)),
-                    ts.createPropertyAssignment("target", serialize_type(type.target, context)),
+                    ts.createPropertyAssignment("kind", ts.createLiteral(type_generic)),
+                    ts.createPropertyAssignment("target", serialize_type(type.target, context, path.concat("target"))),
                     ts.createPropertyAssignment("arguments", ts.createArrayLiteral(type_args))
                 ], true);
             }
 
-            case type_intersection:
-            case type_union: {
-                const types = type.types.map(member_type => serialize_type(member_type, context));
+            case SimpleTypeKind.INTERSECTION: {
+                const types = type.types.map((member_type, index) => serialize_type(member_type, context, path.concat("types", index)));
 
                 return ts.createObjectLiteral([
-                    ts.createPropertyAssignment("kind", any_to_literal(type.kind)),
+                    ts.createPropertyAssignment("kind", ts.createLiteral(type_intersection)),
                     ts.createPropertyAssignment("types", ts.createArrayLiteral(types))
                 ], true);
             }
 
-            case type_enum_member: {
-                return any_to_literal(type);
-            }
+            case SimpleTypeKind.UNION: {
+                const types = type.types.map((member_type, index) => serialize_type(member_type, context, path.concat("types", index)));
 
-            case type_enum: {
-                if (!context.enums.find(target => target.name == type.name)) {
-                    context.enums.push(type);
-                }
-
-                return ts.createIdentifier(type.name);
-            }
-
-            case type_array: {
                 return ts.createObjectLiteral([
-                    ts.createPropertyAssignment("kind", any_to_literal(type.kind)),
-                    ts.createPropertyAssignment("type", serialize_type(type.type, context))
+                    ts.createPropertyAssignment("kind", ts.createLiteral(type_union)),
+                    ts.createPropertyAssignment("types", ts.createArrayLiteral(types))
                 ], true);
             }
 
-            case type_any:
-            case type_undefined:
-            case type_string:
-            case type_number:
-            case type_boolean:
-            case type_number_literal:
-            case type_string_literal:
-            case type_boolean_literal: {
-                return any_to_literal(type);
-            }
-        }
-    }
-
-    function simple_type_to_type(type: SimpleType, error_node: ts.Node): Type {
-        function primitive(type: SimpleTypePrimitive): Primitive {
-            switch (type.kind) {
-                case SimpleTypeKind.STRING: return { kind: type_string };
-                case SimpleTypeKind.NUMBER: return { kind: type_number };
-                case SimpleTypeKind.BOOLEAN: return { kind: type_boolean };
-                case SimpleTypeKind.UNDEFINED: return { kind: type_undefined };
-
-                case SimpleTypeKind.NUMBER_LITERAL: return {
-                    kind: type_number_literal,
-                    value: type.value
-                };
-
-                case SimpleTypeKind.STRING_LITERAL: return {
-                    kind: type_string_literal,
-                    value: type.value
-                };
-
-                case SimpleTypeKind.BOOLEAN_LITERAL: return {
-                    kind: type_boolean_literal,
-                    value: type.value
-                };
-            }
-        }
-
-        function enum_member(type: SimpleTypeEnumMember): Enum_Member_Type {
-            return {
-                kind: type_enum_member,
-                name: type.name,
-                full_name: type.fullName,
-                type: primitive(type.type)
-            }
-        }
-
-        switch (type.kind) {
-            case SimpleTypeKind.ALIAS: {
-                return simple_type_to_type(resolve_alias(type.target), error_node);
+            case SimpleTypeKind.ENUM_MEMBER: {
+                return ts.createObjectLiteral([
+                    ts.createPropertyAssignment("kind", ts.createLiteral(type_enum_member)),
+                    ts.createPropertyAssignment("name", ts.createLiteral(type.name)),
+                    ts.createPropertyAssignment("full_name", ts.createLiteral(type.fullName)),
+                    ts.createPropertyAssignment("type", serialize_type(type.type, context, path.concat("type"))),
+                ], true);
             }
 
-            case SimpleTypeKind.OBJECT: {
-                return {
-                    kind: type_object,
-                    members: type.members.map(member => ({
-                        name: member.name,
-                        optional: member.optional,
-                        type: simple_type_to_type(member.type, error_node)
-                    }))
-                }
+            case SimpleTypeKind.ARRAY: {
+                return ts.createObjectLiteral([
+                    ts.createPropertyAssignment("kind", ts.createLiteral(type_array)),
+                    ts.createPropertyAssignment("type", serialize_type(type.type, context, path.concat("type")))
+                ], true);
             }
 
-            case SimpleTypeKind.UNION: {
-                return {
-                    kind: type_union,
-                    types: type.types.map(type => simple_type_to_type(type, error_node))
-                }
+            case SimpleTypeKind.ANY: {
+                return ts.createObjectLiteral([ ts.createPropertyAssignment("kind", ts.createLiteral(type_any)) ]);
             }
 
-            case SimpleTypeKind.INTERSECTION: {
-                return {
-                    kind: type_intersection,
-                    types: type.types.map(type => simple_type_to_type(type, error_node))
-                }
+            case SimpleTypeKind.UNDEFINED:{
+                return ts.createObjectLiteral([ ts.createPropertyAssignment("kind", ts.createLiteral(type_undefined)) ]);
             }
 
-            case SimpleTypeKind.ENUM: {
-                return {
-                    kind: type_enum,
-                    name: type.name,
-                    members: type.types.map(enum_member)
-                }
+            case SimpleTypeKind.STRING:{
+                return ts.createObjectLiteral([ ts.createPropertyAssignment("kind", ts.createLiteral(type_string)) ]);
             }
 
-            case SimpleTypeKind.ENUM_MEMBER: return enum_member(type);
-
-            case SimpleTypeKind.ARRAY: return {
-                kind: type_array,
-                type: simple_type_to_type(type.type, error_node)
-            };
-
-            case SimpleTypeKind.ANY: return { kind: type_any };
-
-            case SimpleTypeKind.CIRCULAR_TYPE_REF: {
-                return simple_type_to_type(type.ref, error_node);
+            case SimpleTypeKind.NUMBER:{
+                return ts.createObjectLiteral([ ts.createPropertyAssignment("kind", ts.createLiteral(type_number)) ]);
             }
 
-            case SimpleTypeKind.GENERIC_ARGUMENTS: {
-                return {
-                    kind: type_generic,
-                    name: type.name,
-                    arguments: type.typeArguments.map(argument => simple_type_to_type(argument, error_node)),
-                    target: simple_type_to_type(type.target, error_node)
-                };
-            }
-
-            case SimpleTypeKind.NUMBER_LITERAL:
-            case SimpleTypeKind.STRING_LITERAL:
-            case SimpleTypeKind.BOOLEAN_LITERAL:
-            case SimpleTypeKind.UNDEFINED:
-            case SimpleTypeKind.STRING:
-            case SimpleTypeKind.NUMBER:
             case SimpleTypeKind.BOOLEAN: {
-                return primitive(type);
+                return ts.createObjectLiteral([ ts.createPropertyAssignment("kind", ts.createLiteral(type_boolean)) ]);
             }
 
-            default: error_out(error_node, `Unsupported type kind ${type.kind}`);
+            case SimpleTypeKind.NUMBER_LITERAL: {
+                return ts.createObjectLiteral([
+                    ts.createPropertyAssignment("kind", ts.createLiteral(type_number_literal)),
+                    ts.createPropertyAssignment("value", ts.createLiteral(type.value))
+                ], true);
+            }
+
+            case SimpleTypeKind.STRING_LITERAL:{
+                return ts.createObjectLiteral([
+                    ts.createPropertyAssignment("kind", ts.createLiteral(type_string_literal)),
+                    ts.createPropertyAssignment("value", ts.createLiteral(type.value))
+                ], true);
+            }
+
+            case SimpleTypeKind.BOOLEAN_LITERAL: {
+                return ts.createObjectLiteral([
+                    ts.createPropertyAssignment("kind", ts.createLiteral(type_boolean_literal)),
+                    ts.createPropertyAssignment("value", ts.createLiteral(type.value))
+                ], true);
+            }
+
+            default: {
+                throw "Unsupported type " + type.kind;
+            }
         }
     }
 
@@ -362,9 +336,9 @@ export default function run_transformer(program: ts.Program, options: Options): 
 
                 if (function_name == "type_of") {
                     const argument = resolve_alias(toSimpleType(node.typeArguments[0], checker));
-                    const type = simple_type_to_type(argument, node);
+                    // const type = simple_type_to_type(argument, node);
 
-                    return serialize_type_to_function(type);
+                    return serialize_type_to_function(argument);
                 }
 
                 if (function_name == "enum_to_string") {
