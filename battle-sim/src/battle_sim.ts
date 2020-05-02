@@ -1149,12 +1149,15 @@ function update_unit_modifier_state(battle: Battle, unit: Unit) {
     // @Performance is bad in case we have a lot of modifiers
     for (const carrier of battle.units) {
         for (const applied of carrier.modifiers) {
-            if (applied.modifier.id == Modifier_Id.aura) {
-                carriers.push({
-                    ally: are_units_allies(unit, carrier),
-                    at: carrier.position,
-                    aura: applied.modifier
-                })
+            const changes = calculate_modifier_changes(applied.modifier);
+            for (const change of changes) {
+                if (change.type == Modifier_Change_Type.apply_aura) {
+                    carriers.push({
+                        ally: are_units_allies(unit, carrier),
+                        at: carrier.position,
+                        aura: change
+                    });
+                }
             }
         }
     }
@@ -1500,6 +1503,11 @@ function collapse_unit_target_ability_use(battle: Battle, caster: Unit, target: 
 
         case Ability_Id.shaker_enchant_totem_attack: {
             change_health(battle, source, target, cast.target);
+            break;
+        }
+
+        case Ability_Id.bounty_hunter_track: {
+            apply_modifier(battle, source, target, cast.modifier);
             break;
         }
 

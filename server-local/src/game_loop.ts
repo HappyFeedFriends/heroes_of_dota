@@ -24,11 +24,14 @@ let current_camera_target: Camera_Target = {};
 let editor_override_camera_target: Camera_Target | undefined = undefined;
 let reset_camera_override_at = 0;
 let suppress_camera_change = false;
-let target_environment = Environment.day;
 
 let state_transition: Player_State_Data | undefined = undefined;
 
 let local_api_handlers: Record<number, (body: object) => object> = {};
+
+globalThis.parseInt = function(this: any, input: string) {
+    return tonumber(input);
+};
 
 function print_table(a: object, indent: string = "") {
     let [index, value] = next(a, undefined);
@@ -42,39 +45,6 @@ function print_table(a: object, indent: string = "") {
 
         [index, value] = next(a, index);
     }
-}
-
-function from_client_bool(source: boolean): source is true {
-    return source as any as number == 1;
-}
-
-// Panorama arrays are passed as dictionaries with string indices
-function from_client_array<T>(array: Array<T>): Array<T> {
-    let [index, value] = next(array, undefined);
-
-    const result: Array<T> = [];
-
-    while (index != undefined) {
-        result[tonumber(index.toString())] = value;
-
-        [index, value] = next(array, index);
-    }
-
-    return result
-}
-
-function from_client_tuple<T>(array: T): T {
-    let [index, value] = next(array, undefined);
-
-    const result = [];
-
-    while (index != undefined) {
-        result[tonumber(index.toString())] = value;
-
-        [index, value] = next(array, index);
-    }
-
-    return result as any as T;
 }
 
 function unreachable(x: never): never {
@@ -219,6 +189,7 @@ function game_net_table(game: Game): Game_Net_Table {
                     },
                     grid_size: battle.grid_size,
                     current_visual_head: battle.delta_head,
+                    current_actual_head: get_battle_remote_head(),
                     entity_id_to_unit_data: entity_id_to_unit_data,
                     entity_id_to_rune_id: entity_id_to_rune_id,
                     entity_id_to_shop_id: entity_id_to_shop_id,
@@ -289,7 +260,17 @@ function on_raw_custom_event_async<T>(event_name: string, callback: (data: T) =>
 }
 
 function on_custom_event_async<T extends To_Server_Event_Type>(type: T, callback: (data: Find_To_Server_Payload<T>) => void) {
-    CustomGameEventManager.RegisterListener(`${Prefixes.to_server_event}${type}`, (user_id, event) => fork(() => callback(event as unknown as Find_To_Server_Payload<T>)));
+    const parser = server_event_payload_parser(type);
+
+    CustomGameEventManager.RegisterListener(`${Prefixes.to_server_event}${type}`, (user_id, event) => {
+        fork(() => {
+            const parsed = parser(event);
+
+            if (parsed) {
+                callback(parsed);
+            }
+        });
+    });
 }
 
 function fire_event<T extends To_Client_Event_Type>(type: T, payload: Find_To_Client_Payload<T>) {
@@ -474,7 +455,16 @@ function reconnect_loop(game: Game) {
 }
 
 function register_local_api_handler<T extends Local_Api_Request_Type>(type: T, callback: (request: Find_Local_Request<T>) => Find_Local_Response<T>) {
-    local_api_handlers[type] = body => callback(body as Find_Local_Request<T>);
+    const parser = local_api_request_parser(type);
+
+    local_api_handlers[type] = body => {
+        const parsed = parser(body);
+        if (parsed) {
+            return callback(parsed);
+        }
+
+        throw "Error";
+    };
 }
 
 function submit_and_query_movement_loop(game: Game, map: Map_State) {
@@ -660,23 +650,12 @@ function game_loop() {
     });
 
     on_custom_event_async(To_Server_Event_Type.put_deltas, event => {
-        merge_battle_deltas(battle, event.from_head, from_client_array(event.deltas));
+        merge_battle_deltas(battle, event.from_head, event.deltas);
         merge_delta_paths_from_client(battle, event.delta_paths);
     });
 
     on_custom_event_async(To_Server_Event_Type.fast_forward, event => {
-        fast_forward_from_snapshot(battle, {
-            has_started: from_client_bool(event.has_started),
-            player_hand: from_client_array(event.player_hand),
-            players: from_client_array(event.players),
-            effects: from_client_array(event.effects),
-            units: from_client_array(event.units),
-            runes: from_client_array(event.runes),
-            shops: from_client_array(event.shops),
-            trees: from_client_array(event.trees),
-            delta_head: event.delta_head
-        });
-
+        fast_forward_from_snapshot(battle, event);
         update_game_net_table(game);
     });
 

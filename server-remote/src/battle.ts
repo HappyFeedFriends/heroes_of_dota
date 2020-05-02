@@ -64,7 +64,7 @@ function query_units_for_point_target_ability(battle: Battle, caster: Unit, targ
     return query_units_with_selector(battle, caster.position, target, targeting.selector);
 }
 
-function apply_ability_effect_delta<T extends Ability_Effect>(effect: T): Delta_Ability_Effect_Applied<T> {
+function apply_ability_effect_delta(effect: Ability_Effect): Delta_Ability_Effect_Applied {
     return {
         type: Delta_Type.ability_effect_applied,
         effect: effect
@@ -1058,17 +1058,6 @@ function submit_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abil
             break;
         }
 
-        case Ability_Id.bounty_hunter_jinada_attack: {
-            submit_battle_delta(battle, {
-                ...base,
-                ability_id: ability.id,
-                target: basic_attack_unit_health_change(unit, target),
-                modifier: modifier(battle, ability.modifier, 1)
-            });
-
-            break;
-        }
-
         case Ability_Id.shaker_enchant_totem_attack: {
             submit_battle_delta(battle, {
                 ...base,
@@ -1087,6 +1076,29 @@ function submit_ability_cast_unit_target(battle: Battle_Record, unit: Unit, abil
 
             break;
         }
+
+        case Ability_Id.bounty_hunter_jinada_attack: {
+            submit_battle_delta(battle, {
+                ...base,
+                ability_id: ability.id,
+                target: basic_attack_unit_health_change(unit, target),
+                modifier: modifier(battle, ability.modifier, 1)
+            });
+
+            break;
+        }
+
+        case Ability_Id.bounty_hunter_track: {
+            submit_battle_delta(battle, {
+                ...base,
+                ability_id: ability.id,
+                modifier: modifier(battle, ability.modifier)
+            });
+
+            break;
+        }
+
+        default: unreachable(ability);
     }
 }
 
@@ -2081,7 +2093,6 @@ function resolve_end_turn_effects(battle: Battle_Record) {
         submit_battle_delta(battle, apply_ability_effect_delta({
             ability_id: Ability_Id.pocket_tower_attack,
             source_unit_id: unit.id,
-            target_unit_id: target.id,
             damage_dealt: basic_attack_unit_health_change(unit, target)
         }));
     });

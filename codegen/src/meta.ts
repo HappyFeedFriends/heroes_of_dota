@@ -9,13 +9,15 @@ import {
     SimpleTypeKind,
     SimpleTypeMemberNamed,
     SimpleTypeObject,
-    SimpleTypePrimitive,
     toSimpleType
 } from "ts-simple-type";
 import {readFileSync} from "fs";
 import * as path from "path";
 
 export interface Options {
+    // Unfortunately without proper type information TSTL is unable to figure out array access identifier offset
+    // by itself and we currently can't create new types on the fly, so we have to manually alter indices
+    lua_array_access: boolean
 }
 
 export default function run_transformer(program: ts.Program, options: Options): ts.TransformerFactory<ts.Node> {
@@ -148,7 +150,8 @@ export default function run_transformer(program: ts.Program, options: Options): 
 
         for (const [name, expression] of Object.entries(context.named_types)) {
             const declaration = ts.createVariableDeclaration(name, undefined, expression);
-            statements.push(ts.createVariableStatement(undefined, [ declaration ]));
+            const declaration_list = ts.createVariableDeclarationList([ declaration ], ts.NodeFlags.Const);
+            statements.push(ts.createVariableStatement(undefined, declaration_list));
         }
 
         for (const patch of context.back_patches) {
@@ -161,9 +164,12 @@ export default function run_transformer(program: ts.Program, options: Options): 
                 if (typeof fragment == "string") {
                     chain = ts.createPropertyAccess(parent, fragment);
                 } else {
-                    chain = ts.createElementAccess(parent, fragment);
+                    chain = ts.createElementAccess(parent, options.lua_array_access ? (fragment + 1) : fragment);
                 }
             }
+
+            // @Hack to shut up TSTL
+            chain.parent = ts.createIdentifier("");
 
             statements.push(ts.createExpressionStatement(ts.createAssignment(chain, ts.createIdentifier(patch.with_what))));
         }
@@ -193,7 +199,7 @@ export default function run_transformer(program: ts.Program, options: Options): 
             }
 
             case SimpleTypeKind.ENUM: {
-                const members = type.types.map((member, index) => serialize_type(member.type, context, path.concat("members", index)));
+                const members = type.types.map((member, index) => serialize_type(member, context, path.concat("members", index)));
 
                 return ts.createObjectLiteral([
                     ts.createPropertyAssignment("kind", ts.createLiteral(type_enum)),
@@ -332,8 +338,6 @@ export default function run_transformer(program: ts.Program, options: Options): 
 
                 if (function_name == "type_of") {
                     const argument = resolve_alias(toSimpleType(node.typeArguments[0], checker));
-                    // const type = simple_type_to_type(argument, node);
-
                     return serialize_type_to_function(argument);
                 }
 

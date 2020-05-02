@@ -19,6 +19,8 @@ declare const enum Modifier_Id {
     veno_poison_nova = 21,
     bounty_hunter_shadow_walk = 22,
     bounty_hunter_jinada = 23,
+    bounty_hunter_track_aura = 24,
+    bounty_hunter_track = 25,
 
     item_heart_of_tarrasque = 101,
     item_iron_branch = 102,
@@ -121,6 +123,13 @@ type Modifier = {
     id: Modifier_Id.bounty_hunter_jinada
     move_reduction: number
 } | {
+    id: Modifier_Id.bounty_hunter_track
+    move_bonus: number
+} | {
+    id: Modifier_Id.bounty_hunter_track_aura
+    selector: Aura_Selector
+    modifier: Modifier
+} | {
     id: Modifier_Id.item_heart_of_tarrasque
     health: number
     regeneration_per_turn: number
@@ -161,14 +170,14 @@ type Modifier = {
     id: Modifier_Id.returned_to_hand
 } | {
     id: Modifier_Id.aura
-    selector: {
-        rectangle_distance: number
-        flags: Record<Aura_Selector_Flag, boolean>
-    },
+    selector: Aura_Selector
     modifier: Modifier
 }
 
-type Modifier_Aura = Find_By_Id<Modifier, Modifier_Id.aura>
+type Aura_Selector = {
+    rectangle_distance: number
+    flags: Record<Aura_Selector_Flag, boolean>
+}
 
 type Delta_Modifier_Effect_Applied_Base = {
     type: Delta_Type.modifier_effect_applied

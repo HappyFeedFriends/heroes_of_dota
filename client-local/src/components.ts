@@ -353,6 +353,12 @@ function assemble_modifier_tooltip_strings(modifier: Modifier): string[] {
                 break;
             }
 
+            case Modifier_Change_Type.apply_aura: {
+                result.push("Aura");
+                result.push(...assemble_modifier_tooltip_strings(change.modifier));
+                break;
+            }
+
             default: unreachable(change);
         }
     }

@@ -37,6 +37,7 @@ type Unit_Base = Unit_Stats & Unit_Abilities & {
     handle: CDOTA_BaseNPC_Hero
     position: XY
     modifiers: Applied_Modifier[]
+    derived_modifiers: Derived_Modifier[]
     dead: boolean
     hidden: boolean
     hidden_from_snapshot: boolean
@@ -121,12 +122,20 @@ type Ranged_Attack_Spec = {
 }
 
 type Applied_Modifier = Modifier_Data & {
-    state: {
-        visible: true
-        visuals: Modifier_Visuals_Container[]
-    } | {
-        visible: false
-    }
+    state: Modifier_Visuals_State
+}
+
+type Derived_Modifier = {
+    modifier: Modifier
+    state: Modifier_Visuals_State
+    flagged_for_removal: boolean
+}
+
+type Modifier_Visuals_State = {
+    visible: true
+    visuals: Modifier_Visuals_Container[]
+} | {
+    visible: false
 }
 
 type Active_Timed_Effect_Visuals = {
@@ -273,7 +282,7 @@ function merge_delta_paths_from_client(battle: Battle, delta_paths: Move_Delta_P
     for (const delta_index_string in delta_paths) {
         const delta_index = tonumber(delta_index_string);
 
-        battle.delta_paths[delta_index] = from_client_array(delta_paths[delta_index_string]);
+        battle.delta_paths[delta_index] = delta_paths[delta_index_string];
     }
 }
 
@@ -655,6 +664,7 @@ function unit_base(unit_id: Unit_Id, info: Unit_Creation_Info, definition: Unit_
         status: starting_unit_status(),
         move_points: definition.move_points,
         modifiers: [],
+        derived_modifiers: [],
         dead: false,
         hidden: false,
         hidden_from_snapshot: false,
@@ -700,7 +710,7 @@ function spawn_creep_for_battle(game: Game, spawn: Creep_Spawn_Effect, owner_id:
         traits: creep_traits_by_type(spawn.creep_type)
     };
 
-    for (const modifier of from_client_array(spawn.intrinsic_modifiers)) {
+    for (const modifier of spawn.intrinsic_modifiers) {
         apply_modifier(game, creep, modifier);
     }
 
@@ -871,7 +881,7 @@ type Replace_Target_Unit_Id<T> = Omit<T, "target_unit_id"> & { unit: Unit };
 function filter_and_map_existing_units<T extends { target_unit_id: Unit_Id }>(array: T[]): Replace_Target_Unit_Id<T>[] {
     const result: Replace_Target_Unit_Id<T>[] = [];
 
-    for (const member of from_client_array(array)) {
+    for (const member of array) {
         const unit = find_unit_by_id(member.target_unit_id);
 
         if (unit) {
@@ -1249,12 +1259,11 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             unit_emit_sound(unit, "Hero_SkywrathMage.MysticFlare.Cast");
             wait(0.5);
 
-            const targets = from_client_array(cast.targets);
             const tick_time = 0.12;
 
             let total_time = cast.damage_remaining * tick_time;
 
-            for (const target of targets) {
+            for (const target of cast.targets) {
                 total_time += tick_time * (-target.value_delta);
             }
 
@@ -1270,7 +1279,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
                 .with_point_value(0, world_target.x, world_target.y, world_target.z)
                 .with_point_value(1, circle_radius, arbitrary_long_duration, tick_time);
 
-            const damaged_units = targets.map(target => ({
+            const damaged_units = cast.targets.map(target => ({
                 unit_id: target.target_unit_id,
                 damage_remaining: -target.value_delta
             }));
@@ -1331,7 +1340,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
 
             fire_breath_projectile(stem_length, world_from, direction);
 
-            for (const target of from_client_array(cast.targets)) {
+            for (const target of cast.targets) {
                 const target_unit = find_unit_by_id(target.target_unit_id);
 
                 if (target_unit) {
@@ -1366,7 +1375,7 @@ function play_ground_target_ability_delta(game: Game, unit: Unit, cast: Delta_Gr
             unit_play_activity(unit, GameActivity_t.ACT_DOTA_ATTACK);
             tracking_projectile_to_point(unit, cast.target_position, "particles/units/heroes/hero_dragon_knight/dragon_knight_dragon_tail_dragonform_proj.vpcf", 1200);
 
-            for (const target of from_client_array(cast.targets)) {
+            for (const target of cast.targets) {
                 const target_unit = find_unit_by_id(target.target_unit_id);
 
                 if (target_unit) {
@@ -1697,10 +1706,68 @@ function modifier_to_visuals(target: Unit, modifier: Modifier): Modifier_Visuals
         case Modifier_Id.veno_venomous_gale: return follow("particles/units/heroes/hero_venomancer/venomancer_gale_poison_debuff.vpcf");
         case Modifier_Id.veno_poison_nova: return follow("particles/units/heroes/hero_venomancer/venomancer_poison_debuff_nova.vpcf");
         case Modifier_Id.bounty_hunter_jinada: return from_buff("Modifier_Bounty_Hunter_Jinada");
+        case Modifier_Id.bounty_hunter_track: return follow("particles/units/heroes/hero_bounty_hunter/bounty_hunter_track_haste.vpcf");
+        case Modifier_Id.bounty_hunter_track_aura: return from_fx(
+            fx_follow_unit("particles/units/heroes/hero_bounty_hunter/bounty_hunter_track_trail.vpcf", target).to_unit_attach_point(1, target, "attach_hitloc")
+        );
     }
 }
 
 function update_unit_modifier_state(unit: Unit) {
+    function update_derived_modifiers(updated_derived_modifiers: Modifier[]) {
+        const new_derived_modifiers: Derived_Modifier[] = [];
+
+        for (const existing of unit.derived_modifiers) {
+            existing.flagged_for_removal = true;
+        }
+
+        for (const modifier of updated_derived_modifiers) {
+            // Modifier_Id is an identity here, which can cause issues if modifier visuals derive THEIR identity from
+            // more data than just an ID
+            const existing = unit.derived_modifiers.find(existing => existing.modifier.id == modifier.id);
+
+            if (existing) {
+                existing.flagged_for_removal = false;
+                new_derived_modifiers.push(existing);
+            } else {
+                new_derived_modifiers.push({
+                    modifier: modifier,
+                    state: { visible: false },
+                    flagged_for_removal: false
+                })
+            }
+        }
+
+        for (const existing of unit.derived_modifiers) {
+            if (existing.flagged_for_removal) {
+                hide_modifier_visuals(existing.state);
+            }
+        }
+
+        unit.derived_modifiers = new_derived_modifiers;
+    }
+
+    function update_modifier_visibility(state: Modifier_Visuals_State, modifier: Modifier, should_be_hidden: boolean): Modifier_Visuals_State {
+        if (state.visible && should_be_hidden) {
+            return hide_modifier_visuals(state);
+        }
+
+        if (!state.visible && !should_be_hidden) {
+            const visuals = modifier_to_visuals(unit, modifier);
+
+            if (visuals) {
+                print("Created visuals for", enum_to_string(modifier.id));
+            }
+
+            return {
+                visible: true,
+                visuals: visuals ? visuals : []
+            }
+        }
+
+        return state;
+    }
+
     let max_ability_level;
 
     switch (unit.supertype) {
@@ -1714,40 +1781,51 @@ function update_unit_modifier_state(unit: Unit) {
     // @Performance is bad in case we have a lot of modifiers
     for (const carrier of battle.units) {
         for (const applied of carrier.modifiers) {
-            if (applied.modifier.id == Modifier_Id.aura) {
-                carriers.push({
-                    ally: are_units_allies(unit, carrier),
-                    at: carrier.position,
-                    aura: applied.modifier
-                })
+            const changes = calculate_modifier_changes(applied.modifier);
+            for (const change of changes) {
+                if (change.type == Modifier_Change_Type.apply_aura) {
+                    carriers.push({
+                        ally: are_units_allies(unit, carrier),
+                        at: carrier.position,
+                        aura: change
+                    })
+                }
             }
         }
     }
 
+    const intrinsic_modifiers = build_intrinsic_modifier_list(unit, max_ability_level);
+    const aura_modifiers = get_aura_modifiers_affecting_target(unit.position, carriers);
+
     // TODO Just for style... Fix once TSTL fixes ts-node resolution and we can be on the version which fixes array spread
     const start: Modifier[] = [];
     const final_modifier_list: Modifier[] = start
-        .concat(build_intrinsic_modifier_list(unit, max_ability_level))
+        .concat(intrinsic_modifiers)
         .concat(unit.modifiers.map(applied => applied.modifier))
-        .concat(get_aura_modifiers_affecting_target(unit.position, carriers));
+        .concat(aura_modifiers);
+
+    const updated_derived_modifiers = start
+        .concat(intrinsic_modifiers)
+        .concat(aura_modifiers);
 
     update_unit_stats_and_abilities_from_modifiers(unit, final_modifier_list);
     update_state_visuals(unit);
+    update_derived_modifiers(updated_derived_modifiers);
+
+    if (aura_modifiers.length) {
+        for (let auraModifier of aura_modifiers) {
+            print_table(auraModifier);
+        }
+    }
 
     const should_be_hidden = unit.hidden || unit.dead;
     for (const applied of unit.modifiers) {
-        if (applied.state.visible && should_be_hidden) {
-            hide_modifier_visuals(applied);
-        }
+        applied.state = update_modifier_visibility(applied.state, applied.modifier, should_be_hidden);
+    }
 
-        if (!applied.state.visible && !should_be_hidden) {
-            const visuals = modifier_to_visuals(unit, applied.modifier);
-
-            applied.state = {
-                visible: true,
-                visuals: visuals ? visuals : []
-            }
-        }
+    for (const applied of unit.derived_modifiers) {
+        print("Updating derived modifier", enum_to_string(applied.modifier.id));
+        applied.state = update_modifier_visibility(applied.state, applied.modifier, should_be_hidden);
     }
 }
 
@@ -2105,6 +2183,20 @@ function play_unit_target_ability_delta(game: Game, caster: Unit, cast: Delta_Un
             break;
         }
 
+        case Ability_Id.bounty_hunter_track: {
+            unit_play_activity(caster, GameActivity_t.ACT_DOTA_CAST_ABILITY_4, 0.2);
+            unit_emit_sound(target, "Hero_BountyHunter.Target");
+
+            fx_by_unit("particles/units/heroes/hero_bounty_hunter/bounty_hunter_track_cast.vpcf", caster)
+                .to_unit_attach_point(0, caster, "attach_attack2")
+                .to_unit_attach_point(1, target, "attach_hitloc");
+
+            wait(0.15);
+            apply_modifier(game, target, cast.modifier);
+
+            break;
+        }
+
         default: unreachable(cast);
     }
 }
@@ -2120,7 +2212,7 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
 
             wait(0.2);
 
-            for (const target_data of from_client_array(cast.targets)) {
+            for (const target_data of cast.targets) {
                 const target = find_unit_by_id(target_data.target_unit_id);
 
                 if (target) {
@@ -2148,7 +2240,7 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
 
             wait(0.2);
 
-            for (const effect of from_client_array(cast.targets)) {
+            for (const effect of cast.targets) {
                 const target = find_unit_by_id(effect.target_unit_id);
 
                 if (target) {
@@ -2269,16 +2361,12 @@ function play_no_target_ability_delta(game: Game, unit: Unit, cast: Delta_Use_No
         }
 
         case Ability_Id.skywrath_concussive_shot: {
-            function is_shot_hit(cast: Concussive_Shot_Hit | Concussive_Shot_Miss): cast is Concussive_Shot_Hit {
-                return from_client_bool(cast.hit); // @PanoramaBool
-            }
-
             const projectile_fx = "particles/units/heroes/hero_skywrath_mage/skywrath_mage_concussive_shot.vpcf";
 
             unit_play_activity(unit, GameActivity_t.ACT_DOTA_CAST_ABILITY_2, 0.1);
             unit_emit_sound(unit, "Hero_SkywrathMage.ConcussiveShot.Cast");
 
-            if (is_shot_hit(cast.result)) {
+            if (cast.result.hit) {
                 const target = find_unit_by_id(cast.result.target_unit_id);
 
                 if (target) {
@@ -2551,7 +2639,7 @@ function play_no_target_spell_delta(game: Game, caster: Battle_Player, cast: Del
             highlight_player_deployment_zone(cast.player_id);
             battle_emit_sound("call_to_arms");
 
-            for (const summon of from_client_array(cast.summons)) {
+            for (const summon of cast.summons) {
                 const creep = spawn_unit_with_fx(summon.at, () => spawn_creep_for_battle(game, summon.spawn, cast.player_id, summon.at, facing));
 
                 add_activity_override(creep, GameActivity_t.ACT_DOTA_SHARPEN_WEAPON, 1.0);
@@ -2833,7 +2921,7 @@ function play_ability_effect_delta(game: Game, effect: Ability_Effect) {
             const spawn_at = source.position;
             const forks: Fork<void>[] = [];
 
-            for (const summon of from_client_array(effect.summons)) {
+            for (const summon of effect.summons) {
                 forks.push(fork(() => {
                     const direction = (Vector(summon.at.x, summon.at.y) - Vector(spawn_at.x, spawn_at.y) as Vector).Normalized();
 
@@ -3309,9 +3397,9 @@ function on_modifier_removed(unit: Unit, modifier_id: Modifier_Id) {
     }
 }
 
-function hide_modifier_visuals(applied: Applied_Modifier) {
-    if (applied.state.visible) {
-        for (const visual of applied.state.visuals) {
+function hide_modifier_visuals(state: Modifier_Visuals_State): Modifier_Visuals_State {
+    if (state.visible) {
+        for (const visual of state.visuals) {
             if (visual.from_buff) {
                 visual.buff.Destroy();
             } else {
@@ -3320,13 +3408,13 @@ function hide_modifier_visuals(applied: Applied_Modifier) {
         }
     }
 
-    applied.state = { visible: false };
+    return { visible: false };
 }
 
 function remove_modifier(game: Game, unit: Unit, applied: Applied_Modifier, array_index: number) {
     print(`Remove modifier ${enum_to_string(applied.modifier.id)} from ${unit.handle.GetName()}`);
 
-    hide_modifier_visuals(applied);
+    applied.state = hide_modifier_visuals(applied.state);
     on_modifier_removed(unit, applied.modifier.id);
 
     unit.modifiers.splice(array_index, 1);
@@ -3798,8 +3886,6 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
         }
 
         case Delta_Type.game_over: {
-            delta.result.draw = from_client_bool(delta.result.draw);
-
             if (!delta.result.draw) {
                 for (const unit of battle.units) {
                     if (unit.supertype != Unit_Supertype.monster && unit.owner_remote_id == delta.result.winner_player_id) {
@@ -3865,13 +3951,11 @@ function periodically_update_battle() {
 function clean_battle_world_handles(battle: Battle) {
     for (const unit of battle.units) {
         for (const modifier of unit.modifiers) {
-            if (modifier.state.visible) {
-                for (const visual of modifier.state.visuals) {
-                    if (!visual.from_buff) {
-                        visual.fx.destroy_and_release(true);
-                    }
-                }
-            }
+            hide_modifier_visuals(modifier.state);
+        }
+
+        for (const modifier of unit.derived_modifiers) {
+            hide_modifier_visuals(modifier.state);
         }
 
         unit.handle.RemoveSelf();
@@ -3960,10 +4044,11 @@ function fast_forward_from_snapshot(battle: Battle, snapshot: Battle_Snapshot) {
             dead: unit.health <= 0,
             position: unit.position,
             handle: create_world_handle_for_battle_unit(battle.world_origin, unit, unit.position, unit.facing),
-            modifiers: from_client_array(unit.modifiers).map(data => ({
+            modifiers: unit.modifiers.map(data => ({
                 ...data,
                 state: { visible: false } as const // We will make them visible later down
             })),
+            derived_modifiers: [],
             hidden: false, // We will update it in update_state_visuals,
             hidden_from_snapshot: unit.health <= 0,
 

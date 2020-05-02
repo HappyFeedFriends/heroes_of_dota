@@ -486,9 +486,9 @@ type Delta_Set_Ability_Charges_Remaining = {
     source: Delta_Source
 }
 
-type Delta_Ability_Effect_Applied<T extends Ability_Effect> = {
+type Delta_Ability_Effect_Applied = {
     type: Delta_Type.ability_effect_applied
-    effect: T
+    effect: Ability_Effect
 }
 
 type Delta_Draw_Card = {
@@ -617,7 +617,7 @@ type Delta =
     Delta_Modifier_Applied |
     Delta_Modifier_Removed |
     Delta_Set_Ability_Charges_Remaining |
-    Delta_Ability_Effect_Applied<Ability_Effect> |
+    Delta_Ability_Effect_Applied |
     Delta_Modifier_Effect_Applied |
     Delta_Timed_Effect_Expired |
     Delta_Rune_Pick_Up |

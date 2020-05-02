@@ -43,6 +43,7 @@ declare const enum Ability_Id {
     bounty_hunter_shadow_walk = 43,
     bounty_hunter_jinada = 44,
     bounty_hunter_jinada_attack = 45,
+    bounty_hunter_track = 46,
 
     pocket_tower_attack = 1000,
     deployment_zone = 1001,
@@ -450,6 +451,11 @@ type Bounty_Hunter_Abilities = (Ability_Definition_Active_Base & {
     type: Ability_Type.target_unit
     targeting: Ability_Targeting
     modifier: Modifier
+}) | (Ability_Definition_Active_Base & {
+    id: Ability_Id.bounty_hunter_track
+    type: Ability_Type.target_unit
+    targeting: Ability_Targeting
+    modifier: Modifier
 }))
 
 type Ability_Pocket_Tower_Attack = Ability_Definition_Passive_Base & {
@@ -831,4 +837,7 @@ type Bounty_Hunter_Ability_Deltas = (Delta_Use_No_Target_Ability_Base & {
     ability_id: Ability_Id.bounty_hunter_jinada_attack
     target: Basic_Attack_Health_Change
     modifier: Modifier_Application
-})
+} | (Delta_Unit_Target_Ability_Base & {
+    ability_id: Ability_Id.bounty_hunter_track
+    modifier: Modifier_Application
+}))

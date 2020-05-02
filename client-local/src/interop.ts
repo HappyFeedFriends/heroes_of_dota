@@ -3,7 +3,7 @@ import {
     client_event_payload_parser,
     game_net_table_parser,
     local_api_response_parser
-} from "./reflection";
+} from "./reflected";
 
 type Player_Name_Callback = (name: string) => void;
 
@@ -35,6 +35,16 @@ export function get_visualiser_delta_head(): number | undefined {
 
     if (net_table.state == Player_State.in_battle) {
         return net_table.battle.current_visual_head;
+    }
+
+    return undefined;
+}
+
+export function get_visualiser_actual_head(): number | undefined {
+    const net_table = get_net_table<Game_Net_Table>("main", "game");
+
+    if (net_table.state == Player_State.in_battle) {
+        return net_table.battle.current_actual_head;
     }
 
     return undefined;

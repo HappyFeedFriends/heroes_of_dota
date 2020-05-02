@@ -1,3 +1,5 @@
+require("reflection");
+require("reflected")
 require("game_loop");
 require("global_map");
 require("adventure");

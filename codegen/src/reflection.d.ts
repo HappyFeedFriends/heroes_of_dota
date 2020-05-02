@@ -74,13 +74,7 @@ type Generic_Type = {
     arguments: Type[]
 }
 
-type Primitive = {
-    kind: Type_Kind.string
-} | {
-    kind: Type_Kind.number
-} | {
-    kind: Type_Kind.boolean
-} | {
+type Literal = {
     kind: Type_Kind.number_literal
     value: number
 } | {
@@ -89,6 +83,14 @@ type Primitive = {
 } | {
     kind: Type_Kind.boolean_literal
     value: boolean
+}
+
+type Primitive = Literal | {
+    kind: Type_Kind.string
+} | {
+    kind: Type_Kind.number
+} | {
+    kind: Type_Kind.boolean
 } | {
     kind: Type_Kind.undefined
 }

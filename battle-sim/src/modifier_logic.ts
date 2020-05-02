@@ -3,7 +3,8 @@ const enum Modifier_Change_Type {
     ability_override,
     apply_status,
     apply_special_state,
-    apply_poison
+    apply_poison,
+    apply_aura
 }
 
 const enum Modifier_Field {
@@ -34,6 +35,10 @@ type Modifier_Change = {
 } | {
     type: Modifier_Change_Type.apply_poison
     poison: number
+} | {
+    type: Modifier_Change_Type.apply_aura
+    modifier: Modifier
+    selector: Aura_Selector
 }
 
 type Ability_Override = {
@@ -60,7 +65,7 @@ type Recalculated_Stats = {
 type Aura_Carrier = {
     at: XY
     ally: boolean
-    aura: Modifier_Aura
+    aura: Find_By_Type<Modifier_Change, Modifier_Change_Type.apply_aura>
 }
 
 function get_attack_damage(stats: Unit_Stats) {
@@ -247,6 +252,7 @@ function recalculate_unit_stats_from_modifiers(source: Unit_Stats, modifiers: Mo
                     break;
                 }
 
+                case Modifier_Change_Type.apply_aura:
                 case Modifier_Change_Type.apply_poison: {
                     break;
                 }
@@ -329,6 +335,14 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
         return {
             type: Modifier_Change_Type.apply_poison,
             poison: how_much
+        }
+    }
+
+    function apply_aura(modifier: Modifier, selector: Aura_Selector): Modifier_Change {
+        return {
+            type: Modifier_Change_Type.apply_aura,
+            modifier: modifier,
+            selector: selector
         }
     }
 
@@ -440,6 +454,14 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             status(Unit_Status.disarmed)
         ];
 
+        case Modifier_Id.bounty_hunter_track_aura: return [
+            apply_aura(modifier.modifier, modifier.selector)
+        ];
+
+        case Modifier_Id.bounty_hunter_track: return [
+            field(Modifier_Field.move_points_bonus, modifier.move_bonus)
+        ];
+
         case Modifier_Id.item_heart_of_tarrasque: return [
             field(Modifier_Field.health_bonus, modifier.health)
         ];
@@ -494,7 +516,9 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             status(Unit_Status.out_of_the_game)
         ];
 
-        case Modifier_Id.aura: return [];
+        case Modifier_Id.aura: return [
+            apply_aura(modifier.modifier, modifier.selector)
+        ];
 
         default: unreachable(modifier);
     }

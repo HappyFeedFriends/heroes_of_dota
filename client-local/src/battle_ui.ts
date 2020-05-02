@@ -21,7 +21,8 @@ import {
     api_request,
     get_access_token,
     fire_event,
-    get_visualiser_delta_head
+    get_visualiser_delta_head,
+    get_visualiser_actual_head
 } from "./interop";
 
 const enum Selection_Type {
@@ -347,13 +348,46 @@ function find_unit_entity_data_by_unit_id(battle: UI_Battle, unit_id: Unit_Id): 
     }
 }
 
+function get_delta_path(delta: Delta): [Unit, XY[]] | undefined {
+    switch (delta.type) {
+        case Delta_Type.rune_pick_up: {
+            const unit = find_unit_by_id(battle, delta.unit_id);
+            if (!unit) break;
+
+            const rune = find_rune_by_id(battle, delta.rune_id);
+            if (!rune) break;
+
+            const path = find_grid_path(unit, rune.position, true);
+            if (!path) break;
+
+            return [unit, path];
+        }
+
+        case Delta_Type.unit_move: {
+            const unit = find_unit_by_id(battle, delta.unit_id);
+            if (!unit) break;
+
+            const path = find_grid_path(unit, delta.to_position, false);
+            if (!path) break;
+
+            return [unit, path];
+        }
+    }
+}
+
 function update_related_visual_data_from_delta(delta: Delta, delta_paths: Move_Delta_Paths) {
-    function fill_movement_data(unit: Unit, moved_to: XY, path: XY[]) {
+    function fill_movement_data(unit: Unit, path: XY[]) {
         delta_paths[battle.delta_head] = path;
 
         battle.unit_id_to_facing[unit.id] = path.length > 1
-            ? xy_sub(moved_to, path[path.length - 2])
-            : xy_sub(moved_to, unit.position);
+            ? xy_sub(path[path.length - 1], path[path.length - 2])
+            : xy_sub(path[path.length - 1], unit.position);
+    }
+
+    const unit_path = get_delta_path(delta);
+    if (unit_path) {
+        fill_movement_data(unit_path[0], unit_path[1]);
+        return;
     }
 
     switch (delta.type) {
@@ -368,33 +402,6 @@ function update_related_visual_data_from_delta(delta: Delta, delta_paths: Move_D
 
         case Delta_Type.shop_spawn: {
             battle.shop_id_to_facing[delta.shop_id] = delta.facing;
-            break;
-        }
-
-        case Delta_Type.rune_pick_up: {
-            const unit = find_unit_by_id(battle, delta.unit_id);
-            if (!unit) break;
-
-            const rune = find_rune_by_id(battle, delta.rune_id);
-            if (!rune) break;
-
-            const path = find_grid_path(unit, rune.position, true);
-            if (!path) break;
-
-            fill_movement_data(unit, rune.position, path);
-
-            break;
-        }
-
-        case Delta_Type.unit_move: {
-            const unit = find_unit_by_id(battle, delta.unit_id);
-            if (!unit) break;
-
-            const path = find_grid_path(unit, delta.to_position, false);
-            if (!path) break;
-
-            fill_movement_data(unit, delta.to_position, path);
-
             break;
         }
 
@@ -504,6 +511,7 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
     update_end_turn_button();
 
     const visualiser_head = get_visualiser_delta_head();
+    const visualiser_actual_head = get_visualiser_actual_head();
     const head_relative_to_battle_start = battle.delta_head - battle.started_at_delta_head;
 
     if (visualiser_head != undefined && head_relative_to_battle_start - visualiser_head > 20) {
@@ -513,6 +521,21 @@ export function receive_battle_deltas(head_before_merge: number, deltas: Delta[]
             deltas: deltas,
             delta_paths: delta_paths,
             from_head: head_before_merge
+        });
+    } else if (visualiser_actual_head != undefined && visualiser_actual_head < battle.delta_head) {
+        const paths: Move_Delta_Paths = {};
+
+        for (let index = 0; index < battle.deltas.length; index++) {
+            const unit_path = get_delta_path(battle.deltas[index]);
+            if (unit_path) {
+                paths[index] = unit_path[1];
+            }
+        }
+
+        fire_event(To_Server_Event_Type.put_deltas, {
+            deltas: battle.deltas,
+            delta_paths: paths,
+            from_head: 0
         });
     }
 
@@ -1671,7 +1694,10 @@ function get_ability_tooltip(caster: Unit, a: Ability): string {
         case Ability_Id.venomancer_plague_wards: return `Plant a plague ward which attacks enemies at the end of each turn. Plague wards deal double damage to rooted and slowed targets`;
         case Ability_Id.venomancer_venomous_gale: return `Slow all units in the line by ${a.slow} points and apply ${a.poison_applied} poison to them`;
         case Ability_Id.venomancer_poison_nova: return `Paralyze all units in the area, rooting and disarming them`;
+
+        // @AbilityTooltip
         case Ability_Id.bounty_hunter_shadow_walk: return assemble_modifier_tooltip_strings(a.modifier).join("<br/>");
+        case Ability_Id.bounty_hunter_track: return "Target enemy receives<br/>" + assemble_modifier_tooltip_strings(a.modifier).join("<br/>");
 
         // @AbilityTooltip
         case Ability_Id.bounty_hunter_jinada: return `Replace basic attack with Jinada`;
@@ -1732,6 +1758,7 @@ function get_ability_icon(ability_id: Ability_Id): string {
         case Ability_Id.bounty_hunter_shadow_walk: return "bounty_hunter_wind_walk";
         case Ability_Id.bounty_hunter_jinada: return "bounty_hunter_jinada";
         case Ability_Id.bounty_hunter_jinada_attack: return "bounty_hunter_jinada";
+        case Ability_Id.bounty_hunter_track: return "bounty_hunter_track";
 
         // TODO these are not visible right now, but might be later
         case Ability_Id.pocket_tower_attack: return "";

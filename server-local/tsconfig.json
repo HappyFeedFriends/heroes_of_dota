@@ -12,7 +12,10 @@
     "rootDir": "src",
     "outDir": "../dist/game/scripts/vscripts",
     "plugins": [
-      { "transform": "../codegen/src/meta.ts" }
+      {
+        "transform": "../codegen/src/meta.ts",
+        "lua_array_access": true
+      }
     ]
   },
   "include": [
@@ -25,7 +28,8 @@
     "../api_definitions/abilities.d.ts",
     "../api_definitions/modifiers.d.ts",
     "../api_definitions/spells.d.ts",
-    "../api_definitions/items.d.ts"
+    "../api_definitions/items.d.ts",
+    "../codegen/src/reflection.d.ts"
   ],
   "tstl": {
     "luaTarget": "JIT",

@@ -1,3 +1,20 @@
+type Result<T> = {
+    ok: true
+    data: T
+} | {
+    ok: false
+    message: string
+    cause?: Result<any>
+}
+
+function result_fail<T>(message: string, cause?: Result<any>): Result<T> {
+    return { ok: false, message: message, cause: cause };
+}
+
+function result_ok<T>(data: T): Result<T> {
+    return { ok: true, data: data };
+}
+
 function find_object_member_type_by_name(obj: Object_Type, property: string): Type | undefined {
     for (const member of obj.members) {
         if (member.name == property) {
@@ -6,7 +23,7 @@ function find_object_member_type_by_name(obj: Object_Type, property: string): Ty
     }
 }
 
-function collapse_intersection(intersection: Intersection_Type): Object_Type | undefined {
+function collapse_intersection(intersection: Intersection_Type): Result<Object_Type> {
     const existing_members: Member_Named[] = [];
 
     for (let index = intersection.types.length - 1; index >= 0; index--) {
@@ -19,37 +36,36 @@ function collapse_intersection(intersection: Intersection_Type): Object_Type | u
                 }
             }
         } else {
-            $.Msg("Intersections between non-objects are not supported");
-            return undefined;
+            return result_fail("Intersections between non-objects are not supported");
         }
     }
 
-    return {
+    return result_ok({
         kind: Type_Kind.object,
         members: existing_members
-    }
+    });
 }
 
-function object_or_intersection(type: Type): Object_Type | undefined {
+function object_or_intersection(type: Type): Result<Object_Type> {
     if (type.kind == Type_Kind.object) {
-        return type;
+        return result_ok(type);
     } else if (type.kind == Type_Kind.intersection) {
         return collapse_intersection(type);
+    } else {
+        return result_fail("Unsupported type " + type.kind);
     }
 }
 
-function find_member_of_union_by_tag(union: Union_Type, tag_name: string, tag_value: number): Object_Type | undefined {
+function find_member_of_union_by_tag(union: Union_Type, tag_name: string, tag_value: number): Result<Object_Type> {
     for (const type of union.types) {
         const object = object_or_intersection(type);
-        if (!object) {
-            $.Msg("Unsupported union member ", type.kind);
-            return undefined;
+        if (!object.ok) {
+            return result_fail("Unsupported union member " + type.kind, object);
         }
 
-        const tag = find_object_member_type_by_name(object, tag_name);
+        const tag = find_object_member_type_by_name(object.data, tag_name);
         if (!tag) {
-            $.Msg("Tagged value not found");
-            return undefined;
+            return result_fail("Tagged value not found");
         }
 
         if (tag.kind == Type_Kind.enum_member) {
@@ -60,72 +76,94 @@ function find_member_of_union_by_tag(union: Union_Type, tag_name: string, tag_va
             }
         }
     }
+
+    return result_fail("Member not found");
 }
 
-function find_member_of_union_by_tags(tags: Union_Tag[], value_store: any): Object_Type | undefined {
-    to_the_next_tag:
+function find_member_of_union_by_tags(tags: Union_Tag[], value_store: any, mapper: (type: Type, value: any) => any): Result<Object_Type> {
     for (const tag of tags) {
+        let continue_to_the_next_tag = false;
+
         for (const discriminator of tag.discriminated_by) {
             const value_types = discriminator.any_of;
-            const compare_to = value_store[discriminator.name];
 
-            // $.Msg("Compare ", value_types.map(a => a.type.kind == Type_Kind.number_literal ? a.type.value : "").join(", "), " to ", compare_to);
+            for (const value_type of value_types) {
+                const compare_to = deserialize_value(value_type, value_store[discriminator.name], mapper);
+                if (!compare_to.ok) {
+                    return result_fail("Unable to deserialize tag key", compare_to);
+                }
 
-            if (value_types.some(vt => vt.type.kind == Type_Kind.number_literal && vt.type.value == compare_to)) {
-                // ok
-            } else {
-                continue to_the_next_tag;
+                if (value_type.kind == Type_Kind.number_literal && value_type.value == compare_to.data) {
+                    continue_to_the_next_tag = false;
+                    break;
+                }
+
+                if (value_type.kind == Type_Kind.boolean_literal && value_type.value == compare_to.data) {
+                    continue_to_the_next_tag = false;
+                    break;
+                }
+
+                continue_to_the_next_tag = true;
+            }
+
+            if (continue_to_the_next_tag) {
+                break;
             }
         }
 
-        return tag.discriminates_to;
+        if (!continue_to_the_next_tag) {
+            return result_ok(tag.discriminates_to);
+        }
     }
+
+    return result_fail("Unable to find union member by tags");
 }
 
 type Union_Tag = {
     discriminates_to: Object_Type
     discriminated_by: Array<{
         name: string
-        any_of: Enum_Member_Type[]
+        any_of: Primitive[]
     }>
 }
 
-function find_union_tags(union: Union_Type): Union_Tag[] | undefined {
+function find_union_tags(union: Union_Type): Result<Union_Tag[]> {
     const all_object_types: Object_Type[] = [];
 
     for (const type of union.types) {
         const object = object_or_intersection(type);
-        if (!object) {
-            $.Msg("Unsupported union member ", type.kind);
-            return undefined;
+        if (!object.ok) {
+            return result_fail("Unsupported union member " + type.kind, object);
         }
 
-        all_object_types.push(object);
+        all_object_types.push(object.data);
     }
 
     type Object_Member = {
         object: Object_Type
         member_name: string
-        member_type: Enum_Member_Type[]
+        member_type: Primitive[]
     }
 
     const members_by_name: Record<string, Object_Member[]> = {};
 
-    function enum_members_from_object_member(member: Member_Named): Enum_Member_Type[] | undefined {
+    function enum_members_from_object_member(member: Member_Named): Primitive[] | undefined {
         if (member.type.kind == Type_Kind.union) {
-            const result: Enum_Member_Type[] = [];
+            const result: Primitive[] = [];
 
             for (const type of member.type.types) {
                 if (type.kind != Type_Kind.enum_member) {
                     return;
                 }
 
-                result.push(type);
+                result.push(type.type);
             }
 
             return result;
         } else if (member.type.kind == Type_Kind.enum_member) {
-            return [ member.type ]
+            return [ member.type.type ]
+        } else if (member.type.kind == Type_Kind.boolean_literal) {
+            return [ member.type ];
         }
     }
 
@@ -174,124 +212,131 @@ function find_union_tags(union: Union_Type): Union_Tag[] | undefined {
         }
     }
 
-    return result;
+    return result_ok(result);
 }
 
-function deserialize_value(type: Type, from: any): any {
-    function fix_array_from_server<T>(array: Array<T>): Array<T> {
-        const result: Array<T> = [];
+function deserialize_value(type: Type, from: any, mapper: (type: Type, value: any) => any): Result<any> {
+    from = mapper(type, from);
 
-        for (const index in array) {
-            result[parseInt(index) - 1] = array[index];
-        }
+    try {
+        switch (type.kind) {
+            case Type_Kind.array: {
+                const result: any[] = [];
 
-        return result;
-    }
+                for (const member of from as any[]) {
+                    const deserialized = deserialize_value(type.type, member, mapper);
+                    if (!deserialized.ok) {
+                        return result_fail("Failed to deserialize array member", deserialized);
+                    }
 
-    switch (type.kind) {
-        case Type_Kind.array: {
-            const fixed_array = fix_array_from_server(from as any[]);
-            return fixed_array.map(array_value => deserialize_value(type.type, array_value));
-        }
-
-        case Type_Kind.object: {
-            const new_object: Record<string, any> = {};
-
-            for (const member of type.members) {
-                const member_value = from[member.name];
-                new_object[member.name] = deserialize_value(member.type, member_value);
-            }
-
-            return new_object;
-        }
-
-        case Type_Kind.intersection: {
-            // Special case: nominal id types aka number & { _brand: any }
-            if (type.types.some(type => type.kind == Type_Kind.number)) {
-                return from;
-            }
-
-            const collapsed = collapse_intersection(type);
-            if (!collapsed) {
-                $.Msg("Failed to collapse intersection");
-                return;
-            }
-
-            return deserialize_value(collapsed, from);
-        }
-
-        case Type_Kind.generic: {
-            // Record<Key, Value>
-            if (type.target.kind == Type_Kind.object && type.arguments.length == 2) {
-                const result: Record<string, any> = {};
-                const value_type = type.arguments[1];
-
-                for (const key of Object.keys(from)) {
-                    result[key] = deserialize_value(value_type, from[key]);
+                    result.push(deserialized.data);
                 }
 
-                return result;
-            } else {
-                $.Msg("Unsupported generic type");
-                return;
+                return result_ok(result);
+            }
+
+            case Type_Kind.object: {
+                const new_object: Record<string, any> = {};
+
+                for (const member of type.members) {
+                    const member_value = from[member.name];
+                    const deserialized = deserialize_value(member.type, member_value, mapper);
+
+                    if (!deserialized.ok) {
+                        return result_fail("Failed to deserialize object member " + member.name, deserialized);
+                    }
+
+                    new_object[member.name] = deserialized.data;
+                }
+
+                return result_ok(new_object);
+            }
+
+            case Type_Kind.intersection: {
+                // Special case: nominal id types aka number & { _brand: any }
+                if (type.types.some(type => type.kind == Type_Kind.number)) {
+                    return result_ok(from);
+                }
+
+                const collapsed = collapse_intersection(type);
+                if (!collapsed.ok) {
+                    return result_fail("Failed to collapse intersection", collapsed);
+                }
+
+                return deserialize_value(collapsed.data, from, mapper);
+            }
+
+            case Type_Kind.generic: {
+                // Record<Key, Value>
+                if (type.target.kind == Type_Kind.object && type.arguments.length == 2) {
+                    const result: Record<string, any> = {};
+                    const key_type = type.arguments[0];
+                    const value_type = type.arguments[1];
+
+                    for (const key of Object.keys(from)) {
+                        const deserialized = deserialize_value(value_type, from[key], mapper);
+                        if (!deserialized.ok) {
+                            return result_fail("Failed to deserialize a member of Record<K, V>", deserialized);
+                        }
+
+                        const deserialized_key = deserialize_value(key_type, key, mapper);
+                        if (!deserialized_key.ok) {
+                            return result_fail("Failed to deserialize a key of Record<K, V>", deserialized_key);
+                        }
+
+                        result[deserialized_key.data] = deserialized.data;
+                    }
+
+                    return result_ok(result);
+                } else {
+                    return result_fail("Unsupported generic type");
+                }
+            }
+
+            case Type_Kind.union: {
+                // member: Enum.a | Enum.b
+                if (type.types.every(t => t.kind == Type_Kind.enum_member)) {
+                    return result_ok(from);
+                }
+
+                // a | undefined
+                if (type.types.length == 2 && type.types.some(type => type.kind == Type_Kind.undefined)) {
+                    return result_ok(from);
+                }
+
+                const tags = find_union_tags(type);
+                if (!tags.ok || tags.data.length == 0) {
+                    return result_fail("Unable to find union tags", tags);
+                }
+
+                const member = find_member_of_union_by_tags(tags.data, from, mapper);
+
+                if (member.ok) {
+                    return deserialize_value(member.data, from, mapper);
+                } else {
+                    return result_fail("Unable to find union member by tags, value " + from, member);
+                }
+            }
+
+            case Type_Kind.enum: {
+                if (!type.members.every(member => member.type.kind == Type_Kind.number_literal)) {
+                    return result_fail("Unsupported enum member type in enum " + type.name);
+                }
+
+                if (typeof from == "string") {
+                    return result_ok(parseInt(from));
+                } else if (typeof from == "number") {
+                    return result_ok(from);
+                } else {
+                    return result_fail("Unsupported value of type " + typeof from);
+                }
+            }
+
+            default: {
+                return result_ok(from);
             }
         }
-
-        case Type_Kind.union: {
-            // member: Enum.a | Enum.b
-            if (type.types.every(t => t.kind == Type_Kind.enum_member)) {
-                return from;
-            }
-
-            const tags = find_union_tags(type);
-            if (!tags || tags.length == 0) {
-                $.Msg("Unable to find union tags");
-                return;
-            }
-
-            const member = find_member_of_union_by_tags(tags, from);
-
-            if (member) {
-                return deserialize_value(member, from);
-            } else {
-                $.Msg("Unable to find union member by tags");
-            }
-
-            break;
-        }
-
-        default: {
-            return from;
-        }
+    } catch (e) {
+        return result_fail(e);
     }
-}
-
-export function client_event_payload_parser<T extends To_Client_Event_Type>(type: T): (input: object) => Find_To_Client_Payload<T> {
-    const payloads = type_of<To_Client_Event>() as Union_Type;
-    const member = find_member_of_union_by_tag(payloads, "type", type);
-    if (!member) {
-        throw "Type not found";
-    }
-
-    const payload = find_object_member_type_by_name(member, "payload") as Object_Type;
-    return value => deserialize_value(payload, value);
-}
-
-export function game_net_table_parser(): (input: object) => Game_Net_Table {
-    return value => deserialize_value(type_of<Game_Net_Table>(), value);
-}
-
-export function adventure_net_table_parser(): (input: object) => Adventure_Net_Table {
-    return value => deserialize_value(type_of<Adventure_Net_Table>(), value);
-}
-
-export function local_api_response_parser<T extends Local_Api_Request_Type>(type: T): (input: object) => Find_Local_Response<T> {
-    const requests = type_of<Local_Api_Request>() as Union_Type;
-    const member = find_member_of_union_by_tag(requests, "type", type);
-    if (!member) {
-        throw "Type not found";
-    }
-
-    const response = find_object_member_type_by_name(member, "response") as Object_Type;
-    return value => deserialize_value(response, value);
 }

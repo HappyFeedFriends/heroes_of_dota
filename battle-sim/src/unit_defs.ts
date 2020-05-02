@@ -555,6 +555,27 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                         from: Ability_Id.basic_attack,
                         to: Ability_Id.bounty_hunter_jinada_attack
                     }]
+                },
+                {
+                    id: Ability_Id.bounty_hunter_track,
+                    type: Ability_Type.target_unit,
+                    targeting: target_in_manhattan_distance(5),
+                    available_since_level: 3,
+                    charges: 1,
+                    modifier: {
+                        id: Modifier_Id.bounty_hunter_track_aura,
+                        selector: {
+                            rectangle_distance: 99,
+                            flags: {
+                                [Aura_Selector_Flag.enemies]: true,
+                                [Aura_Selector_Flag.allies]: false
+                            }
+                        },
+                        modifier: {
+                            id: Modifier_Id.bounty_hunter_track,
+                            move_bonus: 2
+                        }
+                    }
                 }
             ],
             ability_bench: [

@@ -139,8 +139,6 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
         }
 
         case Editor_Action_Type.set_camera: {
-            event.camera.free = from_client_bool(event.camera.free);
-
             if (event.camera.free) {
                 set_camera_override(undefined, 0.15);
             } else {
@@ -182,24 +180,6 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
         }
 
         case Editor_Action_Type.create_entity: {
-            switch (event.definition.type) {
-                case Adventure_Entity_Type.enemy: {
-                    event.definition.creeps = from_client_array(event.definition.creeps);
-                    break;
-                }
-
-                case Adventure_Entity_Type.merchant: {
-                    const stock = event.definition.stock;
-
-                    stock.spells = from_client_array(stock.spells);
-                    stock.heroes = from_client_array(stock.heroes);
-                    stock.creeps = from_client_array(stock.creeps);
-                    stock.items = from_client_array(stock.items);
-
-                    break;
-                }
-            }
-
             const created_entity = api_request(Api_Request_Type.editor_create_entity, {
                 definition: event.definition,
                 access_token: game.token
@@ -335,10 +315,10 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
         case Editor_Action_Type.submit_battleground: {
             const origin = Vector(event.origin.x, event.origin.y, event.origin.z);
 
-            update_editor_battleground(editor, origin, event.theme, from_client_array(event.spawns));
+            update_editor_battleground(editor, origin, event.theme, event.spawns);
 
             editor.environment = event.environment;
-            editor.in_battleground_editor = from_client_bool(event.in_battleground_editor);
+            editor.in_battleground_editor = event.in_battleground_editor;
 
             break;
         }
@@ -359,16 +339,13 @@ function perform_editor_action(game: Game, editor: Editor_State, event: Editor_A
 
         case Editor_Action_Type.set_room_details: {
             game.adventure.environment = event.environment;
-
-            game.adventure.camera_restriction_zones = from_client_array(event.zones).map(zone => ({
-                points: from_client_array(zone.points)
-            }));
+            game.adventure.camera_restriction_zones = event.zones;
 
             for (const exit of game.adventure.exits) {
                 exit.fx.destroy_and_release(true);
             }
 
-            game.adventure.exits = from_client_array(event.exits).map(exit => create_world_room_exit(exit));
+            game.adventure.exits = event.exits.map(exit => create_world_room_exit(exit));
 
             break;
         }
