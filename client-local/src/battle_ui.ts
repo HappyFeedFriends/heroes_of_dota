@@ -40,6 +40,36 @@ export const enum Hover_Type {
     ability = 3
 }
 
+const enum Popup_Type {
+    health_change,
+    ability_use,
+    adventure_item_effect,
+    modifier_effect
+}
+
+type Popup_Base = {
+    unit_id: Unit_Id
+    scheduled_at: number
+    launched: boolean
+}
+
+type Popup_Data = {
+    type: Popup_Type.health_change
+    change: number
+    blocked_by_armor: number
+} | {
+    type: Popup_Type.ability_use
+    ability_id: Ability_Id
+} | {
+    type: Popup_Type.adventure_item_effect
+    item_id: Adventure_Item_Id
+} | {
+    type: Popup_Type.modifier_effect
+    modifier_handle_id: Modifier_Handle_Id
+}
+
+type Popup = Popup_Base & Popup_Data
+
 type No_Selection = {
     type: Selection_Type.none
 }
@@ -255,6 +285,8 @@ const card_selection_overlay = $("#card_selection_overlay");
 const end_turn_button = $("#end_turn_button");
 const popups = $("#popups");
 const modifier_tooltip = $("#modifier_tooltip");
+const popup_queue: Popup[] = [];
+const popup_time_offset = 0.25;
 
 export const control_panel: Control_Panel = {
     panel: $("#unit_rows"),
@@ -2414,6 +2446,79 @@ function update_stat_bar_positions() {
     }
 }
 
+function queue_popup(unit: Unit_Id, popup: Popup_Data) {
+    let new_time = Game.Time();
+
+    for (const popup of popup_queue) {
+        if (popup.unit_id == unit) {
+            new_time = Math.max(popup.scheduled_at + popup_time_offset, new_time);
+        }
+    }
+
+    $.Msg("schedule popup for unit ", unit, " at ", new_time);
+
+    popup_queue.push({
+        unit_id: unit,
+        scheduled_at: new_time,
+        launched: false,
+        ...popup
+    });
+
+    update_popup_queue();
+}
+
+function try_launch_popup(popup: Popup) {
+    const unit_data = find_unit_entity_data_by_unit_id(battle, popup.unit_id);
+    if (!unit_data) return;
+
+    const [entity_id] = unit_data;
+
+    switch (popup.type) {
+        case Popup_Type.health_change: {
+            show_health_change_popup(entity_id, popup.change, popup.blocked_by_armor);
+            break;
+        }
+
+        case Popup_Type.ability_use: {
+            show_title_icon_popup(entity_id, get_ability_name(popup.ability_id), get_full_ability_icon_path(popup.ability_id));
+            break;
+        }
+
+        case Popup_Type.adventure_item_effect: {
+            show_title_icon_popup(entity_id, get_adventure_item_name_by_id(popup.item_id), get_adventure_item_icon_by_id(popup.item_id));
+            break;
+        }
+
+        case Popup_Type.modifier_effect: {
+            const applied = battle.modifier_handle_id_to_modifier[popup.modifier_handle_id];
+            if (!applied) break;
+
+            show_title_icon_popup(entity_id, modifier_source_to_name(applied.modifier.id, applied.source), get_modifier_icon(applied));
+
+            break;
+        }
+
+        default: unreachable(popup);
+    }
+}
+
+function update_popup_queue() {
+    const now = Game.Time();
+
+    for (let index = popup_queue.length - 1; index >= 0; index--) {
+        const popup = popup_queue[index];
+
+        if (now >= popup.scheduled_at) {
+            if (!popup.launched) {
+                try_launch_popup(popup);
+                popup.launched = true;
+            } else if (now >= popup.scheduled_at + popup_time_offset) {
+                popup_queue.splice(index, 1);
+            }
+        }
+    }
+}
+
 function periodically_update_ui() {
     $.Schedule(0, periodically_update_ui);
 
@@ -2426,6 +2531,7 @@ function periodically_update_ui() {
     update_current_ability_based_on_cursor_state();
     update_hovered_cell();
     update_hand();
+    update_popup_queue();
 
     for (const shop_data of ui_shop_data) {
         for (const entity_id_string in battle.entity_id_to_shop_id) {
@@ -2945,10 +3051,7 @@ function highlight_grid_for_unit_ability_with_predicate(unit_id: Unit_Id, abilit
     highlight_outline_temporarily(battle.grid, outline, color_red, 0.75);
 }
 
-function show_health_change_popup(unit_id: Unit_Id, change: number, blocked_by_armor: number) {
-    const unit_data = find_unit_entity_data_by_unit_id(battle, unit_id);
-    if (!unit_data) return;
-
+function show_health_change_popup(entity_id: EntityId, change: number, blocked_by_armor: number) {
     const parent = $.CreatePanel("Panel", popups, "");
     parent.AddClass("health_change_popup");
     parent.AddClass("popup");
@@ -2966,14 +3069,12 @@ function show_health_change_popup(unit_id: Unit_Id, change: number, blocked_by_a
         $.CreatePanel("Panel", parent, "armor_icon");
     }
 
-    const [entity_id] = unit_data;
-
     position_panel_over_entity_in_the_world(parent, entity_id, -30, 150);
 
     parent.DeleteAsync(1.5);
 }
 
-function queue_title_icon_popup(entity_id: EntityId, text: string, icon: string) {
+function show_title_icon_popup(entity_id: EntityId, text: string, icon: string) {
     const parent = $.CreatePanel("Panel", popups, "");
     parent.AddClass("popup");
     parent.AddClass("icon_text_popup");
@@ -2986,40 +3087,9 @@ function queue_title_icon_popup(entity_id: EntityId, text: string, icon: string)
     const text_panel = $.CreatePanel("Label", parent, "text");
     text_panel.text = text;
 
-    position_panel_over_entity_in_the_world(parent, entity_id, -30, 150);
+    position_panel_over_entity_in_the_world(parent, entity_id, -60, 150);
 
-    // parent.DeleteAsync(2);
-}
-
-function show_ability_use_popup(unit_id: Unit_Id, ability_id: Ability_Id) {
-    const unit_data = find_unit_entity_data_by_unit_id(battle, unit_id);
-    if (!unit_data) return;
-
-    const [entity_id] = unit_data;
-    queue_title_icon_popup(entity_id, get_ability_name(ability_id), get_full_ability_icon_path(ability_id));
-}
-
-function show_adventure_item_effect_popup(unit_id: Unit_Id, item_id: Adventure_Item_Id) {
-    const unit_data = find_unit_entity_data_by_unit_id(battle, unit_id);
-    if (!unit_data) return;
-
-    const [entity_id] = unit_data;
-    queue_title_icon_popup(entity_id, get_adventure_item_name_by_id(item_id), get_adventure_item_icon_by_id(item_id));
-}
-
-function show_modifier_effect_popup(unit_id: Unit_Id, modifier_handle_id: Modifier_Handle_Id) {
-    const unit_data = find_unit_entity_data_by_unit_id(battle, unit_id);
-    if (!unit_data) return;
-
-    $.Msg("Unit found");
-
-    const applied = battle.modifier_handle_id_to_modifier[modifier_handle_id];
-    if (!applied) return;
-
-    $.Msg("Modifier found");
-
-    const [entity_id] = unit_data;
-    queue_title_icon_popup(entity_id, modifier_source_to_name(applied.modifier.id, applied.source), get_modifier_icon(applied));
+    parent.DeleteAsync(2);
 }
 
 subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_targeted_ability, event => {
@@ -3161,15 +3231,32 @@ periodically_update_stat_bar_display();
 periodically_request_battle_deltas_when_in_battle();
 subscribe_to_custom_event(To_Client_Event_Type.show_start_turn_ui, show_start_turn_ui);
 subscribe_to_custom_event(To_Client_Event_Type.show_game_over_ui, event => show_game_over_ui(event.result));
+
 subscribe_to_custom_event(To_Client_Event_Type.health_change_popup, event => {
-    show_health_change_popup(event.over_unit, event.change, event.blocked_by_armor);
+    queue_popup(event.over_unit, {
+        type: Popup_Type.health_change,
+        change: event.change,
+        blocked_by_armor: event.blocked_by_armor
+    });
 });
+
 subscribe_to_custom_event(To_Client_Event_Type.adventure_item_effect_popup, event => {
-    show_adventure_item_effect_popup(event.over_unit, event.item_id);
+    queue_popup(event.over_unit, {
+        type: Popup_Type.adventure_item_effect,
+        item_id: event.item_id
+    });
 });
+
 subscribe_to_custom_event(To_Client_Event_Type.ability_use_popup, event => {
-    show_ability_use_popup(event.over_unit, event.ability_id);
+    queue_popup(event.over_unit, {
+        type: Popup_Type.ability_use,
+        ability_id: event.ability_id
+    });
 });
+
 subscribe_to_custom_event(To_Client_Event_Type.modifier_effect_popup, event => {
-    show_modifier_effect_popup(event.over_unit, event.modifier_handle_id);
+    queue_popup(event.over_unit, {
+        type: Popup_Type.modifier_effect,
+        modifier_handle_id: event.modifier_handle_id
+    });
 });
