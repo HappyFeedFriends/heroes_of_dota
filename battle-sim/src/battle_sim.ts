@@ -1148,6 +1148,8 @@ function update_unit_modifier_state(battle: Battle, unit: Unit) {
 
     // @Performance is bad in case we have a lot of modifiers
     for (const carrier of battle.units) {
+        if (carrier.dead) continue;
+
         for (const applied of carrier.modifiers) {
             const changes = calculate_modifier_changes(applied.modifier);
             for (const change of changes) {

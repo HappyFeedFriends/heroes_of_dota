@@ -639,6 +639,34 @@ function test_aura_depends_on_distance() {
     ally.assert().has_attack_damage(fixed_attack + expected_bonus);
 }
 
+function test_aura_is_disabled_on_death() {
+    const [battle, carrier] = test_battle_with_ally_and_enemy(Hero_Type.earthshaker, xy(1, 1));
+    const ally = battle.for_test_player().spawn_hero(Hero_Type.mirana, xy(2, 1));
+    const attack = get_attack_damage(ally.unit);
+
+    const fixed_attack = 10;
+    const expected_bonus = 5;
+
+    ally.apply_modifier({ id: Modifier_Id.attack_damage, bonus: fixed_attack - attack });
+    ally.assert().has_attack_damage(fixed_attack);
+
+    carrier.apply_modifier({
+        id: Modifier_Id.aura,
+        selector: {
+            rectangle_distance: 2,
+            flags: {
+                [Aura_Selector_Flag.allies]: true,
+                [Aura_Selector_Flag.enemies]: false
+            }
+        },
+        modifier: { id: Modifier_Id.attack_damage, bonus: expected_bonus }
+    });
+
+    ally.assert().has_attack_damage(fixed_attack + expected_bonus);
+    carrier.kill();
+    ally.assert().has_attack_damage(fixed_attack);
+}
+
 function test_load_all_adventures() {
     const ok = load_all_adventures();
 
@@ -683,5 +711,6 @@ run_tests([
     test_poison_deals_damage_at_the_end_of_each_turn,
     test_poison_deals_damage_at_the_end_of_turn_before_expiring,
     test_aura_modifier,
-    test_aura_depends_on_distance
+    test_aura_depends_on_distance,
+    test_aura_is_disabled_on_death
 ]);
