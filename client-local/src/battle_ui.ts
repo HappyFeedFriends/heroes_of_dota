@@ -1856,11 +1856,9 @@ function get_full_ability_icon_path(id: Ability_Id): string {
             case Ability_Id.bounty_hunter_track: return "bounty_hunter_track";
 
             case Ability_Id.monster_spawn_spiderlings: return "broodmother_spawn_spiderlings";
-
-            // TODO icons for those
-            case Ability_Id.pocket_tower_attack: return "";
-            case Ability_Id.deployment_zone: return "";
-            case Ability_Id.monster_lifesteal: return "";
+            case Ability_Id.pocket_tower_attack: return "tiny_toss";
+            case Ability_Id.monster_lifesteal: return "life_stealer_feast";
+            case Ability_Id.deployment_zone: return "kunkka_x_marks_the_spot";
         }
     }
 
