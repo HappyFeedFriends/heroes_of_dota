@@ -2773,6 +2773,13 @@ function expire_timed_effect(id: Effect_Handle_Id) {
 }
 
 function play_modifier_effect_delta(game: Game, delta: Delta_Modifier_Effect_Applied) {
+    function popup(over_target: Unit) {
+        fire_event(To_Client_Event_Type.modifier_effect_popup, {
+            over_unit: over_target.id,
+            modifier_handle_id: delta.handle_id
+        });
+    }
+
     const source: Source = { type: Source_Type.modifier, handle: delta.handle_id };
 
     switch (delta.modifier_id) {
@@ -2781,6 +2788,7 @@ function play_modifier_effect_delta(game: Game, delta: Delta_Modifier_Effect_App
             const target = find_unit_by_id(delta.change.target_unit_id);
             if (!target) break;
 
+            popup(target);
             change_health(game, source, target, delta.change);
 
             break;
@@ -2790,6 +2798,7 @@ function play_modifier_effect_delta(game: Game, delta: Delta_Modifier_Effect_App
             const target = find_unit_by_id(delta.heal.target_unit_id);
             if (!target) break;
 
+            popup(target);
             change_health(game, source, target, delta.heal);
             fx_by_unit("particles/items3_fx/octarine_core_lifesteal.vpcf", target).release();
 
@@ -2801,6 +2810,7 @@ function play_modifier_effect_delta(game: Game, delta: Delta_Modifier_Effect_App
             const target = find_unit_by_id(delta.heal.target_unit_id);
             if (!target) break;
 
+            popup(target);
             change_health(game, source, target, delta.heal);
             fx_by_unit("particles/generic_gameplay/generic_lifesteal.vpcf", target).release();
 
@@ -2811,6 +2821,7 @@ function play_modifier_effect_delta(game: Game, delta: Delta_Modifier_Effect_App
             const target = find_unit_by_id(delta.target_unit_id);
             if (!target) break;
 
+            popup(target);
             unit_emit_sound(target, "DOTA_Item.SkullBasher");
             apply_modifier(game, target, delta.modifier);
 

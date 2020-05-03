@@ -27,7 +27,8 @@ declare const enum To_Client_Event_Type {
     pre_state_change_screen_fade = 9,
     health_change_popup = 10,
     adventure_item_effect_popup = 11,
-    ability_use_popup = 12
+    ability_use_popup = 12,
+    modifier_effect_popup = 13
 }
 
 declare const enum Prefixes {
@@ -139,6 +140,12 @@ type To_Client_Event = {
     payload: {
         over_unit: Unit_Id
         ability_id: Ability_Id
+    }
+} | {
+    type: To_Client_Event_Type.modifier_effect_popup
+    payload: {
+        over_unit: Unit_Id
+        modifier_handle_id: Modifier_Handle_Id
     }
 }
 

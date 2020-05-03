@@ -1865,6 +1865,17 @@ function get_full_ability_icon_path(id: Ability_Id): string {
     return `file://{images}/spellicons/${get_ability_icon(id)}.png`;
 }
 
+function modifier_source_to_name(id: Modifier_Id, source: Source): string {
+    switch (source.type) {
+        case Source_Type.adventure_item: return get_adventure_item_name_by_id(source.item_id);
+        case Source_Type.item: return get_item_name(source.item_id);
+        case Source_Type.modifier: return modifier_source_to_name(id, source.applied.source);
+        case Source_Type.unit: return get_ability_name(source.ability_id);
+
+        default: return snake_case_to_capitalized_words(enum_to_string(id));
+    }
+}
+
 function create_level_bar(parent: Panel, id: string): Level_Bar {
     const panel = $.CreatePanel("Panel", parent, id);
     panel.AddClass("level_bar");
@@ -2093,16 +2104,6 @@ function update_hero_control_panel_state(row: Unit_Row, hero: Hero) {
             data: panel
         }));
 
-        function source_to_name(id: Modifier_Id, source: Source): string {
-            switch (source.type) {
-                case Source_Type.adventure_item: return get_adventure_item_name_by_id(source.item_id);
-                case Source_Type.item: return get_item_name(source.item_id);
-                case Source_Type.modifier: return source_to_name(id, source.applied.source);
-
-                default: return snake_case_to_capitalized_words(enum_to_string(id));
-            }
-        }
-
         function show_modifier_tooltip(panel: Panel, applied: Applied_Modifier) {
             const root = modifier_tooltip;
             root.RemoveAndDeleteChildren();
@@ -2111,7 +2112,7 @@ function update_hero_control_panel_state(row: Unit_Row, hero: Hero) {
                 root,
                 panel,
                 get_modifier_icon(applied),
-                source_to_name(applied.modifier.id, applied.source)
+                modifier_source_to_name(applied.modifier.id, applied.source)
             );
 
             const main = section();
@@ -2972,50 +2973,53 @@ function show_health_change_popup(unit_id: Unit_Id, change: number, blocked_by_a
     parent.DeleteAsync(1.5);
 }
 
+function queue_title_icon_popup(entity_id: EntityId, text: string, icon: string) {
+    const parent = $.CreatePanel("Panel", popups, "");
+    parent.AddClass("popup");
+    parent.AddClass("icon_text_popup");
+    parent.AddClass("active");
+
+    const icon_panel = $.CreatePanel("Image", parent, "icon");
+    icon_panel.SetImage(icon);
+    icon_panel.SetScaling(ScalingFunction.STRETCH_TO_COVER_PRESERVE_ASPECT);
+
+    const text_panel = $.CreatePanel("Label", parent, "text");
+    text_panel.text = text;
+
+    position_panel_over_entity_in_the_world(parent, entity_id, -30, 150);
+
+    // parent.DeleteAsync(2);
+}
+
 function show_ability_use_popup(unit_id: Unit_Id, ability_id: Ability_Id) {
     const unit_data = find_unit_entity_data_by_unit_id(battle, unit_id);
     if (!unit_data) return;
 
-    const parent = $.CreatePanel("Panel", popups, "");
-    parent.AddClass("ability_use_popup");
-    parent.AddClass("popup");
-    parent.AddClass("active");
-
-    const icon = $.CreatePanel("Image", parent, "icon");
-    icon.SetImage(get_full_ability_icon_path(ability_id));
-
-    const label = $.CreatePanel("Label", parent, "text");
-    label.AddClass("popup_title_text");
-    label.text = get_ability_name(ability_id);
-
     const [entity_id] = unit_data;
-
-    position_panel_over_entity_in_the_world(parent, entity_id, -30, 150);
-
-    parent.DeleteAsync(2);
+    queue_title_icon_popup(entity_id, get_ability_name(ability_id), get_full_ability_icon_path(ability_id));
 }
 
 function show_adventure_item_effect_popup(unit_id: Unit_Id, item_id: Adventure_Item_Id) {
     const unit_data = find_unit_entity_data_by_unit_id(battle, unit_id);
     if (!unit_data) return;
 
-    const parent = $.CreatePanel("Panel", popups, "");
-    parent.AddClass("adventure_item_popup");
-    parent.AddClass("popup");
-    parent.AddClass("active");
+    const [entity_id] = unit_data;
+    queue_title_icon_popup(entity_id, get_adventure_item_name_by_id(item_id), get_adventure_item_icon_by_id(item_id));
+}
 
-    const icon = $.CreatePanel("Image", parent, "icon");
-    icon.SetImage(get_adventure_item_icon_by_id(item_id));
+function show_modifier_effect_popup(unit_id: Unit_Id, modifier_handle_id: Modifier_Handle_Id) {
+    const unit_data = find_unit_entity_data_by_unit_id(battle, unit_id);
+    if (!unit_data) return;
 
-    const label = $.CreatePanel("Label", parent, "text");
-    label.AddClass("popup_title_text");
-    label.text = get_adventure_item_name_by_id(item_id);
+    $.Msg("Unit found");
+
+    const applied = battle.modifier_handle_id_to_modifier[modifier_handle_id];
+    if (!applied) return;
+
+    $.Msg("Modifier found");
 
     const [entity_id] = unit_data;
-
-    position_panel_over_entity_in_the_world(parent, entity_id, -30, 150);
-
-    parent.DeleteAsync(2);
+    queue_title_icon_popup(entity_id, modifier_source_to_name(applied.modifier.id, applied.source), get_modifier_icon(applied));
 }
 
 subscribe_to_custom_event(To_Client_Event_Type.grid_highlight_targeted_ability, event => {
@@ -3165,4 +3169,7 @@ subscribe_to_custom_event(To_Client_Event_Type.adventure_item_effect_popup, even
 });
 subscribe_to_custom_event(To_Client_Event_Type.ability_use_popup, event => {
     show_ability_use_popup(event.over_unit, event.ability_id);
+});
+subscribe_to_custom_event(To_Client_Event_Type.modifier_effect_popup, event => {
+    show_modifier_effect_popup(event.over_unit, event.modifier_handle_id);
 });
