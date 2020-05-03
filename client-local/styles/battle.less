@@ -793,6 +793,13 @@
     }
   }
 
+  .popup_title_text {
+    text-shadow: 0px 1px 3px 4.0 black;
+    color: #d7d7d7;
+    font-family: @font-regular;
+    font-size: 24px;
+  }
+
   .adventure_item_popup {
     flow-children: right;
     transition-duration: 1.4s;
@@ -805,10 +812,22 @@
     }
 
     #text {
-      text-shadow: 0px 1px 3px 4.0 black;
-      color: #d7d7d7;
-      font-family: @font-regular;
-      font-size: 24px;
+      vertical-align: center;
+    }
+  }
+
+  .ability_use_popup {
+    flow-children: right;
+    transition-duration: 1.4s;
+
+    #icon {
+      width: 24px;
+      height: 24px;
+      box-shadow: 0px 0px 4px black;
+      margin-right: 4px;
+    }
+
+    #text {
       vertical-align: center;
     }
   }

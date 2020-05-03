@@ -1648,6 +1648,60 @@ function get_item_tooltip(i: Item): string {
 }
 */
 
+function get_ability_name(id: Ability_Id): string {
+    switch (id) {
+        case Ability_Id.basic_attack: return "Attack";
+        case Ability_Id.pudge_hook: return "Meat Hook";
+        case Ability_Id.pudge_rot: return "Rot";
+        case Ability_Id.pudge_dismember: return "Dismember";
+        case Ability_Id.tide_gush: return "Gush";
+        case Ability_Id.tide_anchor_smash: return "Anchor Smash";
+        case Ability_Id.tide_ravage: return "Ravage";
+        case Ability_Id.luna_lucent_beam: return "Lucent Beam";
+        case Ability_Id.luna_moon_glaive: return "Moon Glaive";
+        case Ability_Id.luna_eclipse: return "Eclipse";
+        case Ability_Id.skywrath_concussive_shot: return "Concussive Shot";
+        case Ability_Id.skywrath_ancient_seal: return "Ancient Seal";
+        case Ability_Id.skywrath_mystic_flare: return "Mystic Flare";
+        case Ability_Id.dragon_knight_breathe_fire: return "Breathe Fire";
+        case Ability_Id.dragon_knight_dragon_tail: return "Dragon Tail";
+        case Ability_Id.dragon_knight_elder_dragon_form: return "Elder Dragon Form";
+        case Ability_Id.dragon_knight_elder_dragon_form_attack: return "Dragon Form Attack";
+        case Ability_Id.lion_hex: return "Hex";
+        case Ability_Id.lion_impale: return "Impale";
+        case Ability_Id.lion_finger_of_death: return "Finger of Death";
+        case Ability_Id.mirana_starfall: return "Starstorm";
+        case Ability_Id.mirana_arrow: return "Sacred Arrow";
+        case Ability_Id.mirana_leap: return "Leap";
+        case Ability_Id.venge_magic_missile: return "Magic Missile";
+        case Ability_Id.venge_wave_of_terror: return "Wave of Terror";
+        case Ability_Id.venge_nether_swap: return "Nether Swap";
+        case Ability_Id.dark_seer_ion_shell: return "Ion Shell";
+        case Ability_Id.dark_seer_surge: return "Surge";
+        case Ability_Id.dark_seer_vacuum: return "Vacuum";
+        case Ability_Id.ember_searing_chains: return "Searing Chains";
+        case Ability_Id.ember_sleight_of_fist: return "Sleight of Fist";
+        case Ability_Id.ember_fire_remnant: return "Fire Remnant";
+        case Ability_Id.ember_activate_fire_remnant: return "Activate Fire Remnant";
+        case Ability_Id.shaker_fissure: return "Fissure";
+        case Ability_Id.shaker_enchant_totem: return "Enchant Totem";
+        case Ability_Id.shaker_enchant_totem_attack: return "Enchant Totem Attack";
+        case Ability_Id.shaker_echo_slam: return "Echo Slam";
+        case Ability_Id.venomancer_plague_wards: return "Plague Ward";
+        case Ability_Id.venomancer_venomous_gale: return "Venomous Gale";
+        case Ability_Id.venomancer_poison_nova: return "Poison Nova";
+        case Ability_Id.plague_ward_attack: return "Plague Ward attack";
+        case Ability_Id.bounty_hunter_shadow_walk: return "Shadow Walk";
+        case Ability_Id.bounty_hunter_jinada: return "Jinada";
+        case Ability_Id.bounty_hunter_jinada_attack: return "Jinada Attack";
+        case Ability_Id.bounty_hunter_track: return "Track";
+        case Ability_Id.pocket_tower_attack: return "Pocket Tower attack";
+        case Ability_Id.deployment_zone: return "Deployment zone";
+        case Ability_Id.monster_lifesteal: return "Lifesteal";
+        case Ability_Id.monster_spawn_spiderlings: return "Offspring";
+    }
+}
+
 function get_ability_tooltip(caster: Unit, a: Ability): string {
     switch (a.id) {
         case Ability_Id.basic_attack: return `Basic attack`;
@@ -1712,63 +1766,6 @@ function get_ability_tooltip(caster: Unit, a: Ability): string {
     }
 }
 
-function get_ability_icon(ability_id: Ability_Id): string {
-    switch (ability_id) {
-        case Ability_Id.basic_attack: return "juggernaut_blade_dance";
-        case Ability_Id.pudge_hook: return "pudge_meat_hook";
-        case Ability_Id.pudge_rot: return "pudge_rot";
-        case Ability_Id.pudge_dismember: return "pudge_dismember";
-        case Ability_Id.sniper_shrapnel: return "sniper_shrapnel";
-        case Ability_Id.tide_gush: return "tidehunter_gush";
-        case Ability_Id.tide_anchor_smash: return "tidehunter_anchor_smash";
-        case Ability_Id.tide_ravage: return "tidehunter_ravage";
-        case Ability_Id.luna_lucent_beam: return "luna_lucent_beam";
-        case Ability_Id.luna_moon_glaive: return "luna_moon_glaive";
-        case Ability_Id.luna_eclipse: return "luna_eclipse";
-        case Ability_Id.skywrath_concussive_shot: return "skywrath_mage_concussive_shot";
-        case Ability_Id.skywrath_ancient_seal: return "skywrath_mage_ancient_seal";
-        case Ability_Id.skywrath_mystic_flare: return "skywrath_mage_mystic_flare";
-        case Ability_Id.dragon_knight_breathe_fire: return "dragon_knight_breathe_fire";
-        case Ability_Id.dragon_knight_dragon_tail: return "dragon_knight_dragon_tail";
-        case Ability_Id.dragon_knight_elder_dragon_form: return "dragon_knight_elder_dragon_form";
-        case Ability_Id.dragon_knight_elder_dragon_form_attack: return "dragon_knight_elder_dragon_form";
-        case Ability_Id.lion_hex: return "lion_voodoo";
-        case Ability_Id.lion_impale: return "lion_impale";
-        case Ability_Id.lion_finger_of_death: return "lion_finger_of_death";
-        case Ability_Id.mirana_starfall: return "mirana_starfall";
-        case Ability_Id.mirana_arrow: return "mirana_arrow";
-        case Ability_Id.mirana_leap: return "mirana_leap";
-        case Ability_Id.venge_magic_missile: return "vengefulspirit_magic_missile";
-        case Ability_Id.venge_wave_of_terror: return "vengefulspirit_wave_of_terror";
-        case Ability_Id.venge_nether_swap: return "vengefulspirit_nether_swap";
-        case Ability_Id.dark_seer_ion_shell: return "dark_seer_ion_shell";
-        case Ability_Id.dark_seer_surge: return "dark_seer_surge";
-        case Ability_Id.dark_seer_vacuum: return "dark_seer_vacuum";
-        case Ability_Id.ember_searing_chains: return "ember_spirit_searing_chains";
-        case Ability_Id.ember_sleight_of_fist: return "ember_spirit_sleight_of_fist";
-        case Ability_Id.ember_fire_remnant: return "ember_spirit_fire_remnant";
-        case Ability_Id.ember_activate_fire_remnant: return "ember_spirit_activate_fire_remnant";
-        case Ability_Id.shaker_fissure: return "earthshaker_fissure";
-        case Ability_Id.shaker_enchant_totem: return "earthshaker_enchant_totem";
-        case Ability_Id.shaker_enchant_totem_attack: return "earthshaker_enchant_totem";
-        case Ability_Id.shaker_echo_slam: return "earthshaker_echo_slam";
-        case Ability_Id.venomancer_plague_wards: return "venomancer_plague_ward";
-        case Ability_Id.venomancer_venomous_gale: return "venomancer_venomous_gale";
-        case Ability_Id.venomancer_poison_nova: return "venomancer_poison_nova";
-        case Ability_Id.bounty_hunter_shadow_walk: return "bounty_hunter_wind_walk";
-        case Ability_Id.bounty_hunter_jinada: return "bounty_hunter_jinada";
-        case Ability_Id.bounty_hunter_jinada_attack: return "bounty_hunter_jinada";
-        case Ability_Id.bounty_hunter_track: return "bounty_hunter_track";
-
-        // TODO these are not visible right now, but might be later
-        case Ability_Id.pocket_tower_attack: return "";
-        case Ability_Id.plague_ward_attack: return "";
-        case Ability_Id.deployment_zone: return "";
-        case Ability_Id.monster_lifesteal: return "";
-        case Ability_Id.monster_spawn_spiderlings: return "";
-    }
-}
-
 function get_modifier_icon(applied: Applied_Modifier): string {
     function maybe_from_modifier_id() {
         switch (applied.modifier.id) {
@@ -1809,6 +1806,64 @@ function get_modifier_icon(applied: Applied_Modifier): string {
 }
 
 function get_full_ability_icon_path(id: Ability_Id): string {
+
+    function get_ability_icon(ability_id: Ability_Id): string {
+        switch (ability_id) {
+            case Ability_Id.basic_attack: return "juggernaut_blade_dance";
+            case Ability_Id.pudge_hook: return "pudge_meat_hook";
+            case Ability_Id.pudge_rot: return "pudge_rot";
+            case Ability_Id.pudge_dismember: return "pudge_dismember";
+            case Ability_Id.tide_gush: return "tidehunter_gush";
+            case Ability_Id.tide_anchor_smash: return "tidehunter_anchor_smash";
+            case Ability_Id.tide_ravage: return "tidehunter_ravage";
+            case Ability_Id.luna_lucent_beam: return "luna_lucent_beam";
+            case Ability_Id.luna_moon_glaive: return "luna_moon_glaive";
+            case Ability_Id.luna_eclipse: return "luna_eclipse";
+            case Ability_Id.skywrath_concussive_shot: return "skywrath_mage_concussive_shot";
+            case Ability_Id.skywrath_ancient_seal: return "skywrath_mage_ancient_seal";
+            case Ability_Id.skywrath_mystic_flare: return "skywrath_mage_mystic_flare";
+            case Ability_Id.dragon_knight_breathe_fire: return "dragon_knight_breathe_fire";
+            case Ability_Id.dragon_knight_dragon_tail: return "dragon_knight_dragon_tail";
+            case Ability_Id.dragon_knight_elder_dragon_form: return "dragon_knight_elder_dragon_form";
+            case Ability_Id.dragon_knight_elder_dragon_form_attack: return "dragon_knight_elder_dragon_form";
+            case Ability_Id.lion_hex: return "lion_voodoo";
+            case Ability_Id.lion_impale: return "lion_impale";
+            case Ability_Id.lion_finger_of_death: return "lion_finger_of_death";
+            case Ability_Id.mirana_starfall: return "mirana_starfall";
+            case Ability_Id.mirana_arrow: return "mirana_arrow";
+            case Ability_Id.mirana_leap: return "mirana_leap";
+            case Ability_Id.venge_magic_missile: return "vengefulspirit_magic_missile";
+            case Ability_Id.venge_wave_of_terror: return "vengefulspirit_wave_of_terror";
+            case Ability_Id.venge_nether_swap: return "vengefulspirit_nether_swap";
+            case Ability_Id.dark_seer_ion_shell: return "dark_seer_ion_shell";
+            case Ability_Id.dark_seer_surge: return "dark_seer_surge";
+            case Ability_Id.dark_seer_vacuum: return "dark_seer_vacuum";
+            case Ability_Id.ember_searing_chains: return "ember_spirit_searing_chains";
+            case Ability_Id.ember_sleight_of_fist: return "ember_spirit_sleight_of_fist";
+            case Ability_Id.ember_fire_remnant: return "ember_spirit_fire_remnant";
+            case Ability_Id.ember_activate_fire_remnant: return "ember_spirit_activate_fire_remnant";
+            case Ability_Id.shaker_fissure: return "earthshaker_fissure";
+            case Ability_Id.shaker_enchant_totem: return "earthshaker_enchant_totem";
+            case Ability_Id.shaker_enchant_totem_attack: return "earthshaker_enchant_totem";
+            case Ability_Id.shaker_echo_slam: return "earthshaker_echo_slam";
+            case Ability_Id.venomancer_plague_wards: return "venomancer_plague_ward";
+            case Ability_Id.plague_ward_attack: return "venomancer_plague_ward";
+            case Ability_Id.venomancer_venomous_gale: return "venomancer_venomous_gale";
+            case Ability_Id.venomancer_poison_nova: return "venomancer_poison_nova";
+            case Ability_Id.bounty_hunter_shadow_walk: return "bounty_hunter_wind_walk";
+            case Ability_Id.bounty_hunter_jinada: return "bounty_hunter_jinada";
+            case Ability_Id.bounty_hunter_jinada_attack: return "bounty_hunter_jinada";
+            case Ability_Id.bounty_hunter_track: return "bounty_hunter_track";
+
+            case Ability_Id.monster_spawn_spiderlings: return "broodmother_spawn_spiderlings";
+
+            // TODO icons for those
+            case Ability_Id.pocket_tower_attack: return "";
+            case Ability_Id.deployment_zone: return "";
+            case Ability_Id.monster_lifesteal: return "";
+        }
+    }
+
     return `file://{images}/spellicons/${get_ability_icon(id)}.png`;
 }
 
@@ -2919,6 +2974,29 @@ function show_health_change_popup(unit_id: Unit_Id, change: number, blocked_by_a
     parent.DeleteAsync(1.5);
 }
 
+function show_ability_use_popup(unit_id: Unit_Id, ability_id: Ability_Id) {
+    const unit_data = find_unit_entity_data_by_unit_id(battle, unit_id);
+    if (!unit_data) return;
+
+    const parent = $.CreatePanel("Panel", popups, "");
+    parent.AddClass("ability_use_popup");
+    parent.AddClass("popup");
+    parent.AddClass("active");
+
+    const icon = $.CreatePanel("Image", parent, "icon");
+    icon.SetImage(get_full_ability_icon_path(ability_id));
+
+    const label = $.CreatePanel("Label", parent, "text");
+    label.AddClass("popup_title_text");
+    label.text = get_ability_name(ability_id);
+
+    const [entity_id] = unit_data;
+
+    position_panel_over_entity_in_the_world(parent, entity_id, -30, 150);
+
+    parent.DeleteAsync(2);
+}
+
 function show_adventure_item_effect_popup(unit_id: Unit_Id, item_id: Adventure_Item_Id) {
     const unit_data = find_unit_entity_data_by_unit_id(battle, unit_id);
     if (!unit_data) return;
@@ -2932,6 +3010,7 @@ function show_adventure_item_effect_popup(unit_id: Unit_Id, item_id: Adventure_I
     icon.SetImage(get_adventure_item_icon_by_id(item_id));
 
     const label = $.CreatePanel("Label", parent, "text");
+    label.AddClass("popup_title_text");
     label.text = get_adventure_item_name_by_id(item_id);
 
     const [entity_id] = unit_data;
@@ -3027,8 +3106,6 @@ function try_select_unit_ability(unit: Unit, ability: Ability) {
         return;
     }
 
-    $.Msg("clicked ", get_ability_icon(ability.id));
-
     Game.EmitSound("click_simple");
 
     const active = ability_use.ability;
@@ -3087,4 +3164,7 @@ subscribe_to_custom_event(To_Client_Event_Type.health_change_popup, event => {
 });
 subscribe_to_custom_event(To_Client_Event_Type.adventure_item_effect_popup, event => {
     show_adventure_item_effect_popup(event.over_unit, event.item_id);
+});
+subscribe_to_custom_event(To_Client_Event_Type.ability_use_popup, event => {
+    show_ability_use_popup(event.over_unit, event.ability_id);
 });

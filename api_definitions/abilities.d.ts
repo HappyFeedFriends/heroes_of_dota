@@ -50,8 +50,6 @@ declare const enum Ability_Id {
 
     monster_lifesteal = 2000,
     monster_spawn_spiderlings = 2001,
-
-    sniper_shrapnel = 99
 }
 
 declare const enum Ability_Flag {

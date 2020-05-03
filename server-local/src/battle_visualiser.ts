@@ -1781,7 +1781,7 @@ function update_unit_modifier_state(unit: Unit) {
     // @Performance is bad in case we have a lot of modifiers
     for (const carrier of battle.units) {
         if (carrier.dead) continue;
-        
+
         for (const applied of carrier.modifiers) {
             const changes = calculate_modifier_changes(applied.modifier);
             for (const change of changes) {
@@ -3715,6 +3715,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             const attacker = find_unit_by_id(delta.unit_id);
 
             if (attacker) {
+                fire_event(To_Client_Event_Type.ability_use_popup, { over_unit: delta.unit_id ,ability_id: delta.ability_id });
                 play_ground_target_ability_delta(game, attacker, delta);
             }
 
@@ -3726,6 +3727,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             const target = find_unit_by_id(delta.target_unit_id);
 
             if (attacker && target) {
+                fire_event(To_Client_Event_Type.ability_use_popup, { over_unit: delta.unit_id ,ability_id: delta.ability_id });
                 play_unit_target_ability_delta(game, attacker, delta, target);
             }
 
@@ -3736,6 +3738,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             const attacker = find_unit_by_id(delta.unit_id);
 
             if (attacker) {
+                fire_event(To_Client_Event_Type.ability_use_popup, { over_unit: delta.unit_id ,ability_id: delta.ability_id });
                 play_no_target_ability_delta(game, attacker, delta);
             }
 
@@ -3835,6 +3838,11 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
         }
 
         case Delta_Type.ability_effect_applied: {
+            fire_event(To_Client_Event_Type.ability_use_popup, {
+                over_unit: delta.effect.source_unit_id,
+                ability_id: delta.effect.ability_id
+            });
+
             play_ability_effect_delta(game, delta.effect);
 
             break;
