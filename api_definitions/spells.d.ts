@@ -7,7 +7,8 @@ declare const enum Spell_Id {
     drums_of_endurance = 5,
     pocket_tower = 6,
     call_to_arms = 7,
-    refresher_orb = 8
+    refresher_orb = 8,
+    quicksand = 9
 }
 
 declare const enum Spell_Type {
@@ -22,25 +23,39 @@ declare const enum Spell_Unit_Targeting_Flag {
     allies = 2
 }
 
-type Card_Spell_Definition = Card_Spell_Unit_Target | Card_Spell_No_Target | Card_Spell_Ground_Target
+declare const enum Spell_Ground_Targeting_Type {
+    single_cell = 0,
+    rectangle = 1
+}
+
+type Spell_Ground_Targeting = {
+    type: Spell_Ground_Targeting_Type.single_cell
+}| {
+    type: Spell_Ground_Targeting_Type.rectangle
+    area_radius: number
+}
+
+type Card_Spell_Definition =
+    Spell_Buyback |
+    Spell_Euls_Scepter |
+    Spell_Town_Portal_Scroll |
+    Spell_Refresher_Orb |
+    Spell_Mekansm |
+    Spell_Buckler |
+    Spell_Drums_Of_Endurance |
+    Spell_Call_To_Arms |
+    Spell_Pocket_Tower |
+    Spell_Quicksand
+
 type Card_Spell = Card_Spell_Definition & {
     id: Card_Id
 }
 
-type Card_Spell_Unit_Target =
-    Spell_Buyback |
-    Spell_Euls_Scepter |
-    Spell_Town_Portal_Scroll |
-    Spell_Refresher_Orb
+type Find_By_Spell_Type<Union, Type> = Union extends { spell_type: Type } ? Union : never;
 
-type Card_Spell_No_Target =
-    Spell_Mekansm |
-    Spell_Buckler |
-    Spell_Drums_Of_Endurance |
-    Spell_Call_To_Arms
-
-type Card_Spell_Ground_Target =
-    Spell_Pocket_Tower
+type Card_Spell_Unit_Target = Find_By_Spell_Type<Card_Spell_Definition, Spell_Type.unit_target>
+type Card_Spell_No_Target = Find_By_Spell_Type<Card_Spell_Definition, Spell_Type.no_target>
+type Card_Spell_Ground_Target = Find_By_Spell_Type<Card_Spell_Definition, Spell_Type.ground_target>
 
 type Card_Spell_Unit_Target_Base = {
     type: Card_Type.spell
@@ -51,6 +66,7 @@ type Card_Spell_Unit_Target_Base = {
 type Card_Spell_Ground_Target_Base = {
     type: Card_Type.spell
     spell_type: Spell_Type.ground_target
+    targeting: Spell_Ground_Targeting
 }
 
 type Card_Spell_No_Target_Base = {
@@ -60,7 +76,6 @@ type Card_Spell_No_Target_Base = {
 
 type Spell_Buyback = Card_Spell_Unit_Target_Base & {
     type: Card_Type.spell
-    spell_type: Spell_Type.unit_target
     spell_id: Spell_Id.buyback
 }
 
@@ -101,20 +116,25 @@ type Spell_Refresher_Orb = Card_Spell_Unit_Target_Base & {
     spell_id: Spell_Id.refresher_orb
 }
 
-type Delta_Use_Unit_Target_Spell =
+type Spell_Quicksand = Card_Spell_Ground_Target_Base & {
+    spell_id: Spell_Id.quicksand
+}
+
+type Delta_Use_Spell =
     Delta_Spell_Buyback |
     Delta_Spell_Town_Portal_Scroll |
     Delta_Spell_Euls_Scepter |
-    Delta_Spell_Refresher_Orb
-
-type Delta_Use_No_Target_Spell =
+    Delta_Spell_Refresher_Orb |
     Delta_Spell_Mekansm |
     Delta_Spell_Buckler |
     Delta_Spell_Drums_Of_Endurance |
-    Delta_Spell_Call_To_Arms
+    Delta_Spell_Call_To_Arms |
+    Delta_Spell_Pocket_Tower |
+    Delta_Spell_Quicksand
 
-type Delta_Use_Ground_Target_Spell =
-    Delta_Spell_Pocket_Tower
+type Delta_Use_Unit_Target_Spell = Find_By_Type<Delta_Use_Spell, Delta_Type.use_unit_target_spell>
+type Delta_Use_No_Target_Spell = Find_By_Type<Delta_Use_Spell, Delta_Type.use_no_target_spell>
+type Delta_Use_Ground_Target_Spell = Find_By_Type<Delta_Use_Spell, Delta_Type.use_ground_target_spell>
 
 type Delta_Use_Unit_Target_Spell_Base = {
     type: Delta_Type.use_unit_target_spell
@@ -187,4 +207,9 @@ type Delta_Spell_Refresher_Orb = Delta_Use_Unit_Target_Spell_Base & {
         ability_id: Ability_Id
         charges_remaining: number
     }[]
+}
+
+type Delta_Spell_Quicksand = Delta_Use_Ground_Target_Spell_Base & {
+    spell_id: Spell_Id.quicksand
+    effect: Persistent_Effect_Application
 }

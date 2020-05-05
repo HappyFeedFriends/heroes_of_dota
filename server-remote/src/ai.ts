@@ -85,7 +85,7 @@ function ai_compute_actions_for_unit(ai: AI, actor: Unit): Turn_Action[] {
                     enemy: target,
                     cell: cell.position,
                     weight: weight,
-                    costs: populate_path_costs(ai.battle, cell.position, Number.MAX_SAFE_INTEGER, [])
+                    costs: populate_path_costs(ai.battle, cell.position, actor.move_points, [])
                 });
 
                 const size = cell_size * 0.2;

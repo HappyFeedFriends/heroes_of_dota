@@ -107,16 +107,25 @@ function get_full_hero_icon_path(type: Hero_Type): string {
 
 function get_spell_card_art(spell_id: Spell_Id): string {
     function get_spell_card_art_file(spell_id: Spell_Id): string {
+        function badge(name: string) {
+            return `profile_badges/${name}.png`;
+        }
+
+        function custom(name: string) {
+            return `custom_game/spells/${name}.png`;
+        }
+
         switch (spell_id) {
-            case Spell_Id.buyback: return "profile_badges/level_46.png";
-            case Spell_Id.euls_scepter: return "profile_badges/level_71.png";
-            case Spell_Id.mekansm: return "profile_badges/level_45.png";
-            case Spell_Id.buckler: return "profile_badges/level_21.png";
-            case Spell_Id.drums_of_endurance: return "profile_badges/level_42.png";
-            case Spell_Id.town_portal_scroll: return "custom_game/spells/teleport_scroll.png";
-            case Spell_Id.pocket_tower: return "custom_game/spells/pocket_tower.png";
-            case Spell_Id.call_to_arms: return "custom_game/spells/call_to_arms.png";
-            case Spell_Id.refresher_orb: return "profile_badges/level_95.png";
+            case Spell_Id.buyback: return badge("level_46");
+            case Spell_Id.euls_scepter: return badge("level_71");
+            case Spell_Id.mekansm: return badge("level_45");
+            case Spell_Id.buckler: return badge("level_21");
+            case Spell_Id.drums_of_endurance: return badge("level_42");
+            case Spell_Id.town_portal_scroll: return custom("teleport_scroll");
+            case Spell_Id.pocket_tower: return custom("pocket_tower");
+            case Spell_Id.call_to_arms: return custom("call_to_arms");
+            case Spell_Id.refresher_orb: return badge("level_95");
+            case Spell_Id.quicksand: return custom("quicksand");
         }
     }
     

@@ -107,7 +107,7 @@ function modifier(battle: Battle_Record, modifier: Modifier, duration?: number):
     }
 }
 
-function timed_effect(battle: Battle_Record, content: Timed_Effect, duration: number): Timed_Effect_Application {
+function timed_effect(battle: Battle_Record, content: Persistent_Effect, duration?: number): Persistent_Effect_Application {
     const handle_id = get_next_entity_id(battle) as Effect_Handle_Id;
 
     return {
@@ -262,6 +262,22 @@ function submit_spell_cast_ground_target(battle: Battle_Record, player: Battle_P
 
             break;
         }
+
+        case Spell_Id.quicksand: {
+            submit_battle_delta(battle, {
+                ...base,
+                spell_id: spell.spell_id,
+                effect: timed_effect(battle, {
+                    type: Persistent_Effect_Type.quicksand_area,
+                    at: at,
+                    targeting: spell.targeting
+                })
+            });
+
+            break;
+        }
+
+        default: unreachable(spell);
     }
 }
 
@@ -563,7 +579,7 @@ function submit_ability_cast_ground(battle: Battle_Record, unit: Unit, ability: 
                 modifiers: modifiers,
                 moves: moves,
                 block: timed_effect(battle, {
-                    type: Timed_Effect_Type.shaker_fissure_block,
+                    type: Persistent_Effect_Type.shaker_fissure_block,
                     from: start,
                     normal: normal,
                     steps: step
@@ -1309,7 +1325,7 @@ function pick_up_rune(battle: Battle_Record, hero: Hero, rune: Rune, move_cost: 
         unit_id: hero.id,
         rune_id: rune.id,
         at: rune.position,
-        move_cost: move_cost
+        final_move_points: hero.move_points - move_cost
     };
 
     switch (rune.type) {
@@ -1488,7 +1504,7 @@ function submit_turn_action(battle: Battle_Record, action_permission: Player_Act
 
             submit_battle_delta(battle, {
                 type: Delta_Type.unit_move,
-                move_cost: move_order_permission.cost,
+                final_move_points: move_order_permission.unit.move_points - move_order_permission.cost,
                 unit_id: move_order_permission.unit.id,
                 to_position: action.to
             });
@@ -1861,7 +1877,7 @@ function monster_try_retaliate(battle: Battle_Record, monster: Monster, target: 
                 type: Delta_Type.unit_move,
                 to_position: cell.position,
                 unit_id: monster.id,
-                move_cost: move_order.cost
+                final_move_points: monster.move_points - move_order.cost
             });
 
             const post_move_intent = check_and_update_attack_intent();
@@ -2110,7 +2126,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
     // TODO Not sure how this interacts with new modifiers being added in case of a modifier removal
     for (const unit of battle.units) {
         for (const modifier of unit.modifiers) {
-            if (modifier.duration_remaining != undefined && modifier.duration_remaining == 0) {
+            if (modifier.duration_remaining == 0) {
                 submit_battle_delta(battle, {
                     type: Delta_Type.modifier_removed,
                     modifier_handle_id: modifier.handle_id
@@ -2129,7 +2145,7 @@ function resolve_end_turn_effects(battle: Battle_Record) {
             // although I wouldn't expect elements to be removed there, so fingers crossed
             // Maybe we should push those deltas into a separate array and submit them all later
             submit_battle_delta(battle, {
-                type: Delta_Type.timed_effect_expired,
+                type: Delta_Type.persistent_effect_expired,
                 handle_id: effect.handle_id
             });
 

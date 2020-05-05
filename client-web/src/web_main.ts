@@ -815,7 +815,7 @@ function delta_to_colored_line(game: Game_In_Battle, delta: Delta): Colored_Line
 
             return [
                 clr.unit_name(unit),
-                clr.plain(` moves ${delta.move_cost} steps`)
+                clr.plain(` moves to ${delta.to_position.x}:${delta.to_position.y}`)
             ]
         }
 

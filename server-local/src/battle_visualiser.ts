@@ -22,7 +22,7 @@ type Battle = {
     has_started: boolean
     is_over: boolean
     camera_dummy: CDOTA_BaseNPC
-    timed_effect_visuals: Active_Timed_Effect_Visuals[]
+    timed_effect_visuals: Active_Persistent_Effect_Visuals[]
     player_requested_game_over_screen_skip: boolean
     disabled_cells: Cell_Index[]
 }
@@ -138,7 +138,7 @@ type Modifier_Visuals_State = {
     visible: false
 }
 
-type Active_Timed_Effect_Visuals = {
+type Active_Persistent_Effect_Visuals = {
     effect_handle_id: Effect_Handle_Id
     visuals: FX[]
 }
@@ -2658,7 +2658,6 @@ function play_ground_target_spell_delta(game: Game, cast: Delta_Use_Ground_Targe
     switch (cast.spell_id) {
         case Spell_Id.pocket_tower: {
             const facing = find_player_deployment_zone_facing(cast.player_id);
-
             if (!facing) break;
 
             spawn_unit_with_fx(cast.at, () => spawn_creep_for_battle(game, cast.spawn, cast.player_id, cast.at, facing));
@@ -2667,7 +2666,13 @@ function play_ground_target_spell_delta(game: Game, cast: Delta_Use_Ground_Targe
             break;
         }
 
-        default: unreachable(cast.spell_id);
+        case Spell_Id.quicksand: {
+            create_timed_effect(cast.effect.effect_handle_id, cast.effect.effect);
+
+            break;
+        }
+
+        default: unreachable(cast);
     }
 }
 
@@ -2728,12 +2733,12 @@ function play_unit_target_spell_delta(game: Game, caster: Battle_Player, target:
     }
 }
 
-function create_timed_effect(handle_id: Effect_Handle_Id, effect: Timed_Effect) {
+function create_timed_effect(handle_id: Effect_Handle_Id, effect: Persistent_Effect) {
     switch (effect.type) {
-        case Timed_Effect_Type.shaker_fissure_block: {
-            function add_normal(to: XY, scale: number) {
+        case Persistent_Effect_Type.shaker_fissure_block: {
+            const add_normal = (to: XY, scale: number) => {
                 return { x: to.x + effect.normal.x * scale, y: to.y + effect.normal.y * scale };
-            }
+            };
 
             const from = effect.from;
             const to = add_normal(effect.from, effect.steps - 1);
@@ -2755,7 +2760,27 @@ function create_timed_effect(handle_id: Effect_Handle_Id, effect: Timed_Effect) 
             break;
         }
 
-        default: unreachable(effect.type);
+        case Persistent_Effect_Type.quicksand_area: {
+            // TODO quicksand
+
+            const particle = fx("particles/units/heroes/hero_enigma/enigma_midnight_pulse.vpcf")
+                .to_location(0, effect.at);
+
+            if (effect.targeting.type == Spell_Ground_Targeting_Type.rectangle) {
+                particle.with_point_value(1, (effect.targeting.area_radius + 0.5) * Const.battle_cell_size);
+            } else {
+                print("Warning: unsupported effect targeting type", effect.targeting.type);
+            }
+
+            battle.timed_effect_visuals.push({
+                effect_handle_id: handle_id,
+                visuals: [ particle ]
+            });
+
+            break;
+        }
+
+        default: unreachable(effect);
     }
 }
 
@@ -3308,7 +3333,7 @@ function change_health(game: Game, source: Source, target: Unit, change: Health_
     }
 }
 
-function move_unit(game: Game, unit: Unit, points: XY[]) {
+function move_unit(game: Game, unit: Unit, points: XY[], final_move_points: number) {
     function unit_color() {
         switch (unit.supertype) {
             case Unit_Supertype.monster: return [255, 255, 255];
@@ -3351,6 +3376,9 @@ function move_unit(game: Game, unit: Unit, points: XY[]) {
 
         update_game_net_table(game);
     }
+
+    unit.move_points = final_move_points;
+    update_game_net_table(game);
 }
 
 function change_hero_level(game: Game, hero: Hero, new_level: number, source?: Delta_Source) {
@@ -3662,7 +3690,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
 
             unit.position = delta.to_position;
 
-            move_unit(game, unit, path);
+            move_unit(game, unit, path, delta.final_move_points);
 
             break;
         }
@@ -3680,7 +3708,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
 
             unit.position = rune.position;
 
-            move_unit(game, unit, path);
+            move_unit(game, unit, path, delta.final_move_points);
             destroy_rune(rune, false);
 
             battle.runes.splice(rune_index, 1);
@@ -3865,7 +3893,7 @@ function play_delta(game: Game, battle: Battle, delta: Delta, head: number) {
             break;
         }
 
-        case Delta_Type.timed_effect_expired: {
+        case Delta_Type.persistent_effect_expired: {
             expire_timed_effect(delta.handle_id);
 
             break;

@@ -23,6 +23,7 @@ function get_spell_name(spell_id: Spell_Id): string {
         case Spell_Id.pocket_tower: return "Pocket Tower";
         case Spell_Id.call_to_arms: return "Call to Arms";
         case Spell_Id.refresher_orb: return "Refresher Orb";
+        case Spell_Id.quicksand: return "Quicksand";
     }
 }
 
@@ -37,6 +38,7 @@ function get_spell_text(spell: Card_Spell_Definition): string {
         case Spell_Id.pocket_tower: return `Summon a tower to attack a random enemy each turn. Extends deployment zone`;
         case Spell_Id.call_to_arms: return `Summon ${spell.creeps_to_summon} lane creeps in your deployment zone`;
         case Spell_Id.refresher_orb: return `Restore charges of all abilities for target`;
+        case Spell_Id.quicksand: return `Target an area. Travelling through each cell in it consumes all move points`;
     }
 }
 

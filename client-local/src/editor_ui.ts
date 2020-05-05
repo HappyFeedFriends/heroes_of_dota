@@ -2015,6 +2015,7 @@ function fill_battleground_editor_cells(editor: Battleground_Editor, is_disabled
                 position: xy(x, y),
                 particle: particle,
                 occupants: 0,
+                slow_layers: 0,
                 disabled: is_disabled(xy(x, y))
             };
 

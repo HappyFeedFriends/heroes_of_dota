@@ -52,7 +52,11 @@ function spell_definition_by_id(spell_id: Spell_Id): Card_Spell_Definition {
         }
 
         case Spell_Id.pocket_tower: {
-            return spell<Spell_Pocket_Tower>({})
+            return spell<Spell_Pocket_Tower>({
+                targeting: {
+                    type: Spell_Ground_Targeting_Type.single_cell
+                }
+            })
         }
 
         case Spell_Id.call_to_arms: {
@@ -64,6 +68,15 @@ function spell_definition_by_id(spell_id: Spell_Id): Card_Spell_Definition {
         case Spell_Id.refresher_orb: {
             return spell<Spell_Refresher_Orb>({
                 targeting_flags: [ Spell_Unit_Targeting_Flag.heroes ]
+            })
+        }
+
+        case Spell_Id.quicksand: {
+            return spell<Spell_Quicksand>({
+                targeting: {
+                    type: Spell_Ground_Targeting_Type.rectangle,
+                    area_radius: 1
+                }
             })
         }
     }

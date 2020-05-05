@@ -49,7 +49,7 @@ type Battle = {
     grid: Grid<Cell>
     receive_event: (battle: Battle, event: Battle_Event) => void
     event_queue: Battle_Event[]
-    timed_effects: Active_Timed_Effect[]
+    timed_effects: Active_Persistent_Effect[]
 }
 
 type Battle_Player = {
@@ -89,10 +89,10 @@ type Battle_Event = {
     at: XY
 }
 
-type Active_Timed_Effect = {
+type Active_Persistent_Effect = {
     handle_id: Effect_Handle_Id
-    duration_remaining: number
-    content: Timed_Effect
+    duration_remaining?: number
+    content: Persistent_Effect
 }
 
 type Cell = Cell_Like & {
@@ -165,6 +165,7 @@ type Grid<T extends Cell_Like> = {
 type Cell_Like = {
     position: XY
     occupants: number
+    slow_layers: number
 };
 
 declare const enum Const {
@@ -515,7 +516,9 @@ type Path_Iterator = {
     battle: Battle
     indices_already_checked: boolean[]
     indices_not_checked: Cell_Index[]
+    cell_index_to_cost: number[]
     flags: Pathing_Flag[]
+    cells_with_infinite_costs: Cell_Index[]
     max_cost: number
 }
 
@@ -529,6 +532,7 @@ const enum Neighbor_Check_Result {
 type Neighbor_Check = {
     result: Neighbor_Check_Result.can_go | Neighbor_Check_Result.can_pass_through | Neighbor_Check_Result.can_stop_only
     index: Cell_Index
+    cost: number
 } | {
     result: Neighbor_Check_Result.stop_checking
 }
@@ -539,6 +543,8 @@ function path_iterator(battle: Battle, from: XY, max_cost: number, flags: Pathin
         flags: flags,
         indices_already_checked: [],
         indices_not_checked: [],
+        cell_index_to_cost: [],
+        cells_with_infinite_costs: [],
         max_cost: max_cost
     };
 
@@ -546,6 +552,7 @@ function path_iterator(battle: Battle, from: XY, max_cost: number, flags: Pathin
 
     iterator.indices_not_checked.push(from_index);
     iterator.indices_already_checked[from_index] = true;
+    iterator.cell_index_to_cost[from_index] = 0;
 
     return iterator;
 }
@@ -554,12 +561,16 @@ function path_iterator_flag(iter: Path_Iterator, flag: Pathing_Flag) {
     return iter.flags.indexOf(flag) != -1;
 }
 
-function path_iterator_check_neighbor(iter: Path_Iterator, for_cost: number, neighbor: Cell | undefined): Neighbor_Check {
-    if (!neighbor) return { result: Neighbor_Check_Result.stop_checking };
-
+function path_iterator_check_neighbor(iter: Path_Iterator, from: Cell, neighbor: Cell, move_cost: number): Neighbor_Check {
     const neighbor_index = grid_cell_index(iter.battle.grid, neighbor.position);
 
     if (iter.indices_already_checked[neighbor_index]) return { result: Neighbor_Check_Result.stop_checking };
+
+    iter.indices_already_checked[neighbor_index] = true;
+
+    if (from.slow_layers > 0 || neighbor.slow_layers > 0) {
+        move_cost = Math.max(move_cost, iter.max_cost);
+    }
 
     const neighbor_occupied = is_grid_cell_occupied(neighbor);
 
@@ -567,9 +578,9 @@ function path_iterator_check_neighbor(iter: Path_Iterator, for_cost: number, nei
         const rune = rune_at(iter.battle, neighbor.position);
 
         if (rune != undefined) {
-            iter.indices_already_checked[neighbor_index] = true;
+            iter.cell_index_to_cost[neighbor_index] = move_cost;
 
-            return { result: Neighbor_Check_Result.can_stop_only, index: neighbor_index };
+            return { result: Neighbor_Check_Result.can_stop_only, index: neighbor_index, cost: move_cost };
         }
     }
 
@@ -577,18 +588,47 @@ function path_iterator_check_neighbor(iter: Path_Iterator, for_cost: number, nei
         const unit = unit_at(iter.battle, neighbor.position);
 
         if (unit != undefined) {
-            iter.indices_already_checked[neighbor_index] = true;
+            iter.cell_index_to_cost[neighbor_index] = move_cost;
+            iter.cells_with_infinite_costs.push(neighbor_index);
 
-            return { result: Neighbor_Check_Result.can_pass_through, index: neighbor_index };
+            return { result: Neighbor_Check_Result.can_pass_through, index: neighbor_index, cost: move_cost };
         }
     }
-
-    iter.indices_already_checked[neighbor_index] = true;
 
     if (neighbor_occupied) {
         return { result: Neighbor_Check_Result.stop_checking };
     } else {
-        return { result: Neighbor_Check_Result.can_go, index: neighbor_index };
+        iter.cell_index_to_cost[neighbor_index] = move_cost;
+
+        return { result: Neighbor_Check_Result.can_go, index: neighbor_index, cost: move_cost };
+    }
+}
+
+// @Performance theoretically a priority queue would yield a better performance https://en.wikipedia.org/wiki/Fibonacci_heap
+function path_iterator_find_and_remove_min_cost_index(iterator: Path_Iterator): [Cell_Index, number] {
+    let min_cost_index = iterator.indices_not_checked[0];
+    let min_cost = iterator.cell_index_to_cost[min_cost_index];
+    let min_cost_element_index = 0;
+
+    for (let element_index = 1; element_index < iterator.indices_not_checked.length; element_index++) {
+        const cell_index = iterator.indices_not_checked[element_index];
+        const cell_cost = iterator.cell_index_to_cost[cell_index];
+
+        if (cell_cost < min_cost) {
+            min_cost_index = cell_index;
+            min_cost = cell_cost;
+            min_cost_element_index = element_index;
+        }
+    }
+
+    iterator.indices_not_checked.splice(min_cost_element_index, 1);
+
+    return [min_cost_index, min_cost];
+}
+
+function path_iterator_patch_cells_with_infinite_costs(iterator: Path_Iterator) {
+    for (const index of iterator.cells_with_infinite_costs) {
+        iterator.cell_index_to_cost[index] = Number.MAX_SAFE_INTEGER;
     }
 }
 
@@ -597,51 +637,50 @@ function can_find_path(battle: Battle, unit: Unit, to: XY, flags: Pathing_Flag[]
     const iterator = path_iterator(battle, unit.position, unit.move_points, flags);
 
     // @Performance can check if the target cell is occupied right away, just need to account for runes
-    for (let current_cost = 0; iterator.indices_not_checked.length > 0; current_cost++) {
-        const new_indices: Cell_Index[] = [];
+    while (iterator.indices_not_checked.length > 0) {
+        const [cell_index, cell_cost] = path_iterator_find_and_remove_min_cost_index(iterator);
+        const cell = battle.grid.cells[cell_index];
+        const neighbors = grid_cell_neighbors(battle.grid, cell.position);
 
-        for (const index of iterator.indices_not_checked) {
-            const cell = battle.grid.cells[index];
-            const neighbors = grid_cell_neighbors(battle.grid, cell.position);
+        for (const neighbor of neighbors) {
+            if (!neighbor) continue;
 
-            for (const neighbor of neighbors) {
-                if (!neighbor) continue;
+            let distance = 1;
 
-                const check = path_iterator_check_neighbor(iterator, current_cost + 1, neighbor);
+            const check = path_iterator_check_neighbor(iterator, cell, neighbor, cell_cost + distance);
 
-                switch (check.result) {
-                    case Neighbor_Check_Result.can_go: {
-                        if (xy_equal(to, neighbor.position)) {
-                            return { found: true, cost: current_cost + 1 }
-                        } else {
-                            new_indices.push(check.index);
-                        }
-
-                        break;
+            switch (check.result) {
+                case Neighbor_Check_Result.can_go: {
+                    if (xy_equal(to, neighbor.position)) {
+                        return { found: true, cost: check.cost }
+                    } else {
+                        iterator.indices_not_checked.push(check.index);
                     }
 
-                    case Neighbor_Check_Result.can_pass_through: {
-                        if (xy_equal(to, neighbor.position)) {
-                            return { found: false }
-                        } else {
-                            new_indices.push(check.index);
-                        }
-
-                        break;
-                    }
-
-                    case Neighbor_Check_Result.can_stop_only: {
-                        if (xy_equal(to, neighbor.position)) {
-                            return { found: true, cost: current_cost + 1 }
-                        }
-                    }
-
-                    case Neighbor_Check_Result.stop_checking: break;
+                    break;
                 }
+
+                case Neighbor_Check_Result.can_pass_through: {
+                    if (xy_equal(to, neighbor.position)) {
+                        return { found: false }
+                    } else {
+                        iterator.indices_not_checked.push(check.index);
+                    }
+
+                    break;
+                }
+
+                case Neighbor_Check_Result.can_stop_only: {
+                    if (xy_equal(to, neighbor.position)) {
+                        return { found: true, cost: check.cost }
+                    }
+
+                    break;
+                }
+
+                case Neighbor_Check_Result.stop_checking: break;
             }
         }
-
-        iterator.indices_not_checked = new_indices;
     }
 
     return { found: false };
@@ -674,61 +713,50 @@ function populate_unit_path_costs(battle: Battle, unit: Unit, to_grab_rune: bool
 
 // This specific overload is only used in AI in a weird way
 function populate_path_costs(battle: Battle, from: XY, max_cost: number, flags: Pathing_Flag[]): Cost_Population_Result {
-    const cell_index_to_cost: number[] = [];
     const cell_index_to_parent_index: Cell_Index[] = [];
-    const from_index = grid_cell_index(battle.grid, from);
-    cell_index_to_cost[from_index] = 0;
-
     const iterator = path_iterator(battle, from, max_cost, flags);
 
-    for (let current_cost = 0; iterator.indices_not_checked.length > 0; current_cost++) {
-        const new_indices: Cell_Index[] = [];
+    while (iterator.indices_not_checked.length > 0) {
+        const [cell_index, cell_cost] = path_iterator_find_and_remove_min_cost_index(iterator);
+        const cell = battle.grid.cells[cell_index];
+        const neighbors = grid_cell_neighbors(battle.grid, cell.position);
 
-        for (const index of iterator.indices_not_checked) {
-            const cell = battle.grid.cells[index];
-            const at = cell.position;
+        for (const neighbor of neighbors) {
+            if (!neighbor) continue;
 
-            const neighbors = grid_cell_neighbors(battle.grid, at);
+            let move_cost = 1;
 
-            for (const neighbor of neighbors) {
-                const check = path_iterator_check_neighbor(iterator, current_cost + 1, neighbor);
+            const check = path_iterator_check_neighbor(iterator, cell, neighbor, cell_cost + move_cost);
+            if (check.result == Neighbor_Check_Result.stop_checking) continue;
 
-                if (check.result == Neighbor_Check_Result.stop_checking) {
-                    continue;
+            switch (check.result) {
+                case Neighbor_Check_Result.can_go: {
+                    iterator.indices_not_checked.push(check.index);
+                    cell_index_to_parent_index[check.index] = cell_index;
+
+                    break;
                 }
 
-                switch (check.result) {
-                    case Neighbor_Check_Result.can_go: {
-                        new_indices.push(check.index);
-                        cell_index_to_parent_index[check.index] = index;
-                        cell_index_to_cost[check.index] = current_cost + 1;
+                case Neighbor_Check_Result.can_pass_through: {
+                    iterator.indices_not_checked.push(check.index);
+                    cell_index_to_parent_index[check.index] = cell_index;
 
-                        break;
-                    }
+                    break;
+                }
 
-                    case Neighbor_Check_Result.can_pass_through: {
-                        new_indices.push(check.index);
-                        cell_index_to_parent_index[check.index] = index;
-                        cell_index_to_cost[check.index] = Number.MAX_SAFE_INTEGER;
+                case Neighbor_Check_Result.can_stop_only: {
+                    cell_index_to_parent_index[check.index] = cell_index;
 
-                        break;
-                    }
-
-                    case Neighbor_Check_Result.can_stop_only: {
-                        cell_index_to_parent_index[check.index] = index;
-                        cell_index_to_cost[check.index] = current_cost + 1;
-
-                        break;
-                    }
+                    break;
                 }
             }
         }
-
-        iterator.indices_not_checked = new_indices;
     }
 
+    path_iterator_patch_cells_with_infinite_costs(iterator);
+
     return {
-        cell_index_to_cost: cell_index_to_cost,
+        cell_index_to_cost: iterator.cell_index_to_cost,
         cell_index_to_parent_index: cell_index_to_parent_index
     };
 }
@@ -913,6 +941,18 @@ function area_selector_fits(battle: Battle, selector: Ability_Area_Selector, cas
     }
 }
 
+function ground_targeting_spell_fits(targeting: Spell_Ground_Targeting, cursor_at: XY, check_what: XY): boolean {
+    switch (targeting.type) {
+        case Spell_Ground_Targeting_Type.rectangle: {
+            return rectangular(cursor_at, check_what) <= targeting.area_radius;
+        }
+
+        case Spell_Ground_Targeting_Type.single_cell: {
+            return xy_equal(cursor_at, check_what);
+        }
+    }
+}
+
 function disabled_cell_index(disabled_cells: Cell_Index[]) {
     const sparse_index: Record<number, boolean> = [];
 
@@ -936,6 +976,7 @@ function fill_grid(battle: Battle, disabled_cells: Cell_Index[]) {
             battle.grid.cells.push({
                 position: xy(x, y),
                 occupants: occupied ? 1 : 0,
+                slow_layers: 0,
                 cost: 1
             });
         }
@@ -981,7 +1022,7 @@ function find_unit_ability(unit: Unit, ability_id: Ability_Id): Ability | undefi
 
 function end_turn(battle: Battle, next_turning_player: Battle_Player) {
     for (const effect of battle.timed_effects) {
-        if (effect.duration_remaining > 0) {
+        if (effect.duration_remaining != undefined && effect.duration_remaining > 0) {
             effect.duration_remaining--;
         }
     }
@@ -1196,7 +1237,7 @@ function apply_modifier(battle: Battle, source: Source, target: Unit, applicatio
     });
 }
 
-function create_timed_effect(battle: Battle, application: Timed_Effect_Application) {
+function create_timed_effect(battle: Battle, application: Persistent_Effect_Application) {
     const effect = application.effect;
 
     battle.timed_effects.push({
@@ -1206,7 +1247,7 @@ function create_timed_effect(battle: Battle, application: Timed_Effect_Applicati
     });
 
     switch (effect.type) {
-        case Timed_Effect_Type.shaker_fissure_block: {
+        case Persistent_Effect_Type.shaker_fissure_block: {
             for (let step = 0; step < effect.steps; step++) {
                 const position = xy(effect.from.x + effect.normal.x * step, effect.from.y + effect.normal.y * step);
 
@@ -1216,13 +1257,23 @@ function create_timed_effect(battle: Battle, application: Timed_Effect_Applicati
             break;
         }
 
-        default: unreachable(effect.type);
+        case Persistent_Effect_Type.quicksand_area: {
+            for (const cell of battle.grid.cells) {
+                if (ground_targeting_spell_fits(effect.targeting, effect.at, cell.position)) {
+                    cell.slow_layers++;
+                }
+            }
+
+            break;
+        }
+
+        default: unreachable(effect);
     }
 }
 
-function expire_timed_effect(battle: Battle, effect: Timed_Effect) {
+function expire_timed_effect(battle: Battle, effect: Persistent_Effect) {
     switch (effect.type) {
-        case Timed_Effect_Type.shaker_fissure_block: {
+        case Persistent_Effect_Type.shaker_fissure_block: {
             for (let step = 0; step < effect.steps; step++) {
                 const position = xy(effect.from.x + effect.normal.x * step, effect.from.y + effect.normal.y * step);
 
@@ -1232,7 +1283,17 @@ function expire_timed_effect(battle: Battle, effect: Timed_Effect) {
             break;
         }
 
-        default: unreachable(effect.type);
+        case Persistent_Effect_Type.quicksand_area: {
+            for (const cell of battle.grid.cells) {
+                if (ground_targeting_spell_fits(effect.targeting, effect.at, cell.position)) {
+                    cell.slow_layers--;
+                }
+            }
+
+            break;
+        }
+
+        default: unreachable(effect);
     }
 }
 
@@ -1752,7 +1813,13 @@ function collapse_ground_target_spell_use(battle: Battle, caster: Battle_Player,
             break;
         }
 
-        default: unreachable(cast.spell_id);
+        case Spell_Id.quicksand: {
+            create_timed_effect(battle, cast.effect);
+
+            break;
+        }
+
+        default: unreachable(cast);
     }
 }
 
@@ -1862,7 +1929,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             if (unit) {
                 move_unit(battle, unit, delta.to_position);
 
-                unit.move_points -= delta.move_cost;
+                unit.move_points = delta.final_move_points;
             }
 
             break;
@@ -1879,7 +1946,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
 
             move_unit(battle, unit, rune.position);
 
-            unit.move_points -= delta.move_cost;
+            unit.move_points = delta.final_move_points;
 
             switch (delta.rune_type) {
                 case Rune_Type.double_damage: {
@@ -2171,7 +2238,7 @@ function collapse_delta(battle: Battle, delta: Delta): void {
             break;
         }
 
-        case Delta_Type.timed_effect_expired: {
+        case Delta_Type.persistent_effect_expired: {
             const index = battle.timed_effects.findIndex(effect => effect.handle_id == delta.handle_id);
             if (index == -1) break;
 

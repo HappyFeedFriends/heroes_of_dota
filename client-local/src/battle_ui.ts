@@ -701,6 +701,7 @@ export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
                 battle.grid.cells.push({
                     disabled: false,
                     position: xy(x, y),
+                    slow_layers: 0,
                     occupants: 0,
                     cost: 1,
                     associated_particle: particle
@@ -711,6 +712,7 @@ export function enter_battle_ui(new_state: Game_Net_Table_In_Battle) {
                 battle.grid.cells.push({
                     disabled: true,
                     position: xy(x, y),
+                    slow_layers: 0,
                     occupants: 1,
                     cost: 1,
                 });
@@ -875,21 +877,28 @@ function compute_unit_indicator_color(unit_in_cell: Unit): [RGB, number] {
     return [ cell_color, alpha ];
 }
 
-function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, cell_index: number): [RGB, number] {
-    if (is_unit_rooted(unit)) return [color_nothing, 10];
+function compute_unit_path_cell_color(unit: Unit, path: Cost_Population_Result, to: XY): [RGB, number] {
+    const act = authorize_act_on_known_unit(battle, unit);
 
-    const rune_in_cell = battle.cell_index_to_rune[cell_index];
-    const cost = path.cell_index_to_cost[cell_index];
+    if (act.ok) {
+        const order = authorize_order_unit(act);
 
-    if (cost > 0 && cost <= unit.move_points && !unit.has_taken_an_action_this_turn) {
-        return [color_green, 45];
+        if (order.ok) {
+            const move = authorize_move_order_from_costs(order, to, path);
+
+            if (move.ok) {
+                return [color_green, 45];
+            }
+        }
     }
+
+    const rune_in_cell = battle.cell_index_to_rune[grid_cell_index(battle.grid, to)];
 
     // TODO @Performance seems awfully inefficient if we have a lot of runes, consider populating paths twice and using that
     if (rune_in_cell) {
-        const path = can_find_path(battle, unit, rune_in_cell.position, unit_pathing_flags(unit, true));
+        const path_to_rune = can_find_path(battle, unit, rune_in_cell.position, unit_pathing_flags(unit, true));
 
-        if (path.found && cost <= unit.move_points) {
+        if (path_to_rune.found && path_to_rune.cost <= unit.move_points) {
             return [color_green, 45];
         }
     }
@@ -986,17 +995,35 @@ function update_grid_visuals_for_ability(selection: Grid_Selection_Ability, cell
     }
 }
 
-function update_grid_visuals_for_card_selection(selection: Grid_Selection_Card, cell_index_to_zone_highlight: boolean[]) {
+function update_grid_visuals_for_card_selection(selection: Grid_Selection_Card, cell_index_to_highlight: boolean[], cell_index_to_zone_highlight: boolean[]) {
+    const card = selection.card;
+
     for (const cell of battle.grid.cells) {
         const index = grid_cell_index(battle.grid, cell.position);
 
-        if (selection.card.type == Card_Type.hero || selection.card.type == Card_Type.existing_hero) {
+        if (card.type == Card_Type.hero || card.type == Card_Type.existing_hero) {
             if (is_point_in_deployment_zone(battle, cell.position, battle.this_player)) {
                 cell_index_to_zone_highlight[index] = true;
             }
         }
 
+        if (card.type == Card_Type.spell) {
+            if (hover.type == Hover_Type.cell && card.spell_type == Spell_Type.ground_target) {
+                if (ground_targeting_spell_fits(card.targeting, hover.cell, cell.position)) {
+                    cell_index_to_highlight[index] = true;
+                }
+            }
+        }
+
         color_cell(cell, color_nothing, 10);
+    }
+
+    if (card.type == Card_Type.spell && card.spell_type == Spell_Type.unit_target) {
+        for (const unit of battle.units) {
+            const index = grid_cell_index(battle.grid, unit.position);
+            const cell = battle.grid.cells[index];
+            color_cell(cell, color_green, 50);
+        }
     }
 }
 
@@ -1087,9 +1114,7 @@ function update_grid_visuals() {
         case Selection_Type.shop:
         case Selection_Type.unit: {
             for (const cell of battle.grid.cells) {
-                const index = grid_cell_index(battle.grid, cell.position);
-
-                let [cell_color, alpha] = compute_unit_path_cell_color(selection.unit, selection.path, index);
+                let [cell_color, alpha] = compute_unit_path_cell_color(selection.unit, selection.path, cell.position);
 
                 color_cell(cell, cell_color, alpha);
             }
@@ -1103,7 +1128,7 @@ function update_grid_visuals() {
         }
 
         case Selection_Type.card: {
-            update_grid_visuals_for_card_selection(selection, cell_index_to_zone_highlight);
+            update_grid_visuals_for_card_selection(selection, cell_index_to_highlight, cell_index_to_zone_highlight);
             break;
         }
 
@@ -1111,14 +1136,8 @@ function update_grid_visuals() {
     }
 
     for (const cell of battle.grid.cells) {
-        const index = grid_cell_index(battle.grid, cell.position);
-
         if (hover.type == Hover_Type.cell && xy_equal(hover.cell, cell.position)) {
-            if (selection.type == Selection_Type.card) {
-                cell_index_to_highlight[index] = true;
-            } else {
-                color_cell(cell, color_green, 80);
-            }
+            color_cell(cell, color_green, 80);
         }
     }
 
@@ -2454,8 +2473,6 @@ function queue_popup(unit: Unit_Id, popup: Popup_Data) {
             new_time = Math.max(popup.scheduled_at + popup_time_offset, new_time);
         }
     }
-
-    $.Msg("schedule popup for unit ", unit, " at ", new_time);
 
     popup_queue.push({
         unit_id: unit,

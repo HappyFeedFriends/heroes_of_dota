@@ -2,6 +2,18 @@ import {do_assert, run_tests, test_battle} from "./test_framework";
 import {load_all_adventures} from "./adventures";
 import {load_all_battlegrounds} from "./battleground";
 
+function test_load_all_adventures() {
+    const ok = load_all_adventures();
+
+    do_assert(0, ok, "Expected adventure loading to succeed");
+}
+
+function test_load_all_battlegrounds() {
+    const ok = load_all_battlegrounds();
+
+    do_assert(0, ok, "Expected battleground loading to succeed");
+}
+
 function test_battle_with_ally_and_enemy(hero: Hero_Type, at: XY) {
     const battle = test_battle();
     const ally = battle.for_test_player().spawn_hero(hero, at);
@@ -667,16 +679,21 @@ function test_aura_is_disabled_on_death() {
     ally.assert().has_attack_damage(fixed_attack);
 }
 
-function test_load_all_adventures() {
-    const ok = load_all_adventures();
+function test_quicksand_exhausts_all_movement_points() {
+    const [battle, ally] = test_battle_with_ally_and_enemy(Hero_Type.luna, xy(1, 1));
+    const spell = battle.for_test_player().draw_spell_card(Spell_Id.quicksand);
 
-    do_assert(0, ok, "Expected adventure loading to succeed");
-}
+    battle.start();
 
-function test_load_all_battlegrounds() {
-    const ok = load_all_battlegrounds();
+    spell.use_at(ally.unit.position);
+    ally.assert().has_move_points(4);
 
-    do_assert(0, ok, "Expected battleground loading to succeed");
+    ally.order_move(xy(1, 2));
+    ally.assert().is_at(xy(1, 2));
+    ally.assert().has_move_points(0);
+
+    ally.order_move(xy(1, 3));
+    ally.assert().is_at(xy(1, 2));
 }
 
 run_tests([
@@ -712,5 +729,6 @@ run_tests([
     test_poison_deals_damage_at_the_end_of_turn_before_expiring,
     test_aura_modifier,
     test_aura_depends_on_distance,
-    test_aura_is_disabled_on_death
+    test_aura_is_disabled_on_death,
+    test_quicksand_exhausts_all_movement_points
 ]);

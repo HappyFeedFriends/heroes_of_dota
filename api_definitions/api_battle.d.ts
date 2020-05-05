@@ -28,7 +28,7 @@ declare const enum Delta_Type {
     set_ability_charges = 22,
     ability_effect_applied = 23,
     modifier_effect_applied = 24,
-    timed_effect_expired = 25,
+    persistent_effect_expired = 25,
     rune_pick_up = 26,
     purchase_item = 27,
     equip_item = 28,
@@ -144,8 +144,9 @@ declare const enum Source_Type {
     adventure_item = 5
 }
 
-declare const enum Timed_Effect_Type {
-    shaker_fissure_block = 0
+declare const enum Persistent_Effect_Type {
+    shaker_fissure_block = 0,
+    quicksand_area = 1
 }
 
 type Unit_Id = number & { _unit_id_brand: any };
@@ -396,7 +397,7 @@ type Delta_Health_Change = {
 type Delta_Move = {
     type: Delta_Type.unit_move
     unit_id: Unit_Id
-    move_cost: number
+    final_move_points: number
     to_position: XY
 }
 
@@ -543,7 +544,7 @@ type Delta_Rune_Pick_Up_Base = {
     type: Delta_Type.rune_pick_up
     unit_id: Unit_Id
     rune_id: Rune_Id
-    move_cost: number
+    final_move_points: number
 }
 
 type Delta_Regeneration_Rune_Pick_Up = Delta_Rune_Pick_Up_Base & {
@@ -566,8 +567,8 @@ type Delta_Bounty_Rune_Pick_Up = Delta_Rune_Pick_Up_Base & {
     gold_gained: number
 }
 
-type Delta_Timed_Effect_Expired = {
-    type: Delta_Type.timed_effect_expired
+type Delta_Persistent_Effect_Expired = {
+    type: Delta_Type.persistent_effect_expired
     handle_id: Effect_Handle_Id
 }
 
@@ -619,7 +620,7 @@ type Delta =
     Delta_Set_Ability_Charges_Remaining |
     Delta_Ability_Effect_Applied |
     Delta_Modifier_Effect_Applied |
-    Delta_Timed_Effect_Expired |
+    Delta_Persistent_Effect_Expired |
     Delta_Rune_Pick_Up |
     Delta_Draw_Card |
     Delta_Use_Card |
@@ -662,15 +663,19 @@ type Modifier_Application = {
     duration?: number
 }
 
-type Timed_Effect_Application = {
+type Persistent_Effect_Application = {
     effect_handle_id: Effect_Handle_Id
-    effect: Timed_Effect
-    duration: number
+    effect: Persistent_Effect
+    duration?: number
 }
 
-type Timed_Effect = {
-    type: Timed_Effect_Type.shaker_fissure_block
+type Persistent_Effect = {
+    type: Persistent_Effect_Type.shaker_fissure_block
     from: XY
     normal: XY
     steps: number
+} | {
+    type: Persistent_Effect_Type.quicksand_area
+    at: XY
+    targeting: Spell_Ground_Targeting
 }
