@@ -2779,10 +2779,9 @@ function create_timed_effect(handle_id: Effect_Handle_Id, effect: Persistent_Eff
         }
 
         case Persistent_Effect_Type.quicksand_area: {
-            // TODO quicksand
+            battle_emit_sound("spell_quicksand");
 
-            const particle = fx("particles/units/heroes/hero_enigma/enigma_midnight_pulse.vpcf")
-                .to_location(0, effect.at);
+            const particle = fx("particles/quicksand/quicksand.vpcf").to_location(0, effect.at);
 
             if (effect.targeting.type == Spell_Ground_Targeting_Type.rectangle) {
                 particle.with_point_value(1, (effect.targeting.area_radius + 0.5) * Const.battle_cell_size);

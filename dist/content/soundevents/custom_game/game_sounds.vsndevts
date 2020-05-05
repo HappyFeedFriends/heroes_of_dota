@@ -379,4 +379,9 @@
         soundlevel = 81
         vsnd_files = "sounds/weapons/hero/mirana/moonlight_shadow.vsnd"
     }
+
+    spell_quicksand = {
+        type = "dota_src1_2d"
+        vsnd_files = "sounds/weapons/hero/sand_king/sand_king_sandstorm_start.vsnd"
+    }
 }
