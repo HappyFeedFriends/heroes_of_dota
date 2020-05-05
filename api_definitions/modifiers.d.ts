@@ -36,6 +36,7 @@ declare const enum Modifier_Id {
     spell_euls_scepter = 200,
     spell_buckler = 201,
     spell_drums_of_endurance = 202,
+    spell_moonlight_shadow = 203,
 
     move_speed = 300,
     armor = 301,
@@ -166,6 +167,8 @@ type Modifier = {
 } | {
     id: Modifier_Id.spell_drums_of_endurance
     move_bonus: number
+} | {
+    id: Modifier_Id.spell_moonlight_shadow
 } | {
     id: Modifier_Id.returned_to_hand
 } | {

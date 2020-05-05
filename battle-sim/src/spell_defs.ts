@@ -79,5 +79,11 @@ function spell_definition_by_id(spell_id: Spell_Id): Card_Spell_Definition {
                 }
             })
         }
+
+        case Spell_Id.moonlight_shadow: {
+            return spell<Spell_Moonlight_Shadow>({
+                modifier: { id: Modifier_Id.spell_moonlight_shadow }
+            })
+        }
     }
 }

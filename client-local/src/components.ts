@@ -126,6 +126,7 @@ function get_spell_card_art(spell_id: Spell_Id): string {
             case Spell_Id.call_to_arms: return custom("call_to_arms");
             case Spell_Id.refresher_orb: return badge("level_95");
             case Spell_Id.quicksand: return custom("quicksand");
+            case Spell_Id.moonlight_shadow: return custom("moonlight_shadow");
         }
     }
     

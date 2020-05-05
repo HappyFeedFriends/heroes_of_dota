@@ -181,6 +181,19 @@ function perform_spell_cast_no_target(battle: Battle_Record, player: Battle_Play
                 }))
             }
         }
+
+        case Spell_Id.moonlight_shadow: {
+            const owned_units = battle.units.filter(unit => authorize_act_on_known_unit(battle, unit).ok && player_owns_unit(player, unit));
+
+            return {
+                ...base,
+                spell_id: spell.spell_id,
+                targets: owned_units.map(target => ({
+                    target_unit_id: target.id,
+                    modifier: modifier(battle, spell.modifier, 1)
+                }))
+            }
+        }
     }
 }
 

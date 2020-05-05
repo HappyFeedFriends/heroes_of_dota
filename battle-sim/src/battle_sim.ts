@@ -1801,6 +1801,11 @@ function collapse_no_target_spell_use(battle: Battle, caster: Battle_Player, cas
             break;
         }
 
+        case Spell_Id.moonlight_shadow: {
+            apply_modifier_multiple(battle, source, cast.targets);
+            break;
+        }
+
         default: unreachable(cast);
     }
 }

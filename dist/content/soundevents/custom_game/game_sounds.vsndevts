@@ -372,4 +372,11 @@
         pitch_rand_max = 0.35
         vsnd_files = "sounds/items/healing_salve.vsnd"
     }
+
+    spell_moonlight_shadow = {
+        type = "dota_src1_2d"
+        volume = 0.25
+        soundlevel = 81
+        vsnd_files = "sounds/weapons/hero/mirana/moonlight_shadow.vsnd"
+    }
 }

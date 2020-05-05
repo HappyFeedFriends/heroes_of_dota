@@ -512,6 +512,10 @@ function calculate_modifier_changes(modifier: Modifier): Modifier_Change[] {
             field(Modifier_Field.move_points_bonus, modifier.move_bonus)
         ];
 
+        case Modifier_Id.spell_moonlight_shadow: return [
+            status(Unit_Status.invisible)
+        ];
+
         case Modifier_Id.returned_to_hand: return [
             status(Unit_Status.out_of_the_game)
         ];

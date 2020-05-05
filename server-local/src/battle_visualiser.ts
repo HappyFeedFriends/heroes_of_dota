@@ -1679,9 +1679,6 @@ function modifier_to_visuals(target: Unit, modifier: Modifier): Modifier_Visuals
         case Modifier_Id.item_armlet: return follow("particles/items_fx/armlet.vpcf");
         case Modifier_Id.item_phase_boots: return follow("particles/items2_fx/phase_boots.vpcf");
         case Modifier_Id.item_spider_legs: return from_fx(fx_follow_unit("particles/items5_fx/spider_legs_buff.vpcf", target).follow_unit_origin(1, target));
-        case Modifier_Id.spell_euls_scepter: return from_buff("Modifier_Euls_Scepter");
-        case Modifier_Id.spell_buckler: return follow("particles/items_fx/buckler.vpcf");
-        case Modifier_Id.spell_drums_of_endurance: return follow("particles/items_fx/drum_of_endurance_buff.vpcf");
         case Modifier_Id.ember_fire_remnant: {
             // TODO proper predictable @Random
             const animations = [39, 40, 41]; // Sequence numbers of GameActivity_t.ACT_DOTA_OVERRIDE_ABILITY_4 for ember
@@ -1710,6 +1707,13 @@ function modifier_to_visuals(target: Unit, modifier: Modifier): Modifier_Visuals
         case Modifier_Id.bounty_hunter_track_aura: return from_fx(
             fx_follow_unit("particles/units/heroes/hero_bounty_hunter/bounty_hunter_track_trail.vpcf", target).to_unit_attach_point(1, target, "attach_hitloc")
         );
+
+        case Modifier_Id.spell_euls_scepter: return from_buff("Modifier_Euls_Scepter");
+        case Modifier_Id.spell_buckler: return follow("particles/items_fx/buckler.vpcf");
+        case Modifier_Id.spell_drums_of_endurance: return follow("particles/items_fx/drum_of_endurance_buff.vpcf");
+        case Modifier_Id.spell_moonlight_shadow: return from_fx(
+            fx("particles/units/heroes/hero_mirana/mirana_moonlight_owner.vpcf").follow_unit_overhead(0, target)
+        )
     }
 }
 
@@ -2645,6 +2649,20 @@ function play_no_target_spell_delta(game: Game, caster: Battle_Player, cast: Del
                 const creep = spawn_unit_with_fx(summon.at, () => spawn_creep_for_battle(game, summon.spawn, cast.player_id, summon.at, facing));
 
                 add_activity_override(creep, GameActivity_t.ACT_DOTA_SHARPEN_WEAPON, 1.0);
+            }
+
+            break;
+        }
+
+        case Spell_Id.moonlight_shadow: {
+            battle_emit_sound("spell_moonlight_shadow");
+
+            for (const target of filter_and_map_existing_units(cast.targets)) {
+                fx_by_unit("particles/units/heroes/hero_mirana/mirana_moonlight_ray.vpcf", target.unit)
+                    .follow_unit_origin(0, target.unit)
+                    .release();
+
+                apply_modifier(game, target.unit, target.modifier);
             }
 
             break;

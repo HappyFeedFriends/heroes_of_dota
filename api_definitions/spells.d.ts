@@ -8,7 +8,8 @@ declare const enum Spell_Id {
     pocket_tower = 6,
     call_to_arms = 7,
     refresher_orb = 8,
-    quicksand = 9
+    quicksand = 9,
+    moonlight_shadow = 10
 }
 
 declare const enum Spell_Type {
@@ -45,7 +46,8 @@ type Card_Spell_Definition =
     Spell_Drums_Of_Endurance |
     Spell_Call_To_Arms |
     Spell_Pocket_Tower |
-    Spell_Quicksand
+    Spell_Quicksand |
+    Spell_Moonlight_Shadow
 
 type Card_Spell = Card_Spell_Definition & {
     id: Card_Id
@@ -120,6 +122,11 @@ type Spell_Quicksand = Card_Spell_Ground_Target_Base & {
     spell_id: Spell_Id.quicksand
 }
 
+type Spell_Moonlight_Shadow = Card_Spell_No_Target_Base & {
+    spell_id: Spell_Id.moonlight_shadow
+    modifier: Modifier
+}
+
 type Delta_Use_Spell =
     Delta_Spell_Buyback |
     Delta_Spell_Town_Portal_Scroll |
@@ -130,7 +137,8 @@ type Delta_Use_Spell =
     Delta_Spell_Drums_Of_Endurance |
     Delta_Spell_Call_To_Arms |
     Delta_Spell_Pocket_Tower |
-    Delta_Spell_Quicksand
+    Delta_Spell_Quicksand |
+    Delta_Spell_Moonlight_Shadow
 
 type Delta_Use_Unit_Target_Spell = Find_By_Type<Delta_Use_Spell, Delta_Type.use_unit_target_spell>
 type Delta_Use_No_Target_Spell = Find_By_Type<Delta_Use_Spell, Delta_Type.use_no_target_spell>
@@ -212,4 +220,9 @@ type Delta_Spell_Refresher_Orb = Delta_Use_Unit_Target_Spell_Base & {
 type Delta_Spell_Quicksand = Delta_Use_Ground_Target_Spell_Base & {
     spell_id: Spell_Id.quicksand
     effect: Persistent_Effect_Application
+}
+
+type Delta_Spell_Moonlight_Shadow = Delta_Use_No_Target_Spell_Base & {
+    spell_id: Spell_Id.moonlight_shadow
+    targets: Unit_Modifier_Application[]
 }

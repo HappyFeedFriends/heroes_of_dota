@@ -1823,6 +1823,7 @@ function get_modifier_icon(applied: Applied_Modifier): string {
             case Modifier_Id.spell_euls_scepter: return "items/cyclone";
             case Modifier_Id.spell_buckler: return "items/buckler";
             case Modifier_Id.spell_drums_of_endurance: return "items/ancient_janggo";
+            case Modifier_Id.spell_moonlight_shadow: return "spellicons/mirana_invis";
 
             case Modifier_Id.rune_double_damage: return "spellicons/rune_doubledamage";
             case Modifier_Id.rune_haste: return "spellicons/rune_haste";
