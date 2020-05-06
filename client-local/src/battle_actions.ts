@@ -102,6 +102,7 @@ function unit_target_ability_use_error_reason(error: Action_Error<Unit_Target_Ab
         case Unit_Target_Ability_Use_Error.other: return custom_error("Error");
         case Unit_Target_Ability_Use_Error.not_in_range: return custom_error("Target out of range");
         case Unit_Target_Ability_Use_Error.invisible: return custom_error("Target is invisible");
+        case Unit_Target_Ability_Use_Error.cant_target_allies: return custom_error("Ability can't target allies");
     }
 }
 

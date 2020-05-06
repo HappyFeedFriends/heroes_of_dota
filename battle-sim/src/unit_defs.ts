@@ -46,6 +46,15 @@ function instantiate_unit_abilities(definition: Unit_Definition): Unit_Abilities
             }
         }
 
+        if (definition.type == Ability_Type.target_unit) {
+            return {
+                ...definition,
+                charges_remaining: definition.charges,
+                flags: definition.flags ? definition.flags : [],
+                target_flags: definition.target_flags ? definition.target_flags : []
+            }
+        }
+
         return {
             ...definition,
             charges_remaining: definition.charges,
@@ -536,8 +545,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             ],
             ability_bench: [
                 {
-                    id: Ability_Id.shaker_enchant_totem_attack,
-                    type: Ability_Type.target_unit,
+                    ...ability_base(Ability_Id.shaker_enchant_totem_attack),
                     available_since_level: 0,
                     targeting: target_in_manhattan_distance(1),
                     charges: 1
@@ -552,15 +560,13 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack: basic_attack(2),
             abilities: [
                 {
-                    id: Ability_Id.venomancer_plague_wards,
-                    type: Ability_Type.target_ground,
+                    ...ability_base(Ability_Id.venomancer_plague_wards),
                     targeting: target_in_manhattan_distance(4),
                     available_since_level: 1,
                     charges: 3
                 },
                 {
-                    id: Ability_Id.venomancer_venomous_gale,
-                    type: Ability_Type.target_ground,
+                    ...ability_base(Ability_Id.venomancer_venomous_gale),
                     targeting: target_line(4, select_in_line(4)),
                     available_since_level: 2,
                     charges: 1,
@@ -568,8 +574,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     poison_applied: 2
                 },
                 {
-                    id: Ability_Id.venomancer_poison_nova,
-                    type: Ability_Type.no_target,
+                    ...ability_base(Ability_Id.venomancer_poison_nova),
                     selector: select_in_rectangle(2),
                     available_since_level: 3,
                     charges: 1
@@ -584,8 +589,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack: basic_attack(1),
             abilities: [
                 {
-                    id: Ability_Id.bounty_hunter_shadow_walk,
-                    type: Ability_Type.no_target,
+                    ...ability_base(Ability_Id.bounty_hunter_shadow_walk),
                     charges: 2,
                     available_since_level: 1,
                     selector: single_target(),
@@ -596,8 +600,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     flags: [ Ability_Flag.does_not_consume_action ]
                 },
                 {
-                    id: Ability_Id.bounty_hunter_jinada,
-                    type: Ability_Type.passive,
+                    ...ability_base(Ability_Id.bounty_hunter_jinada),
                     available_since_level: 2,
                     intrinsic_modifiers: [{
                         id: Modifier_Id.replace_ability,
@@ -606,11 +609,11 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     }]
                 },
                 {
-                    id: Ability_Id.bounty_hunter_track,
-                    type: Ability_Type.target_unit,
+                    ...ability_base(Ability_Id.bounty_hunter_track),
                     targeting: target_in_manhattan_distance(5),
                     available_since_level: 3,
                     charges: 1,
+                    target_flags: [ Ability_Unit_Target_Flag.only_enemies ],
                     modifier: {
                         id: Modifier_Id.bounty_hunter_track_aura,
                         selector: {
@@ -681,8 +684,7 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             move_points: 0,
             abilities: [
                 {
-                    id: Ability_Id.plague_ward_attack,
-                    type: Ability_Type.passive,
+                    ...ability_base(Ability_Id.plague_ward_attack),
                     available_since_level: 0,
                     selector: select_in_rectangle(3)
                 },

@@ -1741,12 +1741,12 @@ function get_ability_name(id: Ability_Id): string {
         case Ability_Id.venomancer_plague_wards: return "Plague Ward";
         case Ability_Id.venomancer_venomous_gale: return "Venomous Gale";
         case Ability_Id.venomancer_poison_nova: return "Poison Nova";
-        case Ability_Id.plague_ward_attack: return "Plague Ward attack";
+        case Ability_Id.plague_ward_attack: return "Attack";
         case Ability_Id.bounty_hunter_shadow_walk: return "Shadow Walk";
         case Ability_Id.bounty_hunter_jinada: return "Jinada";
-        case Ability_Id.bounty_hunter_jinada_attack: return "Jinada Attack";
+        case Ability_Id.bounty_hunter_jinada_attack: return "Jinada";
         case Ability_Id.bounty_hunter_track: return "Track";
-        case Ability_Id.pocket_tower_attack: return "Pocket Tower attack";
+        case Ability_Id.pocket_tower_attack: return "Attack";
         case Ability_Id.deployment_zone: return "Deployment zone";
         case Ability_Id.monster_lifesteal: return "Lifesteal";
         case Ability_Id.monster_spawn_spiderlings: return "Offspring";

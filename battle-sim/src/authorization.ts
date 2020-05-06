@@ -85,7 +85,8 @@ declare const enum Rune_Pickup_Order_Error {
 declare const enum Unit_Target_Ability_Use_Error {
     other = 0,
     not_in_range = 1,
-    invisible = 2
+    invisible = 2,
+    cant_target_allies = 3
 }
 
 declare const enum Ground_Target_Ability_Use_Error {
@@ -542,8 +543,14 @@ function authorize_unit_target_ability_use(use: Ability_Use_Permission, on_targe
         return { ok: false, kind: Unit_Target_Ability_Use_Error.not_in_range };
     }
 
-    if (!are_units_allies(use.unit, on_target.unit) && is_unit_invisible(on_target.unit)) {
-        return { ok: false, kind: Unit_Target_Ability_Use_Error.invisible };
+    if (are_units_allies(use.unit, on_target.unit)) {
+        if (use.ability.target_flags.includes(Ability_Unit_Target_Flag.only_enemies)) {
+            return { ok: false, kind: Unit_Target_Ability_Use_Error.cant_target_allies };
+        }
+    } else {
+        if (is_unit_invisible(on_target.unit)) {
+            return { ok: false, kind: Unit_Target_Ability_Use_Error.invisible };
+        }
     }
 
     return {

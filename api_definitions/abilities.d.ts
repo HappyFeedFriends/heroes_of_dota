@@ -56,6 +56,10 @@ declare const enum Ability_Flag {
     does_not_consume_action = 0
 }
 
+declare const enum Ability_Unit_Target_Flag {
+    only_enemies = 0
+}
+
 type With_Charges_And_Flags = {
     charges_remaining: number
     flags: Ability_Flag[]
@@ -65,13 +69,31 @@ type Ability_Active = Ability_Ground_Target | Ability_Unit_Target | Ability_No_T
 
 type Ability = Ability_Passive | Ability_Active
 
+type Ability_Definition_Active_Base = {
+    available_since_level: number
+    charges: number
+    flags?: Ability_Flag[]
+}
+
+type Ability_Definition_Unit_Target_Base = Ability_Definition_Active_Base & {
+    target_flags?: Ability_Unit_Target_Flag[]
+}
+
+type Ability_Definition_Passive_Base = {
+    type: Ability_Type.passive
+    available_since_level: number
+    intrinsic_modifiers?: Modifier[]
+}
+
 type Ability_Definition_Ground_Target = Find_By_Type<Ability_Stats, Ability_Type.target_ground> & Ability_Definition_Active_Base
-type Ability_Definition_Unit_Target = Find_By_Type<Ability_Stats, Ability_Type.target_unit> & Ability_Definition_Active_Base
+type Ability_Definition_Unit_Target = Find_By_Type<Ability_Stats, Ability_Type.target_unit> & Ability_Definition_Unit_Target_Base
 type Ability_Definition_No_Target = Find_By_Type<Ability_Stats, Ability_Type.no_target> & Ability_Definition_Active_Base
 type Ability_Definition_Passive = Find_By_Type<Ability_Stats, Ability_Type.passive> & Ability_Definition_Passive_Base
 
 type Ability_Ground_Target = Ability_Definition_Ground_Target & With_Charges_And_Flags
-type Ability_Unit_Target = Ability_Definition_Unit_Target & With_Charges_And_Flags
+type Ability_Unit_Target = Ability_Definition_Unit_Target & With_Charges_And_Flags & {
+    target_flags: Ability_Unit_Target_Flag[]
+}
 type Ability_No_Target = Ability_Definition_No_Target & With_Charges_And_Flags
 
 type Ability_Passive = Ability_Definition_Passive & {
@@ -152,18 +174,6 @@ type Ability_Effect =
     Ablity_Effect_Monster_Lifesteal |
     Ablity_Effect_Monster_Spawn_Spiderlings |
     Ability_Effect_Plague_Ward_Attack
-
-type Ability_Definition_Active_Base = {
-    available_since_level: number
-    charges: number
-    flags?: Ability_Flag[]
-}
-
-type Ability_Definition_Passive_Base = {
-    type: Ability_Type.passive
-    available_since_level: number
-    intrinsic_modifiers?: Modifier[]
-}
 
 type Ability_Basic_Attack = {
     id: Ability_Id.basic_attack
