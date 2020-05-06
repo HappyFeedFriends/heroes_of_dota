@@ -1,4 +1,4 @@
-const { compile, copy_sim } = require("./compiler");
+const { compile, copy_shared_code } = require("./compiler");
 const exec = require("child_process").exec;
 
 (async () => {
@@ -6,7 +6,7 @@ const exec = require("child_process").exec;
 
     const ok = await compile("server-remote");
 
-    copy_sim("server-remote/dist/battle_sim.js");
+    copy_shared_code("server-remote/dist");
 
     console.timeEnd("Compile");
 

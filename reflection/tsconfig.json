@@ -11,7 +11,7 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "dist",
-    "outFile": "dist/battle_sim.js",
+    "outFile": "dist/reflection.js",
     "composite": true,
     "lib": [
       "es2016"
@@ -20,22 +20,9 @@
       {
         "transform": "../codegen/src/meta.ts"
       }
-    ],
+    ]
   },
-  "references": [
-    {
-      "path": "../reflection"
-    }
-  ],
   "include": [
-    "**/*.ts",
-    "../api_definitions/api.d.ts",
-    "../api_definitions/api_battle.d.ts",
-    "../api_definitions/api_adventure.d.ts",
-    "../api_definitions/api_editor.d.ts",
-    "../api_definitions/abilities.d.ts",
-    "../api_definitions/modifiers.d.ts",
-    "../api_definitions/spells.d.ts",
-    "../api_definitions/items.d.ts",
+    "**/*.ts"
   ]
 }

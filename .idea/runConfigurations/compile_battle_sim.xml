@@ -1,5 +1,0 @@
-<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="compile-battle-sim" type="NodeJSConfigurationType" path-to-js-file="compile-battle-sim.js" working-dir="$PROJECT_DIR$">
-    <method v="2" />
-  </configuration>
-</component>

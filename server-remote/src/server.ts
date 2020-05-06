@@ -1940,6 +1940,7 @@ function static_file(path: string): () => string {
 }
 
 export function start_server(dev: boolean, seed: number) {
+    eval.call(global, readFileSync("dist/reflection.js", "utf8"));
     eval.call(global, readFileSync("dist/battle_sim.js", "utf8"));
     eval.call(global, readFileSync("dist/party_sim.js", "utf8"));
 

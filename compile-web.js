@@ -1,14 +1,12 @@
-const { compile, copy_sim, copy_party_sim, deploy_web_version } = require("./compiler");
+const { compile, copy_shared_code, deploy_web_version } = require("./compiler");
 
 (async () => {
     console.time("Compile");
 
     const ok = await compile("client-web", "server-remote");
 
-    copy_sim("client-web/dist/battle_sim.js");
-    copy_sim("server-remote/dist/battle_sim.js");
-
-    copy_party_sim("server-remote/dist/party_sim.js");
+    copy_shared_code("client-web/dist");
+    copy_shared_code("server-remote/dist");
 
     deploy_web_version();
 

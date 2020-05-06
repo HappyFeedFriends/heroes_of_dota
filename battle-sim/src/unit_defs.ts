@@ -1,21 +1,34 @@
-type Ability_Active_Discriminator = {
-    id: Ability_Id,
-    type: Ability_Type,
+type Ability_Base_Return<T extends Ability_Id> = {
+    id: T
+    type: Find_By_Type<Ability_Stats, T>["type"]
 }
 
-type Ability_Passive_Discriminator = {
-    id: Ability_Id,
-    type: Ability_Type,
+function ability_base<T extends Ability_Id>(id: T): Ability_Base_Return<T> {
+    const ability_stats = type_of<Ability_Stats>();
+    if (ability_stats.kind != Type_Kind.union) {
+        throw "Ability_Stats expected to be a union";
+    }
+
+    const member = find_member_of_union_by_tag(ability_stats, "id", id);
+    if (!member.ok) {
+        throw "Unable to find ability by id " + id;
+    }
+
+    const type_type = find_object_member_type_by_name(member.data, "type");
+    if (!type_type || type_type.kind != Type_Kind.enum_member) {
+        throw "Ability_Stats.type not found or not supported (" + type_type + ")"
+    }
+
+    const type_value = type_type.type;
+    if (type_value.kind != Type_Kind.number_literal) {
+        throw "Unsupported value kind (" + type_value.kind + ")"
+    }
+
+    return {
+        id: id,
+        type: type_value.value as Find_By_Type<Ability_Stats, T>["type"]
+    }
 }
-
-type Active_Ability_Stats<T extends Ability_Definition_Active> = Pick<T, Exclude<keyof T, keyof Ability_Active_Discriminator>>
-type Passive_Ability_Stats<T extends Ability_Definition_Passive> = Pick<T, Exclude<keyof T, keyof Ability_Passive_Discriminator>>;
-
-declare function active_ability<T extends Ability_Definition_Active>(stats: Active_Ability_Stats<T>): T;
-declare function passive_ability<T extends Ability_Definition_Passive>(stats: Passive_Ability_Stats<T>): T;
-
-// That works instead of active/passive ability and allows us to collapse many types
-// declare function ability<T extends Ability_Id>(id: T, stats: Omit<Find_By_Id<Ability_Definition, T>, keyof Ability_Active_Discriminator>): Find_By_Id<Ability_Definition, T>;
 
 type Unit_Abilities = {
     attack?: Ability_Active
@@ -132,12 +145,13 @@ function target_rect_area_around_caster(area_radius: number, selector: Ability_A
     }
 }
 
-function basic_attack(range: number): Ability_Basic_Attack {
-    return active_ability<Ability_Basic_Attack>({
+function basic_attack(range: number): Ability_Definition_Active {
+    return {
+        ...ability_base(Ability_Id.basic_attack),
         available_since_level: 0,
         targeting: target_first_in_line(range),
         charges: 1
-    });
+    };
 }
 
 function hero_definition_by_type(type: Hero_Type): Unit_Definition {
@@ -166,24 +180,27 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack_damage: 5,
             attack: basic_attack(1),
             abilities: [
-                active_ability<Ability_Pudge_Hook>({
+                {
+                    ...ability_base(Ability_Id.pudge_hook),
                     available_since_level: 1,
                     targeting: target_first_in_line(5),
                     charges: 1,
                     damage: 3
-                }),
-                active_ability<Ability_Pudge_Rot>({
+                },
+                {
+                    ...ability_base(Ability_Id.pudge_rot),
                     available_since_level: 2,
                     selector: select_in_rectangle(1),
                     charges: 1,
                     damage: 5
-                }),
-                active_ability<Ability_Pudge_Dismember>({
+                },
+                {
+                    ...ability_base(Ability_Id.pudge_dismember),
                     available_since_level: 3,
                     targeting: target_in_manhattan_distance(1),
                     charges: 1,
                     damage: 10
-                })
+                }
             ]
         };
 
@@ -193,26 +210,29 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack_damage: 5,
             attack: basic_attack(1),
             abilities: [
-                active_ability<Ability_Tide_Gush>({
+                {
+                    ...ability_base(Ability_Id.tide_gush),
                     available_since_level: 1,
                     targeting: target_in_manhattan_distance(5),
                     charges: 1,
                     damage: 3,
                     move_points_reduction: 2
-                }),
-                active_ability<Ability_Tide_Anchor_Smash>({
+                },
+                {
+                    ...ability_base(Ability_Id.tide_anchor_smash),
                     available_since_level: 2,
                     selector: select_in_rectangle(1),
                     charges: 2,
                     damage: 4,
                     attack_reduction: 2
-                }),
-                active_ability<Ability_Tide_Ravage>({
+                },
+                {
+                    ...ability_base(Ability_Id.tide_ravage),
                     available_since_level: 3,
                     selector: select_in_rectangle(5),
                     damage: 5,
                     charges: 1,
-                })
+                }
             ]
         };
 
@@ -222,22 +242,25 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack_damage: 4,
             attack: basic_attack(2),
             abilities: [
-                active_ability<Ability_Luna_Lucent_Beam>({
+                {
+                    ...ability_base(Ability_Id.luna_lucent_beam),
                     available_since_level: 1,
                     targeting: target_in_manhattan_distance(5),
                     charges: 1,
                     damage: 4
-                }),
-                passive_ability<Ability_Luna_Moon_Glaive>({
+                },
+                {
+                    ...ability_base(Ability_Id.luna_moon_glaive),
                     available_since_level: 2,
                     secondary_selector: select_in_rectangle(2)
-                }),
-                active_ability<Ability_Luna_Eclipse>({
+                },
+                {
+                    ...ability_base(Ability_Id.luna_eclipse),
                     available_since_level: 3,
                     selector: select_in_rectangle(3),
                     total_beams: 14,
                     charges: 1,
-                })
+                }
             ]
         };
 
@@ -247,26 +270,29 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack_damage: 3,
             attack: basic_attack(3),
             abilities: [
-                active_ability<Ability_Skywrath_Ancient_Seal>({
+                {
+                    ...ability_base(Ability_Id.skywrath_ancient_seal),
                     available_since_level: 1,
                     targeting: target_in_manhattan_distance(3),
                     charges: 1,
                     duration: 3
-                }),
-                active_ability<Ability_Skywrath_Concussive_Shot>({
+                },
+                {
+                    ...ability_base(Ability_Id.skywrath_concussive_shot),
                     available_since_level: 2,
                     selector: select_in_rectangle(3),
                     charges: 1,
                     move_points_reduction: 2,
                     damage: 4,
                     duration: 2
-                }),
-                active_ability<Ability_Skywrath_Mystic_Flare>({
+                },
+                {
+                    ...ability_base(Ability_Id.skywrath_mystic_flare),
                     available_since_level: 3,
                     targeting: target_in_manhattan_distance(5, select_in_rectangle(1, Ability_Targeting_Flag.include_caster), Ability_Targeting_Flag.include_caster),
                     charges: 1,
                     damage: 10
-                })
+                }
             ]
         };
 
@@ -276,7 +302,8 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack_damage: 4,
             attack: basic_attack(1),
             abilities: [
-                active_ability<Ability_Dragon_Knight_Breathe_Fire>({
+                {
+                    ...ability_base(Ability_Id.dragon_knight_breathe_fire),
                     available_since_level: 1,
                     targeting: target_line(3, {
                         type: Ability_Target_Selector_Type.t_shape,
@@ -286,25 +313,28 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     }),
                     charges: 1,
                     damage: 5
-                }),
-                active_ability<Ability_Dragon_Knight_Dragon_Tail>({
+                },
+                {
+                    ...ability_base(Ability_Id.dragon_knight_dragon_tail),
                     available_since_level: 2,
                     targeting: target_in_manhattan_distance(1),
                     charges: 1,
                     damage: 3
-                }),
-                active_ability<Ability_Dragon_Knight_Elder_Dragon_Form>({
+                },
+                {
+                    ...ability_base(Ability_Id.dragon_knight_elder_dragon_form),
                     available_since_level: 3,
                     selector: single_target(),
                     charges: 1
-                })
+                }
             ],
             ability_bench: [
-                active_ability<Ability_Dragon_Knight_Elder_Dragon_Form_Attack>({
+                {
+                    ...ability_base(Ability_Id.dragon_knight_elder_dragon_form_attack),
                     available_since_level: 0,
                     targeting: target_line(4, select_in_rectangle(1, Ability_Targeting_Flag.include_caster)),
                     charges: 1
-                })
+                }
             ]
         };
 
@@ -314,25 +344,28 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack_damage: 3,
             attack: basic_attack(3),
             abilities: [
-                active_ability<Ability_Lion_Hex>({
+                {
+                    ...ability_base(Ability_Id.lion_hex),
                     available_since_level: 1,
                     targeting: target_in_manhattan_distance(3),
                     charges: 1,
                     duration: 2,
                     move_points_reduction: 1
-                }),
-                active_ability<Ability_Lion_Impale>({
+                },
+                {
+                    ...ability_base(Ability_Id.lion_impale),
                     available_since_level: 2,
                     targeting: target_line(3, select_in_line(3)),
                     charges: 1,
                     damage: 4
-                }),
-                active_ability<Ability_Lion_Finger_Of_Death>({
+                },
+                {
+                    ...ability_base(Ability_Id.lion_finger_of_death),
                     available_since_level: 3,
                     targeting: target_in_manhattan_distance(4),
                     charges: 1,
                     damage: 8
-                })
+                }
             ]
         };
 
@@ -342,18 +375,21 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack_damage: 4,
             attack: basic_attack(3),
             abilities: [
-                active_ability<Ability_Mirana_Starfall>({
+                {
+                    ...ability_base(Ability_Id.mirana_starfall),
                     available_since_level: 1,
                     selector: select_in_rectangle(2),
                     charges: 1,
                     damage: 3
-                }),
-                active_ability<Ability_Mirana_Arrow>({
+                },
+                {
+                    ...ability_base(Ability_Id.mirana_arrow),
                     available_since_level: 2,
                     targeting: target_first_in_line(7),
                     charges: 1
-                }),
-                active_ability<Ability_Mirana_Leap>({
+                },
+                {
+                    ...ability_base(Ability_Id.mirana_leap),
                     available_since_level: 3,
                     targeting: {
                         type: Ability_Targeting_Type.any_cell,
@@ -365,7 +401,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     },
                     flags: [ Ability_Flag.does_not_consume_action ],
                     charges: 1
-                })
+                }
             ]
         };
 
@@ -375,25 +411,28 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack_damage: 3,
             attack: basic_attack(3),
             abilities: [
-                active_ability<Ability_Venge_Magic_Missile>({
+                {
+                    ...ability_base(Ability_Id.venge_magic_missile),
                     available_since_level: 1,
                     targeting: target_in_manhattan_distance(3),
                     charges: 1,
                     damage: 3
-                }),
-                active_ability<Ability_Venge_Wave_Of_Terror>({
+                },
+                {
+                    ...ability_base(Ability_Id.venge_wave_of_terror),
                     available_since_level: 2,
                     targeting: target_line(5, select_in_line(5)),
                     charges: 1,
                     damage: 3,
                     armor_reduction: 2,
                     duration: 2
-                }),
-                active_ability<Ability_Venge_Nether_Swap>({
+                },
+                {
+                    ...ability_base(Ability_Id.venge_nether_swap),
                     available_since_level: 3,
                     targeting: target_in_manhattan_distance(65536),
                     charges: 1
-                })
+                }
             ]
         };
 
@@ -403,7 +442,8 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack_damage: 4,
             attack: basic_attack(1),
             abilities: [
-                active_ability<Ability_Dark_Seer_Ion_Shell>({
+                {
+                    ...ability_base(Ability_Id.dark_seer_ion_shell),
                     available_since_level: 1,
                     targeting: target_in_manhattan_distance(5, single_target(), Ability_Targeting_Flag.include_caster),
                     flags: [ Ability_Flag.does_not_consume_action ],
@@ -411,20 +451,22 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
                     damage_per_turn: 1,
                     duration: 5,
                     shield_selector: select_in_rectangle(1)
-                }),
-                active_ability<Ability_Dark_Seer_Surge>({
+                },
+                {
+                    ...ability_base(Ability_Id.dark_seer_surge),
                     available_since_level: 2,
                     targeting: target_in_manhattan_distance(5, single_target(), Ability_Targeting_Flag.include_caster),
                     flags: [ Ability_Flag.does_not_consume_action ],
                     charges: 2,
                     move_points_bonus: 3
-                }),
-                active_ability<Ability_Dark_Seer_Vacuum>({
+                },
+                {
+                    ...ability_base(Ability_Id.dark_seer_vacuum),
                     available_since_level: 3,
                     targeting: target_in_manhattan_distance(4, select_in_rectangle(2, Ability_Targeting_Flag.include_caster)),
                     flags: [ ],
                     charges: 1,
-                }),
+                },
             ]
         };
 
@@ -434,30 +476,34 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             attack_damage: 3,
             move_points: 3,
             abilities: [
-                active_ability<Ability_Ember_Searing_Chains>({
+                {
+                    ...ability_base(Ability_Id.ember_searing_chains),
                     available_since_level: 1,
                     selector: select_in_rectangle(2),
                     charges: 1,
                     targets: 2
-                }),
-                active_ability<Ability_Ember_Sleight_Of_Fist>({
+                },
+                {
+                    ...ability_base(Ability_Id.ember_sleight_of_fist),
                     available_since_level: 2,
                     selector: select_in_rectangle(2),
                     charges: 1
-                }),
-                active_ability<Ability_Ember_Fire_Remnant>({
+                },
+                {
+                    ...ability_base(Ability_Id.ember_fire_remnant),
                     available_since_level: 3,
                     targeting: target_in_manhattan_distance(7, single_target(), Ability_Targeting_Flag.only_free_cells),
                     charges: 1
-                })
+                }
             ],
             ability_bench: [
-                active_ability<Ability_Ember_Activate_Fire_Remnant>({
+                {
+                    ...ability_base(Ability_Id.ember_activate_fire_remnant),
                     available_since_level: 3,
                     charges: 1,
                     selector: single_target(),
                     flags: [ Ability_Flag.does_not_consume_action ]
-                })
+                }
             ]
         };
 
@@ -467,23 +513,26 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             move_points: 2,
             attack: basic_attack(1),
             abilities: [
-                active_ability<Ability_Shaker_Fissure>({
+                {
+                    ...ability_base(Ability_Id.shaker_fissure),
                     available_since_level: 1,
                     charges: 1,
                     targeting: target_line(5, select_in_line(5))
-                }),
-                active_ability<Ability_Shaker_Enchant_Totem>({
+                },
+                {
+                    ...ability_base(Ability_Id.shaker_enchant_totem),
                     available_since_level: 2,
                     charges: 1,
                     selector: select_in_rectangle(1),
                     modifier: { id: Modifier_Id.shaker_enchant_totem_caster },
                     flags: [ Ability_Flag.does_not_consume_action ]
-                }),
-                active_ability<Ability_Shaker_Echo_Slam>({
+                },
+                {
+                    ...ability_base(Ability_Id.shaker_echo_slam),
                     available_since_level: 3,
                     charges: 1,
                     selector: select_in_rectangle(2)
-                })
+                }
             ],
             ability_bench: [
                 {
@@ -580,8 +629,7 @@ function hero_definition_by_type(type: Hero_Type): Unit_Definition {
             ],
             ability_bench: [
                 {
-                    id: Ability_Id.bounty_hunter_jinada_attack,
-                    type: Ability_Type.target_unit,
+                    ...ability_base(Ability_Id.bounty_hunter_jinada_attack),
                     targeting: target_first_in_line(1),
                     available_since_level: 0,
                     charges: 1,
@@ -613,14 +661,16 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             health: 7,
             move_points: 0,
             abilities: [
-                passive_ability<Ability_Pocket_Tower_Attack>({
+                {
+                    ...ability_base(Ability_Id.pocket_tower_attack),
                     available_since_level: 0,
                     selector: select_in_rectangle(2)
-                }),
-                passive_ability<Ability_Deployment_Zone>({
+                },
+                {
+                    ...ability_base(Ability_Id.deployment_zone),
                     available_since_level: 0,
                     radius: 1
-                }),
+                },
             ],
             intrinsic_modifiers: [{ id: Modifier_Id.rooted }]
         };
@@ -674,9 +724,10 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             move_points: 3,
             attack: basic_attack(1),
             abilities: [
-                passive_ability<Ability_Monster_Lifesteal>({
+                {
+                    ...ability_base(Ability_Id.monster_lifesteal),
                     available_since_level: 0
-                }),
+                }
             ]
         };
 
@@ -686,10 +737,11 @@ function creep_definition_by_type(creep_type: Creep_Type): Unit_Definition {
             move_points: 2,
             attack: basic_attack(1),
             abilities: [
-                passive_ability<Ability_Monster_Spawn_Spiderlings>({
+                {
+                    ...ability_base(Ability_Id.monster_spawn_spiderlings),
                     available_since_level: 0,
                     how_many: 3
-                })
+                }
             ]
         };
 

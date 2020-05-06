@@ -56,10 +56,10 @@ exports.compile = function(...modules) {
     })
 };
 
-exports.copy_party_sim = function(to) {
-    const source_file = "party-sim/dist/party_sim.js";
-
-    copy(source_file, to);
+exports.copy_shared_code = function(to) {
+    copy("battle-sim/dist/battle_sim.js", `${to}/battle_sim.js`);
+    copy("party-sim/dist/party_sim.js", `${to}/party_sim.js`);
+    copy("reflection/dist/reflection.js", `${to}/reflection.js`);
 };
 
 exports.copy_sim = function(to) {
@@ -88,6 +88,6 @@ exports.deploy_web_version = function() {
 exports.copy_code_shared_with_lua = function() {
     copy("battle-sim/src/modifier_logic.ts", "server-local/src/modifier_logic.ts");
     copy("battle-sim/src/unit_defs.ts", "server-local/src/unit_defs.ts");
+    copy("reflection/src/reflection.ts", "server-local/src/reflection.ts");
     copy("client-local/src/hero_sounds.ts", "server-local/src/hero_sounds.ts");
-    copy("client-local/src/reflection.ts", "server-local/src/reflection.ts");
 };

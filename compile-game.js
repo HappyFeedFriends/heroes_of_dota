@@ -1,4 +1,4 @@
-const { compile, copy_sim, copy_party_sim, copy_code_shared_with_lua, panorama_scripts_dir } = require("./compiler");
+const { compile, copy_shared_code, copy_code_shared_with_lua, panorama_scripts_dir } = require("./compiler");
 
 (async () => {
     console.time("Compile");
@@ -7,10 +7,8 @@ const { compile, copy_sim, copy_party_sim, copy_code_shared_with_lua, panorama_s
 
     const ok = await compile("client-local", "server-remote", "server-local");
 
-    copy_sim("server-remote/dist/battle_sim.js");
-    copy_sim(`${panorama_scripts_dir}/battle_sim.js`);
-
-    copy_party_sim("server-remote/dist/party_sim.js");
+    copy_shared_code("server-remote/dist");
+    copy_shared_code(panorama_scripts_dir);
 
     console.timeEnd("Compile");
 

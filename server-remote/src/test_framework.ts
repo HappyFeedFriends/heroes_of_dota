@@ -635,6 +635,7 @@ class Assert_For_Player_Unit {
 }
 
 export function run_tests(tests: Test[]) {
+    eval.call(global, readFileSync("dist/reflection.js", "utf8"));
     eval.call(global, readFileSync("dist/battle_sim.js", "utf8"));
 
     const all_start_at = performance.now();

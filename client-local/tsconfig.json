@@ -23,6 +23,9 @@
     },
     {
       "path": "../party-sim"
+    },
+    {
+      "path": "../reflection"
     }
   ],
   "include": [

@@ -1,10 +1,9 @@
-const { compile, copy_sim } = require("./compiler");
+const { compile, copy_shared_code } = require("./compiler");
 
 (async () => {
-    let ok =   await compile("battle-sim");
-    ok = ok && await compile("server-remote");
+    let ok = await compile("server-remote");
 
-    copy_sim("server-remote/dist/battle_sim.js");
+    copy_shared_code("server-remote/dist");
 
     if (!ok) process.exit(1);
 })();
